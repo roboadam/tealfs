@@ -1,2 +1,2 @@
-# go-playground
- Go Playground
+# TealFS
+Reliable file storage for everyone!
