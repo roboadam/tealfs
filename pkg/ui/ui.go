@@ -1,22 +1,31 @@
 package ui
 
 import (
-	"tealfs/pkg/cmds"
 	"fmt"
 	"net/http"
-	"strconv"
+	"tealfs/pkg/cmds"
+	"tealfs/pkg/node"
 )
 
-func StartUi(uiPort int, nodePort int, userCmds chan cmds.User, hostid uint32) {
-	handleUserCommands(userCmds)
-	handleRoot(nodePort, hostid)
-	http.ListenAndServe(":"+fmt.Sprint(uiPort), nil)
+type Ui struct {
+	node     *node.Node
+	userCmds chan cmds.User
 }
 
-func handleUserCommands(userCmds chan cmds.User) {
+func NewUi(node *node.Node, userCmds chan cmds.User) Ui {
+	return Ui{node, userCmds}
+}
+
+func (ui Ui) Start() {
+	ui.handleUserCommands()
+	handleRoot(nodePort, hostid)
+	http.ListenAndServe(":0", nil)
+}
+
+func (ui Ui) handleUserCommands() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
-		userCmds <- cmds.User{
+		ui.userCmds <- cmds.User{
 			CmdType:  cmds.ConnectTo,
 			Argument: hostAndPort,
 		}
@@ -24,7 +33,7 @@ func handleUserCommands(userCmds chan cmds.User) {
 	})
 	http.HandleFunc("/add-storage", func(w http.ResponseWriter, r *http.Request) {
 		newStorageLocation := r.FormValue("newStorageLocation")
-		userCmds <- cmds.User{
+		ui.userCmds <- cmds.User{
 			CmdType:  cmds.AddStorage,
 			Argument: newStorageLocation,
 		}
@@ -32,7 +41,7 @@ func handleUserCommands(userCmds chan cmds.User) {
 	})
 }
 
-func handleRoot(nodePort int, hostId uint32) {
+func (ui Ui) handleRoot() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		html := `
 			<!DOCTYPE html>
@@ -44,7 +53,7 @@ func handleRoot(nodePort int, hostId uint32) {
 			</head>
 			<body>
 			    <main>
-					<h1>TealFS: ` + strconv.Itoa(int(hostId)) + `</h1>
+					<h1>TealFS: ` + ui.node.NodeId.String() + `</h1>
 					` + htmlMyhost(nodePort) + `
 					<p>Input the host and port of a node to add</p>
 					<form hx-put="/connect-to">

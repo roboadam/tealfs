@@ -1,12 +1,12 @@
 package node
 
 import (
-	"tealfs/pkg/cmds"
-	"tealfs/pkg/raw_net"
 	"fmt"
 	"net"
 	"os"
 	"strconv"
+	"tealfs/pkg/cmds"
+	"tealfs/pkg/raw_net"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +14,10 @@ import (
 
 type NodeId struct {
 	value uuid.UUID
+}
+
+func (nodeId NodeId) String() string {
+	return nodeId.value.String()
 }
 
 func NewNodeId() NodeId {
@@ -29,7 +33,7 @@ func NewNodeId() NodeId {
 }
 
 type Node struct {
-	nodeId      NodeId
+	NodeId      NodeId
 	userCmds    chan cmds.User
 	listener    net.Listener
 	connections *Connections
@@ -37,7 +41,7 @@ type Node struct {
 
 func NewNode(userCmds chan cmds.User) Node {
 	return Node{
-		nodeId:      NewNodeId(),
+		NodeId:      NewNodeId(),
 		userCmds:    userCmds,
 		connections: NewConnections(),
 	}
