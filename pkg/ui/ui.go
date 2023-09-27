@@ -78,17 +78,20 @@ func (ui Ui) handleRoot() {
 }
 
 func htmlMyhost(address net.Addr) string {
-	if address != nil {
-		return `
-		<div id="myhost">
+	friendlyName := addressToFriendlyName(address)
+	return wrapInDiv(`
 			<h2>My host</h2>
-			<p>Host: localhost:` + address.String() + `</p>
-		</div>`
-	} else {
-		return `
-		<div id="myhost">
-			<h2>My host</h2>
-			<p>Host: Not Connected</p>
-		</div>`
+			<p>Host: `+friendlyName+`</p>`,
+		"myhost")
+}
+
+func addressToFriendlyName(address net.Addr) string {
+	if address == nil {
+		return "Not Connected"
 	}
+	return address.String()
+}
+
+func wrapInDiv(html string, divId string) string {
+	return `<div id="` + divId + `">` + html + `</div>`
 }

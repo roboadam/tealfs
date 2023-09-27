@@ -3,34 +3,11 @@ package node
 import (
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/raw_net"
 	"time"
-
-	"github.com/google/uuid"
 )
-
-type NodeId struct {
-	value uuid.UUID
-}
-
-func (nodeId NodeId) String() string {
-	return nodeId.value.String()
-}
-
-func NewNodeId() NodeId {
-	uuid, err := uuid.NewUUID()
-	if err != nil {
-		fmt.Println("Error generating UUID:", err)
-		os.Exit(1)
-	}
-
-	return NodeId{
-		value: uuid,
-	}
-}
 
 type Node struct {
 	NodeId      NodeId
@@ -56,15 +33,20 @@ func (node Node) GetAddress() net.Addr {
 
 func (node *Node) listen() {
 	if node.listener == nil {
-		for {
-			var listenErr error
-			node.listener, listenErr = net.Listen("tcp", ":0")
-			if listenErr != nil {
-				fmt.Println("Error listening:", listenErr.Error())
-				time.Sleep(2 * time.Second)
-				break
-			}
+		node.setListener()
+	}
+}
+
+func (node *Node) setListener() {
+	var listenErr error
+	for {
+		node.listener, listenErr = net.Listen("tcp", ":0")
+		if listenErr == nil {
+			return
 		}
+
+		fmt.Println("Error listening:", listenErr.Error())
+		time.Sleep(2 * time.Second)
 	}
 }
 
@@ -76,13 +58,17 @@ func (node Node) Start() {
 	go node.keepConnectionsAlive()
 
 	for {
-		conn, err := node.listener.Accept()
-		if err != nil {
-			fmt.Println("Error accepting connection:", err.Error())
-			return
-		}
+		node.acceptAndHandleConnection()
+	}
+}
+
+func (node Node) acceptAndHandleConnection() {
+	conn, err := node.listener.Accept()
+	if err == nil {
 		fmt.Println("Accepted connection from", conn.RemoteAddr())
 		go node.handleConnection(conn)
+	} else {
+		fmt.Println("Error accepting connection:", err.Error())
 	}
 }
 
