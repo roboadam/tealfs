@@ -47,16 +47,22 @@ func NewNode(userCmds chan cmds.User) Node {
 	}
 }
 
-func (node Node) listen() {
-	if node.listener == nil {
-		var keepTryingToListen = true
+func (node Node) GetAddress() net.Addr {
+	if node.listener != nil {
+		return node.listener.Addr()
+	}
+	return nil
+}
 
-		for keepTryingToListen {
+func (node *Node) listen() {
+	if node.listener == nil {
+		for {
 			var listenErr error
 			node.listener, listenErr = net.Listen("tcp", ":0")
 			if listenErr != nil {
 				fmt.Println("Error listening:", listenErr.Error())
 				time.Sleep(2 * time.Second)
+				break
 			}
 		}
 	}

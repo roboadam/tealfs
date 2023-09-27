@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
@@ -18,7 +19,7 @@ func NewUi(node *node.Node, userCmds chan cmds.User) Ui {
 
 func (ui Ui) Start() {
 	ui.handleUserCommands()
-	handleRoot(nodePort, hostid)
+	ui.handleRoot()
 	http.ListenAndServe(":0", nil)
 }
 
@@ -54,7 +55,7 @@ func (ui Ui) handleRoot() {
 			<body>
 			    <main>
 					<h1>TealFS: ` + ui.node.NodeId.String() + `</h1>
-					` + htmlMyhost(nodePort) + `
+					` + htmlMyhost(ui.node.GetAddress()) + `
 					<p>Input the host and port of a node to add</p>
 					<form hx-put="/connect-to">
 						<label for="textbox">Host and port:</label>
@@ -76,10 +77,18 @@ func (ui Ui) handleRoot() {
 	})
 }
 
-func htmlMyhost(port int) string {
-	return `
+func htmlMyhost(address net.Addr) string {
+	if address != nil {
+		return `
 		<div id="myhost">
 			<h2>My host</h2>
-			<p>Host: localhost:` + fmt.Sprint(port) + `</p>
+			<p>Host: localhost:` + address.String() + `</p>
 		</div>`
+	} else {
+		return `
+		<div id="myhost">
+			<h2>My host</h2>
+			<p>Host: Not Connected</p>
+		</div>`
+	}
 }
