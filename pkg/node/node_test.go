@@ -6,22 +6,26 @@ import (
 	"testing"
 )
 
-func TestConstructor(t *testing.T) {
+func TestNodeCreation(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	node := node.NewNode(userCmds)
-	node.Start()
+	node.SetHostToBind("127.0.0.1")
+	node.Listen()
+	defer node.Close()
 
-	if !nodeIdExists(&node) {
-		t.Error("NodeId does not exist")
+	if !nodeIdisValid(&node) {
+		t.Error("NodeId is invalid")
 	}
 
-	if !nodeAddressIsGood(&node)
+	if !nodeAddressIsValid(&node) {
+		t.Error("Node address is invalid")
+	}
 }
 
-func nodeIdExists(node *node.Node) bool {
+func nodeIdisValid(node *node.Node) bool {
 	return len(node.Id.String()) > 0
 }
 
-func nodeAddressIsGood(node *node.Node) bool {
+func nodeAddressIsValid(node *node.Node) bool {
 	return len(node.GetAddress().String()) > 0
 }
