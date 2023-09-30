@@ -10,7 +10,7 @@ import (
 )
 
 type Node struct {
-	NodeId      NodeId
+	Id          NodeId
 	userCmds    chan cmds.User
 	listener    net.Listener
 	connections *Connections
@@ -18,7 +18,7 @@ type Node struct {
 
 func NewNode(userCmds chan cmds.User) Node {
 	return Node{
-		NodeId:      NewNodeId(),
+		Id:          NewNodeId(),
 		userCmds:    userCmds,
 		connections: NewConnections(),
 	}
@@ -29,6 +29,20 @@ func (node Node) GetAddress() net.Addr {
 		return node.listener.Addr()
 	}
 	return nil
+}
+
+func (node Node) Start() {
+	node.listen()
+	defer node.listener.Close()
+	go node.handleUiCommands()
+	go node.keepConnectionsAlive()
+	go node.acceptConnections()
+}
+
+func (node Node) acceptConnections() {
+	for {
+		node.acceptAndHandleConnection()
+	}
 }
 
 func (node *Node) listen() {
@@ -47,18 +61,6 @@ func (node *Node) setListener() {
 
 		fmt.Println("Error listening:", listenErr.Error())
 		time.Sleep(2 * time.Second)
-	}
-}
-
-func (node Node) Start() {
-	node.listen()
-	defer node.listener.Close()
-
-	go node.handleUiCommands()
-	go node.keepConnectionsAlive()
-
-	for {
-		node.acceptAndHandleConnection()
 	}
 }
 

@@ -1,11 +1,27 @@
-package node
+package node_test
 
-import "testing"
+import (
+	"tealfs/pkg/cmds"
+	"tealfs/pkg/node"
+	"testing"
+)
 
-func TestAdd(t *testing.T) {
-	someNumber := 1
-	someNumber *= 3
-	if someNumber != 3 {
-		t.Errorf("We failed")
+func TestConstructor(t *testing.T) {
+	userCmds := make(chan cmds.User)
+	node := node.NewNode(userCmds)
+	node.Start()
+
+	if !nodeIdExists(&node) {
+		t.Error("NodeId does not exist")
 	}
+
+	if !nodeAddressIsGood(&node)
+}
+
+func nodeIdExists(node *node.Node) bool {
+	return len(node.Id.String()) > 0
+}
+
+func nodeAddressIsGood(node *node.Node) bool {
+	return len(node.GetAddress().String()) > 0
 }
