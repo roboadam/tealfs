@@ -3,6 +3,7 @@ package node_test
 import (
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
+	"tealfs/pkg/test"
 	"testing"
 )
 
@@ -24,8 +25,13 @@ func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	node := listeningNode(userCmds)
 	defer node.Close()
+	testListener := test.NewTestListener()
 
-	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "localhost:234"}
+	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: testListener.GetAddress()}
+
+	if !testListener.ReceivedConnection() {
+		t.Error("Node did not connect")
+	}
 }
 
 func listeningNode(userCmds chan cmds.User) *node.Node {
