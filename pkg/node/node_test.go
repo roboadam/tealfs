@@ -20,6 +20,14 @@ func TestNodeCreation(t *testing.T) {
 	}
 }
 
+func TestConnectToRemoteNode(t *testing.T) {
+	userCmds := make(chan cmds.User)
+	node := listeningNode(userCmds)
+	defer node.Close()
+
+	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "localhost:234"}
+}
+
 func listeningNode(userCmds chan cmds.User) *node.Node {
 	node := node.NewNode(userCmds)
 	node.SetHostToBind("127.0.0.1")
