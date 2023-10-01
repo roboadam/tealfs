@@ -9,16 +9,16 @@ import (
 )
 
 func main() {
-	webPort, nodePort := ports()
+	webPort, _ := ports()
 	userCmds := make(chan cmds.User)
 
 	node := node.NewNode(userCmds)
 	ui := ui.NewUi(&node, userCmds)
 
 	go ui.Start()
-	go node.Start()
+	node.Listen()
 	fmt.Println("UI: http://localhost:" + fmt.Sprint(webPort))
-	fmt.Println("Node: localhost:" + fmt.Sprint(nodePort))
+	fmt.Println("Node: " + node.GetAddress().String())
 	select {}
 }
 
