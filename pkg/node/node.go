@@ -3,7 +3,6 @@ package node
 import (
 	"fmt"
 	"net"
-	"strconv"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/raw_net"
 	"time"
@@ -13,7 +12,7 @@ type Node struct {
 	Id          NodeId
 	userCmds    chan cmds.User
 	listener    net.Listener
-	connections *Connections
+	connections *RemoteNodes
 	hostToBind  string
 }
 
@@ -21,7 +20,7 @@ func NewNode(userCmds chan cmds.User) Node {
 	node := Node{
 		Id:          NewNodeId(),
 		userCmds:    userCmds,
-		connections: NewConnections(),
+		connections: NewRemoteNodes(),
 		hostToBind:  "",
 	}
 
@@ -123,13 +122,14 @@ func (node *Node) handleUiCommands() {
 }
 
 func (node *Node) addConnection(cmd cmds.User) {
-	conn := NodeConnection{
+	conn := RemoteNode{
+		NodeId:  node.Id,
 		Address: cmd.Argument,
 		Conn:    nil,
 	}
 
-	id := node.connections.AddConnection(conn)
-	fmt.Println("Received command: add-connnection, address:" + cmd.Argument + ", added connection id:" + strconv.Itoa(int(id.Value)))
+	node.connections.AddConnection(conn)
+	fmt.Println("Received command: add-connnection, address:" + cmd.Argument + ", added connection id:" + conn.NodeId.value.String())
 }
 
 func (node *Node) addStorage(cmd cmds.User) {

@@ -5,57 +5,40 @@ import (
 	"net"
 )
 
-type NodeConnection struct {
-	Address string
-	Conn    net.Conn
-}
-
-type NodeConnectionId struct {
-	Value uint32
-}
-
-type Connections struct {
-	connections map[uint32]NodeConnection
-	addChan     chan struct {
-		id   uint32
-		conn NodeConnection
+type RemoteNodes struct {
+	connections map[NodeId]RemoteNode
+	addChan     chan RemoteNode
+	getChan     chan struct {
+		request  NodeId
+		response chan *RemoteNode
 	}
-	getChan chan struct {
-		id       uint32
-		response chan *NodeConnection
-	}
-	deleteChan chan uint32
-	nextIdx    uint32
+	deleteChan chan NodeId
 }
 
-func NewConnections() *Connections {
-	connections := &Connections{
-		connections: make(map[uint32]NodeConnection),
-		addChan: make(chan struct {
-			id   uint32
-			conn NodeConnection
-		}),
+func NewRemoteNodes() *RemoteNodes {
+	nodes := &RemoteNodes{
+		connections: make(map[NodeId]RemoteNode),
+		addChan:     make(chan RemoteNode),
 		getChan: make(chan struct {
-			id       uint32
-			response chan *NodeConnection
+			request  NodeId
+			response chan *RemoteNode
 		}),
-		deleteChan: make(chan uint32),
-		nextIdx:    0,
+		deleteChan: make(chan NodeId),
 	}
 
-	go connections.run()
+	go nodes.run()
 
-	return connections
+	return nodes
 }
 
-func (holder *Connections) run() {
+func (holder *RemoteNodes) run() {
 	for {
 		select {
 		case request := <-holder.addChan:
-			holder.connections[request.id] = request.conn
+			holder.connections[request.NodeId] = request
 
 		case request := <-holder.getChan:
-			conn, found := holder.connections[request.id]
+			conn, found := holder.connections[request.request]
 			if found {
 				request.response <- &conn
 			} else {
@@ -68,31 +51,24 @@ func (holder *Connections) run() {
 	}
 }
 
-func (holder *Connections) AddConnection(conn NodeConnection) NodeConnectionId {
-	id := holder.nextIdx
-	holder.nextIdx++
-	holder.addChan <- struct {
-		id   uint32
-		conn NodeConnection
-	}{id, conn}
-
-	return NodeConnectionId{Value: id}
+func (holder *RemoteNodes) AddConnection(node RemoteNode) {
+	holder.addChan <- node
 }
 
-func (holder *Connections) GetConnection(id NodeConnectionId) *NodeConnection {
-	responseChan := make(chan *NodeConnection)
+func (holder *RemoteNodes) GetConnection(id NodeId) *RemoteNode {
+	responseChan := make(chan *RemoteNode)
 	holder.getChan <- struct {
-		id       uint32
-		response chan *NodeConnection
-	}{id.Value, responseChan}
+		request  NodeId
+		response chan *RemoteNode
+	}{id, responseChan}
 	return <-responseChan
 }
 
-func (holder *Connections) DeleteConnection(id NodeConnectionId) {
-	holder.deleteChan <- id.Value
+func (holder *RemoteNodes) DeleteConnection(id NodeId) {
+	holder.deleteChan <- id
 }
 
-func (holder *Connections) ConnectAll() {
+func (holder *RemoteNodes) ConnectAll() {
 	for _, conn := range holder.connections {
 		if conn.Conn == nil {
 			tcpConn, error := net.Dial("tcp", conn.Address)
