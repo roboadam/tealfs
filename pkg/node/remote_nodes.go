@@ -15,9 +15,29 @@ func NewRemoteNodes() *RemoteNodes {
 		deletes: make(chan NodeId),
 	}
 
-	go nodes.run()
+	go nodes.consumeChannels()
 
 	return nodes
+}
+
+func (holder *RemoteNodes) AddConnection(node RemoteNode) {
+	holder.adds <- node
+}
+
+func (holder *RemoteNodes) GetConnection(id NodeId) *RemoteNode {
+	responseChan := make(chan *RemoteNode)
+	holder.gets <- getsRequestWithResponseChan{id, responseChan}
+	return <-responseChan
+}
+
+func (holder *RemoteNodes) DeleteConnection(id NodeId) {
+	holder.deletes <- id
+}
+
+func (holder *RemoteNodes) ConnectAll() {
+	for _, node := range holder.nodes {
+		node.Connect()
+	}
 }
 
 type getsRequestWithResponseChan struct {
@@ -25,7 +45,7 @@ type getsRequestWithResponseChan struct {
 	response chan *RemoteNode
 }
 
-func (holder *RemoteNodes) run() {
+func (holder *RemoteNodes) consumeChannels() {
 	for {
 		select {
 		case request := <-holder.adds:
@@ -52,24 +72,4 @@ func (holder *RemoteNodes) sendConnectionToChan(request getsRequestWithResponseC
 func (holder *RemoteNodes) storeNode(request RemoteNode) {
 	request.Connect()
 	holder.nodes[request.NodeId] = request
-}
-
-func (holder *RemoteNodes) AddConnection(node RemoteNode) {
-	holder.adds <- node
-}
-
-func (holder *RemoteNodes) GetConnection(id NodeId) *RemoteNode {
-	responseChan := make(chan *RemoteNode)
-	holder.gets <- getsRequestWithResponseChan{id, responseChan}
-	return <-responseChan
-}
-
-func (holder *RemoteNodes) DeleteConnection(id NodeId) {
-	holder.deletes <- id
-}
-
-func (holder *RemoteNodes) ConnectAll() {
-	for _, node := range holder.nodes {
-		node.Connect()
-	}
 }

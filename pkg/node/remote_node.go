@@ -19,6 +19,12 @@ func (node *RemoteNode) Connect() error {
 	return nil
 }
 
+func (node *RemoteNode) Disconnect() {
+	if node.Conn != nil {
+		node.Conn.Close()
+	}
+}
+
 func (node *RemoteNode) connectUnconnectedNode() error {
 	tcpConn, error := net.Dial("tcp", node.Address)
 	if error == nil {

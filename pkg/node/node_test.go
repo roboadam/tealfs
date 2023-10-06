@@ -34,6 +34,23 @@ func TestConnectToRemoteNode(t *testing.T) {
 	}
 }
 
+func TestReconnectToRemoteNode(t *testing.T) {
+	userCmds := make(chan cmds.User)
+	node := listeningNode(userCmds)
+	defer node.Close()
+	testListener := test.NewTestListener()
+
+	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: testListener.GetAddress()}
+	if !testListener.ReceivedConnection() {
+		t.Error("Node did not connect")
+	}
+	testListener.CloseAndReopen()
+
+	if !testListener.ReceivedConnection() {
+		t.Error("Node did not connect")
+	}
+}
+
 func listeningNode(userCmds chan cmds.User) *node.Node {
 	node := node.NewNode(userCmds)
 	node.SetHostToBind("127.0.0.1")
