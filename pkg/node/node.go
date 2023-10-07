@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"tealfs/pkg/cmds"
@@ -73,16 +74,18 @@ func (node *Node) IsListening() bool {
 }
 
 func (node *Node) setListener() {
-	var listenErr error
-	for {
-		node.listener, listenErr = net.Listen("tcp", node.hostToBind+":0")
-		if listenErr == nil {
-			return
-		}
+	var listenErr error = errors.New("")
+	for listenErr != nil {
+		node.listener, listenErr = listenOrSleepOnError("tcp", node.hostToBind+":0")
+	}
+}
 
-		fmt.Println("Error listening:", listenErr.Error())
+func listenOrSleepOnError(network string, address string) (net.Listener, error) {
+	listener, err := net.Listen(network, address)
+	if err != nil {
 		time.Sleep(2 * time.Second)
 	}
+	return listener, err
 }
 
 func (node *Node) acceptAndHandleConnection() {
