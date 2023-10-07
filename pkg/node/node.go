@@ -17,7 +17,7 @@ type Node struct {
 	hostToBind  string
 }
 
-func NewNode(userCmds chan cmds.User) Node {
+func New(userCmds chan cmds.User) Node {
 	node := Node{
 		Id:          NewNodeId(),
 		userCmds:    userCmds,
@@ -92,7 +92,6 @@ func (node *Node) acceptAndHandleConnection() {
 	if node.listener != nil {
 		conn, err := node.listener.Accept()
 		if err == nil {
-			defer conn.Close()
 			fmt.Println("Accepted connection from", conn.RemoteAddr())
 			go node.handleConnection(conn)
 		} else {

@@ -10,7 +10,7 @@ import (
 func main() {
 	userCommands := make(chan cmds.User)
 
-	localNode := node.NewNode(userCommands)
+	localNode := node.New(userCommands)
 	localUi := ui.NewUi(&localNode, userCommands)
 
 	go localUi.Start()

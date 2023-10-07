@@ -35,7 +35,7 @@ func TestConnectToRemoteNode(t *testing.T) {
 }
 
 func listeningNode(userCmds chan cmds.User) *node.Node {
-	localNode := node.NewNode(userCmds)
+	localNode := node.New(userCmds)
 	localNode.SetHostToBind("127.0.0.1")
 	localNode.Listen()
 	return &localNode
