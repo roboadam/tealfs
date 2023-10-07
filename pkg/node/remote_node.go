@@ -1,8 +1,8 @@
 package node
 
 import (
-	"errors"
 	"net"
+	"time"
 )
 
 type RemoteNode struct {
@@ -13,7 +13,7 @@ type RemoteNode struct {
 
 func (node *RemoteNode) Connect() {
 	if node.Conn == nil {
-		node.connectUnconnectedNode()
+		node.connectUntilSuccess()
 	}
 }
 
@@ -23,12 +23,11 @@ func (node *RemoteNode) Disconnect() {
 	}
 }
 
-func (node *RemoteNode) connectUnconnectedNode() error {
-	tcpConn, err := net.Dial("tcp", node.Address)
-	if err == nil {
-		node.Conn = tcpConn
-	} else {
-		return errors.New("can't connect")
+func (node *RemoteNode) connectUntilSuccess() {
+	var err error
+	node.Conn, err = net.Dial("tcp", node.Address)
+	for err == nil {
+		time.Sleep(time.Second * 2)
+		node.Conn, err = net.Dial("tcp", node.Address)
 	}
-	return nil
 }

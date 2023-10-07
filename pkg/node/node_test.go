@@ -12,7 +12,7 @@ func TestNodeCreation(t *testing.T) {
 	localNode := listeningNode(userCmds)
 	defer localNode.Close()
 
-	if !nodeIdisValid(localNode) {
+	if !nodeIdIsValid(localNode) {
 		t.Error("Id is invalid")
 	}
 
@@ -41,7 +41,7 @@ func listeningNode(userCmds chan cmds.User) *node.Node {
 	return &localNode
 }
 
-func nodeIdisValid(node *node.Node) bool {
+func nodeIdIsValid(node *node.Node) bool {
 	return len(node.Id.String()) > 0
 }
 

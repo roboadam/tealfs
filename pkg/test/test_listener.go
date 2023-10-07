@@ -21,8 +21,3 @@ func (listener *Listener) ReceivedConnection() bool {
 	_, err := listener.listener.Accept()
 	return err == nil
 }
-
-func (listener *Listener) CloseAndReopen() {
-	listener.listener.Close()
-	listener.listener, _ = net.Listen("tcp", listener.savedAddress)
-}
