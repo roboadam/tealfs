@@ -9,22 +9,22 @@ import (
 
 func TestNodeCreation(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	node := listeningNode(userCmds)
-	defer node.Close()
+	localNode := listeningNode(userCmds)
+	defer localNode.Close()
 
-	if !nodeIdisValid(node) {
-		t.Error("NodeId is invalid")
+	if !nodeIdisValid(localNode) {
+		t.Error("Id is invalid")
 	}
 
-	if !nodeAddressIsValid(node) {
+	if !nodeAddressIsValid(localNode) {
 		t.Error("Node address is invalid")
 	}
 }
 
 func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	node := listeningNode(userCmds)
-	defer node.Close()
+	localNode := listeningNode(userCmds)
+	defer localNode.Close()
 	testListener := test.NewTestListener()
 
 	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: testListener.GetAddress()}
@@ -35,10 +35,10 @@ func TestConnectToRemoteNode(t *testing.T) {
 }
 
 func listeningNode(userCmds chan cmds.User) *node.Node {
-	node := node.NewNode(userCmds)
-	node.SetHostToBind("127.0.0.1")
-	node.Listen()
-	return &node
+	localNode := node.NewNode(userCmds)
+	localNode.SetHostToBind("127.0.0.1")
+	localNode.Listen()
+	return &localNode
 }
 
 func nodeIdisValid(node *node.Node) bool {

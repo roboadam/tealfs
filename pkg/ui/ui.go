@@ -17,10 +17,10 @@ func NewUi(node *node.Node, userCmds chan cmds.User) Ui {
 	return Ui{node, userCmds}
 }
 
-func (ui Ui) Start() {
+func (ui Ui) Start() error {
 	ui.handleUserCommands()
 	ui.handleRoot()
-	http.ListenAndServe(":0", nil)
+	return http.ListenAndServe(":0", nil)
 }
 
 func (ui Ui) handleUserCommands() {

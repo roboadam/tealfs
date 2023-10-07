@@ -1,18 +1,18 @@
 package node
 
 type RemoteNodes struct {
-	nodes   map[NodeId]RemoteNode
+	nodes   map[Id]RemoteNode
 	adds    chan RemoteNode
 	gets    chan getsRequestWithResponseChan
-	deletes chan NodeId
+	deletes chan Id
 }
 
 func NewRemoteNodes() *RemoteNodes {
 	nodes := &RemoteNodes{
-		nodes:   make(map[NodeId]RemoteNode),
+		nodes:   make(map[Id]RemoteNode),
 		adds:    make(chan RemoteNode),
 		gets:    make(chan getsRequestWithResponseChan),
-		deletes: make(chan NodeId),
+		deletes: make(chan Id),
 	}
 
 	go nodes.consumeChannels()
@@ -24,18 +24,18 @@ func (holder *RemoteNodes) AddConnection(node RemoteNode) {
 	holder.adds <- node
 }
 
-func (holder *RemoteNodes) GetConnection(id NodeId) *RemoteNode {
+func (holder *RemoteNodes) GetConnection(id Id) *RemoteNode {
 	responseChan := make(chan *RemoteNode)
 	holder.gets <- getsRequestWithResponseChan{id, responseChan}
 	return <-responseChan
 }
 
-func (holder *RemoteNodes) DeleteConnection(id NodeId) {
+func (holder *RemoteNodes) DeleteConnection(id Id) {
 	holder.deletes <- id
 }
 
 type getsRequestWithResponseChan struct {
-	request  NodeId
+	request  Id
 	response chan *RemoteNode
 }
 

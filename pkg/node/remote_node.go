@@ -6,7 +6,7 @@ import (
 )
 
 type RemoteNode struct {
-	NodeId  NodeId
+	NodeId  Id
 	Address string
 	Conn    net.Conn
 }

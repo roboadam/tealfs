@@ -10,7 +10,7 @@ import (
 )
 
 type Node struct {
-	Id          NodeId
+	Id          Id
 	userCmds    chan cmds.User
 	listener    net.Listener
 	connections *RemoteNodes
@@ -45,10 +45,11 @@ func (node *Node) GetAddress() net.Addr {
 	return nil
 }
 
-func (node *Node) Close() {
+func (node *Node) Close() error {
 	if node.listener != nil {
-		node.listener.Close()
+		return node.listener.Close()
 	}
+	return nil
 }
 
 func (node *Node) applyListenerChanges() {
@@ -74,7 +75,7 @@ func (node *Node) IsListening() bool {
 }
 
 func (node *Node) setListener() {
-	var listenErr error = errors.New("")
+	listenErr := errors.New("")
 	for listenErr != nil {
 		node.listener, listenErr = listenOrSleepOnError("tcp", node.hostToBind+":0")
 	}
@@ -128,7 +129,7 @@ func (node *Node) addConnection(cmd cmds.User) {
 	}
 
 	node.connections.AddConnection(conn)
-	fmt.Println("Received command: add-connnection, address:" + cmd.Argument + ", added connection id:" + conn.NodeId.value.String())
+	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + conn.NodeId.value.String())
 }
 
 func (node *Node) addStorage(cmd cmds.User) {
