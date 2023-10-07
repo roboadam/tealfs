@@ -11,12 +11,10 @@ type RemoteNode struct {
 	Conn    net.Conn
 }
 
-func (node *RemoteNode) Connect() error {
+func (node *RemoteNode) Connect() {
 	if node.Conn == nil {
-		return node.connectUnconnectedNode()
+		node.connectUnconnectedNode()
 	}
-
-	return nil
 }
 
 func (node *RemoteNode) Disconnect() {
@@ -26,8 +24,8 @@ func (node *RemoteNode) Disconnect() {
 }
 
 func (node *RemoteNode) connectUnconnectedNode() error {
-	tcpConn, error := net.Dial("tcp", node.Address)
-	if error == nil {
+	tcpConn, err := net.Dial("tcp", node.Address)
+	if err == nil {
 		node.Conn = tcpConn
 	} else {
 		return errors.New("can't connect")

@@ -45,11 +45,10 @@ func (node *Node) GetAddress() net.Addr {
 	return nil
 }
 
-func (node *Node) Close() error {
+func (node *Node) Close() {
 	if node.listener != nil {
-		return node.listener.Close()
+		_ = node.listener.Close()
 	}
-	return nil
 }
 
 func (node *Node) applyListenerChanges() {
