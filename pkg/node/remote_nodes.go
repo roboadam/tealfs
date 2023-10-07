@@ -34,12 +34,6 @@ func (holder *RemoteNodes) DeleteConnection(id NodeId) {
 	holder.deletes <- id
 }
 
-func (holder *RemoteNodes) ConnectAll() {
-	for _, node := range holder.nodes {
-		node.Connect()
-	}
-}
-
 type getsRequestWithResponseChan struct {
 	request  NodeId
 	response chan *RemoteNode

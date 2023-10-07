@@ -25,7 +25,6 @@ func NewNode(userCmds chan cmds.User) Node {
 	}
 
 	go node.handleUiCommands()
-	go node.keepConnectionsAlive()
 	go node.acceptConnections()
 
 	return node
@@ -34,9 +33,7 @@ func NewNode(userCmds chan cmds.User) Node {
 func (node *Node) SetHostToBind(hostToBind string) {
 	if node.hostToBind != hostToBind {
 		node.hostToBind = hostToBind
-		if node.IsListening() {
-			node.setListener()
-		}
+		node.applyListenerChanges()
 	}
 }
 
@@ -53,6 +50,12 @@ func (node *Node) Close() {
 	}
 }
 
+func (node *Node) applyListenerChanges() {
+	if node.IsListening() {
+		node.setListener()
+	}
+}
+
 func (node *Node) acceptConnections() {
 	for {
 		node.acceptAndHandleConnection()
@@ -60,7 +63,7 @@ func (node *Node) acceptConnections() {
 }
 
 func (node *Node) Listen() {
-	if node.listener == nil {
+	if !node.IsListening() {
 		node.setListener()
 	}
 }
@@ -99,13 +102,6 @@ func (node *Node) handleConnection(conn net.Conn) {
 	for {
 		intFromConn, _ := raw_net.IntFrom(conn)
 		fmt.Println("Received:", intFromConn)
-	}
-}
-
-func (node *Node) keepConnectionsAlive() {
-	for {
-		time.Sleep(2 * time.Second)
-		node.connections.ConnectAll()
 	}
 }
 
