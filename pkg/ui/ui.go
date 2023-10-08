@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
@@ -77,19 +76,11 @@ func (ui Ui) handleRoot() {
 	})
 }
 
-func htmlMyhost(address net.Addr) string {
-	friendlyName := addressToFriendlyName(address)
+func htmlMyhost(address string) string {
 	return wrapInDiv(`
 			<h2>My host</h2>
-			<p>Host: `+friendlyName+`</p>`,
+			<p>Host: `+address+`</p>`,
 		"myhost")
-}
-
-func addressToFriendlyName(address net.Addr) string {
-	if address == nil {
-		return "Not Connected"
-	}
-	return address.String()
 }
 
 func wrapInDiv(html string, divId string) string {

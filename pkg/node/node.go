@@ -1,7 +1,6 @@
 package node
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"tealfs/pkg/cmds"
@@ -12,9 +11,9 @@ import (
 type Node struct {
 	Id          Id
 	userCmds    chan cmds.User
-	listener    net.Listener
+	listener    Listener
 	connections *RemoteNodes
-	hostToBind  string
+	HostToBind  string
 }
 
 func New(userCmds chan cmds.User) Node {
@@ -22,7 +21,8 @@ func New(userCmds chan cmds.User) Node {
 		Id:          NewNodeId(),
 		userCmds:    userCmds,
 		connections: NewRemoteNodes(),
-		hostToBind:  "",
+		listener:    Listener{},
+		HostToBind:  "",
 	}
 
 	go node.handleUiCommands()
@@ -31,30 +31,12 @@ func New(userCmds chan cmds.User) Node {
 	return node
 }
 
-func (node *Node) SetHostToBind(hostToBind string) {
-	if node.hostToBind != hostToBind {
-		node.hostToBind = hostToBind
-		node.applyListenerChanges()
-	}
-}
-
-func (node *Node) GetAddress() net.Addr {
-	if node.listener != nil {
-		return node.listener.Addr()
-	}
-	return nil
+func (node *Node) GetAddress() string {
+	return node.listener.GetAddress()
 }
 
 func (node *Node) Close() {
-	if node.listener != nil {
-		_ = node.listener.Close()
-	}
-}
-
-func (node *Node) applyListenerChanges() {
-	if node.IsListening() {
-		node.setListener()
-	}
+	node.listener.Close()
 }
 
 func (node *Node) acceptConnections() {
@@ -64,39 +46,21 @@ func (node *Node) acceptConnections() {
 }
 
 func (node *Node) Listen() {
-	if !node.IsListening() {
-		node.setListener()
+	err := node.listenOrError()
+	for err != nil {
+		time.Sleep(time.Second * 2)
+		err = node.listenOrError()
 	}
 }
 
-func (node *Node) IsListening() bool {
-	return node.listener != nil
-}
-
-func (node *Node) setListener() {
-	listenErr := errors.New("")
-	for listenErr != nil {
-		node.listener, listenErr = listenOrSleepOnError("tcp", node.hostToBind+":0")
-	}
-}
-
-func listenOrSleepOnError(network string, address string) (net.Listener, error) {
-	listener, err := net.Listen(network, address)
-	if err != nil {
-		time.Sleep(2 * time.Second)
-	}
-	return listener, err
+func (node *Node) listenOrError() error {
+	return node.listener.ListenOnFreePort(node.HostToBind)
 }
 
 func (node *Node) acceptAndHandleConnection() {
-	if node.listener != nil {
-		conn, err := node.listener.Accept()
-		if err == nil {
-			fmt.Println("Accepted connection from", conn.RemoteAddr())
-			go node.handleConnection(conn)
-		} else {
-			fmt.Println("Error accepting connection:", err.Error())
-		}
+	conn, err := node.listener.Accept()
+	if err == nil {
+		go node.handleConnection(conn)
 	}
 }
 

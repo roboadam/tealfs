@@ -36,7 +36,7 @@ func TestConnectToRemoteNode(t *testing.T) {
 
 func listeningNode(userCmds chan cmds.User) *node.Node {
 	localNode := node.New(userCmds)
-	localNode.SetHostToBind("127.0.0.1")
+	localNode.HostToBind = "127.0.0.1"
 	localNode.Listen()
 	return &localNode
 }
@@ -46,5 +46,5 @@ func nodeIdIsValid(node *node.Node) bool {
 }
 
 func nodeAddressIsValid(node *node.Node) bool {
-	return len(node.GetAddress().String()) > 0
+	return len(node.GetAddress()) > 0
 }

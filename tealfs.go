@@ -15,6 +15,6 @@ func main() {
 
 	go localUi.Start()
 	localNode.Listen()
-	fmt.Println("Node: " + localNode.GetAddress().String())
+	fmt.Println("Node: " + localNode.GetAddress())
 	select {}
 }
