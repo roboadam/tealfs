@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
@@ -9,25 +8,13 @@ import (
 )
 
 func main() {
-	webPort, _ := ports()
-	userCmds := make(chan cmds.User)
+	userCommands := make(chan cmds.User)
 
-	node := node.NewNode(userCmds)
-	ui := ui.NewUi(&node, userCmds)
+	localNode := node.New(userCommands)
+	localUi := ui.NewUi(&localNode, userCommands)
 
-	go ui.Start()
-	node.Listen()
-	fmt.Println("UI: http://localhost:" + fmt.Sprint(webPort))
-	fmt.Println("Node: " + node.GetAddress().String())
+	go localUi.Start()
+	localNode.Listen()
+	fmt.Println("Node: " + localNode.GetAddress())
 	select {}
-}
-
-func ports() (int, int) {
-	portPtr := flag.Int("port", 8001, "Port for web UI")
-	flag.Parse()
-
-	portWeb := *portPtr
-	portNode := portWeb + 1
-
-	return portWeb, portNode
 }

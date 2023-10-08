@@ -2,8 +2,8 @@ package ui
 
 import (
 	"fmt"
-	"net"
 	"net/http"
+	"os"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
 )
@@ -18,12 +18,15 @@ func NewUi(node *node.Node, userCmds chan cmds.User) Ui {
 }
 
 func (ui Ui) Start() {
-	ui.handleUserCommands()
+	ui.registerHttpHandlers()
 	ui.handleRoot()
-	http.ListenAndServe(":0", nil)
+	err := http.ListenAndServe(":0", nil)
+	if err != nil {
+		os.Exit(1)
+	}
 }
 
-func (ui Ui) handleUserCommands() {
+func (ui Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
 		ui.userCmds <- cmds.User{
@@ -77,19 +80,11 @@ func (ui Ui) handleRoot() {
 	})
 }
 
-func htmlMyhost(address net.Addr) string {
-	friendlyName := addressToFriendlyName(address)
+func htmlMyhost(address string) string {
 	return wrapInDiv(`
 			<h2>My host</h2>
-			<p>Host: `+friendlyName+`</p>`,
+			<p>Host: `+address+`</p>`,
 		"myhost")
-}
-
-func addressToFriendlyName(address net.Addr) string {
-	if address == nil {
-		return "Not Connected"
-	}
-	return address.String()
 }
 
 func wrapInDiv(html string, divId string) string {

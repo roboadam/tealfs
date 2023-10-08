@@ -7,22 +7,22 @@ import (
 	"github.com/google/uuid"
 )
 
-type NodeId struct {
+type Id struct {
 	value uuid.UUID
 }
 
-func (nodeId NodeId) String() string {
+func (nodeId Id) String() string {
 	return nodeId.value.String()
 }
 
-func NewNodeId() NodeId {
-	uuid, err := uuid.NewUUID()
+func NewNodeId() Id {
+	idValue, err := uuid.NewUUID()
 	if err != nil {
 		fmt.Println("Error generating UUID:", err)
 		os.Exit(1)
 	}
 
-	return NodeId{
-		value: uuid,
+	return Id{
+		value: idValue,
 	}
 }

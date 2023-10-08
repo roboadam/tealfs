@@ -2,20 +2,22 @@ package test
 
 import "net"
 
-type TestListener struct {
-	listener net.Listener
+type Listener struct {
+	listener     net.Listener
+	savedAddress string
 }
 
-func NewTestListener() *TestListener {
+func NewTestListener() *Listener {
 	listener, _ := net.Listen("tcp", "127.0.0.1:0")
-	return &TestListener{listener}
+	savedAddress := listener.Addr().String()
+	return &Listener{listener, savedAddress}
 }
 
-func (testListener *TestListener) GetAddress() string {
-	return testListener.listener.Addr().String()
+func (listener *Listener) GetAddress() string {
+	return listener.listener.Addr().String()
 }
 
-func (testListener *TestListener) ReceivedConnection() bool {
-	_, err := testListener.listener.Accept()
+func (listener *Listener) ReceivedConnection() bool {
+	_, err := listener.listener.Accept()
 	return err == nil
 }
