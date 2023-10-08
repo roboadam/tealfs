@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
 )
@@ -17,12 +18,15 @@ func NewUi(node *node.Node, userCmds chan cmds.User) Ui {
 }
 
 func (ui Ui) Start() {
-	ui.handleUserCommands()
+	ui.registerHttpHandlers()
 	ui.handleRoot()
-	_ = http.ListenAndServe(":0", nil)
+	err := http.ListenAndServe(":0", nil)
+	if err != nil {
+		os.Exit(1)
+	}
 }
 
-func (ui Ui) handleUserCommands() {
+func (ui Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
 		ui.userCmds <- cmds.User{
