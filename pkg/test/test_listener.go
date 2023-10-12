@@ -3,21 +3,31 @@ package test
 import "net"
 
 type Listener struct {
-	listener     net.Listener
-	savedAddress string
+	Accepted bool
+	Closed   bool
 }
 
-func NewTestListener() *Listener {
-	listener, _ := net.Listen("tcp", "127.0.0.1:0")
-	savedAddress := listener.Addr().String()
-	return &Listener{listener, savedAddress}
+type Addr struct {
 }
 
-func (listener *Listener) GetAddress() string {
-	return listener.listener.Addr().String()
+func (a Addr) Network() string {
+	return "tcp"
 }
 
-func (listener *Listener) ReceivedConnection() bool {
-	_, err := listener.listener.Accept()
-	return err == nil
+func (a Addr) String() string {
+	return "127.0.0.1"
+}
+
+func (listener *Listener) Accept() (net.Conn, error) {
+	listener.Accepted = true
+	return TestConn{}, nil
+}
+
+func (listener *Listener) Close() error {
+	listener.Closed = true
+	return nil
+}
+
+func (listener *Listener) Addr() net.Addr {
+	return Addr{}
 }

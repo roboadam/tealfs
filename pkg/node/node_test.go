@@ -25,11 +25,11 @@ func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	localNode := listeningNode(userCmds)
 	defer localNode.Close()
-	testListener := test.NewTestListener()
+	testListener := test.Listener{Accepted: false, Closed: false}
 
-	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: testListener.GetAddress()}
+	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
 
-	if !testListener.ReceivedConnection() {
+	if !testListener.Accepted {
 		t.Error("Node did not connect")
 	}
 }
