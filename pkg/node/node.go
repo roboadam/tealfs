@@ -6,7 +6,6 @@ import (
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/raw_net"
 	"tealfs/pkg/tnet"
-	"time"
 )
 
 type Node struct {
@@ -33,36 +32,21 @@ func New(userCmds chan cmds.User, tnet tnet.TNet) Node {
 }
 
 func (node *Node) GetAddress() string {
-	return node.listener.GetAddress()
+	return node.tnet.GetAddress()
 }
 
 func (node *Node) Close() {
-	node.listener.Close()
+	node.tnet.Close()
 }
 
 func (node *Node) acceptConnections() {
 	for {
-		node.acceptAndHandleConnection()
+		go node.handleConnection(node.tnet.Accept())
 	}
 }
 
 func (node *Node) Listen() {
-	err := node.listenOrError()
-	for err != nil {
-		time.Sleep(time.Second * 2)
-		err = node.listenOrError()
-	}
-}
-
-func (node *Node) listenOrError() error {
-	return node.listener.ListenOnFreePort(node.HostToBind)
-}
-
-func (node *Node) acceptAndHandleConnection() {
-	conn, err := node.listener.Accept()
-	if err == nil {
-		go node.handleConnection(conn)
-	}
+	node.tnet.Listen(node.HostToBind + ":0")
 }
 
 func (node *Node) handleConnection(conn net.Conn) {
