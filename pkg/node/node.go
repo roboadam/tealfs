@@ -5,23 +5,24 @@ import (
 	"net"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/raw_net"
+	"tealfs/pkg/tnet"
 	"time"
 )
 
 type Node struct {
 	Id          Id
 	userCmds    chan cmds.User
-	listener    Listener
+	tnet        tnet.TNet
 	connections *RemoteNodes
 	HostToBind  string
 }
 
-func New(userCmds chan cmds.User) Node {
+func New(userCmds chan cmds.User, tnet tnet.TNet) Node {
 	node := Node{
 		Id:          NewNodeId(),
 		userCmds:    userCmds,
 		connections: NewRemoteNodes(),
-		listener:    Listener{},
+		tnet:        tnet,
 		HostToBind:  "",
 	}
 

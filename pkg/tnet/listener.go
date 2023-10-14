@@ -1,4 +1,4 @@
-package node
+package tnet
 
 import (
 	"errors"
@@ -6,7 +6,12 @@ import (
 )
 
 type Listener struct {
+	tnet  TNet
 	value net.Listener
+}
+
+func NewListener(tnet TNet) *Listener {
+	return &Listener{tnet: tnet}
 }
 
 func (listener *Listener) GetAddress() string {
@@ -24,7 +29,7 @@ func (listener *Listener) Close() {
 
 func (listener *Listener) ListenOnFreePort(bind string) error {
 	var err error
-	listener.value, err = net.Listen("tcp", bind+":0")
+	listener.value, err = listener.tnet.Listen("tcp", bind+":0")
 	return err
 }
 
