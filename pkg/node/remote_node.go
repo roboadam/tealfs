@@ -2,13 +2,14 @@ package node
 
 import (
 	"net"
+	"tealfs/pkg/tnet"
 	"time"
 )
 
 type RemoteNode struct {
 	NodeId  Id
 	Address string
-	Conn    net.Conn
+	TNet    tnet.TNet
 }
 
 func (node *RemoteNode) Connect() {
