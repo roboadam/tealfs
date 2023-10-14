@@ -3,9 +3,10 @@ package tnet
 import "net"
 
 type TNet interface {
-	Dial(network string, address string) (net.Conn, error)
-	Listen(address string)
+	Dial() net.Conn
+	Listen()
 	GetAddress() string
+	SetAddress(string)
 	Close()
 	Accept() net.Conn
 }
