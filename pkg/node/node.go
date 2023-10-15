@@ -29,10 +29,6 @@ func New(userCmds chan cmds.User, tNet tnet.TNet) Node {
 	return node
 }
 
-func (node *Node) GetAddress() string {
-	return node.tNet.GetAddress()
-}
-
 func (node *Node) Close() {
 	node.tNet.Close()
 }
@@ -63,7 +59,8 @@ func (node *Node) handleUiCommands() {
 }
 
 func (node *Node) addConnection(cmd cmds.User) {
-	remoteNode := NewRemoteNode(node.Id, tnet.NewTcpNet(cmd.Argument))
+
+	remoteNode := NewRemoteNode(node.Id, cmd.Argument, node.tNet)
 
 	node.remoteNodes.Add(*remoteNode)
 	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.NodeId.value.String())

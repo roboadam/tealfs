@@ -7,14 +7,11 @@ import (
 )
 
 func TestConnect(t *testing.T) {
-	testListener := test.Listener{Accepted: false, Closed: false}
-	remote_node := node.RemoteNode{
-		NodeId:  node.NewNodeId(),
-		Address: "someaddress",
-	}
-	remote_node.Connect()
+	testNet := test.TestNet{Dialed: false}
+	remoteNode := node.NewRemoteNode(node.NewNodeId(), &testNet)
+	remoteNode.Connect()
 
-	if !testListener.Accepted {
-		t.Errorf("Did not connect to remote node")
+	if !testNet.Dialed {
+		t.Errorf("Did not dial")
 	}
 }

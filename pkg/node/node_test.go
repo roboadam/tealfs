@@ -11,26 +11,24 @@ func TestNodeCreation(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	tNet := test.TestNet{}
 	localNode := node.New(userCmds, &tNet)
-	defer localNode.Close()
 
-	if !nodeIdIsValid(localNode) {
+	if !nodeIdIsValid(&localNode) {
 		t.Error("Id is invalid")
 	}
 
-	if !nodeAddressIsValid(localNode) {
+	if !nodeAddressIsValid(&localNode) {
 		t.Error("Node address is invalid")
 	}
 }
 
 func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	tNet := test.TestNet{}
-	localNode := node.New(userCmds, &tNet)
-	defer localNode.Close()
+	tNet := test.TestNet{Dialed: false, AcceptsConnections: false}
+	_ = node.New(userCmds, tNet)
 
 	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
 
-	if !tNet.Accepted {
+	if !tNet.IsDialed() {
 		t.Error("Node did not connect")
 	}
 }

@@ -10,11 +10,11 @@ type TcpNet struct {
 	listener net.Listener
 }
 
-func NewTcpNet(address string) *TcpNet {
-	return &TcpNet{address: address}
+func NewTcpNet() *TcpNet {
+	return &TcpNet{address: "127.0.0.1:0"}
 }
 
-func (t *TcpNet) Dial() net.Conn {
+func (t *TcpNet) Dial(address string) net.Conn {
 	conn, err := net.Dial("tcp", t.address)
 	for err != nil {
 		time.Sleep(time.Second * 2)
@@ -32,11 +32,7 @@ func (t *TcpNet) listen() {
 	t.listener = listener
 }
 
-func (t *TcpNet) GetAddress() string {
-	return t.address
-}
-
-func (t *TcpNet) SetAddress(address string) {
+func (t *TcpNet) BindTo(address string) {
 	t.address = address
 }
 
