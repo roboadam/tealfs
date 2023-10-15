@@ -12,17 +12,15 @@ type Node struct {
 	Id          Id
 	userCmds    chan cmds.User
 	tnet        tnet.TNet
-	connections *RemoteNodes
-	HostToBind  string
+	remoteNodes *RemoteNodes
 }
 
 func New(userCmds chan cmds.User, tnet tnet.TNet) Node {
 	node := Node{
 		Id:          NewNodeId(),
 		userCmds:    userCmds,
-		connections: NewRemoteNodes(),
+		remoteNodes: NewRemoteNodes(),
 		tnet:        tnet,
-		HostToBind:  "",
 	}
 
 	go node.handleUiCommands()
@@ -45,10 +43,6 @@ func (node *Node) acceptConnections() {
 	}
 }
 
-func (node *Node) Listen() {
-	node.tnet.Listen(node.HostToBind + ":0")
-}
-
 func (node *Node) handleConnection(conn net.Conn) {
 	for {
 		intFromConn, _ := raw_net.IntFrom(conn)
@@ -69,14 +63,10 @@ func (node *Node) handleUiCommands() {
 }
 
 func (node *Node) addConnection(cmd cmds.User) {
-	conn := RemoteNode{
-		NodeId:  node.Id,
-		Address: cmd.Argument,
-		Conn:    nil,
-	}
+	remoteNode := NewRemoteNode(node.Id, tnet.NewTcpNet(cmd.Argument))
 
-	node.connections.AddConnection(conn)
-	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + conn.NodeId.value.String())
+	node.remoteNodes.Add(*remoteNode)
+	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.NodeId.value.String())
 }
 
 func (node *Node) addStorage(cmd cmds.User) {

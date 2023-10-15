@@ -5,12 +5,16 @@ import (
 )
 
 type RemoteNode struct {
-	nodeId Id
+	NodeId Id
 	tNet   tnet.TNet
 }
 
+func NewRemoteNode(nodeId Id, tNet tnet.TNet) *RemoteNode {
+	return &RemoteNode{NodeId: nodeId, tNet: tNet}
+}
+
 func (node *RemoteNode) Connect() {
-	node.tNet.Dial("tcp", node.tNet.GetAddress())
+	node.tNet.Dial()
 }
 
 func (node *RemoteNode) Disconnect() {

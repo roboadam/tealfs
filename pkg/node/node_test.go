@@ -9,7 +9,8 @@ import (
 
 func TestNodeCreation(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	localNode := listeningNode(userCmds)
+	tNet := test.TestNet{}
+	localNode := node.New(userCmds, &tNet)
 	defer localNode.Close()
 
 	if !nodeIdIsValid(localNode) {
@@ -23,22 +24,15 @@ func TestNodeCreation(t *testing.T) {
 
 func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	localNode := listeningNode(userCmds)
+	tNet := test.TestNet{}
+	localNode := node.New(userCmds, &tNet)
 	defer localNode.Close()
-	testListener := test.Listener{Accepted: false, Closed: false}
 
 	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
 
-	if !testListener.Accepted {
+	if !tNet.Accepted {
 		t.Error("Node did not connect")
 	}
-}
-
-func listeningNode(userCmds chan cmds.User) *node.Node {
-	localNode := node.New(userCmds)
-	localNode.HostToBind = "127.0.0.1"
-	localNode.Listen()
-	return &localNode
 }
 
 func nodeIdIsValid(node *node.Node) bool {

@@ -2,8 +2,25 @@ package test
 
 import "net"
 
-type TestNet struct{}
+type TestNet struct {
+	Accepted bool
+}
 
-func (testNet *TestNet) Dial(network, address string) (net.Conn, error) {
-	return TestConn{}, nil
+func (t *TestNet) Dial() net.Conn {
+	return TestConn{}
+}
+
+func (t *TestNet) GetAddress() string {
+	return "someaddress"
+}
+
+func (t *TestNet) SetAddress(s string) {
+}
+
+func (t *TestNet) Close() {
+}
+
+func (t *TestNet) Accept() net.Conn {
+	t.Accepted = true
+	return TestConn{}
 }

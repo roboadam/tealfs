@@ -23,7 +23,7 @@ func (t *TcpNet) Dial() net.Conn {
 	return conn
 }
 
-func (t *TcpNet) Listen() {
+func (t *TcpNet) listen() {
 	listener, err := net.Listen("tcp", t.address)
 	for err != nil {
 		time.Sleep(time.Second * 2)
@@ -48,9 +48,14 @@ func (t *TcpNet) Close() {
 
 func (t *TcpNet) Accept() net.Conn {
 	if t.listener == nil {
-		t.
+		t.listen()
 	}
 
-	//TODO implement me
-	panic("implement me")
+	conn, err := t.listener.Accept()
+	for err != nil {
+		time.Sleep(time.Second * 2)
+		conn, err = t.listener.Accept()
+	}
+
+	return conn
 }
