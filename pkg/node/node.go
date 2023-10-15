@@ -11,16 +11,16 @@ import (
 type Node struct {
 	Id          Id
 	userCmds    chan cmds.User
-	tnet        tnet.TNet
+	tNet        tnet.TNet
 	remoteNodes *RemoteNodes
 }
 
-func New(userCmds chan cmds.User, tnet tnet.TNet) Node {
+func New(userCmds chan cmds.User, tNet tnet.TNet) Node {
 	node := Node{
 		Id:          NewNodeId(),
 		userCmds:    userCmds,
 		remoteNodes: NewRemoteNodes(),
-		tnet:        tnet,
+		tNet:        tNet,
 	}
 
 	go node.handleUiCommands()
@@ -30,16 +30,16 @@ func New(userCmds chan cmds.User, tnet tnet.TNet) Node {
 }
 
 func (node *Node) GetAddress() string {
-	return node.tnet.GetAddress()
+	return node.tNet.GetAddress()
 }
 
 func (node *Node) Close() {
-	node.tnet.Close()
+	node.tNet.Close()
 }
 
 func (node *Node) acceptConnections() {
 	for {
-		go node.handleConnection(node.tnet.Accept())
+		go node.handleConnection(node.tNet.Accept())
 	}
 }
 
