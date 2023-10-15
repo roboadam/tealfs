@@ -15,7 +15,7 @@ type Node struct {
 	remoteNodes *RemoteNodes
 }
 
-func New(userCmds chan cmds.User, tNet tnet.TNet) Node {
+func New(userCmds chan cmds.User, tNet *tnet.TNet) Node {
 	node := Node{
 		Id:          NewNodeId(),
 		userCmds:    userCmds,

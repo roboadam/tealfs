@@ -24,7 +24,7 @@ func TestNodeCreation(t *testing.T) {
 func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	tNet := test.TestNet{Dialed: false, AcceptsConnections: false}
-	_ = node.New(userCmds, tNet)
+	_ = node.New(userCmds, &tNet)
 
 	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
 
