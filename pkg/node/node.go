@@ -24,22 +24,22 @@ func New(userCmds chan cmds.User, tNet tnet.TNet) Node {
 	}
 }
 
-func (node *Node) Start() {
-	go node.handleUiCommands()
-	go node.acceptConnections()
+func (n *Node) Start() {
+	go n.handleUiCommands()
+	go n.acceptConnections()
 }
 
-func (node *Node) Close() {
-	node.tNet.Close()
+func (n *Node) Close() {
+	n.tNet.Close()
 }
 
-func (node *Node) acceptConnections() {
+func (n *Node) acceptConnections() {
 	for {
-		go node.handleConnection(node.tNet.Accept())
+		go n.handleConnection(n.tNet.Accept())
 	}
 }
 
-func (node *Node) handleConnection(conn net.Conn) {
+func (n *Node) handleConnection(conn net.Conn) {
 	for {
 		intFromConn, _ := raw_net.IntFrom(conn)
 		fmt.Println("Received:", intFromConn)
@@ -66,6 +66,6 @@ func (n *Node) handleUiCommands() {
 	}
 }
 
-func (n Node) addStorage(cmd cmds.User) {
+func (n *Node) addStorage(cmd cmds.User) {
 	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
 }

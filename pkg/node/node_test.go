@@ -15,10 +15,6 @@ func TestNodeCreation(t *testing.T) {
 	if !nodeIdIsValid(&localNode) {
 		t.Error("Id is invalid")
 	}
-
-	if !nodeAddressIsValid(&localNode) {
-		t.Error("Node address is invalid")
-	}
 }
 
 func TestConnectToRemoteNode(t *testing.T) {
@@ -35,8 +31,4 @@ func TestConnectToRemoteNode(t *testing.T) {
 
 func nodeIdIsValid(node *node.Node) bool {
 	return len(node.Id.String()) > 0
-}
-
-func nodeAddressIsValid(node *node.Node) bool {
-	return len(node.GetAddress()) > 0
 }

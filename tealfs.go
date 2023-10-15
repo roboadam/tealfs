@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
 	"tealfs/pkg/tnet"
@@ -17,6 +16,5 @@ func main() {
 
 	localUi.Start()
 	localNode.Start()
-	fmt.Println("Node: " + localNode.GetAddress())
 	select {}
 }

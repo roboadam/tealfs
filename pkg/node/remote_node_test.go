@@ -8,7 +8,7 @@ import (
 
 func TestConnect(t *testing.T) {
 	testNet := test.TestNet{Dialed: false}
-	remoteNode := node.NewRemoteNode(node.NewNodeId(), &testNet)
+	remoteNode := node.NewRemoteNode(node.NewNodeId(), "someRemoteAddress", &testNet)
 	remoteNode.Connect()
 
 	if !testNet.Dialed {
