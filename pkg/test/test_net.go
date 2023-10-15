@@ -12,26 +12,18 @@ type TestNet struct {
 	AcceptsConnections bool
 }
 
-func (t TestNet) Dial(address string) net.Conn {
+func (t *TestNet) Dial(address string) net.Conn {
 	t.Dialed = true
 	return TestConn{}
 }
 
-func (t TestNet) IsDialed() bool {
-	for !t.Dialed {
-		println("Sleeping one second")
-		time.Sleep(time.Second)
-	}
-	return true
+func (t *TestNet) BindTo(address string) {
 }
 
-func (t TestNet) BindTo(address string) {
+func (t *TestNet) Close() {
 }
 
-func (t TestNet) Close() {
-}
-
-func (t TestNet) Accept() net.Conn {
+func (t *TestNet) Accept() net.Conn {
 	t.Accepted = true
 	if !t.AcceptsConnections {
 		for {
@@ -41,11 +33,17 @@ func (t TestNet) Accept() net.Conn {
 	return TestConn{}
 }
 
-func iFace(t tnet.TNet) {
-
+func (t *TestNet) IsDialed() bool {
+	for !t.Dialed {
+		println("Sleeping one second")
+		time.Sleep(time.Second)
+	}
+	return true
 }
 
-func testIface() {
+func iFace(t tnet.TNet) {}
+
+func testIFace() {
 	t := TestNet{}
-	iFace(t)
+	iFace(&t)
 }
