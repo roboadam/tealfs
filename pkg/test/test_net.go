@@ -9,11 +9,13 @@ type MockNet struct {
 	Accepted           bool
 	Dialed             bool
 	AcceptsConnections bool
+	Conn               Conn
 }
 
 func (t *MockNet) Dial(string) net.Conn {
 	t.Dialed = true
-	return Conn{}
+	t.Conn = Conn{}
+	return t.Conn
 }
 
 func (t *MockNet) BindTo(string) {

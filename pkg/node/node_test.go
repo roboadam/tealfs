@@ -1,6 +1,7 @@
 package node_test
 
 import (
+	"bytes"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
 	"tealfs/pkg/test"
@@ -28,6 +29,16 @@ func TestConnectToRemoteNode(t *testing.T) {
 	if !tNet.IsDialed() {
 		t.Error("Node did not connect")
 	}
+
+	if !bytes.Equal(tNet.Conn.BytesWritten, validHello(n.Id)) {
+		t.Error("Node did not send valid hello")
+	}
+}
+
+func validHello(nodeId node.Id) []byte {
+	serializedHello := []byte{byte(int8(1))}
+	serializedNodeId := []byte(nodeId.String())
+	return append(serializedHello, serializedNodeId...)
 }
 
 func nodeIdIsValid(node *node.Node) bool {

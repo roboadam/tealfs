@@ -6,6 +6,7 @@ import (
 )
 
 type Conn struct {
+	BytesWritten []byte
 }
 
 func (m Conn) Read(b []byte) (n int, err error) {
@@ -14,6 +15,7 @@ func (m Conn) Read(b []byte) (n int, err error) {
 }
 
 func (m Conn) Write(b []byte) (n int, err error) {
+	m.BytesWritten = append(m.BytesWritten, b...)
 	return len(b), nil
 }
 
