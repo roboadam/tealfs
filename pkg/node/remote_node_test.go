@@ -7,7 +7,7 @@ import (
 )
 
 func TestConnect(t *testing.T) {
-	testNet := test.TestNet{Dialed: false}
+	testNet := test.MockNet{Dialed: false}
 	remoteNode := node.NewRemoteNode(node.NewNodeId(), "someRemoteAddress", &testNet)
 	remoteNode.Connect()
 

@@ -9,7 +9,7 @@ import (
 
 func TestNodeCreation(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	tNet := test.TestNet{}
+	tNet := test.MockNet{}
 	localNode := node.New(userCmds, &tNet)
 
 	if !nodeIdIsValid(&localNode) {
@@ -19,7 +19,7 @@ func TestNodeCreation(t *testing.T) {
 
 func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	tNet := test.TestNet{Dialed: false, AcceptsConnections: false}
+	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := node.New(userCmds, &tNet)
 	n.Start()
 

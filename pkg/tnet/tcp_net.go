@@ -6,34 +6,34 @@ import (
 )
 
 type TcpNet struct {
-	address  string
 	listener net.Listener
+	binding  string
 }
 
 func NewTcpNet() *TcpNet {
-	return &TcpNet{address: "127.0.0.1:0"}
+	return &TcpNet{binding: "127.0.0.1:0"}
 }
 
 func (t *TcpNet) Dial(address string) net.Conn {
-	conn, err := net.Dial("tcp", t.address)
+	conn, err := net.Dial("tcp", address)
 	for err != nil {
 		time.Sleep(time.Second * 2)
-		conn, err = net.Dial("tcp", t.address)
+		conn, err = net.Dial("tcp", address)
 	}
 	return conn
 }
 
 func (t *TcpNet) listen() {
-	listener, err := net.Listen("tcp", t.address)
+	listener, err := net.Listen("tcp", t.binding)
 	for err != nil {
 		time.Sleep(time.Second * 2)
-		listener, err = net.Listen("tcp", t.address)
+		listener, err = net.Listen("tcp", t.binding)
 	}
 	t.listener = listener
 }
 
-func (t *TcpNet) BindTo(address string) {
-	t.address = address
+func (t *TcpNet) BindTo(binding string) {
+	t.binding = binding
 }
 
 func (t *TcpNet) Close() {

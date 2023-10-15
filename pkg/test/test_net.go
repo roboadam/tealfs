@@ -2,48 +2,40 @@ package test
 
 import (
 	"net"
-	"tealfs/pkg/tnet"
 	"time"
 )
 
-type TestNet struct {
+type MockNet struct {
 	Accepted           bool
 	Dialed             bool
 	AcceptsConnections bool
 }
 
-func (t *TestNet) Dial(address string) net.Conn {
+func (t *MockNet) Dial(string) net.Conn {
 	t.Dialed = true
-	return TestConn{}
+	return Conn{}
 }
 
-func (t *TestNet) BindTo(address string) {
+func (t *MockNet) BindTo(string) {
 }
 
-func (t *TestNet) Close() {
+func (t *MockNet) Close() {
 }
 
-func (t *TestNet) Accept() net.Conn {
+func (t *MockNet) Accept() net.Conn {
 	t.Accepted = true
 	if !t.AcceptsConnections {
 		for {
 			time.Sleep(time.Minute)
 		}
 	}
-	return TestConn{}
+	return Conn{}
 }
 
-func (t *TestNet) IsDialed() bool {
+func (t *MockNet) IsDialed() bool {
 	for !t.Dialed {
 		println("Sleeping one second")
 		time.Sleep(time.Second)
 	}
 	return true
-}
-
-func iFace(t tnet.TNet) {}
-
-func testIFace() {
-	t := TestNet{}
-	iFace(&t)
 }

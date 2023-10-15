@@ -11,7 +11,7 @@ type RemoteNode struct {
 }
 
 func NewRemoteNode(nodeId Id, address string, tNet tnet.TNet) *RemoteNode {
-	return &RemoteNode{NodeId: nodeId, tNet: tNet}
+	return &RemoteNode{NodeId: nodeId, Address: address, tNet: tNet}
 }
 
 func (node *RemoteNode) Connect() {
