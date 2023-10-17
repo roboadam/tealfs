@@ -14,7 +14,7 @@ type MockNet struct {
 
 func (t *MockNet) Dial(string) net.Conn {
 	t.Dialed = true
-	t.Conn = Conn{}
+	t.Conn = Conn{BytesWritten: make([]byte, 0)}
 	return t.Conn
 }
 

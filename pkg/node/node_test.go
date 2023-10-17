@@ -6,6 +6,7 @@ import (
 	"tealfs/pkg/node"
 	"tealfs/pkg/test"
 	"testing"
+	"time"
 )
 
 func TestNodeCreation(t *testing.T) {
@@ -25,6 +26,7 @@ func TestConnectToRemoteNode(t *testing.T) {
 	n.Start()
 
 	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
+	time.Sleep(time.Second * 5)
 
 	if !tNet.IsDialed() {
 		t.Error("Node did not connect")
