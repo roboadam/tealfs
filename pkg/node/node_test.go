@@ -37,6 +37,17 @@ func TestConnectToRemoteNode(t *testing.T) {
 	}
 }
 
+func TestIncomingConnection(t *testing.T) {
+	userCmds := make(chan cmds.User)
+	mockNet := test.MockNet{Dialed: false, AcceptsConnections: false}
+	n := node.New(userCmds, &mockNet)
+	n.Start()
+
+	address := n.GetAddress()
+
+	mockNet.
+}
+
 func validHello(nodeId node.Id) []byte {
 	serializedHello := []byte{byte(int8(1))}
 	serializedNodeId := []byte(nodeId.String())
