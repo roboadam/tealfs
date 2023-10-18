@@ -9,36 +9,36 @@ type Conn struct {
 	BytesWritten []byte
 }
 
-func (m Conn) Read(b []byte) (n int, err error) {
+func (m *Conn) Read(b []byte) (n int, err error) {
 	copy(b, "Hello, World!")
 	return len("Hello, World!"), nil
 }
 
-func (m Conn) Write(b []byte) (n int, err error) {
+func (m *Conn) Write(b []byte) (n int, err error) {
 	m.BytesWritten = append(m.BytesWritten, b...)
 	return len(b), nil
 }
 
-func (m Conn) Close() error {
+func (m *Conn) Close() error {
 	return nil
 }
 
-func (m Conn) LocalAddr() net.Addr {
+func (m *Conn) LocalAddr() net.Addr {
 	return &net.IPAddr{IP: net.IPv4(127, 0, 0, 1)}
 }
 
-func (m Conn) RemoteAddr() net.Addr {
+func (m *Conn) RemoteAddr() net.Addr {
 	return &net.IPAddr{IP: net.IPv4(192, 168, 0, 1)}
 }
 
-func (m Conn) SetDeadline(time.Time) error {
+func (m *Conn) SetDeadline(time.Time) error {
 	return nil
 }
 
-func (m Conn) SetReadDeadline(time.Time) error {
+func (m *Conn) SetReadDeadline(time.Time) error {
 	return nil
 }
 
-func (m Conn) SetWriteDeadline(time.Time) error {
+func (m *Conn) SetWriteDeadline(time.Time) error {
 	return nil
 }

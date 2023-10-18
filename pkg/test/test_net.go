@@ -15,7 +15,7 @@ type MockNet struct {
 func (t *MockNet) Dial(string) net.Conn {
 	t.Dialed = true
 	t.Conn = Conn{BytesWritten: make([]byte, 0)}
-	return t.Conn
+	return &t.Conn
 }
 
 func (t *MockNet) BindTo(string) {
@@ -31,7 +31,7 @@ func (t *MockNet) Accept() net.Conn {
 			time.Sleep(time.Minute)
 		}
 	}
-	return Conn{}
+	return &Conn{}
 }
 
 func (t *MockNet) IsDialed() bool {
