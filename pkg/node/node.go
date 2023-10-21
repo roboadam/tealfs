@@ -51,7 +51,7 @@ func (n *Node) addConnection(cmd cmds.User) {
 	remoteNode := NewRemoteNode(n.Id, cmd.Argument, n.tNet)
 
 	n.remoteNodes.Add(*remoteNode)
-	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.NodeId.value.String())
+	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.Id.value.String())
 }
 
 func (n *Node) handleUiCommands() {
@@ -68,4 +68,8 @@ func (n *Node) handleUiCommands() {
 
 func (n *Node) addStorage(cmd cmds.User) {
 	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
+}
+
+func (n *Node) GetRemoteNode(id Id) (*RemoteNode, error) {
+	return n.remoteNodes.GetConnection(id)
 }

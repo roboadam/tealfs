@@ -43,9 +43,13 @@ func TestIncomingConnection(t *testing.T) {
 	n := node.New(userCmds, &mockNet)
 	n.Start()
 
-	address := n.GetAddress()
+	remoteNodeId := node.NewNodeId()
+	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
 
-	mockNet.
+	remoteNode, err := n.GetRemoteNode(remoteNodeId)
+	if err != nil || remoteNode == nil || remoteNode.Id != remoteNodeId {
+		t.Error("Did not add node " + remoteNodeId.String() + " to cluster")
+	}
 }
 
 func validHello(nodeId node.Id) []byte {

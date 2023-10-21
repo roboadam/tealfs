@@ -7,11 +7,13 @@ import (
 
 type Conn struct {
 	BytesWritten []byte
+	BytesToRead  []byte
 }
 
 func (m *Conn) Read(b []byte) (n int, err error) {
-	copy(b, "Hello, World!")
-	return len("Hello, World!"), nil
+	copy(b, m.BytesToRead)
+	m.BytesToRead = nil
+	return len(b), nil
 }
 
 func (m *Conn) Write(b []byte) (n int, err error) {
@@ -41,4 +43,8 @@ func (m *Conn) SetReadDeadline(time.Time) error {
 
 func (m *Conn) SetWriteDeadline(time.Time) error {
 	return nil
+}
+
+func (m *Conn) SendMockBytes(hello []byte) {
+	m.BytesToRead = append(m.BytesToRead, hello...)
 }
