@@ -30,14 +30,15 @@ func (t *MockNet) Accept() net.Conn {
 		for {
 			time.Sleep(time.Minute)
 		}
+	} else {
+		t.AcceptsConnections = false
 	}
 	return &t.Conn
 }
 
 func (t *MockNet) IsDialed() bool {
 	for !t.Dialed {
-		println("Sleeping one second")
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 10)
 	}
 	return true
 }

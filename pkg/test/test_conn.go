@@ -47,4 +47,7 @@ func (m *Conn) SetWriteDeadline(time.Time) error {
 
 func (m *Conn) SendMockBytes(hello []byte) {
 	m.BytesToRead = append(m.BytesToRead, hello...)
+	for len(m.BytesToRead) > 0 {
+		time.Sleep(time.Millisecond * 10)
+	}
 }

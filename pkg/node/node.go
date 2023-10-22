@@ -40,13 +40,11 @@ func (n *Node) acceptConnections() {
 }
 
 func (n *Node) handleConnection(conn net.Conn) {
-	for {
-		intFromConn, _ := raw_net.Int8From(conn)
-		if intFromConn == 1 {
-			rawId, _ := raw_net.StringFrom(conn, 36)
-			remoteNode := NewRemoteNode(IdFromRaw(rawId), conn.RemoteAddr().String(), n.tNet)
-			n.remoteNodes.Add(*remoteNode)
-		}
+	intFromConn, _ := raw_net.Int8From(conn)
+	if intFromConn == 1 {
+		rawId, _ := raw_net.StringFrom(conn, 36)
+		remoteNode := NewRemoteNode(IdFromRaw(rawId), conn.RemoteAddr().String(), n.tNet)
+		n.remoteNodes.Add(*remoteNode)
 	}
 }
 
