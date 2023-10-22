@@ -12,7 +12,7 @@ type Conn struct {
 
 func (m *Conn) Read(b []byte) (n int, err error) {
 	copy(b, m.BytesToRead)
-	m.BytesToRead = nil
+	m.BytesToRead = m.BytesToRead[len(b):]
 	return len(b), nil
 }
 

@@ -31,7 +31,7 @@ func (t *MockNet) Accept() net.Conn {
 			time.Sleep(time.Minute)
 		}
 	}
-	return &Conn{}
+	return &t.Conn
 }
 
 func (t *MockNet) IsDialed() bool {

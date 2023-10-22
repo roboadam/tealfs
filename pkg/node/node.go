@@ -41,8 +41,12 @@ func (n *Node) acceptConnections() {
 
 func (n *Node) handleConnection(conn net.Conn) {
 	for {
-		intFromConn, _ := raw_net.IntFrom(conn)
-		fmt.Println("Received:", intFromConn)
+		intFromConn, _ := raw_net.Int8From(conn)
+		if intFromConn == 1 {
+			rawId, _ := raw_net.StringFrom(conn, 36)
+			remoteNode := NewRemoteNode(IdFromRaw(rawId), conn.RemoteAddr().String(), n.tNet)
+			n.remoteNodes.Add(*remoteNode)
+		}
 	}
 }
 
@@ -51,7 +55,7 @@ func (n *Node) addConnection(cmd cmds.User) {
 	remoteNode := NewRemoteNode(n.Id, cmd.Argument, n.tNet)
 
 	n.remoteNodes.Add(*remoteNode)
-	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.Id.value.String())
+	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.Id.String())
 }
 
 func (n *Node) handleUiCommands() {

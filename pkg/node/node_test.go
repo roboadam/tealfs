@@ -39,12 +39,13 @@ func TestConnectToRemoteNode(t *testing.T) {
 
 func TestIncomingConnection(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	mockNet := test.MockNet{Dialed: false, AcceptsConnections: false}
+	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
 	n := node.New(userCmds, &mockNet)
 	n.Start()
 
 	remoteNodeId := node.NewNodeId()
 	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
+	time.Sleep(time.Second * 5)
 
 	remoteNode, err := n.GetRemoteNode(remoteNodeId)
 	if err != nil || remoteNode == nil || remoteNode.Id != remoteNodeId {
