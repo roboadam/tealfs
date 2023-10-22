@@ -2,32 +2,27 @@ package node
 
 import (
 	"net"
-	"time"
+	"tealfs/pkg/raw_net"
+	"tealfs/pkg/tnet"
 )
 
 type RemoteNode struct {
-	NodeId  Id
+	Id      Id
 	Address string
-	Conn    net.Conn
+	tNet    tnet.TNet
+	conn    net.Conn
 }
 
-func (node *RemoteNode) Connect() {
-	if node.Conn == nil {
-		node.connectUntilSuccess()
-	}
+func NewRemoteNode(nodeId Id, address string, tNet tnet.TNet) *RemoteNode {
+	return &RemoteNode{Id: nodeId, Address: address, tNet: tNet}
 }
 
-func (node *RemoteNode) Disconnect() {
-	if node.Conn != nil {
-		node.Conn.Close()
-	}
+func (r *RemoteNode) Connect() {
+	r.conn = r.tNet.Dial(r.Address)
+	_ = raw_net.Int8To(r.conn, 1)
+	_ = raw_net.StringTo(r.conn, r.Id.String())
 }
 
-func (node *RemoteNode) connectUntilSuccess() {
-	var err error
-	node.Conn, err = net.Dial("tcp", node.Address)
-	for err == nil {
-		time.Sleep(time.Second * 2)
-		node.Conn, err = net.Dial("tcp", node.Address)
-	}
+func (r *RemoteNode) Disconnect() {
+	r.tNet.Close()
 }

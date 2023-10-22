@@ -58,7 +58,7 @@ func (ui Ui) handleRoot() {
 			<body>
 			    <main>
 					<h1>TealFS: ` + ui.node.Id.String() + `</h1>
-					` + htmlMyhost(ui.node.GetAddress()) + `
+					` + htmlMyhost("TODO") + `
 					<p>Input the host and port of a node to add</p>
 					<form hx-put="/connect-to">
 						<label for="textbox">Host and port:</label>

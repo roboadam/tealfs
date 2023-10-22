@@ -5,95 +5,73 @@ import (
 	"net"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/raw_net"
-	"time"
+	"tealfs/pkg/tnet"
 )
 
 type Node struct {
 	Id          Id
 	userCmds    chan cmds.User
-	listener    Listener
-	connections *RemoteNodes
-	HostToBind  string
+	tNet        tnet.TNet
+	remoteNodes *RemoteNodes
 }
 
-func New(userCmds chan cmds.User) Node {
-	node := Node{
+func New(userCmds chan cmds.User, tNet tnet.TNet) Node {
+	return Node{
 		Id:          NewNodeId(),
 		userCmds:    userCmds,
-		connections: NewRemoteNodes(),
-		listener:    Listener{},
-		HostToBind:  "",
+		remoteNodes: NewRemoteNodes(),
+		tNet:        tNet,
 	}
-
-	go node.handleUiCommands()
-	go node.acceptConnections()
-
-	return node
 }
 
-func (node *Node) GetAddress() string {
-	return node.listener.GetAddress()
+func (n *Node) Start() {
+	go n.handleUiCommands()
+	go n.acceptConnections()
 }
 
-func (node *Node) Close() {
-	node.listener.Close()
+func (n *Node) Close() {
+	n.tNet.Close()
 }
 
-func (node *Node) acceptConnections() {
+func (n *Node) acceptConnections() {
 	for {
-		node.acceptAndHandleConnection()
+		go n.handleConnection(n.tNet.Accept())
 	}
 }
 
-func (node *Node) Listen() {
-	err := node.listenOrError()
-	for err != nil {
-		time.Sleep(time.Second * 2)
-		err = node.listenOrError()
+func (n *Node) handleConnection(conn net.Conn) {
+	intFromConn, _ := raw_net.Int8From(conn)
+	if intFromConn == 1 {
+		rawId, _ := raw_net.StringFrom(conn, 36)
+		remoteNode := NewRemoteNode(IdFromRaw(rawId), conn.RemoteAddr().String(), n.tNet)
+		n.remoteNodes.Add(*remoteNode)
 	}
 }
 
-func (node *Node) listenOrError() error {
-	return node.listener.ListenOnFreePort(node.HostToBind)
+func (n *Node) addConnection(cmd cmds.User) {
+
+	remoteNode := NewRemoteNode(n.Id, cmd.Argument, n.tNet)
+
+	n.remoteNodes.Add(*remoteNode)
+	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.Id.String())
 }
 
-func (node *Node) acceptAndHandleConnection() {
-	conn, err := node.listener.Accept()
-	if err == nil {
-		go node.handleConnection(conn)
-	}
-}
-
-func (node *Node) handleConnection(conn net.Conn) {
+func (n *Node) handleUiCommands() {
 	for {
-		intFromConn, _ := raw_net.IntFrom(conn)
-		fmt.Println("Received:", intFromConn)
-	}
-}
-
-func (node *Node) handleUiCommands() {
-	for {
-		command := <-node.userCmds
+		command := <-n.userCmds
 		switch command.CmdType {
 		case cmds.ConnectTo:
-			node.addConnection(command)
+			n.addConnection(command)
 		case cmds.AddStorage:
-			node.addStorage(command)
+			n.addStorage(command)
 		}
 	}
 }
 
-func (node *Node) addConnection(cmd cmds.User) {
-	conn := RemoteNode{
-		NodeId:  node.Id,
-		Address: cmd.Argument,
-		Conn:    nil,
-	}
-
-	node.connections.AddConnection(conn)
-	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + conn.NodeId.value.String())
+func (n *Node) addStorage(cmd cmds.User) {
+	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
 }
 
-func (node *Node) addStorage(cmd cmds.User) {
-	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
+func (n *Node) GetRemoteNode(id Id) (*RemoteNode, error) {
+	return n.remoteNodes.GetConnection(id)
 }

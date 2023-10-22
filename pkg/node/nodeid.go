@@ -8,11 +8,17 @@ import (
 )
 
 type Id struct {
-	value uuid.UUID
+	value string
 }
 
 func (nodeId Id) String() string {
-	return nodeId.value.String()
+	return nodeId.value
+}
+
+func IdFromRaw(rawId string) Id {
+	return Id{
+		value: rawId,
+	}
 }
 
 func NewNodeId() Id {
@@ -23,6 +29,6 @@ func NewNodeId() Id {
 	}
 
 	return Id{
-		value: idValue,
+		value: idValue.String(),
 	}
 }

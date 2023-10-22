@@ -1,20 +1,20 @@
 package main
 
 import (
-	"fmt"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
+	"tealfs/pkg/tnet"
 	"tealfs/pkg/ui"
 )
 
 func main() {
 	userCommands := make(chan cmds.User)
+	tNet := tnet.NewTcpNet()
 
-	localNode := node.New(userCommands)
+	localNode := node.New(userCommands, tNet)
 	localUi := ui.NewUi(&localNode, userCommands)
 
-	go localUi.Start()
-	localNode.Listen()
-	fmt.Println("Node: " + localNode.GetAddress())
+	localUi.Start()
+	localNode.Start()
 	select {}
 }

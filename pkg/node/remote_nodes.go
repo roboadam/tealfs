@@ -1,5 +1,7 @@
 package node
 
+import "errors"
+
 type RemoteNodes struct {
 	nodes   map[Id]RemoteNode
 	adds    chan RemoteNode
@@ -20,14 +22,18 @@ func NewRemoteNodes() *RemoteNodes {
 	return nodes
 }
 
-func (holder *RemoteNodes) AddConnection(node RemoteNode) {
+func (holder *RemoteNodes) Add(node RemoteNode) {
 	holder.adds <- node
 }
 
-func (holder *RemoteNodes) GetConnection(id Id) *RemoteNode {
+func (holder *RemoteNodes) GetConnection(id Id) (*RemoteNode, error) {
 	responseChan := make(chan *RemoteNode)
 	holder.gets <- getsRequestWithResponseChan{id, responseChan}
-	return <-responseChan
+	conn := <-responseChan
+	if conn == nil {
+		return conn, errors.New("No connection with ID " + id.String())
+	}
+	return conn, nil
 }
 
 func (holder *RemoteNodes) DeleteConnection(id Id) {
@@ -63,7 +69,7 @@ func (holder *RemoteNodes) sendConnectionToChan(request getsRequestWithResponseC
 	}
 }
 
-func (holder *RemoteNodes) storeNode(request RemoteNode) {
-	request.Connect()
-	holder.nodes[request.NodeId] = request
+func (holder *RemoteNodes) storeNode(node RemoteNode) {
+	node.Connect()
+	holder.nodes[node.Id] = node
 }

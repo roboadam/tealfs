@@ -1,6 +1,7 @@
 package node_test
 
 import (
+	"bytes"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
 	"tealfs/pkg/test"
@@ -9,42 +10,52 @@ import (
 
 func TestNodeCreation(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	localNode := listeningNode(userCmds)
-	defer localNode.Close()
+	tNet := test.MockNet{}
+	localNode := node.New(userCmds, &tNet)
 
-	if !nodeIdIsValid(localNode) {
+	if !nodeIdIsValid(&localNode) {
 		t.Error("Id is invalid")
-	}
-
-	if !nodeAddressIsValid(localNode) {
-		t.Error("Node address is invalid")
 	}
 }
 
 func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	localNode := listeningNode(userCmds)
-	defer localNode.Close()
-	testListener := test.NewTestListener()
+	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
+	n := node.New(userCmds, &tNet)
+	n.Start()
 
-	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: testListener.GetAddress()}
+	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
 
-	if !testListener.ReceivedConnection() {
+	if !tNet.IsDialed() {
 		t.Error("Node did not connect")
+	}
+
+	if !bytes.Equal(tNet.Conn.BytesWritten, validHello(n.Id)) {
+		t.Error("Node did not send valid hello")
 	}
 }
 
-func listeningNode(userCmds chan cmds.User) *node.Node {
-	localNode := node.New(userCmds)
-	localNode.HostToBind = "127.0.0.1"
-	localNode.Listen()
-	return &localNode
+func TestIncomingConnection(t *testing.T) {
+	userCmds := make(chan cmds.User)
+	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
+	n := node.New(userCmds, &mockNet)
+	n.Start()
+
+	remoteNodeId := node.NewNodeId()
+	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
+
+	remoteNode, err := n.GetRemoteNode(remoteNodeId)
+	if err != nil || remoteNode == nil || remoteNode.Id != remoteNodeId {
+		t.Error("Did not add node " + remoteNodeId.String() + " to cluster")
+	}
+}
+
+func validHello(nodeId node.Id) []byte {
+	serializedHello := []byte{byte(int8(1))}
+	serializedNodeId := []byte(nodeId.String())
+	return append(serializedHello, serializedNodeId...)
 }
 
 func nodeIdIsValid(node *node.Node) bool {
 	return len(node.Id.String()) > 0
-}
-
-func nodeAddressIsValid(node *node.Node) bool {
-	return len(node.GetAddress()) > 0
 }
