@@ -1,6 +1,7 @@
 package raw_net
 
 import (
+	"encoding/binary"
 	"errors"
 	"io"
 	"net"
@@ -14,6 +15,18 @@ func Int8From(conn net.Conn) (uint8, error) {
 	}
 
 	return buf[0], nil
+}
+
+func Int32From(conn net.Conn) (uint32, error) {
+	buf := make([]byte, 4)
+	_, err := conn.Read(buf)
+	if err != nil {
+		return 0, err
+	}
+
+	value := binary.BigEndian.Uint32(buf)
+
+	return value, nil
 }
 
 func StringFrom(conn net.Conn, length int) (string, error) {
@@ -37,6 +50,13 @@ func StringFrom(conn net.Conn, length int) (string, error) {
 
 func Int8To(conn net.Conn, value int8) error {
 	networkValue := []byte{byte(value)}
+	_, err := conn.Write(networkValue)
+	return err
+}
+
+func UInt32To(conn net.Conn, value uint32) error {
+	networkValue := make([]byte, 4)
+	binary.BigEndian.PutUint32(networkValue, value)
 	_, err := conn.Write(networkValue)
 	return err
 }

@@ -52,8 +52,9 @@ func TestIncomingConnection(t *testing.T) {
 
 func validHello(nodeId node.Id) []byte {
 	serializedHello := []byte{byte(int8(1))}
+	serializedNodeIdLen := []byte{byte(len(nodeId.String()))}
 	serializedNodeId := []byte(nodeId.String())
-	return append(serializedHello, serializedNodeId...)
+	return append(append(serializedHello, serializedNodeIdLen...), serializedNodeId...)
 }
 
 func nodeIdIsValid(node *node.Node) bool {

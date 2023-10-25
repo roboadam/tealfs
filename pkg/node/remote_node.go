@@ -20,6 +20,7 @@ func NewRemoteNode(nodeId Id, address string, tNet tnet.TNet) *RemoteNode {
 func (r *RemoteNode) Connect() {
 	r.conn = r.tNet.Dial(r.Address)
 	_ = raw_net.Int8To(r.conn, 1)
+	_ = raw_net.UInt32To(r.conn, uint32(len(r.Id.String())))
 	_ = raw_net.StringTo(r.conn, r.Id.String())
 }
 
