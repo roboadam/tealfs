@@ -17,7 +17,7 @@ func Int8From(conn net.Conn) (uint8, error) {
 	return buf[0], nil
 }
 
-func Int32From(conn net.Conn) (uint32, error) {
+func UInt32From(conn net.Conn) (uint32, error) {
 	buf := make([]byte, 4)
 	_, err := conn.Read(buf)
 	if err != nil {

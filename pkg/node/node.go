@@ -42,7 +42,7 @@ func (n *Node) acceptConnections() {
 func (n *Node) handleConnection(conn net.Conn) {
 	command, _ := raw_net.Int8From(conn)
 	if command == 1 {
-		length, _ := raw_net.Int32From(conn)
+		length, _ := raw_net.UInt32From(conn)
 		rawId, _ := raw_net.StringFrom(conn, int(length))
 		remoteNode := NewRemoteNode(IdFromRaw(rawId), conn.RemoteAddr().String(), n.tNet)
 		n.remoteNodes.Add(*remoteNode)

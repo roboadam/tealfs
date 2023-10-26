@@ -2,6 +2,7 @@ package node_test
 
 import (
 	"bytes"
+	"encoding/binary"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
 	"tealfs/pkg/test"
@@ -52,7 +53,8 @@ func TestIncomingConnection(t *testing.T) {
 
 func validHello(nodeId node.Id) []byte {
 	serializedHello := []byte{byte(int8(1))}
-	serializedNodeIdLen := []byte{byte(len(nodeId.String()))}
+	serializedNodeIdLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(serializedNodeIdLen, uint32(len(nodeId.String())))
 	serializedNodeId := []byte(nodeId.String())
 	return append(append(serializedHello, serializedNodeIdLen...), serializedNodeId...)
 }
