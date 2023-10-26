@@ -59,6 +59,22 @@ func validHello(nodeId node.Id) []byte {
 	return append(append(serializedHello, serializedNodeIdLen...), serializedNodeId...)
 }
 
+type NodeInfo struct {
+	NodeId  string
+	Address string
+}
+
+func nodeSync(nodes NodeInfo[]) []byte {
+	return make([]byte, 0)
+}
+
+func stringSerialized(value string) []byte {
+	serializedNodeIdLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(serializedNodeIdLen, uint32(len(value)))
+	serializedNodeId := []byte(value)
+	return append(serializedNodeIdLen, serializedNodeId...)
+}
+
 func nodeIdIsValid(node *node.Node) bool {
 	return len(node.Id.String()) > 0
 }
