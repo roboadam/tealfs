@@ -64,15 +64,26 @@ type NodeInfo struct {
 	Address string
 }
 
-func nodeSync(nodes NodeInfo[]) []byte {
-	return make([]byte, 0)
+func validSync(nodes []NodeInfo) []byte {
+	result := intSerialized(len(nodes))
+
+	for _, nodeInfo := range nodes {
+		result = append(result, stringSerialized(nodeInfo.NodeId)...)
+		result = append(result, stringSerialized(nodeInfo.Address)...)
+	}
+
+	return result
+}
+
+func intSerialized(number int) []byte {
+	serializedInt := make([]byte, 4)
+	binary.BigEndian.PutUint32(serializedInt, uint32(number))
+	return serializedInt
 }
 
 func stringSerialized(value string) []byte {
-	serializedNodeIdLen := make([]byte, 4)
-	binary.BigEndian.PutUint32(serializedNodeIdLen, uint32(len(value)))
 	serializedNodeId := []byte(value)
-	return append(serializedNodeIdLen, serializedNodeId...)
+	return append(intSerialized(len(value)), serializedNodeId...)
 }
 
 func nodeIdIsValid(node *node.Node) bool {
