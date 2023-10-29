@@ -51,10 +51,21 @@ func TestIncomingConnection(t *testing.T) {
 	}
 }
 
+func TestSendNodeSyncAfterHello(t *testing.T) {
+
+}
+
+func TestSendNodeSyncAfterReceiveNodeSync(t *testing.T) {
+
+}
+
+func TestReceiveNodeSyncAddsMissingNodes(t *testing.T) {
+
+}
+
 func validHello(nodeId node.Id) []byte {
-	serializedHello := []byte{byte(int8(1))}
-	serializedNodeIdLen := make([]byte, 4)
-	binary.BigEndian.PutUint32(serializedNodeIdLen, uint32(len(nodeId.String())))
+	serializedHello := int8Serialized(1)
+	serializedNodeIdLen := intSerialized(len(nodeId.String()))
 	serializedNodeId := []byte(nodeId.String())
 	return append(append(serializedHello, serializedNodeIdLen...), serializedNodeId...)
 }
@@ -64,8 +75,17 @@ type NodeInfo struct {
 	Address string
 }
 
-func validSync(nodes []NodeInfo) []byte {
-	result := intSerialized(len(nodes))
+func validSyncFirst(nodes []NodeInfo) []byte {
+	return validSync(2, nodes)
+}
+
+func validSyncResponse(nodes []NodeInfo) []byte {
+	return validSync(3, nodes)
+}
+
+func validSync(prefix int8, nodes []NodeInfo) []byte {
+	result := int8Serialized(prefix)
+	result = append(result, intSerialized(len(nodes))...)
 
 	for _, nodeInfo := range nodes {
 		result = append(result, stringSerialized(nodeInfo.NodeId)...)
@@ -79,6 +99,10 @@ func intSerialized(number int) []byte {
 	serializedInt := make([]byte, 4)
 	binary.BigEndian.PutUint32(serializedInt, uint32(number))
 	return serializedInt
+}
+
+func int8Serialized(number int8) []byte {
+	return []byte{byte(number)}
 }
 
 func stringSerialized(value string) []byte {
