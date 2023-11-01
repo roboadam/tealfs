@@ -51,8 +51,17 @@ func TestIncomingConnection(t *testing.T) {
 	}
 }
 
-func TestSendNodeSyncAfterHello(t *testing.T) {
+func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
+	userCmds := make(chan cmds.User)
+	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
+	n := node.New(userCmds, &mockNet)
+	n.Start()
 
+	remoteNodeId := node.NewNodeId()
+	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
+
+	expected := make()
+	if !bytes.Equal(mockNet.Conn.BytesWritten, validSyncFirst()
 }
 
 func TestSendNodeSyncAfterReceiveNodeSync(t *testing.T) {
