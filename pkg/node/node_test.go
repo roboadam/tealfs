@@ -84,6 +84,11 @@ type NodeInfo struct {
 	Address string
 }
 
+type CommandAndNodes struct {
+	Command int8
+	Nodes []NodeInfo
+}
+
 func validSyncFirst(nodes []NodeInfo) []byte {
 	return validSync(2, nodes)
 }
