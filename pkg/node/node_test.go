@@ -3,9 +3,11 @@ package node_test
 import (
 	"bytes"
 	"encoding/binary"
+	"strconv"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/node"
 	"tealfs/pkg/test"
+	"tealfs/pkg/util"
 	"testing"
 )
 
@@ -60,8 +62,21 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	remoteNodeId := node.NewNodeId()
 	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
 
-	expected := make()
-	if !bytes.Equal(mockNet.Conn.BytesWritten, validSyncFirst()
+	expected := CommandAndNodes{Command: 2, Nodes: util.NewSet[NodeInfo]()}
+	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: "something"})
+
+	commandAndNodes, err := CommandAndNodesFrom(mockNet.Conn.BytesWritten)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	if commandAndNodes.Command != 2 {
+		t.Error("Invalid command " + strconv.Itoa(int(commandAndNodes.Command)))
+	}
+
+	if !commandAndNodes.Nodes.Equal(&expected.Nodes) {
+		t.Error("Node set is not correct")
+	}
 }
 
 func TestSendNodeSyncAfterReceiveNodeSync(t *testing.T) {
@@ -86,27 +101,25 @@ type NodeInfo struct {
 
 type CommandAndNodes struct {
 	Command int8
-	Nodes []NodeInfo
+	Nodes   util.Set[NodeInfo]
 }
 
-func validSyncFirst(nodes []NodeInfo) []byte {
-	return validSync(2, nodes)
-}
+func CommandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
+	command := int8(data[0])
+	nodes := util.NewSet[NodeInfo]()
 
-func validSyncResponse(nodes []NodeInfo) []byte {
-	return validSync(3, nodes)
-}
+	start := 1
 
-func validSync(prefix int8, nodes []NodeInfo) []byte {
-	result := int8Serialized(prefix)
-	result = append(result, intSerialized(len(nodes))...)
-
-	for _, nodeInfo := range nodes {
-		result = append(result, stringSerialized(nodeInfo.NodeId)...)
-		result = append(result, stringSerialized(nodeInfo.Address)...)
+	for start < len(data) {
+		idLen := int(binary.BigEndian.Uint32(data[start:]))
+		start += 4
+		id := string(data[start : start+idLen])
+		addressLen := int(binary.BigEndian.Uint32(data[start:]))
+		address := string(data[start : start+addressLen])
+		nodes.Add(NodeInfo{NodeId: id, Address: address})
 	}
 
-	return result
+	return &CommandAndNodes{Command: command, Nodes: nodes}, nil
 }
 
 func intSerialized(number int) []byte {
@@ -117,11 +130,6 @@ func intSerialized(number int) []byte {
 
 func int8Serialized(number int8) []byte {
 	return []byte{byte(number)}
-}
-
-func stringSerialized(value string) []byte {
-	serializedNodeId := []byte(value)
-	return append(intSerialized(len(value)), serializedNodeId...)
 }
 
 func nodeIdIsValid(node *node.Node) bool {
