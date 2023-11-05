@@ -13,15 +13,18 @@ type RemoteNode struct {
 	conn    net.Conn
 }
 
-func NewRemoteNode(nodeId Id, address string, tNet tnet.TNet) *RemoteNode {
-	return &RemoteNode{Id: nodeId, Address: address, tNet: tNet}
+func NewRemoteNode(id Id, address string, tNet tnet.TNet) *RemoteNode {
+	return &RemoteNode{Id: id, Address: address, tNet: tNet}
 }
 
 func (r *RemoteNode) Connect() {
 	r.conn = r.tNet.Dial(r.Address)
+}
+
+func (r *RemoteNode) SendHello(id Id) {
 	_ = raw_net.Int8To(r.conn, 1)
-	_ = raw_net.UInt32To(r.conn, uint32(len(r.Id.String())))
-	_ = raw_net.StringTo(r.conn, r.Id.String())
+	_ = raw_net.UInt32To(r.conn, uint32(len(id.String())))
+	_ = raw_net.StringTo(r.conn, id.String())
 }
 
 func (r *RemoteNode) Disconnect() {

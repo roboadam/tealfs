@@ -49,11 +49,13 @@ func (n *Node) handleConnection(conn net.Conn) {
 	}
 }
 
-func (n *Node) addConnection(cmd cmds.User) {
+func (n *Node) addRemoteNode(cmd cmds.User) {
 
 	remoteNode := NewRemoteNode(n.Id, cmd.Argument, n.tNet)
 
 	n.remoteNodes.Add(*remoteNode)
+	remoteNode.Connect()
+	remoteNode.SendHello(n.Id)
 	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.Id.String())
 }
 
@@ -62,7 +64,7 @@ func (n *Node) handleUiCommands() {
 		command := <-n.userCmds
 		switch command.CmdType {
 		case cmds.ConnectTo:
-			n.addConnection(command)
+			n.addRemoteNode(command)
 		case cmds.AddStorage:
 			n.addStorage(command)
 		}

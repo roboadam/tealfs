@@ -64,6 +64,7 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 
 	expected := CommandAndNodes{Command: 2, Nodes: util.NewSet[NodeInfo]()}
 	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: "something"})
+	expected.Nodes.Add(NodeInfo{NodeId: n.Id.String(), Address: "something else"})
 
 	commandAndNodes, err := CommandAndNodesFrom(mockNet.Conn.BytesWritten)
 	if err != nil {

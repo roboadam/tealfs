@@ -70,6 +70,5 @@ func (holder *RemoteNodes) sendConnectionToChan(request getsRequestWithResponseC
 }
 
 func (holder *RemoteNodes) storeNode(node RemoteNode) {
-	node.Connect()
 	holder.nodes[node.Id] = node
 }
