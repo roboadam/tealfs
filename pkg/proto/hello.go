@@ -10,5 +10,6 @@ func HelloToBytes(id node.Id) []byte {
 }
 
 func HelloFromBytes(bytes []byte) node.Id {
-	return node.Id{}
+	value, remaining := StringFromBytes(bytes)
+	return node.IdFromRaw(value)
 }
