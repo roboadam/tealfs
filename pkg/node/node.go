@@ -1,6 +1,6 @@
 package node
 
 type Node struct {
-	id      Id
-	address Address
+	Id      Id
+	Address Address
 }

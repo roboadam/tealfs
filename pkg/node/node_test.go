@@ -33,7 +33,7 @@ func TestConnectToRemoteNode(t *testing.T) {
 		t.Error("Node did not connect")
 	}
 
-	if !bytes.Equal(tNet.Conn.BytesWritten, validHello(n.Id)) {
+	if !bytes.Equal(tNet.Conn.BytesWritten, validHello(n.GetId())) {
 		t.Error("Node did not send valid hello")
 	}
 }
@@ -64,7 +64,7 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 
 	expected := CommandAndNodes{Command: 2, Nodes: util.NewSet[NodeInfo]()}
 	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: "something"})
-	expected.Nodes.Add(NodeInfo{NodeId: n.Id.String(), Address: "something else"})
+	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: "something else"})
 
 	commandAndNodes, err := CommandAndNodesFrom(mockNet.Conn.BytesWritten)
 	if err != nil {
@@ -134,5 +134,5 @@ func int8Serialized(number int8) []byte {
 }
 
 func nodeIdIsValid(node *node.LocalNode) bool {
-	return len(node.Id.String()) > 0
+	return len(node.GetId().String()) > 0
 }

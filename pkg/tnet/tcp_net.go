@@ -10,8 +10,10 @@ type TcpNet struct {
 	binding  string
 }
 
-func NewTcpNet() *TcpNet {
-	return &TcpNet{binding: "127.0.0.1:0"}
+func NewTcpNet(binding string) *TcpNet {
+	result := TcpNet{binding: binding}
+	result.listen()
+	return &result
 }
 
 func (t *TcpNet) Dial(address string) net.Conn {
@@ -32,10 +34,6 @@ func (t *TcpNet) listen() {
 	t.listener = listener
 }
 
-func (t *TcpNet) BindTo(binding string) {
-	t.binding = binding
-}
-
 func (t *TcpNet) Close() {
 	if t.listener != nil {
 		t.Close()
@@ -54,4 +52,8 @@ func (t *TcpNet) Accept() net.Conn {
 	}
 
 	return conn
+}
+
+func (t *TcpNet) GetBinding() string {
+	return t.binding
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type LocalNode struct {
-	Id          Id
+	base        Node
 	userCmds    chan cmds.User
 	tNet        tnet.TNet
 	remoteNodes *RemoteNodes
@@ -17,7 +17,7 @@ type LocalNode struct {
 
 func New(userCmds chan cmds.User, tNet tnet.TNet) LocalNode {
 	return LocalNode{
-		Id:          NewNodeId(),
+		base:        Node{Id: NewNodeId(), Address: NewAddress(tNet.GetBinding())},
 		userCmds:    userCmds,
 		remoteNodes: NewRemoteNodes(),
 		tNet:        tNet,
@@ -31,6 +31,10 @@ func (n *LocalNode) Start() {
 
 func (n *LocalNode) Close() {
 	n.tNet.Close()
+}
+
+func (n *LocalNode) GetId() Id {
+	return n.base.Id
 }
 
 func (n *LocalNode) acceptConnections() {
@@ -51,11 +55,11 @@ func (n *LocalNode) handleConnection(conn net.Conn) {
 
 func (n *LocalNode) addRemoteNode(cmd cmds.User) {
 
-	remoteNode := NewRemoteNode(n.Id, cmd.Argument, n.tNet)
+	remoteNode := NewRemoteNode(n.GetId(), cmd.Argument, n.tNet)
 
 	n.remoteNodes.Add(*remoteNode)
 	remoteNode.Connect()
-	remoteNode.SendHello(n.Id)
+	remoteNode.SendHello(n.GetId())
 	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.Id.String())
 }
 
