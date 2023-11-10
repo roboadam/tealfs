@@ -7,18 +7,17 @@ import (
 )
 
 type RemoteNode struct {
-	Id      Id
-	Address string
-	tNet    tnet.TNet
-	conn    net.Conn
+	Base Node
+	tNet tnet.TNet
+	conn net.Conn
 }
 
-func NewRemoteNode(id Id, address string, tNet tnet.TNet) *RemoteNode {
-	return &RemoteNode{Id: id, Address: address, tNet: tNet}
+func NewRemoteNode(base Node, tNet tnet.TNet) *RemoteNode {
+	return &RemoteNode{Base: base, tNet: tNet}
 }
 
 func (r *RemoteNode) Connect() {
-	r.conn = r.tNet.Dial(r.Address)
+	r.conn = r.tNet.Dial(r.Base.Address.value)
 }
 
 func (r *RemoteNode) SendHello(id Id) {
