@@ -9,11 +9,11 @@ import (
 )
 
 type Ui struct {
-	node     *node.Node
+	node     *node.LocalNode
 	userCmds chan cmds.User
 }
 
-func NewUi(node *node.Node, userCmds chan cmds.User) Ui {
+func NewUi(node *node.LocalNode, userCmds chan cmds.User) Ui {
 	return Ui{node, userCmds}
 }
 

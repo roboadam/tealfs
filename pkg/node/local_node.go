@@ -1,0 +1,80 @@
+package node
+
+import (
+	"fmt"
+	"net"
+	"tealfs/pkg/cmds"
+	"tealfs/pkg/raw_net"
+	"tealfs/pkg/tnet"
+)
+
+type LocalNode struct {
+	Id          Id
+	userCmds    chan cmds.User
+	tNet        tnet.TNet
+	remoteNodes *RemoteNodes
+}
+
+func New(userCmds chan cmds.User, tNet tnet.TNet) LocalNode {
+	return LocalNode{
+		Id:          NewNodeId(),
+		userCmds:    userCmds,
+		remoteNodes: NewRemoteNodes(),
+		tNet:        tNet,
+	}
+}
+
+func (n *LocalNode) Start() {
+	go n.handleUiCommands()
+	go n.acceptConnections()
+}
+
+func (n *LocalNode) Close() {
+	n.tNet.Close()
+}
+
+func (n *LocalNode) acceptConnections() {
+	for {
+		go n.handleConnection(n.tNet.Accept())
+	}
+}
+
+func (n *LocalNode) handleConnection(conn net.Conn) {
+	command, _ := raw_net.Int8From(conn)
+	if command == 1 {
+		length, _ := raw_net.UInt32From(conn)
+		rawId, _ := raw_net.StringFrom(conn, int(length))
+		remoteNode := NewRemoteNode(IdFromRaw(rawId), conn.RemoteAddr().String(), n.tNet)
+		n.remoteNodes.Add(*remoteNode)
+	}
+}
+
+func (n *LocalNode) addRemoteNode(cmd cmds.User) {
+
+	remoteNode := NewRemoteNode(n.Id, cmd.Argument, n.tNet)
+
+	n.remoteNodes.Add(*remoteNode)
+	remoteNode.Connect()
+	remoteNode.SendHello(n.Id)
+	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.Id.String())
+}
+
+func (n *LocalNode) handleUiCommands() {
+	for {
+		command := <-n.userCmds
+		switch command.CmdType {
+		case cmds.ConnectTo:
+			n.addRemoteNode(command)
+		case cmds.AddStorage:
+			n.addStorage(command)
+		}
+	}
+}
+
+func (n *LocalNode) addStorage(cmd cmds.User) {
+	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
+}
+
+func (n *LocalNode) GetRemoteNode(id Id) (*RemoteNode, error) {
+	return n.remoteNodes.GetConnection(id)
+}

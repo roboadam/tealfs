@@ -133,6 +133,6 @@ func int8Serialized(number int8) []byte {
 	return []byte{byte(number)}
 }
 
-func nodeIdIsValid(node *node.Node) bool {
+func nodeIdIsValid(node *node.LocalNode) bool {
 	return len(node.Id.String()) > 0
 }
