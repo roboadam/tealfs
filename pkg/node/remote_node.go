@@ -2,6 +2,7 @@ package node
 
 import (
 	"net"
+	"tealfs/pkg/proto"
 	"tealfs/pkg/raw_net"
 	"tealfs/pkg/tnet"
 )
@@ -10,6 +11,11 @@ type RemoteNode struct {
 	Base Node
 	tNet tnet.TNet
 	conn net.Conn
+}
+
+func NewConnectedRemoteNode(address Address, tnet tnet.TNet) *RemoteNode {
+	conn := tnet.Dial(address.value)
+	raw_net.SendBytes(proto.HelloToBytes())
 }
 
 func NewRemoteNode(base Node, tNet tnet.TNet) *RemoteNode {
