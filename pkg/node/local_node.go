@@ -45,10 +45,9 @@ func (n *LocalNode) acceptConnections() {
 }
 
 func (n *LocalNode) handleConnection(conn net.Conn) {
-	command
-	command, _ := raw_net.Int8From(conn)
-	if command == proto.Hello {
-
+	command, length, _ := raw_net.CommandAndLength(conn)
+	raw_data, _ := raw_net.ReadBytes(conn, length)
+	if command == proto.NetCmd{value:proto.Hello} {
 		length, _ := raw_net.UInt32From(conn)
 		rawId, _ := raw_net.StringFrom(conn, int(length))
 		remoteNode := NewRemoteNode(IdFromRaw(rawId), conn.RemoteAddr().String(), n.tNet)

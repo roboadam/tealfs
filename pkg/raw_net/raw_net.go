@@ -9,25 +9,25 @@ import (
 )
 
 func CommandAndLength(conn net.Conn) (proto.NetCmd, uint32, error) {
-	buf := make([]byte, 9)
-	_, err := conn.Read(buf)
+	rawData, err := ReadBytes(conn, 9)
 	if err != nil {
 		return proto.NetCmd{Value: 0}, 0, err
 	}
 
-	return proto.netCmd{Value: buf[0]}, 0, nil
+	length := binary.BigEndian.Uint32(rawData[1:])
+	return proto.NetCmd{Value: rawData[0]}, length, nil
 }
 
 func ReadBytes(conn net.Conn, length uint32) ([]byte, error) {
 	buf := make([]byte, length)
-	totalBytes := uint32(0)
+	offset := uint32(0)
 
-	for totalBytes < length {
-		numBytes, err := conn.Read(buf)
+	for offset < length {
+		numBytes, err := conn.Read(buf[offset:])
 		if err != nil {
 			return nil, err
 		}
-		totalBytes += uint32(numBytes)
+		offset += uint32(numBytes)
 	}
 
 	return buf, nil
