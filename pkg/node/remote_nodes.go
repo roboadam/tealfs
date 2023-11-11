@@ -1,18 +1,26 @@
 package node
 
-import "errors"
+import (
+	"errors"
+	"net"
+)
 
 type RemoteNodes struct {
-	nodes   map[Id]Node
-	adds    chan Node
+	nodes   map[Id]remoteNode
+	adds    chan remoteNode
 	gets    chan getsRequestWithResponseChan
 	deletes chan Id
 }
 
+type remoteNode struct {
+	node Node
+	conn net.Conn
+}
+
 func NewRemoteNodes() *RemoteNodes {
 	nodes := &RemoteNodes{
-		nodes:   make(map[Id]Node),
-		adds:    make(chan Node),
+		nodes:   make(map[Id]remoteNode),
+		adds:    make(chan remoteNode),
 		gets:    make(chan getsRequestWithResponseChan),
 		deletes: make(chan Id),
 	}
@@ -22,8 +30,8 @@ func NewRemoteNodes() *RemoteNodes {
 	return nodes
 }
 
-func (holder *RemoteNodes) Add(node Node) {
-	holder.adds <- node
+func (holder *RemoteNodes) Add(node Node, conn net.Conn) {
+	holder.adds <- remoteNode{node: node, conn: conn}
 }
 
 func (holder *RemoteNodes) GetConnection(id Id) (*Node, error) {
@@ -55,20 +63,24 @@ func (holder *RemoteNodes) consumeChannels() {
 			holder.sendNodeToChan(request)
 
 		case id := <-holder.deletes:
-			delete(holder.nodes, id)
+			remoteNode, found := holder.nodes[id]
+			if found {
+				remoteNode.conn.Close()
+				delete(holder.nodes, id)
+			}
 		}
 	}
 }
 
 func (holder *RemoteNodes) sendNodeToChan(request getsRequestWithResponseChan) {
-	conn, found := holder.nodes[request.request]
+	remoteNode, found := holder.nodes[request.request]
 	if found {
-		request.response <- &conn
+		request.response <- &remoteNode.node
 	} else {
 		request.response <- nil
 	}
 }
 
-func (holder *RemoteNodes) storeNode(node Node) {
-	holder.nodes[node.Id] = node
+func (holder *RemoteNodes) storeNode(remoteNode remoteNode) {
+	holder.nodes[remoteNode.node.Id] = remoteNode
 }

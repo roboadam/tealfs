@@ -4,7 +4,7 @@ import "tealfs/pkg/proto"
 
 func HelloToBytes(id Id) []byte {
 	buffer := make([]byte, 1+len(id.String()))
-	buffer[0] = proto.Hello
+	buffer[0] = proto.Hello().Value
 	copy(buffer[1:], id.String())
 	return buffer
 }

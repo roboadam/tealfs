@@ -47,18 +47,21 @@ func (n *LocalNode) acceptConnections() {
 func (n *LocalNode) handleConnection(conn net.Conn) {
 	command, length, _ := raw_net.CommandAndLength(conn)
 	raw_data, _ := raw_net.ReadBytes(conn, length)
-	if command == proto.NetCmd{value:proto.Hello} {
-		length, _ := raw_net.UInt32From(conn)
-		rawId, _ := raw_net.StringFrom(conn, int(length))
-		remoteNode := NewRemoteNode(IdFromRaw(rawId), conn.RemoteAddr().String(), n.tNet)
-		n.remoteNodes.Add(*remoteNode)
+
+	if command == proto.Hello() {
+		remoteId, _ := HelloFromBytes(raw_data)
+		HelloToBytes(n.GetId())
+		raw_net.SendBytes(conn, HelloToBytes(n.GetId()))
+		node := Node{Id: remoteId, Address: NewAddress(conn.RemoteAddr().String())}
+		n.remoteNodes.Add(node, conn)
 	}
 }
 
 func (n *LocalNode) addRemoteNode(cmd cmds.User) {
-
-	remoteNode := NewRemoteNode(n.GetId(), cmd.Argument, n.tNet)
-
+	// remoteNode := NewRemoteNode(n.GetId(), cmd.Argument, n.tNet)
+	remoteAddress := NewAddress(cmd.Argument)
+	conn := n.tNet.Dial(remoteAddress.value)
+	
 	n.remoteNodes.Add(*remoteNode)
 	remoteNode.Connect()
 	remoteNode.SendHello(n.GetId())

@@ -92,3 +92,15 @@ func StringTo(conn net.Conn, value string) error {
 	_, err := conn.Write(networkValue)
 	return err
 }
+
+func SendBytes(conn net.Conn, data []byte) error {
+	bytesWritten := 0
+	for bytesWritten < len(data) {
+		numBytes, err := conn.Write(data[bytesWritten:]) 
+		if err != nil {
+			return err
+		}
+		bytesWritten += numBytes
+	}
+	return nil
+}
