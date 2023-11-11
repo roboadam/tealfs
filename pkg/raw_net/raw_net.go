@@ -5,7 +5,33 @@ import (
 	"errors"
 	"io"
 	"net"
+	"tealfs/pkg/proto"
 )
+
+func CommandAndLength(conn net.Conn) (proto.NetCmd, uint32, error) {
+	buf := make([]byte, 9)
+	_, err := conn.Read(buf)
+	if err != nil {
+		return proto.NetCmd{Value: 0}, 0, err
+	}
+
+	return proto.netCmd{Value: buf[0]}, 0, nil
+}
+
+func ReadBytes(conn net.Conn, length uint32) ([]byte, error) {
+	buf := make([]byte, length)
+	totalBytes := uint32(0)
+
+	for totalBytes < length {
+		numBytes, err := conn.Read(buf)
+		if err != nil {
+			return nil, err
+		}
+		totalBytes += uint32(numBytes)
+	}
+
+	return buf, nil
+}
 
 func Int8From(conn net.Conn) (uint8, error) {
 	buf := make([]byte, 1)
