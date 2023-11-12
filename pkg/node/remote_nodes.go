@@ -34,7 +34,7 @@ func (holder *RemoteNodes) Add(node Node, conn net.Conn) {
 	holder.adds <- remoteNode{node: node, conn: conn}
 }
 
-func (holder *RemoteNodes) GetConnection(id Id) (*Node, error) {
+func (holder *RemoteNodes) GetNode(id Id) (*Node, error) {
 	responseChan := make(chan *Node)
 	holder.gets <- getsRequestWithResponseChan{id, responseChan}
 	node := <-responseChan

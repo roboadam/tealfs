@@ -45,12 +45,14 @@ func (n *LocalNode) acceptConnections() {
 }
 
 func (n *LocalNode) handleConnection(conn net.Conn) {
-	command, length, _ := raw_net.CommandAndLength(conn)
+	data, _ := raw_net.ReadBytes(conn, proto.CommandAndLengthSize)
+	command, length, _ := proto.CommandAndLengthFromBytes(data)
 	raw_data, _ := raw_net.ReadBytes(conn, length)
 
 	if command == proto.Hello() {
 		remoteId, _ := HelloFromBytes(raw_data)
-		HelloToBytes(n.GetId())
+
+		proto.CommandAndLengthToBytes(proto.Hello())
 		raw_net.SendBytes(conn, HelloToBytes(n.GetId()))
 		node := Node{Id: remoteId, Address: NewAddress(conn.RemoteAddr().String())}
 		n.remoteNodes.Add(node, conn)
@@ -58,14 +60,20 @@ func (n *LocalNode) handleConnection(conn net.Conn) {
 }
 
 func (n *LocalNode) addRemoteNode(cmd cmds.User) {
-	// remoteNode := NewRemoteNode(n.GetId(), cmd.Argument, n.tNet)
 	remoteAddress := NewAddress(cmd.Argument)
 	conn := n.tNet.Dial(remoteAddress.value)
-	
-	n.remoteNodes.Add(*remoteNode)
-	remoteNode.Connect()
-	remoteNode.SendHello(n.GetId())
-	fmt.Println("Received command: add-connection, address:" + cmd.Argument + ", added connection id:" + remoteNode.Id.String())
+
+	payload := HelloToBytes(n.GetId())
+	raw_net.SendBytes(conn, proto.CommandAndLengthToBytes(proto.Hello(), uint32(len(payload))))
+	raw_net.SendBytes(conn, payload)
+
+	rawData, _ := raw_net.ReadBytes(conn, proto.CommandAndLengthSize)
+	command, length, _ := proto.CommandAndLengthFromBytes(rawData)
+	rawData, _ = raw_net.ReadBytes(conn, length)
+	if command == proto.Hello() {
+		remoteId, _ := HelloFromBytes(rawData)
+		n.remoteNodes.Add(Node{Id: remoteId, Address: remoteAddress}, conn)
+	}
 }
 
 func (n *LocalNode) handleUiCommands() {
@@ -84,6 +92,6 @@ func (n *LocalNode) addStorage(cmd cmds.User) {
 	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
 }
 
-func (n *LocalNode) GetRemoteNode(id Id) (*RemoteNode, error) {
-	return n.remoteNodes.GetConnection(id)
+func (n *LocalNode) GetRemoteNode(id Id) (*Node, error) {
+	return n.remoteNodes.GetNode(id)
 }
