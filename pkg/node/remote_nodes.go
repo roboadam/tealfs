@@ -12,11 +12,6 @@ type RemoteNodes struct {
 	deletes chan Id
 }
 
-type remoteNode struct {
-	node Node
-	conn net.Conn
-}
-
 func NewRemoteNodes() *RemoteNodes {
 	nodes := &RemoteNodes{
 		nodes:   make(map[Id]remoteNode),
@@ -83,4 +78,9 @@ func (holder *RemoteNodes) sendNodeToChan(request getsRequestWithResponseChan) {
 
 func (holder *RemoteNodes) storeNode(remoteNode remoteNode) {
 	holder.nodes[remoteNode.node.Id] = remoteNode
+}
+
+type remoteNode struct {
+	node Node
+	conn net.Conn
 }

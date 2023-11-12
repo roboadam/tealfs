@@ -45,12 +45,12 @@ func (n *LocalNode) acceptConnections() {
 }
 
 func (n *LocalNode) handleConnection(conn net.Conn) {
-	data, _ := raw_net.ReadBytes(conn, proto.CommandAndLengthSize)
-	command, length, _ := proto.CommandAndLengthFromBytes(data)
-	raw_data, _ := raw_net.ReadBytes(conn, length)
+	rawHeader, _ := raw_net.ReadBytes(conn, proto.CommandAndLengthSize)
+	command, length, _ := proto.CommandAndLengthFromBytes(rawHeader)
+	payload, _ := raw_net.ReadBytes(conn, length)
 
 	if command == proto.Hello() {
-		remoteId, _ := HelloFromBytes(raw_data)
+		remoteId, _ := HelloFromBytes(payload)
 
 		payload := HelloToBytes(n.GetId())
 		raw_net.SendBytes(conn, proto.CommandAndLengthToBytes(proto.Hello(), uint32(len(payload))))
