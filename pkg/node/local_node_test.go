@@ -33,7 +33,8 @@ func TestConnectToRemoteNode(t *testing.T) {
 		t.Error("Node did not connect")
 	}
 
-	if !bytes.Equal(tNet.Conn.BytesWritten, validHello(n.GetId())) {
+	expected := validHello(n.GetId())
+	if !bytes.Equal(tNet.Conn.BytesWritten, expected) {
 		t.Error("Node did not send valid hello")
 	}
 }
@@ -90,9 +91,14 @@ func TestReceiveNodeSyncAddsMissingNodes(t *testing.T) {
 
 func validHello(nodeId node.Id) []byte {
 	serializedHello := int8Serialized(1)
+
 	serializedNodeIdLen := intSerialized(len(nodeId.String()))
 	serializedNodeId := []byte(nodeId.String())
-	return append(append(serializedHello, serializedNodeIdLen...), serializedNodeId...)
+
+	payloadLen := len(serializedNodeId) + len(serializedNodeId)
+	serializedPayloadLen := intSerialized(payloadLen)
+
+	return append(append(append(serializedHello, serializedPayloadLen...), serializedNodeIdLen...), serializedNodeId...)
 }
 
 type NodeInfo struct {
