@@ -1,11 +1,11 @@
 package proto
 
-const (
-	NodeSync = uint8(2)
-)
-
 func Hello() NetCmd {
 	return NetCmd{Value: 1}
+}
+
+func NodeSync() NetCmd {
+	return NetCmd{Value: 2}
 }
 
 type NetCmd struct {

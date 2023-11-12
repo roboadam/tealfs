@@ -3,21 +3,33 @@ package node
 import (
 	"errors"
 	"net"
+	"tealfs/pkg/proto"
 )
 
 type RemoteNodes struct {
-	nodes   map[Id]remoteNode
-	adds    chan remoteNode
-	gets    chan getsRequestWithResponseChan
-	deletes chan Id
+	nodes    map[Id]remoteNode
+	adds     chan remoteNode
+	gets     chan getsRequestWithResponseChan
+	deletes  chan Id
+	incoming chan Payload
+	outgoing chan Payload
+}
+
+type Payload struct {
+	Sender   Id
+	Receiver Id
+	Command  proto.NetCmd
+	RawData  []byte
 }
 
 func NewRemoteNodes() *RemoteNodes {
 	nodes := &RemoteNodes{
-		nodes:   make(map[Id]remoteNode),
-		adds:    make(chan remoteNode),
-		gets:    make(chan getsRequestWithResponseChan),
-		deletes: make(chan Id),
+		nodes:    make(map[Id]remoteNode),
+		adds:     make(chan remoteNode),
+		gets:     make(chan getsRequestWithResponseChan),
+		deletes:  make(chan Id),
+		incoming: make(chan Payload),
+		outgoing: make(chan Payload),
 	}
 
 	go nodes.consumeChannels()
