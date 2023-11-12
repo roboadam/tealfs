@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/raw_net"
 )
 
 type RemoteNodes struct {
@@ -11,15 +12,14 @@ type RemoteNodes struct {
 	adds     chan remoteNode
 	gets     chan getsRequestWithResponseChan
 	deletes  chan Id
-	incoming chan Payload
-	outgoing chan Payload
+	incoming chan payloadRequestWithResponseChan
+	outgoing chan *Payload
 }
 
 type Payload struct {
-	Sender   Id
-	Receiver Id
-	Command  proto.NetCmd
-	RawData  []byte
+	NodeId  Id
+	Command proto.NetCmd
+	RawData []byte
 }
 
 func NewRemoteNodes() *RemoteNodes {
@@ -28,8 +28,8 @@ func NewRemoteNodes() *RemoteNodes {
 		adds:     make(chan remoteNode),
 		gets:     make(chan getsRequestWithResponseChan),
 		deletes:  make(chan Id),
-		incoming: make(chan Payload),
-		outgoing: make(chan Payload),
+		incoming: make(chan payloadRequestWithResponseChan),
+		outgoing: make(chan *Payload),
 	}
 
 	go nodes.consumeChannels()
@@ -55,9 +55,23 @@ func (holder *RemoteNodes) DeleteConnection(id Id) {
 	holder.deletes <- id
 }
 
+func (holder *RemoteNodes) ReceivePayload() *Payload {
+	responseChan := make(chan *Payload)
+	holder.incoming <- payloadRequestWithResponseChan{response: responseChan}
+	return <- responseChan
+}
+
+func (holder *RemoteNodes) SendPayload(id Id, payload *Payload) {
+	holder.outgoing <- payload
+}
+
 type getsRequestWithResponseChan struct {
 	request  Id
 	response chan *Node
+}
+
+type payloadRequestWithResponseChan struct {
+	response chan *Payload
 }
 
 func (holder *RemoteNodes) consumeChannels() {
@@ -75,7 +89,15 @@ func (holder *RemoteNodes) consumeChannels() {
 				remoteNode.conn.Close()
 				delete(holder.nodes, id)
 			}
+
+		case request := <-holder.incoming:
+			
+
+		case payload := <-holder.outgoing:
+			conn := holder.nodes[payload.NodeId].conn
+			raw_net.SendBytes(conn, payload.RawData)
 		}
+
 	}
 }
 
@@ -90,6 +112,17 @@ func (holder *RemoteNodes) sendNodeToChan(request getsRequestWithResponseChan) {
 
 func (holder *RemoteNodes) storeNode(remoteNode remoteNode) {
 	holder.nodes[remoteNode.node.Id] = remoteNode
+	go holder.readPayloadsFromConnection(remoteNode.node.Id)
+}
+
+func (holder *RemoteNodes) readPayloadsFromConnection(nodeId Id) {
+	conn := holder.nodes[nodeId].conn
+	for {
+		buf, _ := raw_net.ReadBytes(conn, proto.CommandAndLengthSize)
+		cmd, len, _ := proto.CommandAndLengthFromBytes(buf)
+		data, _ := raw_net.ReadBytes(conn, len)
+		holder.incoming <- Payload{NodeId: nodeId, Command: cmd, RawData: data}
+	}
 }
 
 type remoteNode struct {
