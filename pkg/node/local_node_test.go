@@ -9,6 +9,7 @@ import (
 	"tealfs/pkg/test"
 	"tealfs/pkg/util"
 	"testing"
+	"time"
 )
 
 func TestNodeCreation(t *testing.T) {
@@ -34,8 +35,10 @@ func TestConnectToRemoteNode(t *testing.T) {
 	}
 
 	expected := validHello(n.GetId())
+
+	time.Sleep(time.Millisecond * 100)
 	if !bytes.Equal(tNet.Conn.BytesWritten, expected) {
-		t.Error("Node did not send valid hello")
+		t.Errorf("Node did not send valid hello, %d %d", len(tNet.Conn.BytesWritten), len(expected))
 	}
 }
 
@@ -47,6 +50,11 @@ func TestIncomingConnection(t *testing.T) {
 
 	remoteNodeId := node.NewNodeId()
 	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
+
+	expected := validHello(n.GetId())
+	if !bytes.Equal(mockNet.Conn.BytesWritten, expected) {
+		t.Error("You didn't hello back!")
+	}
 
 	remoteNode, err := n.GetRemoteNode(remoteNodeId)
 	if err != nil || remoteNode == nil || remoteNode.Id != remoteNodeId {
@@ -95,7 +103,7 @@ func validHello(nodeId node.Id) []byte {
 	serializedNodeIdLen := intSerialized(len(nodeId.String()))
 	serializedNodeId := []byte(nodeId.String())
 
-	payloadLen := len(serializedNodeId) + len(serializedNodeId)
+	payloadLen := len(serializedNodeIdLen) + len(serializedNodeId)
 	serializedPayloadLen := intSerialized(payloadLen)
 
 	return append(append(append(serializedHello, serializedPayloadLen...), serializedNodeIdLen...), serializedNodeId...)
