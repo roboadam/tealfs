@@ -18,7 +18,7 @@ type RemoteNodes struct {
 
 type Payload struct {
 	NodeId  Id
-	Command proto.NetCmd
+	Command proto.NetType
 	RawData []byte
 }
 
