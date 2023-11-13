@@ -75,10 +75,9 @@ func (n *LocalNode) addRemoteNode(cmd cmds.User) {
 }
 
 func (n *LocalNode) sendHello(conn net.Conn) {
-	
 	payload := HelloToBytes(n.GetId())
-	header := proto.CommandAndLengthToBytes(proto.Hello(), uint32(len(payload)))
-	raw_net.SendBytes(conn, header)
+	header := proto.Header{Typ: proto.Hello(), Len: uint32(len(payload))}
+	raw_net.SendBytes(conn, header.ToBytes())
 	raw_net.SendBytes(conn, payload)
 }
 
