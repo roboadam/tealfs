@@ -45,15 +45,10 @@ func (n *LocalNode) acceptConnections() {
 }
 
 func (n *LocalNode) handleConnection(conn net.Conn) {
-	rawHeader, _ := raw_net.ReadBytes(conn, proto.CommandAndLengthSize)
-	command, length, _ := proto.CommandAndLengthFromBytes(rawHeader)
-	payload, _ := raw_net.ReadBytes(conn, length)
-
-	if command == proto.Hello() {
-		remoteId, _ := HelloFromBytes(payload)
-
+	payload := n.ReceivePayload(conn)
+	if payload.Type == proto.Hello() {
+		remoteId, _ := HelloFromBytes(payload.Data)
 		n.sendHello(conn)
-
 		node := Node{Id: remoteId, Address: NewAddress(conn.RemoteAddr().String())}
 		n.remoteNodes.Add(node, conn)
 	}
@@ -64,14 +59,18 @@ func (n *LocalNode) addRemoteNode(cmd cmds.User) {
 	conn := n.tNet.Dial(remoteAddress.value)
 
 	n.sendHello(conn)
-
-	rawData, _ := raw_net.ReadBytes(conn, proto.CommandAndLengthSize)
-	command, length, _ := proto.CommandAndLengthFromBytes(rawData)
-	rawData, _ = raw_net.ReadBytes(conn, length)
-	if command == proto.Hello() {
-		remoteId, _ := HelloFromBytes(rawData)
+	payload := n.ReceivePayload(conn)
+	if payload.Type == proto.Hello() {
+		remoteId, _ := HelloFromBytes(payload.Data)
 		n.remoteNodes.Add(Node{Id: remoteId, Address: remoteAddress}, conn)
 	}
+}
+
+func (*LocalNode) ReceivePayload(conn net.Conn) proto.Payload {
+	rawData, _ := raw_net.ReadBytes(conn, proto.HeaderLen)
+	header, _ := proto.HeaderFromBytes(rawData)
+	rawData, _ = raw_net.ReadBytes(conn, header.Len)
+	return proto.Payload{Type: header.Typ, Data: rawData}
 }
 
 func (n *LocalNode) sendHello(conn net.Conn) {

@@ -19,6 +19,11 @@ type Header struct {
 	Len uint32
 }
 
+type Payload struct {
+	Type NetType
+	Data []byte
+}
+
 const HeaderLen = 5
 
 func (header *Header) ToBytes() []byte {

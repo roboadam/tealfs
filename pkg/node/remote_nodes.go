@@ -12,24 +12,30 @@ type RemoteNodes struct {
 	adds     chan remoteNode
 	gets     chan getsRequestWithResponseChan
 	deletes  chan Id
-	incoming chan *Payload
-	outgoing chan *Payload
-}
-
-type Payload struct {
-	NodeId  Id
-	Command proto.NetType
-	RawData []byte
+	incoming chan struct {
+		From    Id
+		Payload *proto.Payload
+	}
+	outgoing chan struct {
+		To      Id
+		Payload *proto.Payload
+	}
 }
 
 func NewRemoteNodes() *RemoteNodes {
 	nodes := &RemoteNodes{
-		nodes:    make(map[Id]remoteNode),
-		adds:     make(chan remoteNode),
-		gets:     make(chan getsRequestWithResponseChan),
-		deletes:  make(chan Id),
-		incoming: make(chan *Payload),
-		outgoing: make(chan *Payload),
+		nodes:   make(map[Id]remoteNode),
+		adds:    make(chan remoteNode),
+		gets:    make(chan getsRequestWithResponseChan),
+		deletes: make(chan Id),
+		incoming: make(chan struct {
+			From    Id
+			Payload *proto.Payload
+		}),
+		outgoing: make(chan struct {
+			To      Id
+			Payload *proto.Payload
+		}),
 	}
 
 	go nodes.consumeChannels()
@@ -55,12 +61,19 @@ func (holder *RemoteNodes) DeleteConnection(id Id) {
 	holder.deletes <- id
 }
 
-func (holder *RemoteNodes) ReceivePayload() *Payload {
-	return <-holder.incoming
+func (holder *RemoteNodes) ReceivePayload() (Id, *proto.Payload) {
+	received := <-holder.incoming
+	return received.From, received.Payload
 }
 
-func (holder *RemoteNodes) SendPayload(id Id, payload *Payload) {
-	holder.outgoing <- payload
+func (holder *RemoteNodes) SendPayload(to Id, payload *proto.Payload) {
+	holder.outgoing <- struct {
+		To      Id
+		Payload *proto.Payload
+	}{
+		To:      to,
+		Payload: payload,
+	}
 }
 
 type getsRequestWithResponseChan struct {
@@ -84,9 +97,9 @@ func (holder *RemoteNodes) consumeChannels() {
 				delete(holder.nodes, id)
 			}
 
-		case payload := <-holder.outgoing:
-			conn := holder.nodes[payload.NodeId].conn
-			raw_net.SendBytes(conn, payload.RawData)
+		case sending := <-holder.outgoing:
+			conn := holder.nodes[sending.To].conn
+			raw_net.SendBytes(conn, sending.Payload.Data)
 		}
 	}
 }
