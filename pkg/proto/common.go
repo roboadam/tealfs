@@ -27,3 +27,12 @@ func IntToBytes(value uint32) []byte {
 	binary.BigEndian.PutUint32(buf, value)
 	return buf
 }
+
+func PrependHeader(data []byte, id uint8) []byte {
+	dataLength := uint32(len(data))
+	buf := make([]byte, dataLength+5)
+	copy(buf, IntToBytes(dataLength+1))
+	buf[4] = id
+	copy(buf[5:], data)
+	return buf
+}

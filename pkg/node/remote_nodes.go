@@ -13,12 +13,12 @@ type RemoteNodes struct {
 	gets     chan getsRequestWithResponseChan
 	deletes  chan Id
 	incoming chan struct {
-		From    Id
-		Payload *proto.Payload
+		From Id
+		Data []byte
 	}
 	outgoing chan struct {
-		To      Id
-		Payload *proto.Payload
+		To   Id
+		Data []byte
 	}
 }
 
@@ -29,12 +29,12 @@ func NewRemoteNodes() *RemoteNodes {
 		gets:    make(chan getsRequestWithResponseChan),
 		deletes: make(chan Id),
 		incoming: make(chan struct {
-			From    Id
-			Payload *proto.Payload
+			From Id
+			Data []byte
 		}),
 		outgoing: make(chan struct {
-			To      Id
-			Payload *proto.Payload
+			To   Id
+			Data []byte
 		}),
 	}
 
@@ -63,7 +63,7 @@ func (holder *RemoteNodes) DeleteConnection(id Id) {
 
 func (holder *RemoteNodes) ReceivePayload() (Id, *proto.Payload) {
 	received := <-holder.incoming
-	return received.From, received.Payload
+	return received.From, received.Data
 }
 
 func (holder *RemoteNodes) SendPayload(to Id, payload *proto.Payload) {
@@ -99,7 +99,7 @@ func (holder *RemoteNodes) consumeChannels() {
 
 		case sending := <-holder.outgoing:
 			conn := holder.nodes[sending.To].conn
-			raw_net.SendBytes(conn, sending.Payload.Data)
+			raw_net.SendBytes(conn, sending.Data.Data)
 		}
 	}
 }
