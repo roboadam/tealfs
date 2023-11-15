@@ -13,12 +13,12 @@ type RemoteNodes struct {
 	gets     chan getsRequestWithResponseChan
 	deletes  chan Id
 	incoming chan struct {
-		From Id
-		Data []byte
+		From    Id
+		Payload *Payload
 	}
 	outgoing chan struct {
-		To   Id
-		Data []byte
+		To      Id
+		Payload *Payload
 	}
 }
 
@@ -29,12 +29,12 @@ func NewRemoteNodes() *RemoteNodes {
 		gets:    make(chan getsRequestWithResponseChan),
 		deletes: make(chan Id),
 		incoming: make(chan struct {
-			From Id
-			Data []byte
+			From    Id
+			Payload *Payload
 		}),
 		outgoing: make(chan struct {
-			To   Id
-			Data []byte
+			To      Id
+			Payload *Payload
 		}),
 	}
 
@@ -61,15 +61,15 @@ func (holder *RemoteNodes) DeleteConnection(id Id) {
 	holder.deletes <- id
 }
 
-func (holder *RemoteNodes) ReceivePayload() (Id, *proto.Payload) {
+func (holder *RemoteNodes) ReceivePayload() (Id, *Payload) {
 	received := <-holder.incoming
-	return received.From, received.Data
+	return received.From, received.Payload
 }
 
-func (holder *RemoteNodes) SendPayload(to Id, payload *proto.Payload) {
+func (holder *RemoteNodes) SendPayload(to Id, payload *Payload) {
 	holder.outgoing <- struct {
 		To      Id
-		Payload *proto.Payload
+		Payload *Payload
 	}{
 		To:      to,
 		Payload: payload,
@@ -99,7 +99,8 @@ func (holder *RemoteNodes) consumeChannels() {
 
 		case sending := <-holder.outgoing:
 			conn := holder.nodes[sending.To].conn
-			raw_net.SendBytes(conn, sending.Data.Data)
+			payload := *sending.Payload
+			raw_net.SendPayload(conn, payload.ToBytes())
 		}
 	}
 }
@@ -121,9 +122,8 @@ func (holder *RemoteNodes) storeNode(remoteNode remoteNode) {
 func (holder *RemoteNodes) readPayloadsFromConnection(nodeId Id) {
 	conn := holder.nodes[nodeId].conn
 	for {
-		buf, _ := raw_net.ReadBytes(conn, proto.CommandAndLengthSize)
-		cmd, len, _ := proto.CommandAndLengthFromBytes(buf)
-		data, _ := raw_net.ReadBytes(conn, len)
+		buf, _ := raw_net.ReadPayload(conn)
+		payload := Payl
 		holder.incoming <- &Payload{NodeId: nodeId, Command: cmd, RawData: data}
 	}
 }

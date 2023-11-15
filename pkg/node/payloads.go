@@ -3,11 +3,17 @@ package node
 import "tealfs/pkg/proto"
 
 const (
-	HelloId = uint8(1)
+	HelloType = uint8(1)
 )
 
 type Payload interface {
 	ToBytes() []byte
+}
+
+func ToPayload(data []byte) *Payload {
+	switch data[0] {
+		case HelloType
+	}
 }
 
 type Hello struct {
@@ -15,6 +21,7 @@ type Hello struct {
 }
 
 func (h *Hello) ToBytes() []byte {
-	rawId := proto.StringToBytes(h.NodeId.value)
-	return proto.PrependHeader(rawId, HelloId)
+	nodeId := proto.StringToBytes(h.NodeId.value)
+	return proto.AddType(HelloType, nodeId)
 }
+
