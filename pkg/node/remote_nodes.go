@@ -3,7 +3,6 @@ package node
 import (
 	"errors"
 	"net"
-	"tealfs/pkg/proto"
 	"tealfs/pkg/raw_net"
 )
 
@@ -123,8 +122,11 @@ func (holder *RemoteNodes) readPayloadsFromConnection(nodeId Id) {
 	conn := holder.nodes[nodeId].conn
 	for {
 		buf, _ := raw_net.ReadPayload(conn)
-		payload := Payl
-		holder.incoming <- &Payload{NodeId: nodeId, Command: cmd, RawData: data}
+		payload := ToPayload(buf)
+		holder.incoming <- struct {
+			From    Id
+			Payload *Payload
+		}{From: nodeId, Payload: &payload}
 	}
 }
 

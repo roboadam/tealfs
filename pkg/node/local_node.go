@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"tealfs/pkg/cmds"
-	"tealfs/pkg/proto"
 	"tealfs/pkg/raw_net"
 	"tealfs/pkg/tnet"
 )
@@ -45,12 +44,14 @@ func (n *LocalNode) acceptConnections() {
 }
 
 func (n *LocalNode) handleConnection(conn net.Conn) {
-	payload := n.ReceivePayload(conn)
-	if payload.Type == proto.Hello() {
-		remoteId, _ := HelloFromBytes(payload.Data)
+	payload := receivePayload(conn)
+	switch p := payload.(type) {
+	case *Hello:
 		n.sendHello(conn)
-		node := Node{Id: remoteId, Address: NewAddress(conn.RemoteAddr().String())}
+		node := Node{Id: p.NodeId, Address: NewAddress(conn.RemoteAddr().String())}
 		n.remoteNodes.Add(node, conn)
+	default:
+		conn.Close()
 	}
 }
 
@@ -59,25 +60,26 @@ func (n *LocalNode) addRemoteNode(cmd cmds.User) {
 	conn := n.tNet.Dial(remoteAddress.value)
 
 	n.sendHello(conn)
-	payload := n.ReceivePayload(conn)
-	if payload.Type == proto.Hello() {
-		remoteId, _ := HelloFromBytes(payload.Data)
-		n.remoteNodes.Add(Node{Id: remoteId, Address: remoteAddress}, conn)
+	payload := receivePayload(conn)
+
+	switch p := payload.(type) {
+	case *Hello:
+		n.sendHello(conn)
+		node := Node{Id: p.NodeId, Address: remoteAddress}
+		n.remoteNodes.Add(node, conn)
+	default:
+		conn.Close()
 	}
 }
 
-func (*LocalNode) ReceivePayload(conn net.Conn) proto.Payload {
-	rawData, _ := raw_net.ReadBytes(conn, proto.HeaderLen)
-	header, _ := proto.HeaderFromBytes(rawData)
-	rawData, _ = raw_net.ReadBytes(conn, header.Len)
-	return proto.Payload{Type: header.Typ, Data: rawData}
+func (n *LocalNode) sendHello(conn net.Conn) {
+	hello := Hello{NodeId: n.GetId()}
+	raw_net.SendPayload(conn, hello.ToBytes())
 }
 
-func (n *LocalNode) sendHello(conn net.Conn) {
-	payload := HelloToBytes(n.GetId())
-	header := proto.Header{Typ: proto.Hello(), Len: uint32(len(payload))}
-	raw_net.SendBytes(conn, header.ToBytes())
-	raw_net.SendBytes(conn, payload)
+func receivePayload(conn net.Conn) Payload {
+	bytes, _ := raw_net.ReadPayload(conn)
+	return ToPayload(bytes)
 }
 
 func (n *LocalNode) handleUiCommands() {
