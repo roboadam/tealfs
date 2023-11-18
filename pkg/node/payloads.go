@@ -5,6 +5,7 @@ import "tealfs/pkg/proto"
 const (
 	NoOpType  = uint8(0)
 	HelloType = uint8(1)
+	SyncType  = uint8(2)
 )
 
 type Payload interface {
@@ -18,13 +19,6 @@ func ToPayload(data []byte) Payload {
 	default:
 		return ToNoOp(data)
 	}
-}
-
-func payloadType(data []byte) byte {
-	if len(data) <= 0 {
-		return NoOpType
-	}
-	return data[0]
 }
 
 type Hello struct {
@@ -51,4 +45,11 @@ func (h *NoOp) ToBytes() []byte {
 
 func ToNoOp(data []byte) *NoOp {
 	return &NoOp{}
+}
+
+func payloadType(data []byte) byte {
+	if len(data) <= 0 {
+		return NoOpType
+	}
+	return data[0]
 }
