@@ -33,8 +33,10 @@ func (s *Set[K]) Exists(k K) bool {
 
 func (m *Set[K]) GetValues() []K {
 	result := make([]K, len(m.data))
-	for k, i := range m.data {
+	i := 0
+	for k := range m.data {
 		result[i] = k
+		i++
 	}
 	return result
 }

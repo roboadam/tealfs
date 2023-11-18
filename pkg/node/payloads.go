@@ -47,7 +47,9 @@ func ToHello(data []byte) *Hello {
 }
 
 func (h *NoOp) ToBytes() []byte {
-	return make([]byte, 0)
+	result := make([]byte, 1)
+	result[0] = NoOpType
+	return result
 }
 
 func ToNoOp(data []byte) *NoOp {
@@ -55,7 +57,29 @@ func ToNoOp(data []byte) *NoOp {
 }
 
 func (s *SyncNodes) ToBytes() []byte {
-	
+	result := make([]byte, 0)
+	for _, node := range s.Nodes.GetValues() {
+		id := proto.StringToBytes(node.Id.String())
+		address := proto.StringToBytes(node.Address.value)
+		result = append(result, id...)
+		result = append(result, address...)
+	}
+	return proto.AddType(SyncType, result)
+}
+
+func ToSyncNodes(data []byte) *SyncNodes {
+	remainder := data
+	result := util.NewSet[Node]()
+	for {
+		var id, address string
+		id, remainder = proto.StringFromBytes(remainder)
+		address, remainder = proto.StringFromBytes(remainder)
+		node := Node{Id: IdFromRaw(id), Address: NewAddress(address)}
+		result.Add(node)
+		if len(remainder) <= 0 {
+			return &SyncNodes{Nodes: result}
+		}
+	}
 }
 
 func payloadType(data []byte) byte {
