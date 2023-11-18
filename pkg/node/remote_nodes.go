@@ -4,14 +4,16 @@ import (
 	"errors"
 	"net"
 	"tealfs/pkg/raw_net"
+	"tealfs/pkg/util"
 )
 
 type RemoteNodes struct {
-	nodes    map[Id]remoteNode
-	adds     chan remoteNode
-	gets     chan getsRequestWithResponseChan
-	deletes  chan Id
-	incoming chan struct {
+	nodes     map[Id]remoteNode
+	localNode Node
+	adds      chan remoteNode
+	gets      chan getsRequestWithResponseChan
+	deletes   chan Id
+	incoming  chan struct {
 		From    Id
 		Payload *Payload
 	}
@@ -21,12 +23,13 @@ type RemoteNodes struct {
 	}
 }
 
-func NewRemoteNodes() *RemoteNodes {
+func NewRemoteNodes(localNode Node) *RemoteNodes {
 	nodes := &RemoteNodes{
-		nodes:   make(map[Id]remoteNode),
-		adds:    make(chan remoteNode),
-		gets:    make(chan getsRequestWithResponseChan),
-		deletes: make(chan Id),
+		nodes:     make(map[Id]remoteNode),
+		localNode: localNode,
+		adds:      make(chan remoteNode),
+		gets:      make(chan getsRequestWithResponseChan),
+		deletes:   make(chan Id),
 		incoming: make(chan struct {
 			From    Id
 			Payload *Payload
@@ -116,6 +119,17 @@ func (holder *RemoteNodes) sendNodeToChan(request getsRequestWithResponseChan) {
 func (holder *RemoteNodes) storeNode(remoteNode remoteNode) {
 	holder.nodes[remoteNode.node.Id] = remoteNode
 	go holder.readPayloadsFromConnection(remoteNode.node.Id)
+}
+
+func (holder *RemoteNodes) nodesToSync() util.Set[Node] {
+	result := util.NewSet[Node]()
+
+	result.Add(holder.localNode)
+	for _, remoteNode := range holder.nodes {
+		result.Add(remoteNode.node)
+	}
+
+	return result
 }
 
 func (holder *RemoteNodes) readPayloadsFromConnection(nodeId Id) {
