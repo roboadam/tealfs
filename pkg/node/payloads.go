@@ -1,6 +1,9 @@
 package node
 
-import "tealfs/pkg/proto"
+import (
+	"tealfs/pkg/proto"
+	"tealfs/pkg/util"
+)
 
 const (
 	NoOpType  = uint8(0)
@@ -25,6 +28,10 @@ type Hello struct {
 	NodeId Id
 }
 
+type SyncNodes struct {
+	Nodes util.Set[Node]
+}
+
 type NoOp struct{}
 
 func (h *Hello) ToBytes() []byte {
@@ -45,6 +52,10 @@ func (h *NoOp) ToBytes() []byte {
 
 func ToNoOp(data []byte) *NoOp {
 	return &NoOp{}
+}
+
+func (s *SyncNodes) ToBytes() []byte {
+	
 }
 
 func payloadType(data []byte) byte {

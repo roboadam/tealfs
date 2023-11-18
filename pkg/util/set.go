@@ -30,3 +30,11 @@ func (s *Set[K]) Exists(k K) bool {
 	_, exists := s.data[k]
 	return exists
 }
+
+func (m *Set[K]) GetValues() []K {
+	result := make([]K, len(m.data))
+	for k, i := range m.data {
+		result[i] = k
+	}
+	return result
+}
