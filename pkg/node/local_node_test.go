@@ -52,11 +52,13 @@ func TestIncomingConnection(t *testing.T) {
 	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
 
 	expected := validHello(n.GetId())
+	time.Sleep(time.Millisecond * 100)
 	if !bytes.Equal(mockNet.Conn.BytesWritten, expected) {
 		t.Error("You didn't hello back!")
 	}
 
 	remoteNode, err := n.GetRemoteNode(remoteNodeId)
+	time.Sleep(time.Millisecond * 100)
 	if err != nil || remoteNode == nil || remoteNode.Id != remoteNodeId {
 		t.Error("Did not add node " + remoteNodeId.String() + " to cluster")
 	}
@@ -98,15 +100,15 @@ func TestReceiveNodeSyncAddsMissingNodes(t *testing.T) {
 }
 
 func validHello(nodeId node.Id) []byte {
+
 	serializedHello := int8Serialized(1)
-
-	serializedNodeIdLen := intSerialized(len(nodeId.String()))
 	serializedNodeId := []byte(nodeId.String())
+	seralizedNodeIdLen := intSerialized(len(serializedNodeId))
 
-	payloadLen := len(serializedNodeIdLen) + len(serializedNodeId)
-	serializedPayloadLen := intSerialized(payloadLen)
+	payload := append(append(serializedHello, seralizedNodeIdLen...), serializedNodeId...)
+	seralizedPayoadLen := intSerialized(len(payload))
 
-	return append(append(append(serializedHello, serializedPayloadLen...), serializedNodeIdLen...), serializedNodeId...)
+	return append(seralizedPayoadLen, payload...)
 }
 
 type NodeInfo struct {
