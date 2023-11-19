@@ -28,6 +28,7 @@ func New(userCmds chan cmds.User, tNet tnet.TNet) LocalNode {
 func (n *LocalNode) Start() {
 	go n.handleUiCommands()
 	go n.acceptConnections()
+	go n.readPayloads()
 }
 
 func (n *LocalNode) Close() {
@@ -41,6 +42,16 @@ func (n *LocalNode) GetId() Id {
 func (n *LocalNode) acceptConnections() {
 	for {
 		go n.handleConnection(n.tNet.Accept())
+	}
+}
+
+func (n *LocalNode) readPayloads() {
+	for {
+		id, payload := n.remoteNodes.ReceivePayload()
+		switch p:= payload.(type) {
+		case *SyncNodes:
+			
+		}
 	}
 }
 
