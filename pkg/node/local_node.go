@@ -16,10 +16,11 @@ type LocalNode struct {
 }
 
 func New(userCmds chan cmds.User, tNet tnet.TNet) LocalNode {
+	base := Node{Id: NewNodeId(), Address: NewAddress(tNet.GetBinding())}
 	return LocalNode{
-		base:        Node{Id: NewNodeId(), Address: NewAddress(tNet.GetBinding())},
+		base:        base,
 		userCmds:    userCmds,
-		remoteNodes: NewRemoteNodes(),
+		remoteNodes: NewRemoteNodes(base),
 		tNet:        tNet,
 	}
 }

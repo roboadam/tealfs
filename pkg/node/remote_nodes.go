@@ -118,6 +118,10 @@ func (holder *RemoteNodes) sendNodeToChan(request getsRequestWithResponseChan) {
 
 func (holder *RemoteNodes) storeNode(remoteNode remoteNode) {
 	holder.nodes[remoteNode.node.Id] = remoteNode
+	syncNodes := SyncNodes{
+		Nodes: holder.nodesToSync(),
+	}
+	raw_net.SendPayload(remoteNode.conn, syncNodes.ToBytes())
 	go holder.readPayloadsFromConnection(remoteNode.node.Id)
 }
 
