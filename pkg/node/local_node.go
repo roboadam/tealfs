@@ -46,13 +46,13 @@ func (n *LocalNode) acceptConnections() {
 }
 
 func (n *LocalNode) readPayloads() {
-	for {
-		id, payload := n.remoteNodes.ReceivePayload()
-		switch p:= payload.(type) {
-		case *SyncNodes:
+	// for {
+	// 	id, payload := n.remoteNodes.ReceivePayload()
+	// 	switch p:= payload.(type) {
+	// 	case *SyncNodes:
 			
-		}
-	}
+	// 	}
+	// }
 }
 
 func (n *LocalNode) handleConnection(conn net.Conn) {
