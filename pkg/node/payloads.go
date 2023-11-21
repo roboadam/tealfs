@@ -60,7 +60,7 @@ func (s *SyncNodes) ToBytes() []byte {
 	result := make([]byte, 0)
 	for _, node := range s.Nodes.GetValues() {
 		id := proto.StringToBytes(node.Id.String())
-		address := proto.StringToBytes(node.Address.value)
+		address := proto.StringToBytes(node.Address.Value)
 		result = append(result, id...)
 		result = append(result, address...)
 	}

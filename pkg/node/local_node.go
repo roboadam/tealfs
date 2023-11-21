@@ -50,7 +50,7 @@ func (n *LocalNode) readPayloads() {
 	// 	id, payload := n.remoteNodes.ReceivePayload()
 	// 	switch p:= payload.(type) {
 	// 	case *SyncNodes:
-			
+
 	// 	}
 	// }
 }
@@ -69,7 +69,7 @@ func (n *LocalNode) handleConnection(conn net.Conn) {
 
 func (n *LocalNode) addRemoteNode(cmd cmds.User) {
 	remoteAddress := NewAddress(cmd.Argument)
-	conn := n.tNet.Dial(remoteAddress.value)
+	conn := n.tNet.Dial(remoteAddress.Value)
 
 	n.sendHello(conn)
 	payload := receivePayload(conn)

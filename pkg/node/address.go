@@ -1,9 +1,9 @@
 package node
 
 type Address struct {
-	value string
+	Value string
 }
 
 func NewAddress(rawValue string) Address {
-	return Address{value: rawValue}
+	return Address{Value: rawValue}
 }
