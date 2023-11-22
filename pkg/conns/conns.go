@@ -101,7 +101,7 @@ func (holder *Conns) storeNode(conn conn) {
 }
 
 func (holder *Conns) readPayloadsFromConnection(nodeId node.Id) {
-	netConn := holder.netconnForConn(holder.conns[nodeId])
+	netConn := holder.netconnForId(nodeId)
 
 	for {
 		buf, _ := raw_net.ReadPayload(netConn)
@@ -113,9 +113,11 @@ func (holder *Conns) readPayloadsFromConnection(nodeId node.Id) {
 	}
 }
 
-func (holder *Conns) netconnForConn(id node.Id) net.Conn {
+func (conns *Conns) netconnForId(id node.Id) net.Conn {
+	conn := conns.conns[id]
 	if conn.netConn != nil {
-		return conn.netConn
+		return conns.conns[id].netConn
 	}
-	return holder.tnet.Dial(conn.address.Value)
+	conn.netConn = conns.tnet.Dial(conn.address.Value)
+	return conn.netConn
 }
