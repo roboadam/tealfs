@@ -28,7 +28,7 @@ type conn struct {
 	netConn net.Conn
 }
 
-func NewConns(tnet tnet.TNet) *Conns {
+func New(tnet tnet.TNet) *Conns {
 	conns := &Conns{
 		tnet:    tnet,
 		conns:   make(map[node.Id]conn),

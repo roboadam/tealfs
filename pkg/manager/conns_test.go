@@ -1,10 +1,11 @@
-package node_test
+package manager_test
 
 import (
 	"bytes"
 	"encoding/binary"
 	"strconv"
 	"tealfs/pkg/cmds"
+	"tealfs/pkg/manager"
 	"tealfs/pkg/node"
 	"tealfs/pkg/test"
 	"tealfs/pkg/util"
@@ -12,10 +13,10 @@ import (
 	"time"
 )
 
-func TestNodeCreation(t *testing.T) {
+func TestManagerCreation(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	tNet := test.MockNet{}
-	localNode := node.New(userCmds, &tNet)
+	localNode := manager.New(userCmds, &tNet)
 
 	if !nodeIdIsValid(&localNode) {
 		t.Error("Id is invalid")
@@ -25,7 +26,7 @@ func TestNodeCreation(t *testing.T) {
 func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
-	n := node.New(userCmds, &tNet)
+	n := manager.New(userCmds, &tNet)
 	n.Start()
 
 	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
