@@ -15,11 +15,11 @@ type Conns struct {
 	tnet     tnet.TNet
 	incoming chan struct {
 		From    node.Id
-		Payload *proto.Payload
+		Payload proto.Payload
 	}
 	outgoing chan struct {
 		To      node.Id
-		Payload *proto.Payload
+		Payload proto.Payload
 	}
 }
 
@@ -37,11 +37,11 @@ func New(tnet tnet.TNet) *Conns {
 		deletes: make(chan node.Id),
 		incoming: make(chan struct {
 			From    node.Id
-			Payload *proto.Payload
+			Payload proto.Payload
 		}),
 		outgoing: make(chan struct {
 			To      node.Id
-			Payload *proto.Payload
+			Payload proto.Payload
 		}),
 	}
 
@@ -58,15 +58,15 @@ func (holder *Conns) DeleteConnection(id node.Id) {
 	holder.deletes <- id
 }
 
-func (holder *Conns) ReceivePayload() (node.Id, *proto.Payload) {
+func (holder *Conns) ReceivePayload() (node.Id, proto.Payload) {
 	received := <-holder.incoming
 	return received.From, received.Payload
 }
 
-func (holder *Conns) SendPayload(to node.Id, payload *proto.Payload) {
+func (holder *Conns) SendPayload(to node.Id, payload proto.Payload) {
 	holder.outgoing <- struct {
 		To      node.Id
-		Payload *proto.Payload
+		Payload proto.Payload
 	}{
 		To:      to,
 		Payload: payload,
@@ -90,7 +90,7 @@ func (holder *Conns) consumeChannels() {
 
 		case sending := <-holder.outgoing:
 			netconn := holder.conns[sending.To].netConn
-			payload := *sending.Payload
+			payload := sending.Payload
 			raw_net.SendPayload(netconn, payload.ToBytes())
 		}
 	}
@@ -109,8 +109,8 @@ func (holder *Conns) readPayloadsFromConnection(nodeId node.Id) {
 		payload := proto.ToPayload(buf)
 		holder.incoming <- struct {
 			From    node.Id
-			Payload *proto.Payload
-		}{From: nodeId, Payload: &payload}
+			Payload proto.Payload
+		}{From: nodeId, Payload: payload}
 	}
 }
 

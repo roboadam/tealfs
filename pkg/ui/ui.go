@@ -9,11 +9,11 @@ import (
 )
 
 type Ui struct {
-	manager  *mgr.Manager
+	manager  *mgr.Mgr
 	userCmds chan cmds.User
 }
 
-func NewUi(manager *mgr.Manager, userCmds chan cmds.User) Ui {
+func NewUi(manager *mgr.Mgr, userCmds chan cmds.User) Ui {
 	return Ui{manager, userCmds}
 }
 

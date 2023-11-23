@@ -11,16 +11,16 @@ import (
 	"tealfs/pkg/tnet"
 )
 
-type Manager struct {
+type Mgr struct {
 	node     node.Node
 	userCmds chan cmds.User
 	tNet     tnet.TNet
 	conns    *conns.Conns
 }
 
-func New(userCmds chan cmds.User, tNet tnet.TNet) Manager {
+func New(userCmds chan cmds.User, tNet tnet.TNet) Mgr {
 	base := node.Node{Id: node.NewNodeId(), Address: node.NewAddress(tNet.GetBinding())}
-	return Manager{
+	return Mgr{
 		node:     base,
 		userCmds: userCmds,
 		conns:    conns.New(tNet),
@@ -28,37 +28,38 @@ func New(userCmds chan cmds.User, tNet tnet.TNet) Manager {
 	}
 }
 
-func (n *Manager) Start() {
-	go n.handleUiCommands()
-	go n.acceptConnections()
-	go n.readPayloads()
+func (m *Mgr) Start() {
+	go m.handleUiCommands()
+	go m.acceptConnections()
+	go m.readPayloads()
 }
 
-func (n *Manager) Close() {
-	n.tNet.Close()
+func (m *Mgr) Close() {
+	m.tNet.Close()
 }
 
-func (n *Manager) GetId() node.Id {
-	return n.node.Id
+func (m *Mgr) GetId() node.Id {
+	return m.node.Id
 }
 
-func (n *Manager) acceptConnections() {
+func (m *Mgr) acceptConnections() {
 	for {
-		go n.handleConnection(n.tNet.Accept())
+		go m.handleConnection(m.tNet.Accept())
 	}
 }
 
-func (n *Manager) readPayloads() {
-	// for {
-	// 	id, payload := n.remoteNodes.ReceivePayload()
-	// 	switch p:= payload.(type) {
-	// 	case *SyncNodes:
+func (m *Mgr) readPayloads() {
+	for {
+		id, payload := m.conns.ReceivePayload()
 
-	// 	}
-	// }
+		switch p := payload.(type) {
+		case *proto.SyncNodes:
+			fmt.Println(id, p)
+		}
+	}
 }
 
-func (n *Manager) handleConnection(conn net.Conn) {
+func (n *Mgr) handleConnection(conn net.Conn) {
 	payload := receivePayload(conn)
 	switch p := payload.(type) {
 	case *proto.Hello:
@@ -70,7 +71,7 @@ func (n *Manager) handleConnection(conn net.Conn) {
 	}
 }
 
-func (n *Manager) addRemoteNode(cmd cmds.User) {
+func (n *Mgr) addRemoteNode(cmd cmds.User) {
 	remoteAddress := node.NewAddress(cmd.Argument)
 	conn := n.tNet.Dial(remoteAddress.Value)
 
@@ -79,6 +80,8 @@ func (n *Manager) addRemoteNode(cmd cmds.User) {
 
 	switch p := payload.(type) {
 	case *proto.Hello:
+		pld := &proto.Hello{NodeId: p.NodeId}
+		n.conns.SendPayload(p.NodeId, pld)
 		n.sendHello(conn)
 		node := node.Node{Id: p.NodeId, Address: remoteAddress}
 		n.conns.Add(node.Id, node.Address)
@@ -87,7 +90,7 @@ func (n *Manager) addRemoteNode(cmd cmds.User) {
 	}
 }
 
-func (n *Manager) sendHello(conn net.Conn) {
+func (n *Mgr) sendHello(conn net.Conn) {
 	hello := proto.Hello{NodeId: n.GetId()}
 	raw_net.SendPayload(conn, hello.ToBytes())
 }
@@ -97,7 +100,7 @@ func receivePayload(conn net.Conn) proto.Payload {
 	return proto.ToPayload(bytes)
 }
 
-func (n *Manager) handleUiCommands() {
+func (n *Mgr) handleUiCommands() {
 	for {
 		command := <-n.userCmds
 		switch command.CmdType {
@@ -109,6 +112,6 @@ func (n *Manager) handleUiCommands() {
 	}
 }
 
-func (n *Manager) addStorage(cmd cmds.User) {
+func (n *Mgr) addStorage(cmd cmds.User) {
 	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
 }

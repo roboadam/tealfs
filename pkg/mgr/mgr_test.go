@@ -145,6 +145,6 @@ func int8Serialized(number int8) []byte {
 	return []byte{byte(number)}
 }
 
-func nodeIdIsValid(mgr *mgr.Manager) bool {
+func nodeIdIsValid(mgr *mgr.Mgr) bool {
 	return len(mgr.GetId().String()) > 0
 }
