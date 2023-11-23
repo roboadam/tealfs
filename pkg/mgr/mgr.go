@@ -1,4 +1,4 @@
-package manager
+package mgr
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/node"
+	"tealfs/pkg/proto"
 	"tealfs/pkg/raw_net"
 	"tealfs/pkg/tnet"
 )
@@ -60,7 +61,7 @@ func (n *Manager) readPayloads() {
 func (n *Manager) handleConnection(conn net.Conn) {
 	payload := receivePayload(conn)
 	switch p := payload.(type) {
-	case *node.Hello:
+	case *proto.Hello:
 		n.sendHello(conn)
 		node := node.Node{Id: p.NodeId, Address: node.NewAddress(conn.RemoteAddr().String())}
 		n.conns.Add(node.Id, node.Address)
@@ -77,7 +78,7 @@ func (n *Manager) addRemoteNode(cmd cmds.User) {
 	payload := receivePayload(conn)
 
 	switch p := payload.(type) {
-	case *node.Hello:
+	case *proto.Hello:
 		n.sendHello(conn)
 		node := node.Node{Id: p.NodeId, Address: remoteAddress}
 		n.conns.Add(node.Id, node.Address)
@@ -87,13 +88,13 @@ func (n *Manager) addRemoteNode(cmd cmds.User) {
 }
 
 func (n *Manager) sendHello(conn net.Conn) {
-	hello := node.Hello{NodeId: n.GetId()}
+	hello := proto.Hello{NodeId: n.GetId()}
 	raw_net.SendPayload(conn, hello.ToBytes())
 }
 
-func receivePayload(conn net.Conn) node.Payload {
+func receivePayload(conn net.Conn) proto.Payload {
 	bytes, _ := raw_net.ReadPayload(conn)
-	return node.ToPayload(bytes)
+	return proto.ToPayload(bytes)
 }
 
 func (n *Manager) handleUiCommands() {
@@ -111,7 +112,3 @@ func (n *Manager) handleUiCommands() {
 func (n *Manager) addStorage(cmd cmds.User) {
 	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
 }
-
-// func (n *Manager) GetRemoteNode(id Id) (*Node, error) {
-// 	return n.conns.GetNode(id)
-// }

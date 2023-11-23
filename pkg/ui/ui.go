@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"os"
 	"tealfs/pkg/cmds"
-	"tealfs/pkg/manager"
+	"tealfs/pkg/mgr"
 )
 
 type Ui struct {
-	manager  *manager.Manager
+	manager  *mgr.Manager
 	userCmds chan cmds.User
 }
 
-func NewUi(manager *manager.Manager, userCmds chan cmds.User) Ui {
+func NewUi(manager *mgr.Manager, userCmds chan cmds.User) Ui {
 	return Ui{manager, userCmds}
 }
 

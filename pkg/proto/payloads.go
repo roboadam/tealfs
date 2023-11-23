@@ -1,7 +1,7 @@
-package node
+package proto
 
 import (
-	"tealfs/pkg/proto"
+	"tealfs/pkg/node"
 	"tealfs/pkg/util"
 )
 
@@ -25,24 +25,24 @@ func ToPayload(data []byte) Payload {
 }
 
 type Hello struct {
-	NodeId Id
+	NodeId node.Id
 }
 
 type SyncNodes struct {
-	Nodes util.Set[Node]
+	Nodes util.Set[node.Node]
 }
 
 type NoOp struct{}
 
 func (h *Hello) ToBytes() []byte {
-	nodeId := proto.StringToBytes(h.NodeId.value)
-	return proto.AddType(HelloType, nodeId)
+	nodeId := StringToBytes(h.NodeId.String())
+	return AddType(HelloType, nodeId)
 }
 
 func ToHello(data []byte) *Hello {
-	rawId, _ := proto.StringFromBytes(data[1:])
+	rawId, _ := StringFromBytes(data[1:])
 	return &Hello{
-		NodeId: IdFromRaw(rawId),
+		NodeId: node.IdFromRaw(rawId),
 	}
 }
 
@@ -59,22 +59,22 @@ func ToNoOp(data []byte) *NoOp {
 func (s *SyncNodes) ToBytes() []byte {
 	result := make([]byte, 0)
 	for _, node := range s.Nodes.GetValues() {
-		id := proto.StringToBytes(node.Id.String())
-		address := proto.StringToBytes(node.Address.Value)
+		id := StringToBytes(node.Id.String())
+		address := StringToBytes(node.Address.Value)
 		result = append(result, id...)
 		result = append(result, address...)
 	}
-	return proto.AddType(SyncType, result)
+	return AddType(SyncType, result)
 }
 
 func ToSyncNodes(data []byte) *SyncNodes {
 	remainder := data
-	result := util.NewSet[Node]()
+	result := util.NewSet[node.Node]()
 	for {
 		var id, address string
-		id, remainder = proto.StringFromBytes(remainder)
-		address, remainder = proto.StringFromBytes(remainder)
-		node := Node{Id: IdFromRaw(id), Address: NewAddress(address)}
+		id, remainder = StringFromBytes(remainder)
+		address, remainder = StringFromBytes(remainder)
+		node := node.Node{Id: node.IdFromRaw(id), Address: node.NewAddress(address)}
 		result.Add(node)
 		if len(remainder) <= 0 {
 			return &SyncNodes{Nodes: result}

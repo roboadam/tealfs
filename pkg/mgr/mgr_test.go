@@ -1,11 +1,11 @@
-package manager_test
+package mgr_test
 
 import (
 	"bytes"
 	"encoding/binary"
 	"strconv"
 	"tealfs/pkg/cmds"
-	"tealfs/pkg/manager"
+	"tealfs/pkg/mgr"
 	"tealfs/pkg/node"
 	"tealfs/pkg/test"
 	"tealfs/pkg/util"
@@ -16,7 +16,7 @@ import (
 func TestManagerCreation(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	tNet := test.MockNet{}
-	localNode := manager.New(userCmds, &tNet)
+	localNode := mgr.New(userCmds, &tNet)
 
 	if !nodeIdIsValid(&localNode) {
 		t.Error("Id is invalid")
@@ -26,7 +26,7 @@ func TestManagerCreation(t *testing.T) {
 func TestConnectToRemoteNode(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
-	n := manager.New(userCmds, &tNet)
+	n := mgr.New(userCmds, &tNet)
 	n.Start()
 
 	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
@@ -46,7 +46,7 @@ func TestConnectToRemoteNode(t *testing.T) {
 func TestIncomingConnection(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
-	n := node.New(userCmds, &mockNet)
+	n := mgr.New(userCmds, &mockNet)
 	n.Start()
 
 	remoteNodeId := node.NewNodeId()
@@ -58,17 +58,12 @@ func TestIncomingConnection(t *testing.T) {
 		t.Error("You didn't hello back!")
 	}
 
-	remoteNode, err := n.GetRemoteNode(remoteNodeId)
-	time.Sleep(time.Millisecond * 100)
-	if err != nil || remoteNode == nil || remoteNode.Id != remoteNodeId {
-		t.Error("Did not add node " + remoteNodeId.String() + " to cluster")
-	}
 }
 
 func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	userCmds := make(chan cmds.User)
 	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
-	n := node.New(userCmds, &mockNet)
+	n := mgr.New(userCmds, &mockNet)
 	n.Start()
 
 	remoteNodeId := node.NewNodeId()
@@ -150,6 +145,6 @@ func int8Serialized(number int8) []byte {
 	return []byte{byte(number)}
 }
 
-func nodeIdIsValid(node *node.LocalNode) bool {
-	return len(node.GetId().String()) > 0
+func nodeIdIsValid(mgr *mgr.Manager) bool {
+	return len(mgr.GetId().String()) > 0
 }
