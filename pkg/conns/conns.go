@@ -46,12 +46,14 @@ func New(tnet tnet.TNet) *Conns {
 	}
 
 	go conns.consumeChannels()
+	go conns.acceptConnections()
 
 	return conns
 }
 
-func (holder *Conns) Add(id node.Id, address node.Address) {
-	holder.adds <- conn{id: id, address: address}
+func (holder *Conns) Add(address node.Address) {
+	// TODO Should connect and do hello handshake
+	// holder.adds <- conn{id: id, address: address}
 }
 
 func (holder *Conns) DeleteConnection(id node.Id) {
@@ -121,4 +123,32 @@ func (conns *Conns) netconnForId(id node.Id) net.Conn {
 	}
 	conn.netConn = conns.tnet.Dial(conn.address.Value)
 	return conn.netConn
+}
+
+func (c *Conns) acceptConnections() {
+	for {
+		go c.handleConnection(c.tnet.Accept())
+	}
+}
+
+func (c *Conns) handleConnection(conn net.Conn) {
+	payload := receivePayload(conn)
+	switch p := payload.(type) {
+	case *proto.Hello:
+		c.sendHello(conn)
+		node := node.Node{Id: p.NodeId, Address: node.NewAddress(conn.RemoteAddr().String())}
+		n.conns.Add(node.Id, node.Address)
+	default:
+		conn.Close()
+	}
+}
+
+func (c *Conns) sendHello(conn net.Conn) {
+	hello := proto.Hello{NodeId: c.myNodeId}
+	raw_net.SendPayload(conn, hello.ToBytes())
+}
+
+func receivePayload(conn net.Conn) proto.Payload {
+	bytes, _ := raw_net.ReadPayload(conn)
+	return proto.ToPayload(bytes)
 }
