@@ -9,10 +9,11 @@ import (
 )
 
 type Conns struct {
-	conns    map[node.Id]conn
-	adds     chan conn
+	conns    map[node.Id]Conn
+	adds     chan Conn
 	deletes  chan node.Id
 	tnet     tnet.TNet
+	myNodeId node.Id
 	incoming chan struct {
 		From    node.Id
 		Payload proto.Payload
@@ -23,18 +24,23 @@ type Conns struct {
 	}
 }
 
-type conn struct {
+type Conn struct {
 	id      node.Id
 	address node.Address
 	netConn net.Conn
 }
 
-func New(tnet tnet.TNet) *Conns {
+func NewConn(address node.Address) Conn {
+	return Conn{address: address}
+}
+
+func New(tnet tnet.TNet, myNodeId node.Id) *Conns {
 	conns := &Conns{
-		tnet:    tnet,
-		conns:   make(map[node.Id]conn),
-		adds:    make(chan conn),
-		deletes: make(chan node.Id),
+		tnet:     tnet,
+		myNodeId: myNodeId,
+		conns:    make(map[node.Id]Conn),
+		adds:     make(chan Conn),
+		deletes:  make(chan node.Id),
 		incoming: make(chan struct {
 			From    node.Id
 			Payload proto.Payload
@@ -51,7 +57,14 @@ func New(tnet tnet.TNet) *Conns {
 	return conns
 }
 
-func (holder *Conns) Add(address node.Address) {
+func (holder *Conns) Add(conn Conn) {
+	if conn.netConn == nil {
+		netConn := holder.tnet.Dial(conn.address.Value)
+		conn = Conn{address: conn.address, netConn: netConn}
+	}
+	
+	
+	raw_net.SendPayload(netConn, hello.ToBytes())
 	// TODO Should connect and do hello handshake
 	// holder.adds <- conn{id: id, address: address}
 }
@@ -98,7 +111,7 @@ func (holder *Conns) consumeChannels() {
 	}
 }
 
-func (holder *Conns) storeNode(conn conn) {
+func (holder *Conns) storeNode(conn Conn) {
 	holder.conns[conn.id] = conn
 	go holder.readPayloadsFromConnection(conn.id)
 }
@@ -137,7 +150,7 @@ func (c *Conns) handleConnection(conn net.Conn) {
 	case *proto.Hello:
 		c.sendHello(conn)
 		node := node.Node{Id: p.NodeId, Address: node.NewAddress(conn.RemoteAddr().String())}
-		n.conns.Add(node.Id, node.Address)
+		c.Add(node.Address)
 	default:
 		conn.Close()
 	}

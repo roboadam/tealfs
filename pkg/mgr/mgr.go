@@ -17,11 +17,12 @@ type Mgr struct {
 }
 
 func New(userCmds chan cmds.User, tNet tnet.TNet) Mgr {
-	base := node.Node{Id: node.NewNodeId(), Address: node.NewAddress(tNet.GetBinding())}
+	myNodeId := node.NewNodeId()
+	base := node.Node{Id: myNodeId, Address: node.NewAddress(tNet.GetBinding())}
 	return Mgr{
 		node:     base,
 		userCmds: userCmds,
-		conns:    conns.New(tNet),
+		conns:    conns.New(tNet, myNodeId),
 		tNet:     tNet,
 	}
 }
