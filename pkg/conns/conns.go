@@ -6,6 +6,7 @@ import (
 	"tealfs/pkg/proto"
 	"tealfs/pkg/raw_net"
 	"tealfs/pkg/tnet"
+	"time"
 )
 
 type Conns struct {
@@ -57,16 +58,26 @@ func New(tnet tnet.TNet, myNodeId node.Id) *Conns {
 	return conns
 }
 
-func (holder *Conns) Add(conn Conn) {
-	if conn.netConn == nil {
-		netConn := holder.tnet.Dial(conn.address.Value)
-		conn = Conn{address: conn.address, netConn: netConn}
+func (c *Conns) Add(conn Conn) {
+	for {
+		if conn.netConn == nil {
+			netConn := c.tnet.Dial(conn.address.Value)
+			conn = Conn{address: conn.address, netConn: netConn}
+		}
+
+		c.sendHello(conn.netConn)
+		payload := receivePayload(conn.netConn)
+		switch p := payload.(type) {
+		case *proto.Hello:
+			conn := Conn{address: conn.address, netConn: conn.netConn, id: p.NodeId}
+			c.adds <- conn
+			return
+		}
+		conn.netConn.Close()
+		conn.netConn = nil
+
+		time.Sleep(time.Second)
 	}
-	
-	
-	raw_net.SendPayload(netConn, hello.ToBytes())
-	// TODO Should connect and do hello handshake
-	// holder.adds <- conn{id: id, address: address}
 }
 
 func (holder *Conns) DeleteConnection(id node.Id) {
@@ -144,16 +155,10 @@ func (c *Conns) acceptConnections() {
 	}
 }
 
-func (c *Conns) handleConnection(conn net.Conn) {
-	payload := receivePayload(conn)
-	switch p := payload.(type) {
-	case *proto.Hello:
-		c.sendHello(conn)
-		node := node.Node{Id: p.NodeId, Address: node.NewAddress(conn.RemoteAddr().String())}
-		c.Add(node.Address)
-	default:
-		conn.Close()
-	}
+func (c *Conns) handleConnection(netConn net.Conn) {
+	address := node.NewAddress(netConn.RemoteAddr().String())
+	conn := Conn{address: address, netConn: netConn}
+	c.Add(conn)
 }
 
 func (c *Conns) sendHello(conn net.Conn) {

@@ -53,21 +53,7 @@ func (m *Mgr) readPayloads() {
 
 func (n *Mgr) addRemoteNode(cmd cmds.User) {
 	remoteAddress := node.NewAddress(cmd.Argument)
-	n.conns.Add(remoteAddress)
-
-	// n.sendHello(conn)
-	// payload := receivePayload(conn)
-
-	// switch p := payload.(type) {
-	// case *proto.Hello:
-	// 	pld := &proto.Hello{NodeId: p.NodeId}
-	// 	n.conns.SendPayload(p.NodeId, pld)
-	// 	n.sendHello(conn)
-	// 	node := node.Node{Id: p.NodeId, Address: remoteAddress}
-	// 	n.conns.Add(node.Id, node.Address)
-	// default:
-	// 	conn.Close()
-	// }
+	n.conns.Add(conns.NewConn(remoteAddress))
 }
 
 func (n *Mgr) handleUiCommands() {
