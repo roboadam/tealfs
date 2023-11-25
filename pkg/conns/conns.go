@@ -23,6 +23,9 @@ type Conns struct {
 		To      node.Id
 		Payload proto.Payload
 	}
+	getlist chan struct {
+		response chan []Conn
+	}
 }
 
 type Conn struct {
@@ -49,6 +52,9 @@ func New(tnet tnet.TNet, myNodeId node.Id) *Conns {
 		outgoing: make(chan struct {
 			To      node.Id
 			Payload proto.Payload
+		}),
+		getlist: make(chan struct {
+			response chan []Conn
 		}),
 	}
 
@@ -99,6 +105,12 @@ func (holder *Conns) SendPayload(to node.Id, payload proto.Payload) {
 	}
 }
 
+func (c *Conns) GetConns() []Conn {
+	response := make(chan []Conn)
+	c.getlist <- struct{ response chan []Conn }{response: response}
+	return <-response
+}
+
 func (holder *Conns) consumeChannels() {
 	for {
 		select {
@@ -118,6 +130,14 @@ func (holder *Conns) consumeChannels() {
 			netconn := holder.conns[sending.To].netConn
 			payload := sending.Payload
 			raw_net.SendPayload(netconn, payload.ToBytes())
+
+		case getList := <-holder.getlist:
+			result := make([]Conn, len(holder.conns))
+			i := 0
+			for id := range holder.conns {
+				result[i] = holder.conns[id]
+			}
+			getList.response <- result
 		}
 	}
 }
