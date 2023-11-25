@@ -1,15 +1,14 @@
 package mgr
 
 import (
-	"fmt"
 	"tealfs/pkg/conns"
+	"tealfs/pkg/node"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/util"
 )
 
-func missingConns(connlist conns.Conns, syncNodes proto.SyncNodes) []conns.Conn {
+func missingConns(connlist conns.Conns, syncNodes proto.SyncNodes) *util.Set[node.Id] {
 	localNodes := connlist.GetConns()
-	remoteNodes := syncNodes.Nodes
-	fmt.Println(localNodes, remoteNodes)
-	result := make([]conns.Conn, 0)
-	return result
+	remoteNodes := syncNodes.GetIds()
+	return localNodes.Minus(&remoteNodes)
 }

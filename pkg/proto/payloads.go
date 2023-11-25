@@ -82,6 +82,14 @@ func ToSyncNodes(data []byte) *SyncNodes {
 	}
 }
 
+func (s *SyncNodes) GetIds() util.Set[node.Id] {
+	result := util.NewSet[node.Id]()
+	for _, node := range s.Nodes.GetValues() {
+		result.Add(node.Id)
+	}
+	return result
+}
+
 func payloadType(data []byte) byte {
 	if len(data) <= 0 {
 		return NoOpType

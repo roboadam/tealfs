@@ -40,3 +40,13 @@ func (m *Set[K]) GetValues() []K {
 	}
 	return result
 }
+
+func (m *Set[K]) Minus(o *Set[K]) *Set[K] {
+	result := NewSet[K]()
+	for k := range m.data {
+		if !o.Exists(k) {
+			result.Add(k)
+		}
+	}
+	return &result
+}
