@@ -7,8 +7,12 @@ import (
 	"tealfs/pkg/util"
 )
 
-func missingConns(connlist conns.Conns, syncNodes proto.SyncNodes) *util.Set[node.Id] {
+func findMissingConns(connlist conns.Conns, syncNodes *proto.SyncNodes) *util.Set[node.Node] {
 	localNodes := connlist.GetConns()
 	remoteNodes := syncNodes.GetIds()
-	return localNodes.Minus(&remoteNodes)
+	result := util.NewSet[node.Node]()
+	missingIds := localNodes.Minus(&remoteNodes)
+	for missingId := range missingIds.GetValues() {
+		su
+	}
 }
