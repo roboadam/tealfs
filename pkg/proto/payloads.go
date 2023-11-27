@@ -90,6 +90,15 @@ func (s *SyncNodes) GetIds() util.Set[node.Id] {
 	return result
 }
 
+func (s *SyncNodes) NodeForId(id node.Id) (node.Node, bool) {
+	for _, n := range s.Nodes.GetValues() {
+		if n.Id == id {
+			return n, true
+		}
+	}
+	return node.Node{}, false
+}
+
 func payloadType(data []byte) byte {
 	if len(data) <= 0 {
 		return NoOpType

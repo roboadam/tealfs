@@ -42,13 +42,13 @@ func (m *Mgr) GetId() node.Id {
 
 func (m *Mgr) readPayloads() {
 	for {
-		id, payload := m.conns.ReceivePayload()
+		_, payload := m.conns.ReceivePayload()
 
 		switch p := payload.(type) {
 		case *proto.SyncNodes:
 			missingConns := findMissingConns(*m.conns, p)
-			for missingId := range missingConns.GetValues() {
-				p.Nodes.
+			for _, c := range missingConns.GetValues() {
+				m.conns.Add(c)
 			}
 		}
 	}
