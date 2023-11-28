@@ -46,7 +46,7 @@ func (m *Mgr) readPayloads() {
 
 		switch p := payload.(type) {
 		case *proto.SyncNodes:
-			missingConns := findMissingConns(*m.conns, p)
+			missingConns := findMyMissingConns(*m.conns, p)
 			for _, c := range missingConns.GetValues() {
 				m.conns.Add(c)
 			}
