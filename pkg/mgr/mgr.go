@@ -42,7 +42,7 @@ func (m *Mgr) GetId() node.Id {
 
 func (m *Mgr) readPayloads() {
 	for {
-		_, payload := m.conns.ReceivePayload()
+		remoteId, payload := m.conns.ReceivePayload()
 
 		switch p := payload.(type) {
 		case *proto.SyncNodes:
@@ -51,7 +51,10 @@ func (m *Mgr) readPayloads() {
 				m.conns.Add(c)
 			}
 			if remoteIsMissingNodes(*m.conns, p) {
-				response := proto.SyncNodes {}
+				myNodes := m.conns.GetNodes()
+				myNodes.Add(m.node)
+				toSend := proto.SyncNodes{Nodes: myNodes}
+				m.conns.SendPayload(remoteId, &toSend)
 			}
 		}
 	}

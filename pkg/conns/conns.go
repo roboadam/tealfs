@@ -25,7 +25,7 @@ type Conns struct {
 		Payload proto.Payload
 	}
 	getlist chan struct {
-		response chan util.Set[node.Id]
+		response chan util.Set[node.Node]
 	}
 }
 
@@ -55,7 +55,7 @@ func New(tnet tnet.TNet, myNodeId node.Id) *Conns {
 			Payload proto.Payload
 		}),
 		getlist: make(chan struct {
-			response chan util.Set[node.Id]
+			response chan util.Set[node.Node]
 		}),
 	}
 
@@ -106,9 +106,18 @@ func (holder *Conns) SendPayload(to node.Id, payload proto.Payload) {
 	}
 }
 
-func (c *Conns) GetConns() util.Set[node.Id] {
-	response := make(chan util.Set[node.Id])
-	c.getlist <- struct{ response chan util.Set[node.Id] }{response: response}
+func (c *Conns) GetIds() util.Set[node.Id] {
+	result := util.NewSet[node.Id]()
+	nodes := c.GetNodes()
+	for _, node := range nodes.GetValues() {
+		result.Add(node.Id)
+	}
+	return result
+}
+
+func (c *Conns) GetNodes() util.Set[node.Node] {
+	response := make(chan util.Set[node.Node])
+	c.getlist <- struct{ response chan util.Set[node.Node] }{response: response}
 	return <-response
 }
 
@@ -133,9 +142,10 @@ func (holder *Conns) consumeChannels() {
 			raw_net.SendPayload(netconn, payload.ToBytes())
 
 		case getList := <-holder.getlist:
-			result := util.NewSet[node.Id]()
+			result := util.NewSet[node.Node]()
 			for id := range holder.conns {
-				result.Add(id)
+				conn := holder.conns[id]
+				result.Add(node.Node{Id: conn.id, Address: conn.address})
 			}
 			getList.response <- result
 		}
