@@ -50,3 +50,7 @@ func (m *Set[K]) Minus(o *Set[K]) *Set[K] {
 	}
 	return &result
 }
+
+func (m *Set[K]) Len() int {
+	return len(m.data)
+}

@@ -50,6 +50,9 @@ func (m *Mgr) readPayloads() {
 			for _, c := range missingConns.GetValues() {
 				m.conns.Add(c)
 			}
+			if remoteIsMissingNodes(*m.conns, p) {
+				response := proto.SyncNodes {}
+			}
 		}
 	}
 }

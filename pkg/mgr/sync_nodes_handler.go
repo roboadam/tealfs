@@ -7,7 +7,20 @@ import (
 )
 
 func remoteIsMissingNodes(connlist conns.Conns, syncNodes *proto.SyncNodes) bool {
-	
+	localNodes := connlist.GetConns()
+	remoteNodes := syncNodes.GetIds()
+
+	if remoteNodes.Len() < localNodes.Len() {
+		return true
+	}
+
+	for _, localId := range localNodes.GetValues() {
+		if !remoteNodes.Exists(localId) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func findMyMissingConns(connlist conns.Conns, syncNodes *proto.SyncNodes) *util.Set[conns.Conn] {
