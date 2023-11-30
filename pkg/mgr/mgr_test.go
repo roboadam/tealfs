@@ -3,6 +3,7 @@ package mgr_test
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"strconv"
 	"tealfs/pkg/cmds"
 	"tealfs/pkg/mgr"
@@ -118,10 +119,14 @@ type CommandAndNodes struct {
 }
 
 func CommandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
-	command := int8(data[0])
+	length := binary.BigEndian.Uint32(data)
+	if int(length) != len(data)-4 {
+		return nil, errors.New("Invalid length")
+	}
+	command := int8(data[4])
 	nodes := util.NewSet[NodeInfo]()
 
-	start := 1
+	start := 5
 
 	for start < len(data) {
 		idLen := int(binary.BigEndian.Uint32(data[start:]))
