@@ -74,6 +74,7 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: "something"})
 	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: "something else"})
 
+	time.Sleep(time.Millisecond * 20)
 	commandAndNodes, err := CommandAndNodesFrom(mockNet.Conn.BytesWritten)
 	if err != nil {
 		t.Error(err.Error())
@@ -132,8 +133,11 @@ func CommandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
 		idLen := int(binary.BigEndian.Uint32(data[start:]))
 		start += 4
 		id := string(data[start : start+idLen])
+		start += idLen
 		addressLen := int(binary.BigEndian.Uint32(data[start:]))
+		start += 4
 		address := string(data[start : start+addressLen])
+		start += addressLen
 		nodes.Add(NodeInfo{NodeId: id, Address: address})
 	}
 
