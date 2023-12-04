@@ -47,17 +47,26 @@ func (m *Mgr) readPayloads() {
 		switch p := payload.(type) {
 		case *proto.SyncNodes:
 			missingConns := findMyMissingConns(*m.conns, p)
+			addedNode := false
 			for _, c := range missingConns.GetValues() {
+				addedNode = true
 				m.conns.Add(c)
 			}
-			if remoteIsMissingNodes(*m.conns, p) {
-				myNodes := m.conns.GetNodes()
-				myNodes.Add(m.node)
-				toSend := proto.SyncNodes{Nodes: myNodes}
+			if addedNode {
+				m.syncNodes()
+			} else if remoteIsMissingNodes(*m.conns, p) {
+				toSend := m.BuildSyncNodesPayload()
 				m.conns.SendPayload(remoteId, &toSend)
 			}
 		}
 	}
+}
+
+func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
+	myNodes := m.conns.GetNodes()
+	myNodes.Add(m.node)
+	toSend := proto.SyncNodes{Nodes: myNodes}
+	return toSend
 }
 
 func (n *Mgr) addRemoteNode(cmd cmds.User) {
@@ -79,4 +88,12 @@ func (n *Mgr) handleUiCommands() {
 
 func (n *Mgr) addStorage(cmd cmds.User) {
 	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
+}
+
+func (m *Mgr) syncNodes() {
+	allIds := m.conns.GetIds()
+	for _, id := range allIds.GetValues() {
+		payload := m.BuildSyncNodesPayload()
+		m.conns.SendPayload(id, &payload)
+	}
 }
