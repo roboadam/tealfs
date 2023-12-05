@@ -69,9 +69,10 @@ func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
 	return toSend
 }
 
-func (n *Mgr) addRemoteNode(cmd cmds.User) {
+func (m *Mgr) addRemoteNode(cmd cmds.User) {
 	remoteAddress := node.NewAddress(cmd.Argument)
-	n.conns.Add(conns.NewConn(remoteAddress))
+	m.conns.Add(conns.NewConn(remoteAddress))
+	m.syncNodes()
 }
 
 func (n *Mgr) handleUiCommands() {

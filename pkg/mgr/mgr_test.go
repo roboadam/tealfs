@@ -63,24 +63,33 @@ func TestIncomingConnection(t *testing.T) {
 
 func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	userCmds := make(chan cmds.User)
-	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
-	n := mgr.New(userCmds, &mockNet)
+	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
+	n := mgr.New(userCmds, &tNet)
+	remoteNodeId := node.NewNodeId()
 	n.Start()
 
-	remoteNodeId := node.NewNodeId()
-	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
+	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
+
+	if !tNet.IsDialed() {
+		t.Error("Node did not connect")
+	}
+
+	time.Sleep(time.Second * 100)
+
+	tNet.Conn.BytesWritten = make([]byte, 0)
+	tNet.Conn.SendMockBytes(validHello(remoteNodeId))
 
 	expected := CommandAndNodes{Command: 2, Nodes: util.NewSet[NodeInfo]()}
 	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: "something"})
 	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: "something else"})
 
 	time.Sleep(time.Millisecond * 20)
-	commandAndNodes, err := CommandAndNodesFrom(mockNet.Conn.BytesWritten)
+	commandAndNodes, err := CommandAndNodesFrom(tNet.Conn.BytesWritten)
 	if err != nil {
 		t.Error(err.Error())
 	}
 
-	if commandAndNodes.Command != 2 {
+	if commandAndNodes.Command != expected.Command {
 		t.Error("Invalid command " + strconv.Itoa(int(commandAndNodes.Command)))
 	}
 
