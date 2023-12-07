@@ -46,6 +46,7 @@ func (m *Mgr) readPayloads() {
 
 		switch p := payload.(type) {
 		case *proto.SyncNodes:
+			fmt.Println("readPayloads SyncNodes")
 			missingConns := findMyMissingConns(*m.conns, p)
 			addedNode := false
 			for _, c := range missingConns.GetValues() {
@@ -58,6 +59,8 @@ func (m *Mgr) readPayloads() {
 				toSend := m.BuildSyncNodesPayload()
 				m.conns.SendPayload(remoteId, &toSend)
 			}
+		default:
+			fmt.Println("readPayloads default case ")
 		}
 	}
 }
@@ -95,6 +98,7 @@ func (m *Mgr) syncNodes() {
 	allIds := m.conns.GetIds()
 	for _, id := range allIds.GetValues() {
 		payload := m.BuildSyncNodesPayload()
+		fmt.Println("mgr.syncNodes to " + id.String())
 		m.conns.SendPayload(id, &payload)
 	}
 }

@@ -74,7 +74,7 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 		t.Error("Node did not connect")
 	}
 
-	time.Sleep(time.Second * 100)
+	time.Sleep(time.Millisecond * 50)
 
 	tNet.Conn.BytesWritten = make([]byte, 0)
 	tNet.Conn.SendMockBytes(validHello(remoteNodeId))
@@ -84,9 +84,10 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: "something else"})
 
 	time.Sleep(time.Millisecond * 20)
-	commandAndNodes, err := CommandAndNodesFrom(tNet.Conn.BytesWritten)
+	commandAndNodes, err := CommandAndNodesFrom(tNet.Conn.BytesWritten, t)
 	if err != nil {
 		t.Error(err.Error())
+		return
 	}
 
 	if commandAndNodes.Command != expected.Command {
@@ -128,12 +129,15 @@ type CommandAndNodes struct {
 	Nodes   util.Set[NodeInfo]
 }
 
-func CommandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
+func CommandAndNodesFrom(data []byte, t *testing.T) (*CommandAndNodes, error) {
 	length := binary.BigEndian.Uint32(data)
 	if int(length) != len(data)-4 {
 		return nil, errors.New("Invalid length")
 	}
 	command := int8(data[4])
+	if command != 2 {
+		return nil, errors.New("Not a SyncNodes")
+	}
 	nodes := util.NewSet[NodeInfo]()
 
 	start := 5
