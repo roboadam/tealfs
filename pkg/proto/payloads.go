@@ -19,6 +19,8 @@ func ToPayload(data []byte) Payload {
 	switch payloadType(data) {
 	case HelloType:
 		return ToHello(data)
+	case SyncType:
+		return ToSyncNodes(data)
 	default:
 		return ToNoOp(data)
 	}

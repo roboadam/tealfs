@@ -1,7 +1,6 @@
 package conns
 
 import (
-	"fmt"
 	"net"
 	"tealfs/pkg/node"
 	"tealfs/pkg/proto"
@@ -73,18 +72,13 @@ func (c *Conns) Add(conn Conn) {
 			conn = Conn{address: conn.address, netConn: netConn}
 		}
 
-		fmt.Println("SENDING HELLO")
 		c.sendHello(conn.netConn)
-		fmt.Println("RECEIVING PAYLOAD")
 		payload := receivePayload(conn.netConn)
 		switch p := payload.(type) {
 		case *proto.Hello:
-			fmt.Println("ITS A HELLO")
 			conn := Conn{address: conn.address, netConn: conn.netConn, id: p.NodeId}
 			c.adds <- conn
 			return
-		default:
-			fmt.Println("ITS NOT A HELLO TRY AGAIN")
 		}
 		conn.netConn.Close()
 		conn.netConn = nil

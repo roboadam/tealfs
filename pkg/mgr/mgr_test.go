@@ -66,9 +66,10 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := mgr.New(userCmds, &tNet)
 	remoteNodeId := node.NewNodeId()
+	remoteNodeAddress := "remoteAddress"
 	n.Start()
 
-	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
+	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: remoteNodeAddress}
 
 	if !tNet.IsDialed() {
 		t.Error("Node did not connect")
@@ -80,8 +81,8 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	tNet.Conn.SendMockBytes(validHello(remoteNodeId))
 
 	expected := CommandAndNodes{Command: 2, Nodes: util.NewSet[NodeInfo]()}
-	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: "something"})
-	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: "something else"})
+	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: remoteNodeAddress})
+	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: tNet.GetBinding()})
 
 	time.Sleep(time.Millisecond * 20)
 	commandAndNodes, err := CommandAndNodesFrom(tNet.Conn.BytesWritten, t)
