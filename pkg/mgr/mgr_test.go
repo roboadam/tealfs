@@ -104,7 +104,7 @@ func TestSendNodeSyncAfterReceiveNodeSync(t *testing.T) {
 
 }
 
-func TestReceiveNodeSyncAddsMissingNodes(t *testing.T) {
+func TestReceiveNodeSyncConnectToMissingNodes(t *testing.T) {
 
 }
 
