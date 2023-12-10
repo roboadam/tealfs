@@ -30,6 +30,7 @@ func New(userCmds chan cmds.User, tNet tnet.TNet) Mgr {
 func (m *Mgr) Start() {
 	go m.handleUiCommands()
 	go m.readPayloads()
+	go m.handleNewlyConnectdNodes()
 }
 
 func (m *Mgr) Close() {
@@ -40,6 +41,13 @@ func (m *Mgr) GetId() node.Id {
 	return m.node.Id
 }
 
+func (m *Mgr) handleNewlyConnectdNodes() {
+	for {
+		m.conns.AddedNode()
+		m.syncNodes()
+	}
+}
+
 func (m *Mgr) readPayloads() {
 	for {
 		remoteId, payload := m.conns.ReceivePayload()
@@ -48,14 +56,10 @@ func (m *Mgr) readPayloads() {
 		case *proto.SyncNodes:
 			fmt.Println("readPayloads SyncNodes")
 			missingConns := findMyMissingConns(*m.conns, p)
-			addedNode := false
 			for _, c := range missingConns.GetValues() {
-				addedNode = true
 				m.conns.Add(c)
 			}
-			if addedNode {
-				m.syncNodes()
-			} else if remoteIsMissingNodes(*m.conns, p) {
+			if remoteIsMissingNodes(*m.conns, p) {
 				toSend := m.BuildSyncNodesPayload()
 				m.conns.SendPayload(remoteId, &toSend)
 			}

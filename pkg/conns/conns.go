@@ -11,12 +11,13 @@ import (
 )
 
 type Conns struct {
-	conns    map[node.Id]Conn
-	adds     chan Conn
-	deletes  chan node.Id
-	tnet     tnet.TNet
-	myNodeId node.Id
-	incoming chan struct {
+	conns          map[node.Id]Conn
+	adds           chan Conn
+	deletes        chan node.Id
+	tnet           tnet.TNet
+	myNodeId       node.Id
+	connectedNodes chan node.Id
+	incoming       chan struct {
 		From    node.Id
 		Payload proto.Payload
 	}
@@ -41,11 +42,12 @@ func NewConn(address node.Address) Conn {
 
 func New(tnet tnet.TNet, myNodeId node.Id) *Conns {
 	conns := &Conns{
-		tnet:     tnet,
-		myNodeId: myNodeId,
-		conns:    make(map[node.Id]Conn),
-		adds:     make(chan Conn),
-		deletes:  make(chan node.Id),
+		tnet:           tnet,
+		myNodeId:       myNodeId,
+		conns:          make(map[node.Id]Conn),
+		adds:           make(chan Conn),
+		deletes:        make(chan node.Id),
+		connectedNodes: make(chan node.Id),
 		incoming: make(chan struct {
 			From    node.Id
 			Payload proto.Payload
@@ -94,6 +96,10 @@ func (holder *Conns) DeleteConnection(id node.Id) {
 func (holder *Conns) ReceivePayload() (node.Id, proto.Payload) {
 	received := <-holder.incoming
 	return received.From, received.Payload
+}
+
+func (holder *Conns) AddedNode() node.Id {
+	return <-holder.connectedNodes
 }
 
 func (holder *Conns) SendPayload(to node.Id, payload proto.Payload) {
@@ -154,6 +160,7 @@ func (holder *Conns) consumeChannels() {
 
 func (holder *Conns) storeNode(conn Conn) {
 	holder.conns[conn.id] = conn
+	holder.connectedNodes <- conn.id
 	go holder.readPayloadsFromConnection(conn.id)
 }
 

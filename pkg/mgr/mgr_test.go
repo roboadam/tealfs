@@ -55,7 +55,9 @@ func TestIncomingConnection(t *testing.T) {
 
 	expected := validHello(n.GetId())
 	time.Sleep(time.Millisecond * 100)
-	if !bytes.Equal(mockNet.Conn.BytesWritten, expected) {
+
+	result := readPayloadBytesWritten(&mockNet)
+	if !bytes.Equal(result, expected) {
 		t.Error("You didn't hello back!")
 	}
 
@@ -85,7 +87,8 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: tNet.GetBinding()})
 
 	time.Sleep(time.Millisecond * 20)
-	commandAndNodes, err := CommandAndNodesFrom(tNet.Conn.BytesWritten, t)
+	payload := readPayloadBytesWritten(&tNet)
+	commandAndNodes, err := CommandAndNodesFrom(payload, t)
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -100,14 +103,6 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	}
 }
 
-func TestSendNodeSyncAfterReceiveNodeSync(t *testing.T) {
-
-}
-
-func TestReceiveNodeSyncConnectToMissingNodes(t *testing.T) {
-
-}
-
 func validHello(nodeId node.Id) []byte {
 
 	serializedHello := int8Serialized(1)
@@ -118,6 +113,16 @@ func validHello(nodeId node.Id) []byte {
 	seralizedPayoadLen := intSerialized(len(payload))
 
 	return append(seralizedPayoadLen, payload...)
+}
+
+func readPayloadBytesWritten(tnet *test.MockNet) []byte {
+	if len(tnet.Conn.BytesWritten) < 4 {
+		return make([]byte, 0)
+	}
+	payloadLen := binary.BigEndian.Uint32(tnet.Conn.BytesWritten)
+	returnVal := tnet.Conn.BytesWritten[:4+payloadLen]
+	tnet.Conn.BytesWritten = tnet.Conn.BytesWritten[4+payloadLen:]
+	return returnVal
 }
 
 type NodeInfo struct {
