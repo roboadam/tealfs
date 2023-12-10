@@ -18,9 +18,6 @@ func (t *MockNet) Dial(string) net.Conn {
 	return &t.Conn
 }
 
-func (t *MockNet) BindTo(string) {
-}
-
 func (t *MockNet) Close() {
 }
 
@@ -34,6 +31,10 @@ func (t *MockNet) Accept() net.Conn {
 		t.AcceptsConnections = false
 	}
 	return &t.Conn
+}
+
+func (t *MockNet) GetBinding() string {
+	return "mockbinding:123"
 }
 
 func (t *MockNet) IsDialed() bool {

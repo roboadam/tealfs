@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"os"
 	"tealfs/pkg/cmds"
-	"tealfs/pkg/node"
+	"tealfs/pkg/mgr"
 )
 
 type Ui struct {
-	node     *node.Node
+	manager  *mgr.Mgr
 	userCmds chan cmds.User
 }
 
-func NewUi(node *node.Node, userCmds chan cmds.User) Ui {
-	return Ui{node, userCmds}
+func NewUi(manager *mgr.Mgr, userCmds chan cmds.User) Ui {
+	return Ui{manager, userCmds}
 }
 
 func (ui Ui) Start() {
@@ -57,7 +57,7 @@ func (ui Ui) handleRoot() {
 			</head>
 			<body>
 			    <main>
-					<h1>TealFS: ` + ui.node.Id.String() + `</h1>
+					<h1>TealFS: ` + ui.manager.GetId().String() + `</h1>
 					` + htmlMyhost("TODO") + `
 					<p>Input the host and port of a node to add</p>
 					<form hx-put="/connect-to">

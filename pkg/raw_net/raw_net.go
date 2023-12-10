@@ -1,48 +1,57 @@
 package raw_net
 
 import (
-	"errors"
-	"io"
+	"encoding/binary"
 	"net"
 )
 
-func Int8From(conn net.Conn) (uint8, error) {
-	buf := make([]byte, 1)
-	_, err := conn.Read(buf)
+func ReadPayload(conn net.Conn) ([]byte, error) {
+	rawLen, err := ReadBytes(conn, 4)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-
-	return buf[0], nil
+	len := binary.BigEndian.Uint32(rawLen)
+	return ReadBytes(conn, len)
 }
 
-func StringFrom(conn net.Conn, length int) (string, error) {
-	buffer := make([]byte, length)
-	bytesRead := 0
+func SendPayload(conn net.Conn, data []byte) error {
+	len := uint32(len(data))
+	buf := make([]byte, 4)
+	binary.BigEndian.PutUint32(buf, len)
+	err := SendBytes(conn, buf)
+	if err != nil {
+		return err
+	}
+	err = SendBytes(conn, data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
-	for bytesRead < length {
-		n, err := conn.Read(buffer[bytesRead:])
+func ReadBytes(conn net.Conn, length uint32) ([]byte, error) {
+	buf := make([]byte, length)
+	offset := uint32(0)
+
+	for offset < length {
+		numBytes, err := conn.Read(buf[offset:])
 		if err != nil {
-			if err == io.EOF {
-				return "", errors.New("EOF reached before reading the specified number of bytes")
-			}
-			return "", err
+			return nil, err
 		}
-		bytesRead += n
+		offset += uint32(numBytes)
 	}
 
-	utf8String := string(buffer)
-	return utf8String, nil
+	return buf, nil
 }
 
-func Int8To(conn net.Conn, value int8) error {
-	networkValue := []byte{byte(value)}
-	_, err := conn.Write(networkValue)
-	return err
-}
-
-func StringTo(conn net.Conn, value string) error {
-	networkValue := []byte(value)
-	_, err := conn.Write(networkValue)
-	return err
+func SendBytes(conn net.Conn, data []byte) error {
+	bytesWritten := 0
+	for bytesWritten < len(data) {
+		numBytes, err := conn.Write(data[bytesWritten:])
+		if err != nil {
+			return err
+		}
+		bytesWritten += numBytes
+	}
+	return nil
 }
