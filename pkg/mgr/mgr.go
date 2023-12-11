@@ -2,8 +2,8 @@ package mgr
 
 import (
 	"fmt"
-	"tealfs/pkg/cmds"
 	"tealfs/pkg/conns"
+	"tealfs/pkg/model/cmds"
 	"tealfs/pkg/node"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/tnet"

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"tealfs/pkg/cmds"
 	"tealfs/pkg/mgr"
+	"tealfs/pkg/model/cmds"
 	"tealfs/pkg/tnet"
 	"tealfs/pkg/ui"
 )

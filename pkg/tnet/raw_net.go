@@ -1,4 +1,4 @@
-package raw_net
+package tnet
 
 import (
 	"encoding/binary"

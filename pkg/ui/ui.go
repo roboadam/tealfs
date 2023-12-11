@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"tealfs/pkg/cmds"
 	"tealfs/pkg/mgr"
+	"tealfs/pkg/model/cmds"
 )
 
 type Ui struct {

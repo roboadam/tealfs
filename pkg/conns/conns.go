@@ -4,7 +4,6 @@ import (
 	"net"
 	"tealfs/pkg/node"
 	"tealfs/pkg/proto"
-	"tealfs/pkg/raw_net"
 	"tealfs/pkg/tnet"
 	"tealfs/pkg/util"
 	"time"
@@ -145,7 +144,7 @@ func (holder *Conns) consumeChannels() {
 		case sending := <-holder.outgoing:
 			netconn := holder.conns[sending.To].netConn
 			payload := sending.Payload
-			raw_net.SendPayload(netconn, payload.ToBytes())
+			tnet.SendPayload(netconn, payload.ToBytes())
 
 		case getList := <-holder.getlist:
 			result := util.NewSet[node.Node]()
@@ -168,7 +167,7 @@ func (holder *Conns) readPayloadsFromConnection(nodeId node.Id) {
 	netConn := holder.netconnForId(nodeId)
 
 	for {
-		buf, _ := raw_net.ReadPayload(netConn)
+		buf, _ := tnet.ReadPayload(netConn)
 		payload := proto.ToPayload(buf)
 		holder.incoming <- struct {
 			From    node.Id
@@ -200,10 +199,10 @@ func (c *Conns) handleConnection(netConn net.Conn) {
 
 func (c *Conns) sendHello(conn net.Conn) {
 	hello := proto.Hello{NodeId: c.myNodeId}
-	raw_net.SendPayload(conn, hello.ToBytes())
+	tnet.SendPayload(conn, hello.ToBytes())
 }
 
 func receivePayload(conn net.Conn) proto.Payload {
-	bytes, _ := raw_net.ReadPayload(conn)
+	bytes, _ := tnet.ReadPayload(conn)
 	return proto.ToPayload(bytes)
 }
