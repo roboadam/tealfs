@@ -2,7 +2,6 @@ package mgr
 
 import (
 	"fmt"
-	"tealfs/pkg/conns"
 	"tealfs/pkg/model/cmds"
 	"tealfs/pkg/node"
 	"tealfs/pkg/proto"
@@ -13,7 +12,7 @@ type Mgr struct {
 	node     node.Node
 	userCmds chan cmds.User
 	tNet     tnet.TNet
-	conns    *conns.Conns
+	conns    *tnet.Conns
 }
 
 func New(userCmds chan cmds.User, tNet tnet.TNet) Mgr {
@@ -22,7 +21,7 @@ func New(userCmds chan cmds.User, tNet tnet.TNet) Mgr {
 	return Mgr{
 		node:     base,
 		userCmds: userCmds,
-		conns:    conns.New(tNet, myNodeId),
+		conns:    tnet.NewConns(tNet, myNodeId),
 		tNet:     tNet,
 	}
 }
@@ -78,7 +77,7 @@ func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
 
 func (m *Mgr) addRemoteNode(cmd cmds.User) {
 	remoteAddress := node.NewAddress(cmd.Argument)
-	m.conns.Add(conns.NewConn(remoteAddress))
+	m.conns.Add(tnet.NewConn(remoteAddress))
 	m.syncNodes()
 }
 
