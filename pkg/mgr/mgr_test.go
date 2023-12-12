@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strconv"
 	"tealfs/pkg/mgr"
-	"tealfs/pkg/model/cmds"
+	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/test"
 	"tealfs/pkg/util"
@@ -15,7 +15,7 @@ import (
 )
 
 func TestManagerCreation(t *testing.T) {
-	userCmds := make(chan cmds.User)
+	userCmds := make(chan events.Ui)
 	tNet := test.MockNet{}
 	localNode := mgr.New(userCmds, &tNet)
 
@@ -25,12 +25,12 @@ func TestManagerCreation(t *testing.T) {
 }
 
 func TestConnectToRemoteNode(t *testing.T) {
-	userCmds := make(chan cmds.User)
+	userCmds := make(chan events.Ui)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := mgr.New(userCmds, &tNet)
 	n.Start()
 
-	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: "someAddress"}
+	userCmds <- events.Ui{EventType: events.ConnectTo, Argument: "someAddress"}
 
 	if !tNet.IsDialed() {
 		t.Error("Node did not connect")
@@ -45,7 +45,7 @@ func TestConnectToRemoteNode(t *testing.T) {
 }
 
 func TestIncomingConnection(t *testing.T) {
-	userCmds := make(chan cmds.User)
+	userCmds := make(chan events.Ui)
 	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
 	n := mgr.New(userCmds, &mockNet)
 	n.Start()
@@ -64,14 +64,14 @@ func TestIncomingConnection(t *testing.T) {
 }
 
 func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
-	userCmds := make(chan cmds.User)
+	userCmds := make(chan events.Ui)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := mgr.New(userCmds, &tNet)
 	remoteNodeId := node.NewNodeId()
 	remoteNodeAddress := "remoteAddress"
 	n.Start()
 
-	userCmds <- cmds.User{CmdType: cmds.ConnectTo, Argument: remoteNodeAddress}
+	userCmds <- events.Ui{EventType: events.ConnectTo, Argument: remoteNodeAddress}
 
 	if !tNet.IsDialed() {
 		t.Error("Node did not connect")

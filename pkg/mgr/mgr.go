@@ -2,7 +2,7 @@ package mgr
 
 import (
 	"fmt"
-	"tealfs/pkg/model/cmds"
+	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/tnet"
@@ -10,18 +10,18 @@ import (
 
 type Mgr struct {
 	node     node.Node
-	userCmds chan cmds.User
+	userCmds chan events.Ui
 	tNet     tnet.TNet
 	conns    *tnet.Conns
 }
 
-func New(userCmds chan cmds.User, tNet tnet.TNet) Mgr {
-	myNodeId := node.NewNodeId()
-	base := node.Node{Id: myNodeId, Address: node.NewAddress(tNet.GetBinding())}
+func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
+	id := node.NewNodeId()
+	node := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	return Mgr{
-		node:     base,
+		node:     node,
 		userCmds: userCmds,
-		conns:    tnet.NewConns(tNet, myNodeId),
+		conns:    tnet.NewConns(tNet, id),
 		tNet:     tNet,
 	}
 }
@@ -75,7 +75,7 @@ func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
 	return toSend
 }
 
-func (m *Mgr) addRemoteNode(cmd cmds.User) {
+func (m *Mgr) addRemoteNode(cmd events.Ui) {
 	remoteAddress := node.NewAddress(cmd.Argument)
 	m.conns.Add(tnet.NewConn(remoteAddress))
 	m.syncNodes()
@@ -84,16 +84,16 @@ func (m *Mgr) addRemoteNode(cmd cmds.User) {
 func (n *Mgr) handleUiCommands() {
 	for {
 		command := <-n.userCmds
-		switch command.CmdType {
-		case cmds.ConnectTo:
+		switch command.EventType {
+		case events.ConnectTo:
 			n.addRemoteNode(command)
-		case cmds.AddStorage:
+		case events.AddStorage:
 			n.addStorage(command)
 		}
 	}
 }
 
-func (n *Mgr) addStorage(cmd cmds.User) {
+func (n *Mgr) addStorage(cmd events.Ui) {
 	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
 }
 

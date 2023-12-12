@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"os"
 	"tealfs/pkg/mgr"
-	"tealfs/pkg/model/cmds"
+	"tealfs/pkg/model/events"
 )
 
 type Ui struct {
 	manager  *mgr.Mgr
-	userCmds chan cmds.User
+	userCmds chan events.Ui
 }
 
-func NewUi(manager *mgr.Mgr, userCmds chan cmds.User) Ui {
+func NewUi(manager *mgr.Mgr, userCmds chan events.Ui) Ui {
 	return Ui{manager, userCmds}
 }
 
@@ -29,17 +29,17 @@ func (ui Ui) Start() {
 func (ui Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
-		ui.userCmds <- cmds.User{
-			CmdType:  cmds.ConnectTo,
-			Argument: hostAndPort,
+		ui.userCmds <- events.Ui{
+			EventType: events.ConnectTo,
+			Argument:  hostAndPort,
 		}
 		fmt.Fprintf(w, "Connecting to: %s", hostAndPort)
 	})
 	http.HandleFunc("/add-storage", func(w http.ResponseWriter, r *http.Request) {
 		newStorageLocation := r.FormValue("newStorageLocation")
-		ui.userCmds <- cmds.User{
-			CmdType:  cmds.AddStorage,
-			Argument: newStorageLocation,
+		ui.userCmds <- events.Ui{
+			EventType: events.AddStorage,
+			Argument:  newStorageLocation,
 		}
 		fmt.Fprintf(w, "Adding storage location: %s", newStorageLocation)
 	})
