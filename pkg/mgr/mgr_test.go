@@ -88,7 +88,7 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 20)
 	payload := readPayloadBytesWritten(&tNet)
-	commandAndNodes, err := CommandAndNodesFrom(payload, t)
+	commandAndNodes, err := commandAndNodesFrom(payload)
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -107,12 +107,12 @@ func validHello(nodeId node.Id) []byte {
 
 	serializedHello := int8Serialized(1)
 	serializedNodeId := []byte(nodeId.String())
-	seralizedNodeIdLen := intSerialized(len(serializedNodeId))
+	serializedNodeIdLen := intSerialized(len(serializedNodeId))
 
-	payload := append(append(serializedHello, seralizedNodeIdLen...), serializedNodeId...)
-	seralizedPayoadLen := intSerialized(len(payload))
+	payload := append(append(serializedHello, serializedNodeIdLen...), serializedNodeId...)
+	serializedPayload := intSerialized(len(payload))
 
-	return append(seralizedPayoadLen, payload...)
+	return append(serializedPayload, payload...)
 }
 
 func readPayloadBytesWritten(tnet *test.MockNet) []byte {
@@ -135,14 +135,14 @@ type CommandAndNodes struct {
 	Nodes   util.Set[NodeInfo]
 }
 
-func CommandAndNodesFrom(data []byte, t *testing.T) (*CommandAndNodes, error) {
+func commandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
 	length := binary.BigEndian.Uint32(data)
 	if int(length) != len(data)-4 {
-		return nil, errors.New("Invalid length")
+		return nil, errors.New("invalid length")
 	}
 	command := int8(data[4])
 	if command != 2 {
-		return nil, errors.New("Not a SyncNodes")
+		return nil, errors.New("not a SyncNodes")
 	}
 	nodes := util.NewSet[NodeInfo]()
 
