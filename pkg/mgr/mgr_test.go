@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model/cmds"
-	"tealfs/pkg/node"
+	"tealfs/pkg/model/node"
 	"tealfs/pkg/test"
 	"tealfs/pkg/util"
 	"testing"

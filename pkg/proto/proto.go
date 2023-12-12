@@ -1,6 +1,6 @@
 package proto
 
-import "tealfs/pkg/node"
+import "tealfs/pkg/model/node"
 
 func HelloToBytes(id node.Id) []byte {
 	return StringToBytes(id.String())

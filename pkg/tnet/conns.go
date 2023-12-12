@@ -2,7 +2,7 @@ package tnet
 
 import (
 	"net"
-	"tealfs/pkg/node"
+	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/util"
 	"time"

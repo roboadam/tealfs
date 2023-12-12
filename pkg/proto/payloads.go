@@ -1,7 +1,7 @@
 package proto
 
 import (
-	"tealfs/pkg/node"
+	"tealfs/pkg/model/node"
 	"tealfs/pkg/util"
 )
 

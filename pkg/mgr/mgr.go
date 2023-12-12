@@ -3,7 +3,7 @@ package mgr
 import (
 	"fmt"
 	"tealfs/pkg/model/cmds"
-	"tealfs/pkg/node"
+	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/tnet"
 )
