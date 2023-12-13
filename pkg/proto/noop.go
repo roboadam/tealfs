@@ -8,6 +8,6 @@ func (h *NoOp) ToBytes() []byte {
 	return result
 }
 
-func ToNoOp(data []byte) *NoOp {
+func ToNoOp(_ []byte) *NoOp {
 	return &NoOp{}
 }

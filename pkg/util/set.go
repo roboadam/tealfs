@@ -31,19 +31,19 @@ func (s *Set[K]) Exists(k K) bool {
 	return exists
 }
 
-func (m *Set[K]) GetValues() []K {
-	result := make([]K, len(m.data))
+func (s *Set[K]) GetValues() []K {
+	result := make([]K, len(s.data))
 	i := 0
-	for k := range m.data {
+	for k := range s.data {
 		result[i] = k
 		i++
 	}
 	return result
 }
 
-func (m *Set[K]) Minus(o *Set[K]) *Set[K] {
+func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
 	result := NewSet[K]()
-	for k := range m.data {
+	for k := range s.data {
 		if !o.Exists(k) {
 			result.Add(k)
 		}
@@ -51,6 +51,6 @@ func (m *Set[K]) Minus(o *Set[K]) *Set[K] {
 	return &result
 }
 
-func (m *Set[K]) Len() int {
-	return len(m.data)
+func (s *Set[K]) Len() int {
+	return len(s.data)
 }

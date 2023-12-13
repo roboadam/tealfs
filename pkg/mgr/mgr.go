@@ -17,9 +17,9 @@ type Mgr struct {
 
 func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
 	id := node.NewNodeId()
-	node := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
+	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	return Mgr{
-		node:     node,
+		node:     n,
 		userCmds: userCmds,
 		conns:    tnet.NewConns(tNet, id),
 		tNet:     tNet,
@@ -81,19 +81,19 @@ func (m *Mgr) addRemoteNode(cmd events.Ui) {
 	m.syncNodes()
 }
 
-func (n *Mgr) handleUiCommands() {
+func (m *Mgr) handleUiCommands() {
 	for {
-		command := <-n.userCmds
+		command := <-m.userCmds
 		switch command.EventType {
 		case events.ConnectTo:
-			n.addRemoteNode(command)
+			m.addRemoteNode(command)
 		case events.AddStorage:
-			n.addStorage(command)
+			m.addStorage(command)
 		}
 	}
 }
 
-func (n *Mgr) addStorage(cmd events.Ui) {
+func (m *Mgr) addStorage(cmd events.Ui) {
 	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
 }
 
