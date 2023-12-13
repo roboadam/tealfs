@@ -1,4 +1,4 @@
-package raw_net
+package tnet
 
 import (
 	"encoding/binary"
@@ -10,14 +10,14 @@ func ReadPayload(conn net.Conn) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	len := binary.BigEndian.Uint32(rawLen)
-	return ReadBytes(conn, len)
+	size := binary.BigEndian.Uint32(rawLen)
+	return ReadBytes(conn, size)
 }
 
 func SendPayload(conn net.Conn, data []byte) error {
-	len := uint32(len(data))
+	size := uint32(len(data))
 	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, len)
+	binary.BigEndian.PutUint32(buf, size)
 	err := SendBytes(conn, buf)
 	if err != nil {
 		return err
