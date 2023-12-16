@@ -1,9 +1,6 @@
 package node
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/google/uuid"
 )
 
@@ -22,11 +19,7 @@ func IdFromRaw(rawId string) Id {
 }
 
 func NewNodeId() Id {
-	idValue, err := uuid.NewUUID()
-	if err != nil {
-		fmt.Println("Error generating UUID:", err)
-		os.Exit(1)
-	}
+	idValue := uuid.New()
 
 	return Id{
 		value: idValue.String(),

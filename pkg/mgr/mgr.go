@@ -6,6 +6,7 @@ import (
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/tnet"
+	"tealfs/pkg/util"
 )
 
 type Mgr struct {
@@ -17,6 +18,7 @@ type Mgr struct {
 
 func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
 	id := node.NewNodeId()
+	fmt.Printf("New Node Id %s\n", id.String())
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	return Mgr{
 		node:     n,
@@ -29,7 +31,7 @@ func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
 func (m *Mgr) Start() {
 	go m.handleUiCommands()
 	go m.readPayloads()
-	go m.handleNewlyConnectdNodes()
+	go m.handleNewlyConnectedNodes()
 }
 
 func (m *Mgr) Close() {
@@ -40,7 +42,7 @@ func (m *Mgr) GetId() node.Id {
 	return m.node.Id
 }
 
-func (m *Mgr) handleNewlyConnectdNodes() {
+func (m *Mgr) handleNewlyConnectedNodes() {
 	for {
 		m.conns.AddedNode()
 		m.syncNodes()
@@ -75,7 +77,12 @@ func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
 	return toSend
 }
 
+func (m *Mgr) GetRemoteNodes() util.Set[node.Node] {
+	return m.conns.GetNodes()
+}
+
 func (m *Mgr) addRemoteNode(cmd events.Ui) {
+	fmt.Println("Connect To Event: " + cmd.Argument)
 	remoteAddress := node.NewAddress(cmd.Argument)
 	m.conns.Add(tnet.NewConn(remoteAddress))
 	m.syncNodes()

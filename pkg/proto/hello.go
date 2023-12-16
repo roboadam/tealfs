@@ -12,7 +12,7 @@ func (h *Hello) ToBytes() []byte {
 }
 
 func ToHello(data []byte) *Hello {
-	rawId, _ := StringFromBytes(data[1:])
+	rawId, _ := StringFromBytes(data)
 	return &Hello{
 		NodeId: node.IdFromRaw(rawId),
 	}

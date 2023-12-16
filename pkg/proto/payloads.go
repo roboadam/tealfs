@@ -13,12 +13,16 @@ type Payload interface {
 func ToPayload(data []byte) Payload {
 	switch payloadType(data) {
 	case HelloType:
-		return ToHello(data)
+		return ToHello(payloadData(data))
 	case SyncType:
-		return ToSyncNodes(data)
+		return ToSyncNodes(payloadData(data))
 	default:
-		return ToNoOp(data)
+		return ToNoOp(payloadData(data))
 	}
+}
+
+func payloadData(data []byte) []byte {
+	return data[1:]
 }
 
 func payloadType(data []byte) byte {
