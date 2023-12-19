@@ -1,6 +1,7 @@
 package tnet
 
 import (
+	"fmt"
 	"net"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
@@ -15,6 +16,7 @@ type Conns struct {
 	tnet           TNet
 	myNodeId       node.Id
 	connectedNodes chan node.Id
+	Debug          bool
 	incoming       chan struct {
 		From    node.Id
 		Payload proto.Payload
@@ -129,9 +131,15 @@ func (c *Conns) consumeChannels() {
 	for {
 		select {
 		case conn := <-c.adds:
+			if c.Debug {
+				fmt.Println("C:add")
+			}
 			c.storeNode(conn)
 
 		case id := <-c.deletes:
+			if c.Debug {
+				fmt.Println("C:delete")
+			}
 			conn, found := c.conns[id]
 			if found {
 				if conn.netConn != nil {
@@ -141,11 +149,17 @@ func (c *Conns) consumeChannels() {
 			}
 
 		case sending := <-c.outgoing:
+			if c.Debug {
+				fmt.Println("C:outgoing")
+			}
 			netconn := c.conns[sending.To].netConn
 			payload := sending.Payload
 			_ = SendPayload(netconn, payload.ToBytes())
 
 		case getList := <-c.getlist:
+			if c.Debug {
+				fmt.Println("C:getlist")
+			}
 			result := util.NewSet[node.Node]()
 			for id := range c.conns {
 				conn := c.conns[id]

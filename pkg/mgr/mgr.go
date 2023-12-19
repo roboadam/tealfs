@@ -14,16 +14,24 @@ type Mgr struct {
 	userCmds chan events.Ui
 	tNet     tnet.TNet
 	conns    *tnet.Conns
+	Debug    bool
+}
+
+func NewDebug(userCmds chan events.Ui, tNet tnet.TNet, debug bool) Mgr {
+	r := New(userCmds, tNet)
+	r.Debug = true
+	return r
 }
 
 func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
 	id := node.NewNodeId()
 	fmt.Printf("New Node Id %s\n", id.String())
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
+	conns := tnet.NewConns(tNet, id)
 	return Mgr{
 		node:     n,
 		userCmds: userCmds,
-		conns:    tnet.NewConns(tNet, id),
+		conns:    conns,
 		tNet:     tNet,
 	}
 }
@@ -55,9 +63,14 @@ func (m *Mgr) readPayloads() {
 
 		switch p := payload.(type) {
 		case *proto.SyncNodes:
-			fmt.Println("readPayloads SyncNodes")
+			if m.Debug {
+				fmt.Println("M:readPayloads SyncNodes")
+			}
 			missingConns := findMyMissingConns(*m.conns, p)
 			for _, c := range missingConns.GetValues() {
+				if m.Debug {
+					fmt.Println("M:Adding missing conn")
+				}
 				m.conns.Add(c)
 			}
 			if remoteIsMissingNodes(*m.conns, p) {
@@ -65,7 +78,9 @@ func (m *Mgr) readPayloads() {
 				m.conns.SendPayload(remoteId, &toSend)
 			}
 		default:
-			fmt.Println("readPayloads default case ")
+			if m.Debug {
+				fmt.Println("M:readPayloads default case ")
+			}
 		}
 	}
 }
@@ -82,7 +97,9 @@ func (m *Mgr) GetRemoteNodes() util.Set[node.Node] {
 }
 
 func (m *Mgr) addRemoteNode(cmd events.Ui) {
-	fmt.Println("Connect To Event: " + cmd.Argument)
+	if m.Debug {
+		fmt.Println("Connect To Event: " + cmd.Argument)
+	}
 	remoteAddress := node.NewAddress(cmd.Argument)
 	m.conns.Add(tnet.NewConn(remoteAddress))
 	m.syncNodes()
@@ -101,14 +118,18 @@ func (m *Mgr) handleUiCommands() {
 }
 
 func (m *Mgr) addStorage(cmd events.Ui) {
-	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
+	if m.Debug {
+		fmt.Println("M:Received command: add-storage, location:" + cmd.Argument)
+	}
 }
 
 func (m *Mgr) syncNodes() {
 	allIds := m.conns.GetIds()
 	for _, id := range allIds.GetValues() {
 		payload := m.BuildSyncNodesPayload()
-		fmt.Println("mgr.syncNodes to " + id.String())
+		if m.Debug {
+			fmt.Println("M:mgr.syncNodes to " + id.String())
+		}
 		m.conns.SendPayload(id, &payload)
 	}
 }

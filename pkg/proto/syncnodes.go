@@ -1,7 +1,6 @@
 package proto
 
 import (
-	"fmt"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/util"
 )
@@ -49,7 +48,7 @@ func ToSyncNodes(data []byte) *SyncNodes {
 	result := util.NewSet[node.Node]()
 	for {
 		var n node.Node
-		fmt.Printf("about to decode node with bytes: % x ...\n", remainder[:20])
+		//fmt.Printf("about to decode node with bytes: % x ...\n", remainder[:20])
 		n, remainder = toNode(remainder)
 		result.Add(n)
 		if len(remainder) <= 0 {
