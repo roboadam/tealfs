@@ -93,6 +93,7 @@ func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
 }
 
 func (m *Mgr) GetRemoteNodes() util.Set[node.Node] {
+	fmt.Println(m.GetId().String() + ":mgr:GetRemoteNodes")
 	return m.conns.GetNodes()
 }
 

@@ -58,7 +58,7 @@ func NewConns(tnet TNet, myNodeId node.Id) *Conns {
 		}),
 		getlist: make(chan struct {
 			response chan util.Set[node.Node]
-		}),
+		}, 100),
 	}
 
 	go conns.consumeChannels()
@@ -122,8 +122,11 @@ func (c *Conns) GetIds() util.Set[node.Id] {
 }
 
 func (c *Conns) GetNodes() util.Set[node.Node] {
-	response := make(chan util.Set[node.Node])
+	fmt.Println(c.myNodeId.String() + ":conns:GetNodes:1")
+	response := make(chan util.Set[node.Node], 100)
+	fmt.Println(c.myNodeId.String() + ":conns:GetNodes:2")
 	c.getlist <- struct{ response chan util.Set[node.Node] }{response: response}
+	fmt.Println(c.myNodeId.String() + ":conns:GetNodes:3")
 	return <-response
 }
 
@@ -131,15 +134,12 @@ func (c *Conns) consumeChannels() {
 	for {
 		select {
 		case conn := <-c.adds:
-			if c.Debug {
-				fmt.Println("C:add")
-			}
+			fmt.Println(c.myNodeId.String() + ":consumeChannels:adds:start")
 			c.storeNode(conn)
+			fmt.Println(c.myNodeId.String() + ":consumeChannels:adds:end")
 
 		case id := <-c.deletes:
-			if c.Debug {
-				fmt.Println("C:delete")
-			}
+			fmt.Println(c.myNodeId.String() + ":consumeChannels:deletes:start")
 			conn, found := c.conns[id]
 			if found {
 				if conn.netConn != nil {
@@ -147,25 +147,27 @@ func (c *Conns) consumeChannels() {
 				}
 				delete(c.conns, id)
 			}
+			fmt.Println(c.myNodeId.String() + ":consumeChannels:deletes:end")
 
 		case sending := <-c.outgoing:
-			if c.Debug {
-				fmt.Println("C:outgoing")
-			}
+			fmt.Println(c.myNodeId.String() + ":consumeChannels:outgoing:start")
 			netconn := c.conns[sending.To].netConn
 			payload := sending.Payload
 			_ = SendPayload(netconn, payload.ToBytes())
+			fmt.Println(c.myNodeId.String() + ":consumeChannels:outgoing:end")
 
 		case getList := <-c.getlist:
-			if c.Debug {
-				fmt.Println("C:getlist")
-			}
+			fmt.Println(c.myNodeId.String() + ":consumeChannels:getlist:start")
 			result := util.NewSet[node.Node]()
 			for id := range c.conns {
 				conn := c.conns[id]
 				result.Add(node.Node{Id: conn.id, Address: conn.address})
 			}
+			fmt.Println(c.myNodeId.String() + ":consumeChannels:getlist:send to chan")
 			getList.response <- result
+			fmt.Println(c.myNodeId.String() + ":consumeChannels:getlist:end")
+		default:
+			//do nothing
 		}
 	}
 }

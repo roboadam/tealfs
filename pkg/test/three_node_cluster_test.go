@@ -14,8 +14,11 @@ func TestThreeNodes(t *testing.T) {
 	i2 := NewInputs()
 	i3 := NewInputs()
 	m1 := StartedMgr(i1)
+	fmt.Println("m1Id:" + m1.GetId().String())
 	m2 := StartedMgr(i2)
+	fmt.Println("m2Id:" + m2.GetId().String())
 	m3 := StartedMgr(i3)
+	fmt.Println("m3Id:" + m3.GetId().String())
 
 	m1.Debug = true
 
