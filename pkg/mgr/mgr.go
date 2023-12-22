@@ -6,6 +6,7 @@ import (
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/tnet"
+	"tealfs/pkg/util"
 )
 
 type Mgr struct {
@@ -17,11 +18,13 @@ type Mgr struct {
 
 func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
 	id := node.NewNodeId()
+	fmt.Printf("New Node Id %s\n", id.String())
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
+	conns := tnet.NewConns(tNet, id)
 	return Mgr{
 		node:     n,
 		userCmds: userCmds,
-		conns:    tnet.NewConns(tNet, id),
+		conns:    conns,
 		tNet:     tNet,
 	}
 }
@@ -29,7 +32,7 @@ func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
 func (m *Mgr) Start() {
 	go m.handleUiCommands()
 	go m.readPayloads()
-	go m.handleNewlyConnectdNodes()
+	go m.handleNewlyConnectedNodes()
 }
 
 func (m *Mgr) Close() {
@@ -40,9 +43,9 @@ func (m *Mgr) GetId() node.Id {
 	return m.node.Id
 }
 
-func (m *Mgr) handleNewlyConnectdNodes() {
+func (m *Mgr) handleNewlyConnectedNodes() {
 	for {
-		m.conns.AddedNode()
+		_ = m.conns.AddedNode()
 		m.syncNodes()
 	}
 }
@@ -53,7 +56,6 @@ func (m *Mgr) readPayloads() {
 
 		switch p := payload.(type) {
 		case *proto.SyncNodes:
-			fmt.Println("readPayloads SyncNodes")
 			missingConns := findMyMissingConns(*m.conns, p)
 			for _, c := range missingConns.GetValues() {
 				m.conns.Add(c)
@@ -63,7 +65,7 @@ func (m *Mgr) readPayloads() {
 				m.conns.SendPayload(remoteId, &toSend)
 			}
 		default:
-			fmt.Println("readPayloads default case ")
+			// Do nothing
 		}
 	}
 }
@@ -73,6 +75,11 @@ func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
 	myNodes.Add(m.node)
 	toSend := proto.SyncNodes{Nodes: myNodes}
 	return toSend
+}
+
+func (m *Mgr) GetRemoteNodes() util.Set[node.Node] {
+	result := m.conns.GetNodes()
+	return result
 }
 
 func (m *Mgr) addRemoteNode(cmd events.Ui) {
@@ -93,15 +100,13 @@ func (m *Mgr) handleUiCommands() {
 	}
 }
 
-func (m *Mgr) addStorage(cmd events.Ui) {
-	fmt.Println("Received command: add-storage, location:" + cmd.Argument)
+func (m *Mgr) addStorage(_ events.Ui) {
 }
 
 func (m *Mgr) syncNodes() {
 	allIds := m.conns.GetIds()
 	for _, id := range allIds.GetValues() {
 		payload := m.BuildSyncNodesPayload()
-		fmt.Println("mgr.syncNodes to " + id.String())
 		m.conns.SendPayload(id, &payload)
 	}
 }

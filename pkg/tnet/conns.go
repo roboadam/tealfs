@@ -1,6 +1,7 @@
 package tnet
 
 import (
+	"fmt"
 	"net"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
@@ -13,7 +14,7 @@ type Conns struct {
 	adds           chan Conn
 	deletes        chan node.Id
 	tnet           TNet
-	myNodeId       node.Id
+	MyNodeId       node.Id
 	connectedNodes chan node.Id
 	incoming       chan struct {
 		From    node.Id
@@ -41,11 +42,11 @@ func NewConn(address node.Address) Conn {
 func NewConns(tnet TNet, myNodeId node.Id) *Conns {
 	conns := &Conns{
 		tnet:           tnet,
-		myNodeId:       myNodeId,
+		MyNodeId:       myNodeId,
 		conns:          make(map[node.Id]Conn),
 		adds:           make(chan Conn),
 		deletes:        make(chan node.Id),
-		connectedNodes: make(chan node.Id),
+		connectedNodes: make(chan node.Id, 100),
 		incoming: make(chan struct {
 			From    node.Id
 			Payload proto.Payload
@@ -122,7 +123,8 @@ func (c *Conns) GetIds() util.Set[node.Id] {
 func (c *Conns) GetNodes() util.Set[node.Node] {
 	response := make(chan util.Set[node.Node])
 	c.getlist <- struct{ response chan util.Set[node.Node] }{response: response}
-	return <-response
+	result := <-response
+	return result
 }
 
 func (c *Conns) consumeChannels() {
@@ -152,12 +154,15 @@ func (c *Conns) consumeChannels() {
 				result.Add(node.Node{Id: conn.id, Address: conn.address})
 			}
 			getList.response <- result
+		default:
+			//do nothing
 		}
 	}
 }
 
 func (c *Conns) storeNode(conn Conn) {
 	c.conns[conn.id] = conn
+	fmt.Println("for node " + c.MyNodeId.String() + " adding node id " + conn.id.String())
 	c.connectedNodes <- conn.id
 	go c.readPayloadsFromConnection(conn.id)
 }
@@ -197,7 +202,7 @@ func (c *Conns) handleConnection(netConn net.Conn) {
 }
 
 func (c *Conns) sendHello(conn net.Conn) {
-	hello := proto.Hello{NodeId: c.myNodeId}
+	hello := proto.Hello{NodeId: c.MyNodeId}
 	_ = SendPayload(conn, hello.ToBytes())
 }
 

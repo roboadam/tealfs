@@ -31,6 +31,7 @@ func (t *TcpNet) listen() {
 		time.Sleep(time.Second * 2)
 		listener, err = net.Listen("tcp", t.binding)
 	}
+	t.binding = listener.Addr().String()
 	t.listener = listener
 }
 
