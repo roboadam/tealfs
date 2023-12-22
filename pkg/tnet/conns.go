@@ -16,7 +16,6 @@ type Conns struct {
 	tnet           TNet
 	MyNodeId       node.Id
 	connectedNodes chan node.Id
-	Debug          bool
 	incoming       chan struct {
 		From    node.Id
 		Payload proto.Payload
