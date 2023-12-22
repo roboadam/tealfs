@@ -14,7 +14,7 @@ type Conns struct {
 	adds           chan Conn
 	deletes        chan node.Id
 	tnet           TNet
-	myNodeId       node.Id
+	MyNodeId       node.Id
 	connectedNodes chan node.Id
 	Debug          bool
 	incoming       chan struct {
@@ -43,11 +43,11 @@ func NewConn(address node.Address) Conn {
 func NewConns(tnet TNet, myNodeId node.Id) *Conns {
 	conns := &Conns{
 		tnet:           tnet,
-		myNodeId:       myNodeId,
+		MyNodeId:       myNodeId,
 		conns:          make(map[node.Id]Conn),
 		adds:           make(chan Conn),
 		deletes:        make(chan node.Id),
-		connectedNodes: make(chan node.Id),
+		connectedNodes: make(chan node.Id, 100),
 		incoming: make(chan struct {
 			From    node.Id
 			Payload proto.Payload
@@ -58,7 +58,7 @@ func NewConns(tnet TNet, myNodeId node.Id) *Conns {
 		}),
 		getlist: make(chan struct {
 			response chan util.Set[node.Node]
-		}, 100),
+		}),
 	}
 
 	go conns.consumeChannels()
@@ -122,24 +122,19 @@ func (c *Conns) GetIds() util.Set[node.Id] {
 }
 
 func (c *Conns) GetNodes() util.Set[node.Node] {
-	fmt.Println(c.myNodeId.String() + ":conns:GetNodes:1")
-	response := make(chan util.Set[node.Node], 100)
-	fmt.Println(c.myNodeId.String() + ":conns:GetNodes:2")
+	response := make(chan util.Set[node.Node])
 	c.getlist <- struct{ response chan util.Set[node.Node] }{response: response}
-	fmt.Println(c.myNodeId.String() + ":conns:GetNodes:3")
-	return <-response
+	result := <-response
+	return result
 }
 
 func (c *Conns) consumeChannels() {
 	for {
 		select {
 		case conn := <-c.adds:
-			fmt.Println(c.myNodeId.String() + ":consumeChannels:adds:start")
 			c.storeNode(conn)
-			fmt.Println(c.myNodeId.String() + ":consumeChannels:adds:end")
 
 		case id := <-c.deletes:
-			fmt.Println(c.myNodeId.String() + ":consumeChannels:deletes:start")
 			conn, found := c.conns[id]
 			if found {
 				if conn.netConn != nil {
@@ -147,25 +142,19 @@ func (c *Conns) consumeChannels() {
 				}
 				delete(c.conns, id)
 			}
-			fmt.Println(c.myNodeId.String() + ":consumeChannels:deletes:end")
 
 		case sending := <-c.outgoing:
-			fmt.Println(c.myNodeId.String() + ":consumeChannels:outgoing:start")
 			netconn := c.conns[sending.To].netConn
 			payload := sending.Payload
 			_ = SendPayload(netconn, payload.ToBytes())
-			fmt.Println(c.myNodeId.String() + ":consumeChannels:outgoing:end")
 
 		case getList := <-c.getlist:
-			fmt.Println(c.myNodeId.String() + ":consumeChannels:getlist:start")
 			result := util.NewSet[node.Node]()
 			for id := range c.conns {
 				conn := c.conns[id]
 				result.Add(node.Node{Id: conn.id, Address: conn.address})
 			}
-			fmt.Println(c.myNodeId.String() + ":consumeChannels:getlist:send to chan")
 			getList.response <- result
-			fmt.Println(c.myNodeId.String() + ":consumeChannels:getlist:end")
 		default:
 			//do nothing
 		}
@@ -174,6 +163,7 @@ func (c *Conns) consumeChannels() {
 
 func (c *Conns) storeNode(conn Conn) {
 	c.conns[conn.id] = conn
+	fmt.Println("for node " + c.MyNodeId.String() + " adding node id " + conn.id.String())
 	c.connectedNodes <- conn.id
 	go c.readPayloadsFromConnection(conn.id)
 }
@@ -213,7 +203,7 @@ func (c *Conns) handleConnection(netConn net.Conn) {
 }
 
 func (c *Conns) sendHello(conn net.Conn) {
-	hello := proto.Hello{NodeId: c.myNodeId}
+	hello := proto.Hello{NodeId: c.MyNodeId}
 	_ = SendPayload(conn, hello.ToBytes())
 }
 

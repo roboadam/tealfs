@@ -14,13 +14,6 @@ type Mgr struct {
 	userCmds chan events.Ui
 	tNet     tnet.TNet
 	conns    *tnet.Conns
-	Debug    bool
-}
-
-func NewDebug(userCmds chan events.Ui, tNet tnet.TNet, debug bool) Mgr {
-	r := New(userCmds, tNet)
-	r.Debug = true
-	return r
 }
 
 func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
@@ -52,7 +45,7 @@ func (m *Mgr) GetId() node.Id {
 
 func (m *Mgr) handleNewlyConnectedNodes() {
 	for {
-		m.conns.AddedNode()
+		_ = m.conns.AddedNode()
 		m.syncNodes()
 	}
 }
@@ -63,14 +56,8 @@ func (m *Mgr) readPayloads() {
 
 		switch p := payload.(type) {
 		case *proto.SyncNodes:
-			if m.Debug {
-				fmt.Println("M:readPayloads SyncNodes")
-			}
 			missingConns := findMyMissingConns(*m.conns, p)
 			for _, c := range missingConns.GetValues() {
-				if m.Debug {
-					fmt.Println("M:Adding missing conn")
-				}
 				m.conns.Add(c)
 			}
 			if remoteIsMissingNodes(*m.conns, p) {
@@ -78,9 +65,7 @@ func (m *Mgr) readPayloads() {
 				m.conns.SendPayload(remoteId, &toSend)
 			}
 		default:
-			if m.Debug {
-				fmt.Println("M:readPayloads default case ")
-			}
+			// Do nothing
 		}
 	}
 }
@@ -93,14 +78,11 @@ func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
 }
 
 func (m *Mgr) GetRemoteNodes() util.Set[node.Node] {
-	fmt.Println(m.GetId().String() + ":mgr:GetRemoteNodes")
-	return m.conns.GetNodes()
+	result := m.conns.GetNodes()
+	return result
 }
 
 func (m *Mgr) addRemoteNode(cmd events.Ui) {
-	if m.Debug {
-		fmt.Println("Connect To Event: " + cmd.Argument)
-	}
 	remoteAddress := node.NewAddress(cmd.Argument)
 	m.conns.Add(tnet.NewConn(remoteAddress))
 	m.syncNodes()
@@ -118,19 +100,13 @@ func (m *Mgr) handleUiCommands() {
 	}
 }
 
-func (m *Mgr) addStorage(cmd events.Ui) {
-	if m.Debug {
-		fmt.Println("M:Received command: add-storage, location:" + cmd.Argument)
-	}
+func (m *Mgr) addStorage(_ events.Ui) {
 }
 
 func (m *Mgr) syncNodes() {
 	allIds := m.conns.GetIds()
 	for _, id := range allIds.GetValues() {
 		payload := m.BuildSyncNodesPayload()
-		if m.Debug {
-			fmt.Println("M:mgr.syncNodes to " + id.String())
-		}
 		m.conns.SendPayload(id, &payload)
 	}
 }

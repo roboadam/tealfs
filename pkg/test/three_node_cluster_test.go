@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/tnet"
@@ -14,29 +13,17 @@ func TestThreeNodes(t *testing.T) {
 	i2 := NewInputs()
 	i3 := NewInputs()
 	m1 := StartedMgr(i1)
-	fmt.Println("m1Id:" + m1.GetId().String())
 	m2 := StartedMgr(i2)
-	fmt.Println("m2Id:" + m2.GetId().String())
 	m3 := StartedMgr(i3)
-	fmt.Println("m3Id:" + m3.GetId().String())
-
-	m1.Debug = true
-
-	time.Sleep(time.Second * 5)
-	fmt.Println("1")
 
 	i1.ConnectTo(i2)
 	i2.ConnectTo(i3)
 
-	time.Sleep(time.Second * 5)
-	fmt.Println("2")
+	time.Sleep(time.Second * 2)
 
 	n1 := m1.GetRemoteNodes()
-	fmt.Println("3")
 	n2 := m2.GetRemoteNodes()
-	fmt.Println("4")
 	n3 := m3.GetRemoteNodes()
-	fmt.Println("5")
 	if n1.Len() != 2 {
 		t.Errorf("one had %d", n1.Len())
 	}
