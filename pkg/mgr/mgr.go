@@ -5,18 +5,20 @@ import (
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/store"
 	"tealfs/pkg/tnet"
 	"tealfs/pkg/util"
 )
 
 type Mgr struct {
 	node     node.Node
-	userCmds chan events.Ui
+	userCmds chan events.Event
 	tNet     tnet.TNet
 	conns    *tnet.Conns
+	store    *store.Paths
 }
 
-func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
+func New(userCmds chan events.Event, tNet tnet.TNet) Mgr {
 	id := node.NewNodeId()
 	fmt.Printf("New Node Id %s\n", id.String())
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
@@ -82,8 +84,8 @@ func (m *Mgr) GetRemoteNodes() util.Set[node.Node] {
 	return result
 }
 
-func (m *Mgr) addRemoteNode(cmd events.Ui) {
-	remoteAddress := node.NewAddress(cmd.Argument)
+func (m *Mgr) addRemoteNode(cmd events.Event) {
+	remoteAddress := node.NewAddress(cmd.GetString())
 	m.conns.Add(tnet.NewConn(remoteAddress))
 	m.syncNodes()
 }
@@ -96,11 +98,18 @@ func (m *Mgr) handleUiCommands() {
 			m.addRemoteNode(command)
 		case events.AddStorage:
 			m.addStorage(command)
+		case events.AddData:
+			m.addData(command)
 		}
 	}
 }
 
-func (m *Mgr) addStorage(_ events.Ui) {
+func (m *Mgr) addData(_ events.Event) {
+
+}
+
+func (m *Mgr) addStorage(event events.Event) {
+
 }
 
 func (m *Mgr) syncNodes() {

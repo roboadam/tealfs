@@ -15,7 +15,7 @@ import (
 )
 
 func TestManagerCreation(t *testing.T) {
-	userCmds := make(chan events.Ui)
+	userCmds := make(chan events.Event)
 	tNet := test.MockNet{}
 	localNode := mgr.New(userCmds, &tNet)
 
@@ -25,12 +25,12 @@ func TestManagerCreation(t *testing.T) {
 }
 
 func TestConnectToRemoteNode(t *testing.T) {
-	userCmds := make(chan events.Ui)
+	userCmds := make(chan events.Event)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := mgr.New(userCmds, &tNet)
 	n.Start()
 
-	userCmds <- events.Ui{EventType: events.ConnectTo, Argument: "someAddress"}
+	userCmds <- events.NewString(events.ConnectTo, "someAddress")
 
 	if !tNet.IsDialed() {
 		t.Error("Node did not connect")
@@ -45,7 +45,7 @@ func TestConnectToRemoteNode(t *testing.T) {
 }
 
 func TestIncomingConnection(t *testing.T) {
-	userCmds := make(chan events.Ui)
+	userCmds := make(chan events.Event)
 	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
 	n := mgr.New(userCmds, &mockNet)
 	n.Start()
@@ -64,14 +64,14 @@ func TestIncomingConnection(t *testing.T) {
 }
 
 func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
-	userCmds := make(chan events.Ui)
+	userCmds := make(chan events.Event)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := mgr.New(userCmds, &tNet)
 	remoteNodeId := node.NewNodeId()
 	remoteNodeAddress := "remoteAddress"
 	n.Start()
 
-	userCmds <- events.Ui{EventType: events.ConnectTo, Argument: remoteNodeAddress}
+	userCmds <- events.NewString(events.ConnectTo, remoteNodeAddress)
 
 	if !tNet.IsDialed() {
 		t.Error("Node did not connect")

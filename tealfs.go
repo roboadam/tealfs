@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	userCommands := make(chan events.Ui)
+	userCommands := make(chan events.Event)
 
 	tNet := tnet.NewTcpNet("127.0.0.1:" + strconv.Itoa(nodePort()))
 
