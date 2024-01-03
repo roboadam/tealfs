@@ -5,16 +5,33 @@ import (
 	"github.com/google/uuid"
 	"os"
 	"path/filepath"
-	"tealfs/pkg/util"
 )
 
 type Path struct {
-	id  uuid.UUID
+	id  PathId
 	raw string
 }
 
+type PathId struct {
+	value string
+}
+
 type Paths struct {
-	paths util.Set[Path]
+	paths map[PathId]Path
+	adds  chan Path
+}
+
+func (ps *Paths) Add(p Path) {
+	ps.adds <- p
+}
+
+func (ps *Paths) consumeChannels() {
+	for {
+		select {
+		case p := <-ps.adds:
+			ps.paths[p.id] = p
+		}
+	}
 }
 
 func (p *Path) Save(hash []byte, data []byte) error {
@@ -30,11 +47,13 @@ func (p *Path) Save(hash []byte, data []byte) error {
 
 func NewPath(rawPath string) Path {
 	return Path{
-		id:  uuid.New(),
 		raw: filepath.Clean(rawPath),
+		id:  PathId{value: uuid.New().String()},
 	}
 }
 
 func NewPaths() Paths {
-	return Paths{paths: util.NewSet[Path]()}
+	p := Paths{paths: make(map[PathId]Path)}
+	go p.consumeChannels()
+	return p
 }
