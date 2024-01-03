@@ -1,19 +1,14 @@
 package store
 
 import (
-	"github.com/google/uuid"
 	"os"
 	"testing"
 )
 
 func TestPath_Save(t *testing.T) {
 	tempDir, _ := os.MkdirTemp("", "*-test-save")
-	defer os.RemoveAll(tempDir) // Clean up the temporary directory when the test is done
+	defer removeAll(tempDir, t)
 
-	type fields struct {
-		id  uuid.UUID
-		raw string
-	}
 	type args struct {
 		hash []byte
 		data []byte
@@ -41,5 +36,12 @@ func TestPath_Save(t *testing.T) {
 				t.Errorf("Save() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func removeAll(dir string, t *testing.T) {
+	err := os.RemoveAll(dir)
+	if err != nil {
+		t.Errorf("Error [%v] deleting temp dir [%v]", err, dir)
 	}
 }
