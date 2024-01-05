@@ -19,10 +19,19 @@ type PathId struct {
 type Paths struct {
 	paths map[PathId]Path
 	adds  chan Path
+	keys  chan struct {
+		response chan []PathId
+	}
 }
 
 func (ps *Paths) Add(p Path) {
 	ps.adds <- p
+}
+
+func (ps *Paths) Keys() []PathId {
+	r := struct{ response chan []PathId }{response: make(chan []PathId)}
+	ps.keys <- r
+	return <-r.response
 }
 
 func (ps *Paths) consumeChannels() {
@@ -53,7 +62,11 @@ func NewPath(rawPath string) Path {
 }
 
 func NewPaths() Paths {
-	p := Paths{paths: make(map[PathId]Path)}
+	p := Paths{
+		paths: make(map[PathId]Path),
+		adds:  make(chan Path),
+		keys:  make(chan struct{ response chan []PathId }),
+	}
 	go p.consumeChannels()
 	return p
 }

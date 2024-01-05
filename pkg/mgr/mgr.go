@@ -104,7 +104,7 @@ func (m *Mgr) handleUiCommands() {
 	}
 }
 
-func (m *Mgr) addData(_ events.Event) {
+func (m *Mgr) addData(d events.Event) {
 
 }
 
