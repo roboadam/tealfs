@@ -5,6 +5,8 @@ import (
 	"github.com/google/uuid"
 	"os"
 	"path/filepath"
+	h "tealfs/pkg/hash"
+	"tealfs/pkg/util"
 )
 
 type Path struct {
@@ -19,8 +21,11 @@ type PathId struct {
 type Paths struct {
 	paths map[PathId]Path
 	adds  chan Path
-	keys  chan struct {
-		response chan []PathId
+	keys  chan chan []PathId
+	saves chan struct {
+		pathId PathId
+		hash   h.Hash
+		data   []byte
 	}
 }
 
@@ -29,9 +34,17 @@ func (ps *Paths) Add(p Path) {
 }
 
 func (ps *Paths) Keys() []PathId {
-	r := struct{ response chan []PathId }{response: make(chan []PathId)}
-	ps.keys <- r
-	return <-r.response
+	response := make(chan []PathId)
+	ps.keys <- response
+	return <-response
+}
+
+func (ps *Paths) Save(id PathId, hash h.Hash, data []byte) {
+	ps.saves <- struct {
+		pathId PathId
+		hash   h.Hash
+		data   []byte
+	}{pathId: id, hash: hash, data: data}
 }
 
 func (ps *Paths) consumeChannels() {
@@ -39,12 +52,17 @@ func (ps *Paths) consumeChannels() {
 		select {
 		case p := <-ps.adds:
 			ps.paths[p.id] = p
+		case k := <-ps.keys:
+			k <- util.Keys(ps.paths)
+		case s := <-ps.saves:
+			path := ps.paths[s.pathId]
+			_ = path.Save(s.hash, s.data)
 		}
 	}
 }
 
-func (p *Path) Save(hash []byte, data []byte) error {
-	hashString := hex.EncodeToString(hash)
+func (p *Path) Save(hash h.Hash, data []byte) error {
+	hashString := hex.EncodeToString(hash.Value)
 	filePath := filepath.Join(p.raw, hashString)
 	err := os.WriteFile(filePath, data, 0644)
 	if err != nil {
@@ -65,7 +83,7 @@ func NewPaths() Paths {
 	p := Paths{
 		paths: make(map[PathId]Path),
 		adds:  make(chan Path),
-		keys:  make(chan struct{ response chan []PathId }),
+		keys:  make(chan chan []PathId),
 	}
 	go p.consumeChannels()
 	return p

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"os"
 	"strconv"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model/events"
@@ -60,7 +61,6 @@ func TestIncomingConnection(t *testing.T) {
 	if !bytes.Equal(result, expected) {
 		t.Error("You didn't hello back!")
 	}
-
 }
 
 func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
@@ -101,6 +101,20 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	if !commandAndNodes.Nodes.Equal(&expected.Nodes) {
 		t.Error("Node set is not correct")
 	}
+}
+
+func TestSave(t *testing.T) {
+	userCmds := make(chan events.Event)
+	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
+	n := mgr.New(userCmds, &tNet)
+	n.Start()
+
+	tempDir, _ := os.MkdirTemp("", "*-test-save-mgr")
+	defer removeAll(tempDir, t)
+
+	userCmds <- events.NewString(events.AddStorage, tempDir)
+	time.Sleep(100 * time.Millisecond)
+	userCmds <- events.NewString(events.AddData, tempDir)
 }
 
 func validHello(nodeId node.Id) []byte {
@@ -175,4 +189,11 @@ func int8Serialized(number int8) []byte {
 
 func nodeIdIsValid(mgr *mgr.Mgr) bool {
 	return len(mgr.GetId().String()) > 0
+}
+
+func removeAll(dir string, t *testing.T) {
+	err := os.RemoveAll(dir)
+	if err != nil {
+		t.Errorf("Error [%v] deleting temp dir [%v]", err, dir)
+	}
 }

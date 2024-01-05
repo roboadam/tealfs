@@ -2,6 +2,7 @@ package mgr
 
 import (
 	"fmt"
+	"tealfs/pkg/hash"
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
@@ -105,11 +106,15 @@ func (m *Mgr) handleUiCommands() {
 }
 
 func (m *Mgr) addData(d events.Event) {
-
+	data := d.GetBytes()
+	hash := hash.HashForData(data)
+	for _, pid := range m.store.Keys() {
+		m.store.Save(pid, hash, data)
+	}
 }
 
-func (m *Mgr) addStorage(event events.Event) {
-
+func (m *Mgr) addStorage(s events.Event) {
+	m.store.Add(store.NewPath(s.GetString()))
 }
 
 func (m *Mgr) syncNodes() {
