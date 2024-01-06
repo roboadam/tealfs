@@ -24,11 +24,13 @@ func New(userCmds chan events.Event, tNet tnet.TNet) Mgr {
 	fmt.Printf("New Node Id %s\n", id.String())
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
+	s := store.NewPaths()
 	return Mgr{
 		node:     n,
 		userCmds: userCmds,
 		conns:    conns,
 		tNet:     tNet,
+		store:    &s,
 	}
 }
 
@@ -107,9 +109,9 @@ func (m *Mgr) handleUiCommands() {
 
 func (m *Mgr) addData(d events.Event) {
 	data := d.GetBytes()
-	hash := hash.HashForData(data)
+	h := hash.HashForData(data)
 	for _, pid := range m.store.Keys() {
-		m.store.Save(pid, hash, data)
+		m.store.Save(pid, h, data)
 	}
 }
 
