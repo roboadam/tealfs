@@ -103,7 +103,8 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	}
 }
 
-func TestSave(t *testing.T) {
+func TestSaveAndRead(t *testing.T) {
+	expected := "BlahBlaHereIsTheDataAndItsLong"
 	userCmds := make(chan events.Event)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := mgr.New(userCmds, &tNet)
@@ -114,7 +115,15 @@ func TestSave(t *testing.T) {
 
 	userCmds <- events.NewString(events.AddStorage, tempDir)
 	time.Sleep(100 * time.Millisecond)
-	userCmds <- events.NewString(events.AddData, tempDir)
+	userCmds <- events.NewString(events.AddData, expected)
+	time.Sleep(100 * time.Millisecond)
+	result := make(chan []byte)
+	h := []byte{0x42, 0x6c, 0x61, 0x68, 0x42}
+	userCmds <- events.NewBytesWithResult(events.ReadData, h, result)
+	r := string(<-result)
+	if r != expected {
+		t.Error("Not equal result: ", r, " vs expected: ", expected)
+	}
 }
 
 func validHello(nodeId node.Id) []byte {

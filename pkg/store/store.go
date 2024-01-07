@@ -2,6 +2,7 @@ package store
 
 import (
 	"encoding/hex"
+	"fmt"
 	"github.com/google/uuid"
 	"os"
 	"path/filepath"
@@ -73,6 +74,10 @@ func (ps *Paths) consumeChannels() {
 		case s := <-ps.saves:
 			path := ps.paths[s.pathId]
 			path.Save(s.hash, s.data)
+		case r := <-ps.reads:
+
+			data := ps.Read(r.pathId, r.hash)
+			r.value <- data
 		}
 	}
 }
@@ -81,6 +86,7 @@ func (p *Path) Save(hash h.Hash, data []byte) {
 	for {
 		hashString := hex.EncodeToString(hash.Value)
 		filePath := filepath.Join(p.raw, hashString)
+		fmt.Println("writing file ", filePath)
 		err := os.WriteFile(filePath, data, 0644)
 		if err == nil {
 			return
