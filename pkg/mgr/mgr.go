@@ -109,7 +109,7 @@ func (m *Mgr) handleUiCommands() {
 
 func (m *Mgr) addData(d events.Event) {
 	data := d.GetBytes()
-	h := hash.HashForData(data)
+	h := hash.ForData(data)
 	for _, pid := range m.store.Keys() {
 		m.store.Save(pid, h, data)
 	}
@@ -120,7 +120,7 @@ func (m *Mgr) addStorage(s events.Event) {
 }
 
 func (m *Mgr) readData(d events.Event) {
-	h := hash.HashFromRaw(d.GetBytes())
+	h := hash.FromRaw(d.GetBytes())
 	r := d.GetResult()
 	for _, k := range m.store.Keys() {
 		r <- m.store.Read(k, h)
