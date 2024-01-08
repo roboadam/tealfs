@@ -1,7 +1,6 @@
 package mgr
 
 import (
-	"fmt"
 	"tealfs/pkg/hash"
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
@@ -21,7 +20,6 @@ type Mgr struct {
 
 func New(events chan events.Event, tNet tnet.TNet) Mgr {
 	id := node.NewNodeId()
-	fmt.Printf("New Node Id %s\n", id.String())
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
 	s := store.NewPaths()

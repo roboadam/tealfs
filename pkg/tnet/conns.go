@@ -1,7 +1,6 @@
 package tnet
 
 import (
-	"fmt"
 	"net"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
@@ -162,7 +161,6 @@ func (c *Conns) consumeChannels() {
 
 func (c *Conns) storeNode(conn Conn) {
 	c.conns[conn.id] = conn
-	fmt.Println("for node " + c.MyNodeId.String() + " adding node id " + conn.id.String())
 	c.connectedNodes <- conn.id
 	go c.readPayloadsFromConnection(conn.id)
 }
