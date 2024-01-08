@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"os"
 	"strconv"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model/events"
@@ -15,7 +16,7 @@ import (
 )
 
 func TestManagerCreation(t *testing.T) {
-	userCmds := make(chan events.Ui)
+	userCmds := make(chan events.Event)
 	tNet := test.MockNet{}
 	localNode := mgr.New(userCmds, &tNet)
 
@@ -25,12 +26,12 @@ func TestManagerCreation(t *testing.T) {
 }
 
 func TestConnectToRemoteNode(t *testing.T) {
-	userCmds := make(chan events.Ui)
+	userCmds := make(chan events.Event)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := mgr.New(userCmds, &tNet)
 	n.Start()
 
-	userCmds <- events.Ui{EventType: events.ConnectTo, Argument: "someAddress"}
+	userCmds <- events.NewString(events.ConnectTo, "someAddress")
 
 	if !tNet.IsDialed() {
 		t.Error("Node did not connect")
@@ -45,7 +46,7 @@ func TestConnectToRemoteNode(t *testing.T) {
 }
 
 func TestIncomingConnection(t *testing.T) {
-	userCmds := make(chan events.Ui)
+	userCmds := make(chan events.Event)
 	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
 	n := mgr.New(userCmds, &mockNet)
 	n.Start()
@@ -60,18 +61,17 @@ func TestIncomingConnection(t *testing.T) {
 	if !bytes.Equal(result, expected) {
 		t.Error("You didn't hello back!")
 	}
-
 }
 
 func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
-	userCmds := make(chan events.Ui)
+	userCmds := make(chan events.Event)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := mgr.New(userCmds, &tNet)
 	remoteNodeId := node.NewNodeId()
 	remoteNodeAddress := "remoteAddress"
 	n.Start()
 
-	userCmds <- events.Ui{EventType: events.ConnectTo, Argument: remoteNodeAddress}
+	userCmds <- events.NewString(events.ConnectTo, remoteNodeAddress)
 
 	if !tNet.IsDialed() {
 		t.Error("Node did not connect")
@@ -100,6 +100,29 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 
 	if !commandAndNodes.Nodes.Equal(&expected.Nodes) {
 		t.Error("Node set is not correct")
+	}
+}
+
+func TestSaveAndRead(t *testing.T) {
+	expected := "BlahBlaHereIsTheDataAndItsLong"
+	userCmds := make(chan events.Event)
+	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
+	n := mgr.New(userCmds, &tNet)
+	n.Start()
+
+	tempDir, _ := os.MkdirTemp("", "*-test-save-mgr")
+	defer removeAll(tempDir, t)
+
+	userCmds <- events.NewString(events.AddStorage, tempDir)
+	time.Sleep(100 * time.Millisecond)
+	userCmds <- events.NewString(events.AddData, expected)
+	time.Sleep(100 * time.Millisecond)
+	result := make(chan []byte)
+	h := []byte{0x42, 0x6c, 0x61, 0x68, 0x42}
+	userCmds <- events.NewBytesWithResult(events.ReadData, h, result)
+	r := string(<-result)
+	if r != expected {
+		t.Error("Not equal result: ", r, " vs expected: ", expected)
 	}
 }
 
@@ -175,4 +198,11 @@ func int8Serialized(number int8) []byte {
 
 func nodeIdIsValid(mgr *mgr.Mgr) bool {
 	return len(mgr.GetId().String()) > 0
+}
+
+func removeAll(dir string, t *testing.T) {
+	err := os.RemoveAll(dir)
+	if err != nil {
+		t.Errorf("Error [%v] deleting temp dir [%v]", err, dir)
+	}
 }

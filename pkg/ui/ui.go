@@ -10,10 +10,10 @@ import (
 
 type Ui struct {
 	manager  *mgr.Mgr
-	userCmds chan events.Ui
+	userCmds chan events.Event
 }
 
-func NewUi(manager *mgr.Mgr, userCmds chan events.Ui) Ui {
+func NewUi(manager *mgr.Mgr, userCmds chan events.Event) Ui {
 	return Ui{manager, userCmds}
 }
 
@@ -29,18 +29,12 @@ func (ui Ui) Start() {
 func (ui Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
-		ui.userCmds <- events.Ui{
-			EventType: events.ConnectTo,
-			Argument:  hostAndPort,
-		}
+		ui.userCmds <- events.NewString(events.ConnectTo, hostAndPort)
 		_, _ = fmt.Fprintf(w, "Connecting to: %s", hostAndPort)
 	})
 	http.HandleFunc("/add-storage", func(w http.ResponseWriter, r *http.Request) {
 		newStorageLocation := r.FormValue("newStorageLocation")
-		ui.userCmds <- events.Ui{
-			EventType: events.AddStorage,
-			Argument:  newStorageLocation,
-		}
+		ui.userCmds <- events.NewString(events.AddStorage, newStorageLocation)
 		_, _ = fmt.Fprintf(w, "Adding storage location: %s", newStorageLocation)
 	})
 }

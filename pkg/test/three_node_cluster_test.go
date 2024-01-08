@@ -42,18 +42,18 @@ func StartedMgr(inputs *Inputs) *mgr.Mgr {
 }
 
 type Inputs struct {
-	UiEvents chan events.Ui
+	UiEvents chan events.Event
 	Net      *tnet.TcpNet
 }
 
 func (i *Inputs) ConnectTo(i2 *Inputs) {
-	i.UiEvents <- events.Ui{EventType: events.ConnectTo, Argument: i2.Net.GetBinding()}
+	i.UiEvents <- events.NewString(events.ConnectTo, i2.Net.GetBinding())
 }
 
 func NewInputs() *Inputs {
 	net := tnet.NewTcpNet("localhost:0")
 	return &Inputs{
-		UiEvents: make(chan events.Ui),
+		UiEvents: make(chan events.Event),
 		Net:      net,
 	}
 }

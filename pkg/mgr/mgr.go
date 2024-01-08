@@ -1,31 +1,34 @@
 package mgr
 
 import (
-	"fmt"
+	"tealfs/pkg/hash"
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/store"
 	"tealfs/pkg/tnet"
 	"tealfs/pkg/util"
 )
 
 type Mgr struct {
-	node     node.Node
-	userCmds chan events.Ui
-	tNet     tnet.TNet
-	conns    *tnet.Conns
+	node   node.Node
+	events chan events.Event
+	tNet   tnet.TNet
+	conns  *tnet.Conns
+	store  *store.Paths
 }
 
-func New(userCmds chan events.Ui, tNet tnet.TNet) Mgr {
+func New(events chan events.Event, tNet tnet.TNet) Mgr {
 	id := node.NewNodeId()
-	fmt.Printf("New Node Id %s\n", id.String())
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
+	s := store.NewPaths()
 	return Mgr{
-		node:     n,
-		userCmds: userCmds,
-		conns:    conns,
-		tNet:     tNet,
+		node:   n,
+		events: events,
+		conns:  conns,
+		tNet:   tNet,
+		store:  &s,
 	}
 }
 
@@ -82,25 +85,47 @@ func (m *Mgr) GetRemoteNodes() util.Set[node.Node] {
 	return result
 }
 
-func (m *Mgr) addRemoteNode(cmd events.Ui) {
-	remoteAddress := node.NewAddress(cmd.Argument)
+func (m *Mgr) addRemoteNode(cmd events.Event) {
+	remoteAddress := node.NewAddress(cmd.GetString())
 	m.conns.Add(tnet.NewConn(remoteAddress))
 	m.syncNodes()
 }
 
 func (m *Mgr) handleUiCommands() {
 	for {
-		command := <-m.userCmds
+		command := <-m.events
 		switch command.EventType {
 		case events.ConnectTo:
 			m.addRemoteNode(command)
 		case events.AddStorage:
 			m.addStorage(command)
+		case events.AddData:
+			m.addData(command)
+		case events.ReadData:
+			m.readData(command)
 		}
 	}
 }
 
-func (m *Mgr) addStorage(_ events.Ui) {
+func (m *Mgr) addData(d events.Event) {
+	data := d.GetBytes()
+	h := hash.ForData(data)
+	for _, pid := range m.store.Keys() {
+		m.store.Save(pid, h, data)
+	}
+}
+
+func (m *Mgr) addStorage(s events.Event) {
+	m.store.Add(store.NewPath(s.GetString()))
+}
+
+func (m *Mgr) readData(d events.Event) {
+	h := hash.FromRaw(d.GetBytes())
+	r := d.GetResult()
+	for _, k := range m.store.Keys() {
+		r <- m.store.Read(k, h)
+		return
+	}
 }
 
 func (m *Mgr) syncNodes() {
