@@ -1,5 +1,9 @@
 package hash
 
+import (
+	"crypto/sha256"
+)
+
 type Hash struct {
 	Value []byte
 }
@@ -9,5 +13,6 @@ func FromRaw(rawHash []byte) Hash {
 }
 
 func ForData(data []byte) Hash {
-	return Hash{Value: data[:5]}
+	value := sha256.Sum256(data)
+	return Hash{value[:]}
 }
