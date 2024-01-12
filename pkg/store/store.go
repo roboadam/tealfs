@@ -136,3 +136,13 @@ func NewPaths() Paths {
 	go p.consumeChannels()
 	return p
 }
+
+func (p PathId) String() string {
+	return p.value
+}
+
+type PathSlice []PathId
+
+func (p PathSlice) Len() int           { return len(p) }
+func (p PathSlice) Less(i, j int) bool { return p[i].String() < p[j].String() }
+func (p PathSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
