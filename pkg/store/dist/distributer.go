@@ -14,14 +14,17 @@ func (d *Distributer) SetWeight(id store.PathId, weight int) {
 	d.weights[id] = weight
 }
 
-func (d *Distributer) applyWeights(id store.PathId, weight int) {
-	numSlotAssinments := make(map[store.PathId]int)
+func (d *Distributer) applyWeights() {
 	totalWeight := d.totalWeights()
-	weightsLeft := d.totalWeights()
 	paths := d.sortedPaths()
+	distIdx := 0
 
 	for _, p := range paths {
-		slots :=
+		weight := d.weights[p]
+		slots := weight * 256 / totalWeight
+		for i := 0; i < slots; i++ {
+			dis
+		}
 	}
 }
 
@@ -44,6 +47,10 @@ func (d *Distributer) sortedPaths() store.PathSlice {
 
 type key struct {
 	value [2]byte
+}
+
+type KeyFromInt(i int) {
+
 }
 
 func (k key) next() (bool, key) {
