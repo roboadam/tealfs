@@ -15,14 +15,14 @@ type Mgr struct {
 	events chan events.Event
 	tNet   tnet.TNet
 	conns  *tnet.Conns
-	store  *store.Paths
+	store  *store.Store
 }
 
 func New(events chan events.Event, tNet tnet.TNet) Mgr {
 	id := node.NewNodeId()
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
-	s := store.NewPaths()
+	s := store.New()
 	return Mgr{
 		node:   n,
 		events: events,

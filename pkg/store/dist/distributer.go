@@ -6,11 +6,11 @@ import (
 )
 
 type Distributer struct {
-	dist    map[key]store.PathId
-	weights map[store.PathId]int
+	dist    map[key]store.Id
+	weights map[store.Id]int
 }
 
-func (d *Distributer) SetWeight(id store.PathId, weight int) {
+func (d *Distributer) SetWeight(id store.Id, weight int) {
 	d.weights[id] = weight
 }
 
@@ -32,9 +32,9 @@ func (d *Distributer) applyWeights() {
 	}
 }
 
-func get(paths store.PathSlice, idx int) store.PathId {
+func get(paths store.Slice, idx int) store.Id {
 	if len(paths) <= 0 {
-		return store.PathId{}
+		return store.Id{}
 	}
 
 	if idx >= len(paths) {
@@ -44,7 +44,7 @@ func get(paths store.PathSlice, idx int) store.PathId {
 	return paths[idx]
 }
 
-func (d *Distributer) numSlotsForPath(p store.PathId) byte {
+func (d *Distributer) numSlotsForPath(p store.Id) byte {
 	weight := d.weights[p]
 	totalWeight := d.totalWeights()
 	return byte(weight * 256 / totalWeight)
@@ -58,8 +58,8 @@ func (d *Distributer) totalWeights() int {
 	return total
 }
 
-func (d *Distributer) sortedPaths() store.PathSlice {
-	paths := make(store.PathSlice, len(d.weights))
+func (d *Distributer) sortedPaths() store.Slice {
+	paths := make(store.Slice, len(d.weights))
 	for key := range d.weights {
 		paths = append(paths, key)
 	}
