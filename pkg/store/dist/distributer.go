@@ -15,17 +15,27 @@ func (d *Distributer) SetWeight(id store.PathId, weight int) {
 }
 
 func (d *Distributer) applyWeights() {
-	totalWeight := d.totalWeights()
 	paths := d.sortedPaths()
-	distIdx := 0
+	if len(paths) == 0 {
+		return
+	}
+	pathIdx := 0
+	slotsLeft := d.numSlotsForPath(paths[pathIdx])
 
-	for _, p := range paths {
-		weight := d.weights[p]
-		slots := weight * 256 / totalWeight
-		for i := 0; i < slots; i++ {
-			dis
+	for i := byte(0); i <= byte(255); i++ {
+		d.dist[key{i}] = paths[pathIdx]
+		slotsLeft--
+		if slotsLeft <= 0 {
+			pathIdx++
+			slotsLeft = d.numSlotsForPath(paths[pathIdx])
 		}
 	}
+}
+
+func (d *Distributer) numSlotsForPath(p store.PathId) byte {
+	weight := d.weights[p]
+	totalWeight := d.totalWeights()
+	return byte(weight * 256 / totalWeight)
 }
 
 func (d *Distributer) totalWeights() int {
@@ -46,19 +56,12 @@ func (d *Distributer) sortedPaths() store.PathSlice {
 }
 
 type key struct {
-	value [2]byte
-}
-
-type KeyFromInt(i int) {
-
+	value byte
 }
 
 func (k key) next() (bool, key) {
-	if k.value[1] != 0xFF {
-		return false, key{value: [2]byte{k.value[0], k.value[1] + 0x01}}
+	if k.value == 0xFF {
+		return false, key{}
 	}
-	if k.value[0] != 0xFF {
-		return false, key{value: [2]byte{k.value[0] + 0x01, 0x00}}
-	}
-	return true, key{}
+	return true, key{k.value + 1}
 }
