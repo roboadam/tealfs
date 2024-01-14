@@ -20,16 +20,28 @@ func (d *Distributer) applyWeights() {
 		return
 	}
 	pathIdx := 0
-	slotsLeft := d.numSlotsForPath(paths[pathIdx])
+	slotsLeft := d.numSlotsForPath(get(paths, pathIdx))
 
 	for i := byte(0); i <= byte(255); i++ {
-		d.dist[key{i}] = paths[pathIdx]
+		d.dist[key{i}] = get(paths, pathIdx)
 		slotsLeft--
-		if slotsLeft <= 0 {
+		if slotsLeft == 0 {
 			pathIdx++
-			slotsLeft = d.numSlotsForPath(paths[pathIdx])
+			slotsLeft = d.numSlotsForPath(get(paths, pathIdx))
 		}
 	}
+}
+
+func get(paths store.PathSlice, idx int) store.PathId {
+	if len(paths) <= 0 {
+		return store.PathId{}
+	}
+
+	if idx >= len(paths) {
+		return paths[len(paths)-1]
+	}
+
+	return paths[idx]
 }
 
 func (d *Distributer) numSlotsForPath(p store.PathId) byte {
