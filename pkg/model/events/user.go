@@ -36,7 +36,6 @@ type Type int
 
 const (
 	ConnectTo Type = iota
-	AddStorage
 	AddData
 	ReadData
 )

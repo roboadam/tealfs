@@ -110,6 +110,10 @@ func New(path Path) Store {
 	return p
 }
 
+func (p *Path) String() string {
+	return p.raw
+}
+
 func (p Id) String() string {
 	return p.value
 }

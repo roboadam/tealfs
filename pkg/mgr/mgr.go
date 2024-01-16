@@ -18,11 +18,11 @@ type Mgr struct {
 	store  *store.Store
 }
 
-func New(events chan events.Event, tNet tnet.TNet) Mgr {
+func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
 	id := node.NewNodeId()
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
-	s := store.New()
+	s := store.New(path)
 	return Mgr{
 		node:   n,
 		events: events,
@@ -97,8 +97,6 @@ func (m *Mgr) handleUiCommands() {
 		switch command.EventType {
 		case events.ConnectTo:
 			m.addRemoteNode(command)
-		case events.AddStorage:
-			m.addStorage(command)
 		case events.AddData:
 			m.addData(command)
 		case events.ReadData:
@@ -110,22 +108,13 @@ func (m *Mgr) handleUiCommands() {
 func (m *Mgr) addData(d events.Event) {
 	data := d.GetBytes()
 	h := hash.ForData(data)
-	for _, pid := range m.store.Keys() {
-		m.store.Save(pid, h, data)
-	}
-}
-
-func (m *Mgr) addStorage(s events.Event) {
-	m.store.Add(store.NewPath(s.GetString()))
+	m.store.Save(h, data)
 }
 
 func (m *Mgr) readData(d events.Event) {
 	h := hash.FromRaw(d.GetBytes())
 	r := d.GetResult()
-	for _, k := range m.store.Keys() {
-		r <- m.store.Read(k, h)
-		return
-	}
+	r <- m.store.Read(h)
 }
 
 func (m *Mgr) syncNodes() {

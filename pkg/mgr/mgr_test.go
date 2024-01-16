@@ -9,6 +9,7 @@ import (
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
+	"tealfs/pkg/store"
 	"tealfs/pkg/test"
 	"tealfs/pkg/util"
 	"testing"
@@ -18,7 +19,9 @@ import (
 func TestManagerCreation(t *testing.T) {
 	userCmds := make(chan events.Event)
 	tNet := test.MockNet{}
-	localNode := mgr.New(userCmds, &tNet)
+	dir := tmpDir()
+	defer cleanDir(dir, t)
+	localNode := mgr.New(userCmds, &tNet, dir)
 
 	if !nodeIdIsValid(&localNode) {
 		t.Error("Id is invalid")
@@ -26,9 +29,11 @@ func TestManagerCreation(t *testing.T) {
 }
 
 func TestConnectToRemoteNode(t *testing.T) {
+	dir := tmpDir()
+	defer cleanDir(dir, t)
 	userCmds := make(chan events.Event)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
-	n := mgr.New(userCmds, &tNet)
+	n := mgr.New(userCmds, &tNet, dir)
 	n.Start()
 
 	userCmds <- events.NewString(events.ConnectTo, "someAddress")
@@ -46,9 +51,11 @@ func TestConnectToRemoteNode(t *testing.T) {
 }
 
 func TestIncomingConnection(t *testing.T) {
+	dir := tmpDir()
+	defer cleanDir(dir, t)
 	userCmds := make(chan events.Event)
 	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
-	n := mgr.New(userCmds, &mockNet)
+	n := mgr.New(userCmds, &mockNet, dir)
 	n.Start()
 
 	remoteNodeId := node.NewNodeId()
@@ -64,9 +71,11 @@ func TestIncomingConnection(t *testing.T) {
 }
 
 func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
+	dir := tmpDir()
+	defer cleanDir(dir, t)
 	userCmds := make(chan events.Event)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
-	n := mgr.New(userCmds, &tNet)
+	n := mgr.New(userCmds, &tNet, dir)
 	remoteNodeId := node.NewNodeId()
 	remoteNodeAddress := "remoteAddress"
 	n.Start()
@@ -104,17 +113,17 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 }
 
 func TestSaveAndRead(t *testing.T) {
+	dir := tmpDir()
+	defer cleanDir(dir, t)
 	expected := "BlahBlaHereIsTheDataAndItsLong"
 	userCmds := make(chan events.Event)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
-	n := mgr.New(userCmds, &tNet)
+	n := mgr.New(userCmds, &tNet, dir)
 	n.Start()
 
 	tempDir, _ := os.MkdirTemp("", "*-test-save-mgr")
 	defer removeAll(tempDir, t)
 
-	userCmds <- events.NewString(events.AddStorage, tempDir)
-	time.Sleep(100 * time.Millisecond)
 	userCmds <- events.NewString(events.AddData, expected)
 	time.Sleep(100 * time.Millisecond)
 	result := make(chan []byte)
@@ -205,4 +214,13 @@ func removeAll(dir string, t *testing.T) {
 	if err != nil {
 		t.Errorf("Error [%v] deleting temp dir [%v]", err, dir)
 	}
+}
+
+func tmpDir() store.Path {
+	tempDir, _ := os.MkdirTemp("", "*-test")
+	return store.NewPath(tempDir)
+}
+
+func cleanDir(path store.Path, t *testing.T) {
+	removeAll(path.String(), t)
 }
