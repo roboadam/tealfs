@@ -2,7 +2,6 @@ package store
 
 import (
 	"encoding/hex"
-	"github.com/google/uuid"
 	"os"
 	"path/filepath"
 	h "tealfs/pkg/hash"
@@ -13,13 +12,8 @@ type Path struct {
 	raw string
 }
 
-type Id struct {
-	value string
-}
-
 type Store struct {
 	path  Path
-	id    Id
 	saves chan struct {
 		hash h.Hash
 		data []byte
@@ -96,7 +90,6 @@ func NewPath(rawPath string) Path {
 func New(path Path) Store {
 	p := Store{
 		path: path,
-		id:   Id{value: uuid.New().String()},
 		saves: make(chan struct {
 			hash h.Hash
 			data []byte
@@ -114,12 +107,12 @@ func (p *Path) String() string {
 	return p.raw
 }
 
-func (p Id) String() string {
-	return p.value
-}
-
-type Slice []Id
-
-func (p Slice) Len() int           { return len(p) }
-func (p Slice) Less(i, j int) bool { return p[i].String() < p[j].String() }
-func (p Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+//func (p Id) String() string {
+//	return p.value
+//}
+//
+//type Slice []Id
+//
+//func (p Slice) Len() int           { return len(p) }
+//func (p Slice) Less(i, j int) bool { return p[i].String() < p[j].String() }
+//func (p Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

@@ -2,15 +2,15 @@ package dist
 
 import (
 	"sort"
-	"tealfs/pkg/store"
+	"tealfs/pkg/model/node"
 )
 
 type Distributer struct {
-	dist    map[key]store.Id
-	weights map[store.Id]int
+	dist    map[key]node.Id
+	weights map[node.Id]int
 }
 
-func (d *Distributer) SetWeight(id store.Id, weight int) {
+func (d *Distributer) SetWeight(id node.Id, weight int) {
 	d.weights[id] = weight
 }
 
@@ -32,9 +32,9 @@ func (d *Distributer) applyWeights() {
 	}
 }
 
-func get(paths store.Slice, idx int) store.Id {
+func get(paths node.Slice, idx int) node.Id {
 	if len(paths) <= 0 {
-		return store.Id{}
+		return node.Id{}
 	}
 
 	if idx >= len(paths) {
@@ -44,7 +44,7 @@ func get(paths store.Slice, idx int) store.Id {
 	return paths[idx]
 }
 
-func (d *Distributer) numSlotsForPath(p store.Id) byte {
+func (d *Distributer) numSlotsForPath(p node.Id) byte {
 	weight := d.weights[p]
 	totalWeight := d.totalWeights()
 	return byte(weight * 256 / totalWeight)
@@ -58,8 +58,8 @@ func (d *Distributer) totalWeights() int {
 	return total
 }
 
-func (d *Distributer) sortedPaths() store.Slice {
-	paths := make(store.Slice, len(d.weights))
+func (d *Distributer) sortedPaths() node.Slice {
+	paths := make(node.Slice, len(d.weights))
 	for key := range d.weights {
 		paths = append(paths, key)
 	}
