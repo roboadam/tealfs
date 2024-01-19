@@ -6,6 +6,7 @@ import (
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/store"
+	d "tealfs/pkg/store/dist"
 	"tealfs/pkg/tnet"
 	"tealfs/pkg/util"
 )
@@ -16,6 +17,7 @@ type Mgr struct {
 	tNet   tnet.TNet
 	conns  *tnet.Conns
 	store  *store.Store
+	dist   *d.Distributer
 }
 
 func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
@@ -23,12 +25,14 @@ func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
 	s := store.New(path)
+	dist := d.NewDistributer()
 	return Mgr{
 		node:   n,
 		events: events,
 		conns:  conns,
 		tNet:   tNet,
 		store:  &s,
+		dist:   dist,
 	}
 }
 
@@ -64,7 +68,7 @@ func (m *Mgr) readPayloads() {
 				m.conns.Add(c)
 			}
 			if remoteIsMissingNodes(*m.conns, p) {
-				toSend := m.BuildSyncNodesPayload()
+				toSend := m.buildSyncNodesPayload()
 				m.conns.SendPayload(remoteId, &toSend)
 			}
 		default:
@@ -73,7 +77,7 @@ func (m *Mgr) readPayloads() {
 	}
 }
 
-func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
+func (m *Mgr) buildSyncNodesPayload() proto.SyncNodes {
 	myNodes := m.conns.GetNodes()
 	myNodes.Add(m.node)
 	toSend := proto.SyncNodes{Nodes: myNodes}
@@ -108,7 +112,13 @@ func (m *Mgr) handleUiCommands() {
 func (m *Mgr) addData(d events.Event) {
 	data := d.GetBytes()
 	h := hash.ForData(data)
-	m.store.Save(h, data)
+	id := m.dist.NodeIdForHash(h)
+	if m.GetId() == id {
+		m.store.Save(h, data)
+	} else {
+
+		m.conns.SendPayload(id)
+	}
 }
 
 func (m *Mgr) readData(d events.Event) {
@@ -120,7 +130,7 @@ func (m *Mgr) readData(d events.Event) {
 func (m *Mgr) syncNodes() {
 	allIds := m.conns.GetIds()
 	for _, id := range allIds.GetValues() {
-		payload := m.BuildSyncNodesPayload()
+		payload := m.buildSyncNodesPayload()
 		m.conns.SendPayload(id, &payload)
 	}
 }

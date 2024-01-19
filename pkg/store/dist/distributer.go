@@ -2,6 +2,7 @@ package dist
 
 import (
 	"sort"
+	h "tealfs/pkg/hash"
 	"tealfs/pkg/model/node"
 )
 
@@ -10,8 +11,21 @@ type Distributer struct {
 	weights map[node.Id]int
 }
 
+func NewDistributer() *Distributer {
+	return &Distributer{
+		dist:    make(map[key]node.Id),
+		weights: make(map[node.Id]int),
+	}
+}
+
+func (d *Distributer) NodeIdForHash(hash h.Hash) node.Id {
+	k := key{value: hash.Value[0]}
+	return d.dist[k]
+}
+
 func (d *Distributer) SetWeight(id node.Id, weight int) {
 	d.weights[id] = weight
+	d.applyWeights()
 }
 
 func (d *Distributer) applyWeights() {

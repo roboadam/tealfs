@@ -1,9 +1,10 @@
 package proto
 
 const (
-	NoOpType  = uint8(0)
-	HelloType = uint8(1)
-	SyncType  = uint8(2)
+	NoOpType     = uint8(0)
+	HelloType    = uint8(1)
+	SyncType     = uint8(2)
+	SaveDataType = uint(3)
 )
 
 type Payload interface {
