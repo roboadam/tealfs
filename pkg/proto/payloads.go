@@ -4,7 +4,7 @@ const (
 	NoOpType     = uint8(0)
 	HelloType    = uint8(1)
 	SyncType     = uint8(2)
-	SaveDataType = uint(3)
+	SaveDataType = uint8(3)
 )
 
 type Payload interface {
@@ -17,6 +17,8 @@ func ToPayload(data []byte) Payload {
 		return ToHello(payloadData(data))
 	case SyncType:
 		return ToSyncNodes(payloadData(data))
+	case SaveDataType:
+		return ToSaveData(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}

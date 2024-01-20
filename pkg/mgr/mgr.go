@@ -71,6 +71,8 @@ func (m *Mgr) readPayloads() {
 				toSend := m.buildSyncNodesPayload()
 				m.conns.SendPayload(remoteId, &toSend)
 			}
+		case *proto.SaveData:
+			m.saveToAppropriateNode(p.Data)
 		default:
 			// Do nothing
 		}
@@ -111,13 +113,17 @@ func (m *Mgr) handleUiCommands() {
 
 func (m *Mgr) addData(d events.Event) {
 	data := d.GetBytes()
+	m.saveToAppropriateNode(data)
+}
+
+func (m *Mgr) saveToAppropriateNode(data []byte) {
 	h := hash.ForData(data)
 	id := m.dist.NodeIdForHash(h)
 	if m.GetId() == id {
 		m.store.Save(h, data)
 	} else {
-
-		m.conns.SendPayload(id)
+		payload := proto.ToSaveData(data)
+		m.conns.SendPayload(id, payload)
 	}
 }
 
