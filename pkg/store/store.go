@@ -106,13 +106,3 @@ func New(path Path) Store {
 func (p *Path) String() string {
 	return p.raw
 }
-
-//func (p Id) String() string {
-//	return p.value
-//}
-//
-//type Slice []Id
-//
-//func (p Slice) Len() int           { return len(p) }
-//func (p Slice) Less(i, j int) bool { return p[i].String() < p[j].String() }
-//func (p Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
