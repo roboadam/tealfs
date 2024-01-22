@@ -26,6 +26,7 @@ func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
 	conns := tnet.NewConns(tNet, id)
 	s := store.New(path)
 	dist := d.NewDistributer()
+	dist.SetWeight(id, 1)
 	return Mgr{
 		node:   n,
 		events: events,
@@ -52,7 +53,8 @@ func (m *Mgr) GetId() node.Id {
 
 func (m *Mgr) handleNewlyConnectedNodes() {
 	for {
-		_ = m.conns.AddedNode()
+		n := m.conns.AddedNode()
+		m.dist.SetWeight(n, 1)
 		m.syncNodes()
 	}
 }

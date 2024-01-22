@@ -35,6 +35,9 @@ func TestThreeNodes(t *testing.T) {
 	if n3.Len() != 2 {
 		t.Errorf("three had %d", n3.Len())
 	}
+	//
+	//i1.UiEvents <- events.NewBytes(events.AddData, []byte("hello"))
+	//time.Sleep(time.Second * 1)
 }
 
 func StartedMgr(inputs *Inputs, t *testing.T) *mgr.Mgr {

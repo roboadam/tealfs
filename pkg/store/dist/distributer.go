@@ -74,8 +74,8 @@ func (d *Distributer) totalWeights() int {
 
 func (d *Distributer) sortedPaths() node.Slice {
 	paths := make(node.Slice, len(d.weights))
-	for key := range d.weights {
-		paths = append(paths, key)
+	for key, i := range d.weights {
+		paths[i] = key
 	}
 	sort.Sort(paths)
 	return paths
