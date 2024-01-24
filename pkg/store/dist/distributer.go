@@ -36,8 +36,8 @@ func (d *Distributer) applyWeights() {
 	pathIdx := 0
 	slotsLeft := d.numSlotsForPath(get(paths, pathIdx))
 
-	for i := byte(0); i <= byte(255); i++ {
-		d.dist[key{i}] = get(paths, pathIdx)
+	for i := 0; i <= 255; i++ {
+		d.dist[key{byte(i)}] = get(paths, pathIdx)
 		slotsLeft--
 		if slotsLeft == 0 {
 			pathIdx++
@@ -58,10 +58,10 @@ func get(paths node.Slice, idx int) node.Id {
 	return paths[idx]
 }
 
-func (d *Distributer) numSlotsForPath(p node.Id) byte {
+func (d *Distributer) numSlotsForPath(p node.Id) int {
 	weight := d.weights[p]
 	totalWeight := d.totalWeights()
-	return byte(weight * 256 / totalWeight)
+	return weight * 256 / totalWeight
 }
 
 func (d *Distributer) totalWeights() int {
@@ -73,9 +73,9 @@ func (d *Distributer) totalWeights() int {
 }
 
 func (d *Distributer) sortedPaths() node.Slice {
-	paths := make(node.Slice, len(d.weights))
-	for key, i := range d.weights {
-		paths[i] = key
+	paths := make(node.Slice, 0)
+	for k := range d.weights {
+		paths = append(paths, k)
 	}
 	sort.Sort(paths)
 	return paths
