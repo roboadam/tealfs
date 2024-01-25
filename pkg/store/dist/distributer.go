@@ -28,6 +28,12 @@ func (d *Distributer) SetWeight(id node.Id, weight int) {
 	d.applyWeights()
 }
 
+func (d *Distributer) PrintDist() {
+	for i := 0; i <= 255; i++ {
+		println("byteIdx:", i, ", nodeId:", d.dist[key{byte(i)}].String())
+	}
+}
+
 func (d *Distributer) applyWeights() {
 	paths := d.sortedPaths()
 	if len(paths) == 0 {

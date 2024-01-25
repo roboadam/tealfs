@@ -47,6 +47,10 @@ func (m *Mgr) Close() {
 	m.tNet.Close()
 }
 
+func (m *Mgr) PrintDist() {
+	m.dist.PrintDist()
+}
+
 func (m *Mgr) GetId() node.Id {
 	return m.node.Id
 }

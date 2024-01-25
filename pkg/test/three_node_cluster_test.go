@@ -35,9 +35,9 @@ func TestThreeNodes(t *testing.T) {
 	if n3.Len() != 2 {
 		t.Errorf("three had %d", n3.Len())
 	}
-	//
-	//i1.UiEvents <- events.NewBytes(events.AddData, []byte("hello"))
-	//time.Sleep(time.Second * 1)
+
+	dataToSave := byte
+	m1.PrintDist()
 }
 
 func StartedMgr(inputs *Inputs, t *testing.T) *mgr.Mgr {
@@ -55,6 +55,10 @@ type Inputs struct {
 
 func (i *Inputs) ConnectTo(i2 *Inputs) {
 	i.UiEvents <- events.NewString(events.ConnectTo, i2.Net.GetBinding())
+}
+
+func (i *Inputs) AddData(data []byte) {
+	i.UiEvents <- events.NewBytes(events.AddData, data)
 }
 
 func NewInputs() *Inputs {
