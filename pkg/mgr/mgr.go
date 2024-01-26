@@ -24,7 +24,7 @@ func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
 	id := node.NewNodeId()
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
-	s := store.New(path)
+	s := store.New(path, id)
 	dist := d.NewDistributer()
 	dist.SetWeight(id, 1)
 	return Mgr{

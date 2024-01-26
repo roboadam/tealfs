@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	h "tealfs/pkg/hash"
+	"tealfs/pkg/model/node"
 	"time"
 )
 
@@ -14,6 +15,7 @@ type Path struct {
 
 type Store struct {
 	path  Path
+	id    node.Id
 	saves chan struct {
 		hash h.Hash
 		data []byte
@@ -44,6 +46,7 @@ func (ps *Store) consumeChannels() {
 	for {
 		select {
 		case s := <-ps.saves:
+			println("Saving to", ps.id.String())
 			ps.path.Save(s.hash, s.data)
 		case r := <-ps.reads:
 			data := ps.path.Read(r.hash)
@@ -87,8 +90,9 @@ func NewPath(rawPath string) Path {
 	}
 }
 
-func New(path Path) Store {
+func New(path Path, id node.Id) Store {
 	p := Store{
+		id:   id,
 		path: path,
 		saves: make(chan struct {
 			hash h.Hash

@@ -36,8 +36,8 @@ func TestThreeNodes(t *testing.T) {
 		t.Errorf("three had %d", n3.Len())
 	}
 
-	dataToSave := byte
-	m1.PrintDist()
+	i1.AddData([]byte{1, 2, 3})
+	time.Sleep(time.Second * 200)
 }
 
 func StartedMgr(inputs *Inputs, t *testing.T) *mgr.Mgr {
