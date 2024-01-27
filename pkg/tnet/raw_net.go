@@ -18,10 +18,12 @@ func SendPayload(conn net.Conn, data []byte) error {
 	size := uint32(len(data))
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, size)
+	println("raw_net.SendPayload1")
 	err := SendBytes(conn, buf)
 	if err != nil {
 		return err
 	}
+	println("raw_net.SendPayload2")
 	err = SendBytes(conn, data)
 	if err != nil {
 		return err

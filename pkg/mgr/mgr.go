@@ -123,11 +123,14 @@ func (m *Mgr) addData(d events.Event) {
 }
 
 func (m *Mgr) saveToAppropriateNode(data []byte) {
+	println("saveToAppropriateNode")
 	h := hash.ForData(data)
 	id := m.dist.NodeIdForHash(h)
 	if m.GetId() == id {
+		println("saveToAppropriateNode:forme")
 		m.store.Save(h, data)
 	} else {
+		println("saveToAppropriateNode:foryou")
 		payload := proto.ToSaveData(data)
 		m.conns.SendPayload(id, payload)
 	}

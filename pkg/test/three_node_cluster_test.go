@@ -2,6 +2,7 @@ package test
 
 import (
 	"os"
+	"strconv"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/store"
@@ -9,6 +10,19 @@ import (
 	"testing"
 	"time"
 )
+
+func ps(sl []int, name string) {
+	slstr := "["
+	for i, n := range sl {
+		if i == 0 {
+			slstr += strconv.Itoa(n)
+		} else {
+			slstr += ", " + strconv.Itoa(n)
+		}
+	}
+	slstr += "]"
+	println(name, slstr)
+}
 
 func TestThreeNodes(t *testing.T) {
 	i1 := NewInputs()

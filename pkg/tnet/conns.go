@@ -101,6 +101,7 @@ func (c *Conns) AddedNode() node.Id {
 }
 
 func (c *Conns) SendPayload(to node.Id, payload proto.Payload) {
+	println("conns.SendPayload")
 	c.outgoing <- struct {
 		To      node.Id
 		Payload proto.Payload
