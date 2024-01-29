@@ -6,12 +6,21 @@ import (
 )
 
 func ReadPayload(conn net.Conn) ([]byte, error) {
+	println("raw_net.ReadPayload1")
 	rawLen, err := ReadBytes(conn, 4)
+	println("raw_net.ReadPayload2")
 	if err != nil {
+		println("raw_net.ReadPayload err1")
 		return nil, err
 	}
 	size := binary.BigEndian.Uint32(rawLen)
-	return ReadBytes(conn, size)
+	println("raw_net.ReadPayload3")
+	result, err := ReadBytes(conn, size)
+	if err != nil {
+		println("raw_net.ReadPayload err2")
+	}
+	println("raw_net.ReadPayload4")
+	return result, err
 }
 
 func SendPayload(conn net.Conn, data []byte) error {
@@ -26,8 +35,10 @@ func SendPayload(conn net.Conn, data []byte) error {
 	println("raw_net.SendPayload2")
 	err = SendBytes(conn, data)
 	if err != nil {
+		println("raw_net.SendPayload err")
 		return err
 	}
+	println("raw_net.SendPayload3")
 	return nil
 }
 

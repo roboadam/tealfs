@@ -1,6 +1,7 @@
 package tnet
 
 import (
+	"fmt"
 	"net"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
@@ -145,6 +146,7 @@ func (c *Conns) consumeChannels() {
 		case sending := <-c.outgoing:
 			netconn := c.conns[sending.To].netConn
 			payload := sending.Payload
+			println("conns outgoing payload to ", c.MyNodeId.String())
 			_ = SendPayload(netconn, payload.ToBytes())
 
 		case getList := <-c.getlist:
@@ -170,7 +172,9 @@ func (c *Conns) readPayloadsFromConnection(nodeId node.Id) {
 	netConn := c.netconnForId(nodeId)
 
 	for {
+		println("Waiting to read payload. I'm", c.MyNodeId.String())
 		buf, _ := ReadPayload(netConn)
+		fmt.Printf("I read a payload. I'm, %s.  Payload is: %x\n", c.MyNodeId.String(), buf)
 		payload := proto.ToPayload(buf)
 		c.incoming <- struct {
 			From    node.Id
