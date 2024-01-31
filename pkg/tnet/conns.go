@@ -1,7 +1,6 @@
 package tnet
 
 import (
-	"fmt"
 	"net"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
@@ -44,20 +43,20 @@ func NewConns(tnet TNet, myNodeId node.Id) *Conns {
 		tnet:           tnet,
 		MyNodeId:       myNodeId,
 		conns:          make(map[node.Id]Conn),
-		adds:           make(chan Conn),
-		deletes:        make(chan node.Id),
+		adds:           make(chan Conn, 100),
+		deletes:        make(chan node.Id, 100),
 		connectedNodes: make(chan node.Id, 100),
 		incoming: make(chan struct {
 			From    node.Id
 			Payload proto.Payload
-		}),
+		}, 100),
 		outgoing: make(chan struct {
 			To      node.Id
 			Payload proto.Payload
-		}),
+		}, 100),
 		getlist: make(chan struct {
 			response chan util.Set[node.Node]
-		}),
+		}, 100),
 	}
 
 	go conns.consumeChannels()
@@ -84,6 +83,7 @@ func (c *Conns) Add(conn Conn) {
 		_ = conn.netConn.Close()
 		conn.netConn = nil
 
+		println("ADD IS SLEEPING")
 		time.Sleep(time.Second)
 	}
 }
@@ -102,7 +102,6 @@ func (c *Conns) AddedNode() node.Id {
 }
 
 func (c *Conns) SendPayload(to node.Id, payload proto.Payload) {
-	println("conns.SendPayload")
 	c.outgoing <- struct {
 		To      node.Id
 		Payload proto.Payload
@@ -146,7 +145,6 @@ func (c *Conns) consumeChannels() {
 		case sending := <-c.outgoing:
 			netconn := c.conns[sending.To].netConn
 			payload := sending.Payload
-			println("conns outgoing payload to ", c.MyNodeId.String())
 			_ = SendPayload(netconn, payload.ToBytes())
 
 		case getList := <-c.getlist:
@@ -172,14 +170,24 @@ func (c *Conns) readPayloadsFromConnection(nodeId node.Id) {
 	netConn := c.netconnForId(nodeId)
 
 	for {
-		println("Waiting to read payload. I'm", c.MyNodeId.String())
-		buf, _ := ReadPayload(netConn)
-		fmt.Printf("I read a payload. I'm, %s.  Payload is: %x\n", c.MyNodeId.String(), buf)
-		payload := proto.ToPayload(buf)
+		payload := receivePayload(netConn)
+
+		switch payload.(type) {
+		case *proto.SaveData:
+			println("received a savedata")
+		default:
+			println("received something else")
+		}
 		c.incoming <- struct {
 			From    node.Id
 			Payload proto.Payload
 		}{From: nodeId, Payload: payload}
+		switch payload.(type) {
+		case *proto.SaveData:
+			println("savedata on incoming chan i'm", c.MyNodeId.String())
+		default:
+			println("something else on incoming chan")
+		}
 	}
 }
 

@@ -6,39 +6,30 @@ import (
 )
 
 func ReadPayload(conn net.Conn) ([]byte, error) {
-	println("raw_net.ReadPayload1")
+	println("1 i'm", conn.LocalAddr().String(), "reading from", conn.RemoteAddr().String())
 	rawLen, err := ReadBytes(conn, 4)
-	println("raw_net.ReadPayload2")
 	if err != nil {
-		println("raw_net.ReadPayload err1")
 		return nil, err
 	}
+	println("2 i'm", conn.LocalAddr().String(), "reading from", conn.RemoteAddr().String())
 	size := binary.BigEndian.Uint32(rawLen)
-	println("raw_net.ReadPayload3")
-	result, err := ReadBytes(conn, size)
-	if err != nil {
-		println("raw_net.ReadPayload err2")
-	}
-	println("raw_net.ReadPayload4")
-	return result, err
+	a, b := ReadBytes(conn, size)
+	println("3 i'm", conn.LocalAddr().String(), "reading from", conn.RemoteAddr().String())
+	return a, b
 }
 
 func SendPayload(conn net.Conn, data []byte) error {
 	size := uint32(len(data))
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, size)
-	println("raw_net.SendPayload1")
 	err := SendBytes(conn, buf)
 	if err != nil {
 		return err
 	}
-	println("raw_net.SendPayload2")
 	err = SendBytes(conn, data)
 	if err != nil {
-		println("raw_net.SendPayload err")
 		return err
 	}
-	println("raw_net.SendPayload3")
 	return nil
 }
 
@@ -52,12 +43,14 @@ func ReadBytes(conn net.Conn, length uint32) ([]byte, error) {
 			return nil, err
 		}
 		offset += uint32(numBytes)
+		//println("looping")
 	}
 
 	return buf, nil
 }
 
 func SendBytes(conn net.Conn, data []byte) error {
+	println("sending ", data[0], "i'm", conn.LocalAddr().String(), "sending to", conn.RemoteAddr().String())
 	bytesWritten := 0
 	for bytesWritten < len(data) {
 		numBytes, err := conn.Write(data[bytesWritten:])

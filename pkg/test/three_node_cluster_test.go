@@ -51,7 +51,7 @@ func TestThreeNodes(t *testing.T) {
 	}
 
 	i1.AddData([]byte{1, 2, 3})
-	time.Sleep(time.Second * 200)
+	time.Sleep(time.Second * 2000)
 }
 
 func StartedMgr(inputs *Inputs, t *testing.T) *mgr.Mgr {
