@@ -7,11 +7,6 @@ import (
 )
 
 func TestSaveData(t *testing.T) {
-	//test_net := test.MockNet{
-	//	AcceptsConnections: false,
-	//	Conn:               test.Conn{},
-	//}
-
 	testConn := test.Conn{
 		BytesWritten: make([]byte, 0),
 	}
