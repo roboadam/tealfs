@@ -16,10 +16,8 @@ func ToPayload(data []byte) Payload {
 	case HelloType:
 		return ToHello(payloadData(data))
 	case SyncType:
-		println("Sync from bytes")
 		return ToSyncNodes(payloadData(data))
 	case SaveDataType:
-		println("Save from bytes")
 		return ToSaveData(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))

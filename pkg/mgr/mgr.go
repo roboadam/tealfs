@@ -23,7 +23,6 @@ type Mgr struct {
 func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
 	id := node.NewNodeId()
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
-	println("node ", id.String(), "has address", tNet.GetBinding())
 	conns := tnet.NewConns(tNet, id)
 	s := store.New(path, id)
 	dist := d.NewDistributer()
@@ -66,36 +65,21 @@ func (m *Mgr) handleNewlyConnectedNodes() {
 
 func (m *Mgr) readPayloads() {
 	for {
-		println("trace readpayloads 1", m.GetId().String())
 		remoteId, payload := m.conns.ReceivePayload()
-		println("trace readpayloads 2", m.GetId().String())
 
 		switch p := payload.(type) {
 		case *proto.SyncNodes:
-			println("trace readpayloads 3", m.GetId().String())
 			missingConns := findMyMissingConns(*m.conns, p)
-			println("trace readpayloads 3.1", m.GetId().String())
 			for _, c := range missingConns.GetValues() {
-				println("trace readpayloads 3.2", m.GetId().String())
 				m.conns.Add(c)
-				println("trace readpayloads 3.3", m.GetId().String())
 			}
-			println("trace readpayloads 3.4", m.GetId().String())
 			if remoteIsMissingNodes(*m.conns, p) {
-				println("trace readpayloads 3.5", m.GetId().String())
 				toSend := m.buildSyncNodesPayload()
-				println("trace readpayloads 3.6", m.GetId().String())
 				m.conns.SendPayload(remoteId, &toSend)
-				println("trace readpayloads 3.7", m.GetId().String())
 			}
-			println("trace readpayloads 4", m.GetId().String())
 		case *proto.SaveData:
-			println("I got a savedata in mgr!")
-			println("trace readpayloads 5", m.GetId().String())
 			m.saveToAppropriateNode(p.Data)
-			println("trace readpayloads 6", m.GetId().String())
 		default:
-			println("trace readpayloads 7", m.GetId().String())
 			// Do nothing
 		}
 	}
@@ -142,10 +126,8 @@ func (m *Mgr) saveToAppropriateNode(data []byte) {
 	h := hash.ForData(data)
 	id := m.dist.NodeIdForHash(h)
 	if m.GetId() == id {
-		println("saveToAppropriateNode:forme")
 		m.store.Save(h, data)
 	} else {
-		println("saveToAppropriateNode:foryou")
 		payload := proto.ToSaveData(data)
 		m.conns.SendPayload(id, payload)
 	}

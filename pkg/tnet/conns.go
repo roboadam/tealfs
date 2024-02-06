@@ -83,7 +83,6 @@ func (c *Conns) Add(conn Conn) {
 		_ = conn.netConn.Close()
 		conn.netConn = nil
 
-		println("ADD IS SLEEPING")
 		time.Sleep(time.Second)
 	}
 }
@@ -171,23 +170,10 @@ func (c *Conns) readPayloadsFromConnection(nodeId node.Id) {
 
 	for {
 		payload := receivePayload(netConn)
-
-		switch payload.(type) {
-		case *proto.SaveData:
-			println("received a savedata")
-		default:
-			println("received something else")
-		}
 		c.incoming <- struct {
 			From    node.Id
 			Payload proto.Payload
 		}{From: nodeId, Payload: payload}
-		switch payload.(type) {
-		case *proto.SaveData:
-			println("savedata on incoming chan i'm", c.MyNodeId.String())
-		default:
-			println("something else on incoming chan")
-		}
 	}
 }
 

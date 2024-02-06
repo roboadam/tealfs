@@ -46,7 +46,6 @@ func (ps *Store) consumeChannels() {
 	for {
 		select {
 		case s := <-ps.saves:
-			println("Saving to", ps.id.String())
 			ps.path.Save(s.hash, s.data)
 		case r := <-ps.reads:
 			data := ps.path.Read(r.hash)
