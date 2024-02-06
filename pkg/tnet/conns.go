@@ -43,20 +43,20 @@ func NewConns(tnet TNet, myNodeId node.Id) *Conns {
 		tnet:           tnet,
 		MyNodeId:       myNodeId,
 		conns:          make(map[node.Id]Conn),
-		adds:           make(chan Conn),
-		deletes:        make(chan node.Id),
+		adds:           make(chan Conn, 100),
+		deletes:        make(chan node.Id, 100),
 		connectedNodes: make(chan node.Id, 100),
 		incoming: make(chan struct {
 			From    node.Id
 			Payload proto.Payload
-		}),
+		}, 100),
 		outgoing: make(chan struct {
 			To      node.Id
 			Payload proto.Payload
-		}),
+		}, 100),
 		getlist: make(chan struct {
 			response chan util.Set[node.Node]
-		}),
+		}, 100),
 	}
 
 	go conns.consumeChannels()
@@ -169,8 +169,7 @@ func (c *Conns) readPayloadsFromConnection(nodeId node.Id) {
 	netConn := c.netconnForId(nodeId)
 
 	for {
-		buf, _ := ReadPayload(netConn)
-		payload := proto.ToPayload(buf)
+		payload := receivePayload(netConn)
 		c.incoming <- struct {
 			From    node.Id
 			Payload proto.Payload

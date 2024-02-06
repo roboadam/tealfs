@@ -11,7 +11,8 @@ func ReadPayload(conn net.Conn) ([]byte, error) {
 		return nil, err
 	}
 	size := binary.BigEndian.Uint32(rawLen)
-	return ReadBytes(conn, size)
+	a, b := ReadBytes(conn, size)
+	return a, b
 }
 
 func SendPayload(conn net.Conn, data []byte) error {

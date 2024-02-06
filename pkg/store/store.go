@@ -2,80 +2,53 @@ package store
 
 import (
 	"encoding/hex"
-	"github.com/google/uuid"
 	"os"
 	"path/filepath"
 	h "tealfs/pkg/hash"
-	"tealfs/pkg/util"
+	"tealfs/pkg/model/node"
 	"time"
 )
 
 type Path struct {
-	id  PathId
 	raw string
 }
 
-type PathId struct {
-	value string
-}
-
-type Paths struct {
-	paths map[PathId]Path
-	adds  chan Path
-	keys  chan chan []PathId
+type Store struct {
+	path  Path
+	id    node.Id
 	saves chan struct {
-		pathId PathId
-		hash   h.Hash
-		data   []byte
+		hash h.Hash
+		data []byte
 	}
 	reads chan struct {
-		pathId PathId
-		hash   h.Hash
-		value  chan []byte
+		hash  h.Hash
+		value chan []byte
 	}
 }
 
-func (ps *Paths) Add(p Path) {
-	ps.adds <- p
-}
-
-func (ps *Paths) Keys() []PathId {
-	response := make(chan []PathId)
-	ps.keys <- response
-	return <-response
-}
-
-func (ps *Paths) Save(id PathId, hash h.Hash, data []byte) {
+func (ps *Store) Save(hash h.Hash, data []byte) {
 	ps.saves <- struct {
-		pathId PathId
-		hash   h.Hash
-		data   []byte
-	}{pathId: id, hash: hash, data: data}
+		hash h.Hash
+		data []byte
+	}{hash: hash, data: data}
 }
 
-func (ps *Paths) Read(id PathId, hash h.Hash) []byte {
+func (ps *Store) Read(hash h.Hash) []byte {
 	value := make(chan []byte)
 	ps.reads <- struct {
-		pathId PathId
-		hash   h.Hash
-		value  chan []byte
-	}{pathId: id, hash: hash, value: value}
+		hash  h.Hash
+		value chan []byte
+	}{hash: hash, value: value}
 	return <-value
 }
 
-func (ps *Paths) consumeChannels() {
+func (ps *Store) consumeChannels() {
 	for {
 		select {
-		case p := <-ps.adds:
-			ps.paths[p.id] = p
-		case k := <-ps.keys:
-			k <- util.Keys(ps.paths)
 		case s := <-ps.saves:
-			path := ps.paths[s.pathId]
-			path.Save(s.hash, s.data)
+			ps.path.Save(s.hash, s.data)
 		case r := <-ps.reads:
-			path := ps.paths[r.pathId]
-			data := path.Read(r.hash)
+			data := ps.path.Read(r.hash)
 			r.value <- data
 		}
 	}
@@ -113,26 +86,26 @@ func (p *Path) Read(hash h.Hash) []byte {
 func NewPath(rawPath string) Path {
 	return Path{
 		raw: filepath.Clean(rawPath),
-		id:  PathId{value: uuid.New().String()},
 	}
 }
 
-func NewPaths() Paths {
-	p := Paths{
-		paths: make(map[PathId]Path),
-		adds:  make(chan Path),
-		keys:  make(chan chan []PathId),
+func New(path Path, id node.Id) Store {
+	p := Store{
+		id:   id,
+		path: path,
 		saves: make(chan struct {
-			pathId PathId
-			hash   h.Hash
-			data   []byte
+			hash h.Hash
+			data []byte
 		}),
 		reads: make(chan struct {
-			pathId PathId
-			hash   h.Hash
-			value  chan []byte
+			hash  h.Hash
+			value chan []byte
 		}),
 	}
 	go p.consumeChannels()
 	return p
+}
+
+func (p *Path) String() string {
+	return p.raw
 }

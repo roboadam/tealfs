@@ -6,6 +6,7 @@ import (
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/store"
+	d "tealfs/pkg/store/dist"
 	"tealfs/pkg/tnet"
 	"tealfs/pkg/util"
 )
@@ -15,20 +16,24 @@ type Mgr struct {
 	events chan events.Event
 	tNet   tnet.TNet
 	conns  *tnet.Conns
-	store  *store.Paths
+	store  *store.Store
+	dist   *d.Distributer
 }
 
-func New(events chan events.Event, tNet tnet.TNet) Mgr {
+func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
 	id := node.NewNodeId()
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
-	s := store.NewPaths()
+	s := store.New(path, id)
+	dist := d.NewDistributer()
+	dist.SetWeight(id, 1)
 	return Mgr{
 		node:   n,
 		events: events,
 		conns:  conns,
 		tNet:   tNet,
 		store:  &s,
+		dist:   dist,
 	}
 }
 
@@ -42,13 +47,18 @@ func (m *Mgr) Close() {
 	m.tNet.Close()
 }
 
+func (m *Mgr) PrintDist() {
+	m.dist.PrintDist()
+}
+
 func (m *Mgr) GetId() node.Id {
 	return m.node.Id
 }
 
 func (m *Mgr) handleNewlyConnectedNodes() {
 	for {
-		_ = m.conns.AddedNode()
+		n := m.conns.AddedNode()
+		m.dist.SetWeight(n, 1)
 		m.syncNodes()
 	}
 }
@@ -64,16 +74,18 @@ func (m *Mgr) readPayloads() {
 				m.conns.Add(c)
 			}
 			if remoteIsMissingNodes(*m.conns, p) {
-				toSend := m.BuildSyncNodesPayload()
+				toSend := m.buildSyncNodesPayload()
 				m.conns.SendPayload(remoteId, &toSend)
 			}
+		case *proto.SaveData:
+			m.saveToAppropriateNode(p.Data)
 		default:
 			// Do nothing
 		}
 	}
 }
 
-func (m *Mgr) BuildSyncNodesPayload() proto.SyncNodes {
+func (m *Mgr) buildSyncNodesPayload() proto.SyncNodes {
 	myNodes := m.conns.GetNodes()
 	myNodes.Add(m.node)
 	toSend := proto.SyncNodes{Nodes: myNodes}
@@ -97,8 +109,6 @@ func (m *Mgr) handleUiCommands() {
 		switch command.EventType {
 		case events.ConnectTo:
 			m.addRemoteNode(command)
-		case events.AddStorage:
-			m.addStorage(command)
 		case events.AddData:
 			m.addData(command)
 		case events.ReadData:
@@ -109,29 +119,30 @@ func (m *Mgr) handleUiCommands() {
 
 func (m *Mgr) addData(d events.Event) {
 	data := d.GetBytes()
-	h := hash.ForData(data)
-	for _, pid := range m.store.Keys() {
-		m.store.Save(pid, h, data)
-	}
+	m.saveToAppropriateNode(data)
 }
 
-func (m *Mgr) addStorage(s events.Event) {
-	m.store.Add(store.NewPath(s.GetString()))
+func (m *Mgr) saveToAppropriateNode(data []byte) {
+	h := hash.ForData(data)
+	id := m.dist.NodeIdForHash(h)
+	if m.GetId() == id {
+		m.store.Save(h, data)
+	} else {
+		payload := proto.ToSaveData(data)
+		m.conns.SendPayload(id, payload)
+	}
 }
 
 func (m *Mgr) readData(d events.Event) {
 	h := hash.FromRaw(d.GetBytes())
 	r := d.GetResult()
-	for _, k := range m.store.Keys() {
-		r <- m.store.Read(k, h)
-		return
-	}
+	r <- m.store.Read(h)
 }
 
 func (m *Mgr) syncNodes() {
 	allIds := m.conns.GetIds()
 	for _, id := range allIds.GetValues() {
-		payload := m.BuildSyncNodesPayload()
+		payload := m.buildSyncNodesPayload()
 		m.conns.SendPayload(id, &payload)
 	}
 }

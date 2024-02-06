@@ -32,11 +32,6 @@ func (ui Ui) registerHttpHandlers() {
 		ui.userCmds <- events.NewString(events.ConnectTo, hostAndPort)
 		_, _ = fmt.Fprintf(w, "Connecting to: %s", hostAndPort)
 	})
-	http.HandleFunc("/add-storage", func(w http.ResponseWriter, r *http.Request) {
-		newStorageLocation := r.FormValue("newStorageLocation")
-		ui.userCmds <- events.NewString(events.AddStorage, newStorageLocation)
-		_, _ = fmt.Fprintf(w, "Adding storage location: %s", newStorageLocation)
-	})
 }
 
 func (ui Ui) handleRoot() {
@@ -58,11 +53,6 @@ func (ui Ui) handleRoot() {
 						<label for="textbox">Host and port:</label>
 						<input type="text" id="hostandport" name="hostandport">
 						<input type="submit" value="Connect">
-					</form>
-					<form hx-put="/add-storage">
-						<label for="textbox">Storage location</label>
-						<input type="text" id="newStorageLocation" name="newStorageLocation">
-						<input type="submit" value="Add">
 					</form>
 				</main>
 			</body>
