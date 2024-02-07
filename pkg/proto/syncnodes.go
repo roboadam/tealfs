@@ -2,11 +2,11 @@ package proto
 
 import (
 	"tealfs/pkg/model/node"
-	"tealfs/pkg/util"
+	"tealfs/pkg/set"
 )
 
 type SyncNodes struct {
-	Nodes util.Set[node.Node]
+	Nodes set.Set[node.Node]
 }
 
 func (s *SyncNodes) ToBytes() []byte {
@@ -26,8 +26,8 @@ func nodeToBytes(node node.Node) []byte {
 	return result
 }
 
-func (s *SyncNodes) GetIds() util.Set[node.Id] {
-	result := util.NewSet[node.Id]()
+func (s *SyncNodes) GetIds() set.Set[node.Id] {
+	result := set.NewSet[node.Id]()
 	for _, n := range s.Nodes.GetValues() {
 		result.Add(n.Id)
 	}
@@ -45,7 +45,7 @@ func (s *SyncNodes) NodeForId(id node.Id) (node.Node, bool) {
 
 func ToSyncNodes(data []byte) *SyncNodes {
 	remainder := data
-	result := util.NewSet[node.Node]()
+	result := set.NewSet[node.Node]()
 	for {
 		var n node.Node
 		n, remainder = toNode(remainder)

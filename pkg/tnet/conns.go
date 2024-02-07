@@ -4,7 +4,7 @@ import (
 	"net"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
-	"tealfs/pkg/util"
+	"tealfs/pkg/set"
 	"time"
 )
 
@@ -24,7 +24,7 @@ type Conns struct {
 		Payload proto.Payload
 	}
 	getlist chan struct {
-		response chan util.Set[node.Node]
+		response chan set.Set[node.Node]
 	}
 }
 
@@ -55,7 +55,7 @@ func NewConns(tnet TNet, myNodeId node.Id) *Conns {
 			Payload proto.Payload
 		}, 100),
 		getlist: make(chan struct {
-			response chan util.Set[node.Node]
+			response chan set.Set[node.Node]
 		}, 100),
 	}
 
@@ -110,8 +110,8 @@ func (c *Conns) SendPayload(to node.Id, payload proto.Payload) {
 	}
 }
 
-func (c *Conns) GetIds() util.Set[node.Id] {
-	result := util.NewSet[node.Id]()
+func (c *Conns) GetIds() set.Set[node.Id] {
+	result := set.NewSet[node.Id]()
 	nodes := c.GetNodes()
 	for _, n := range nodes.GetValues() {
 		result.Add(n.Id)
@@ -119,9 +119,9 @@ func (c *Conns) GetIds() util.Set[node.Id] {
 	return result
 }
 
-func (c *Conns) GetNodes() util.Set[node.Node] {
-	response := make(chan util.Set[node.Node])
-	c.getlist <- struct{ response chan util.Set[node.Node] }{response: response}
+func (c *Conns) GetNodes() set.Set[node.Node] {
+	response := make(chan set.Set[node.Node])
+	c.getlist <- struct{ response chan set.Set[node.Node] }{response: response}
 	result := <-response
 	return result
 }
@@ -147,7 +147,7 @@ func (c *Conns) consumeChannels() {
 			_ = SendPayload(netconn, payload.ToBytes())
 
 		case getList := <-c.getlist:
-			result := util.NewSet[node.Node]()
+			result := set.NewSet[node.Node]()
 			for id := range c.conns {
 				conn := c.conns[id]
 				result.Add(node.Node{Id: conn.id, Address: conn.address})

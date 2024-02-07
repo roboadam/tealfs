@@ -3,8 +3,8 @@ package mgr
 import (
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/set"
 	"tealfs/pkg/tnet"
-	"tealfs/pkg/util"
 )
 
 func remoteIsMissingNodes(connlist tnet.Conns, syncNodes *proto.SyncNodes) bool {
@@ -24,12 +24,12 @@ func remoteIsMissingNodes(connlist tnet.Conns, syncNodes *proto.SyncNodes) bool 
 	return false
 }
 
-func findMyMissingConns(connlist tnet.Conns, syncNodes *proto.SyncNodes) *util.Set[tnet.Conn] {
-	result := util.NewSet[tnet.Conn]()
+func findMyMissingConns(connlist tnet.Conns, syncNodes *proto.SyncNodes) *set.Set[tnet.Conn] {
+	result := set.NewSet[tnet.Conn]()
 
 	localNodes := connlist.GetIds()
 	remoteNodes := syncNodes.GetIds()
-	myNode := util.NewSet[node.Id]()
+	myNode := set.NewSet[node.Id]()
 	myNode.Add(connlist.MyNodeId)
 
 	missingIds := remoteNodes.Minus(&localNodes).Minus(&myNode)

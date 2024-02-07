@@ -1,4 +1,4 @@
-package util
+package set
 
 type Set[K comparable] struct {
 	data map[K]bool

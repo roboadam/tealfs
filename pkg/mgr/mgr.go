@@ -5,10 +5,10 @@ import (
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/set"
 	"tealfs/pkg/store"
 	d "tealfs/pkg/store/dist"
 	"tealfs/pkg/tnet"
-	"tealfs/pkg/util"
 )
 
 type Mgr struct {
@@ -92,7 +92,7 @@ func (m *Mgr) buildSyncNodesPayload() proto.SyncNodes {
 	return toSend
 }
 
-func (m *Mgr) GetRemoteNodes() util.Set[node.Node] {
+func (m *Mgr) GetRemoteNodes() set.Set[node.Node] {
 	result := m.conns.GetNodes()
 	return result
 }

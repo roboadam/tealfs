@@ -63,7 +63,7 @@ func (i *Inputs) AddData(data []byte) {
 func NewInputs() *Inputs {
 	net := tnet.NewTcpNet("localhost:0")
 	return &Inputs{
-		UiEvents: make(chan events.Event),
+		UiEvents: make(chan events.Event, 1_000),
 		Net:      net,
 	}
 }

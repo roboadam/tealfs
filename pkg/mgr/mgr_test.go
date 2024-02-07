@@ -9,9 +9,9 @@ import (
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
+	"tealfs/pkg/set"
 	"tealfs/pkg/store"
 	"tealfs/pkg/test"
-	"tealfs/pkg/util"
 	"testing"
 	"time"
 )
@@ -91,7 +91,7 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	tNet.Conn.BytesWritten = make([]byte, 0)
 	tNet.Conn.SendMockBytes(validHello(remoteNodeId))
 
-	expected := CommandAndNodes{Command: 2, Nodes: util.NewSet[NodeInfo]()}
+	expected := CommandAndNodes{Command: 2, Nodes: set.NewSet[NodeInfo]()}
 	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: remoteNodeAddress})
 	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: tNet.GetBinding()})
 
@@ -164,7 +164,7 @@ type NodeInfo struct {
 
 type CommandAndNodes struct {
 	Command int8
-	Nodes   util.Set[NodeInfo]
+	Nodes   set.Set[NodeInfo]
 }
 
 func commandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
@@ -176,7 +176,7 @@ func commandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
 	if command != 2 {
 		return nil, errors.New("not a SyncNodes")
 	}
-	nodes := util.NewSet[NodeInfo]()
+	nodes := set.NewSet[NodeInfo]()
 
 	start := 5
 
