@@ -14,6 +14,9 @@ type IncomingConnection struct {
 type MutationRequest struct {
 }
 
+type MutationResponse struct {
+}
+
 func (m *MgrNew) Start() {
 	for {
 		var mutationRequest MutationRequest
@@ -24,7 +27,13 @@ func (m *MgrNew) Start() {
 		case conn := <-m.connections:
 			mutationRequest = m.incomingConnectionToMutationRequest(conn)
 		}
+
+		response := m.applyMutationRequest(mutationRequest)
+		m.sendResponse(response)
 	}
+}
+
+func (m *MgrNew) sendResponse(_ MutationResponse) {
 }
 
 func (m *MgrNew) uiCommandToMutationRequest(_ UiCommand) MutationRequest {
@@ -33,4 +42,8 @@ func (m *MgrNew) uiCommandToMutationRequest(_ UiCommand) MutationRequest {
 
 func (m *MgrNew) incomingConnectionToMutationRequest(_ IncomingConnection) MutationRequest {
 	return MutationRequest{}
+}
+
+func (m *MgrNew) applyMutationRequest(_ MutationRequest) MutationResponse {
+	return MutationResponse{}
 }
