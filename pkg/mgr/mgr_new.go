@@ -5,7 +5,16 @@ type MgrNew struct {
 	connections <-chan IncomingConnection
 }
 
+type uiCommandType int
+
+const (
+	ConnectTo uiCommandType = iota
+	AddData
+	ReadData
+)
+
 type UiCommand struct {
+	typ uiCommandType
 }
 
 type IncomingConnection struct {
