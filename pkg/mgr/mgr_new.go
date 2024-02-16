@@ -27,6 +27,10 @@ type MutationResponse struct {
 }
 
 func (m *MgrNew) Start() {
+	go m.eventLoop()
+}
+
+func (m *MgrNew) eventLoop() {
 	for {
 		var mutationRequest MutationRequest
 
