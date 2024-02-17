@@ -4,6 +4,7 @@ import (
 	"tealfs/pkg/hash"
 	"tealfs/pkg/model/events"
 	"tealfs/pkg/model/node"
+	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/set"
 	"tealfs/pkg/store"
@@ -21,7 +22,7 @@ type Mgr struct {
 }
 
 func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
-	id := node.NewNodeId()
+	id := nodes.NewNodeId()
 	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
 	s := store.New(path, id)
@@ -51,7 +52,7 @@ func (m *Mgr) PrintDist() {
 	m.dist.PrintDist()
 }
 
-func (m *Mgr) GetId() node.Id {
+func (m *Mgr) GetId() nodes.Id {
 	return m.node.Id
 }
 

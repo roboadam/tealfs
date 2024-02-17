@@ -1,6 +1,8 @@
 package node
 
+import "tealfs/pkg/nodes"
+
 type Node struct {
-	Id      Id
+	Id      nodes.Id
 	Address Address
 }

@@ -3,24 +3,25 @@ package tnet
 import (
 	"net"
 	"tealfs/pkg/model/node"
+	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/set"
 	"time"
 )
 
 type Conns struct {
-	conns          map[node.Id]Conn
+	conns          map[nodes.Id]Conn
 	adds           chan Conn
-	deletes        chan node.Id
+	deletes        chan nodes.Id
 	tnet           TNet
-	MyNodeId       node.Id
-	connectedNodes chan node.Id
+	MyNodeId       nodes.Id
+	connectedNodes chan nodes.Id
 	incoming       chan struct {
-		From    node.Id
+		From    nodes.Id
 		Payload proto.Payload
 	}
 	outgoing chan struct {
-		To      node.Id
+		To      nodes.Id
 		Payload proto.Payload
 	}
 	getlist chan struct {
@@ -29,7 +30,7 @@ type Conns struct {
 }
 
 type Conn struct {
-	id      node.Id
+	id      nodes.Id
 	address node.Address
 	netConn net.Conn
 }
@@ -38,20 +39,20 @@ func NewConn(address node.Address) Conn {
 	return Conn{address: address}
 }
 
-func NewConns(tnet TNet, myNodeId node.Id) *Conns {
+func NewConns(tnet TNet, myNodeId nodes.Id) *Conns {
 	conns := &Conns{
 		tnet:           tnet,
 		MyNodeId:       myNodeId,
-		conns:          make(map[node.Id]Conn),
+		conns:          make(map[nodes.Id]Conn),
 		adds:           make(chan Conn, 100),
-		deletes:        make(chan node.Id, 100),
-		connectedNodes: make(chan node.Id, 100),
+		deletes:        make(chan nodes.Id, 100),
+		connectedNodes: make(chan nodes.Id, 100),
 		incoming: make(chan struct {
-			From    node.Id
+			From    nodes.Id
 			Payload proto.Payload
 		}, 100),
 		outgoing: make(chan struct {
-			To      node.Id
+			To      nodes.Id
 			Payload proto.Payload
 		}, 100),
 		getlist: make(chan struct {
@@ -87,22 +88,22 @@ func (c *Conns) Add(conn Conn) {
 	}
 }
 
-func (c *Conns) DeleteConnection(id node.Id) {
+func (c *Conns) DeleteConnection(id nodes.Id) {
 	c.deletes <- id
 }
 
-func (c *Conns) ReceivePayload() (node.Id, proto.Payload) {
+func (c *Conns) ReceivePayload() (nodes.Id, proto.Payload) {
 	received := <-c.incoming
 	return received.From, received.Payload
 }
 
-func (c *Conns) AddedNode() node.Id {
+func (c *Conns) AddedNode() nodes.Id {
 	return <-c.connectedNodes
 }
 
-func (c *Conns) SendPayload(to node.Id, payload proto.Payload) {
+func (c *Conns) SendPayload(to nodes.Id, payload proto.Payload) {
 	c.outgoing <- struct {
-		To      node.Id
+		To      nodes.Id
 		Payload proto.Payload
 	}{
 		To:      to,
@@ -110,8 +111,8 @@ func (c *Conns) SendPayload(to node.Id, payload proto.Payload) {
 	}
 }
 
-func (c *Conns) GetIds() set.Set[node.Id] {
-	result := set.NewSet[node.Id]()
+func (c *Conns) GetIds() set.Set[nodes.Id] {
+	result := set.NewSet[nodes.Id]()
 	nodes := c.GetNodes()
 	for _, n := range nodes.GetValues() {
 		result.Add(n.Id)
@@ -165,19 +166,19 @@ func (c *Conns) storeNode(conn Conn) {
 	go c.readPayloadsFromConnection(conn.id)
 }
 
-func (c *Conns) readPayloadsFromConnection(nodeId node.Id) {
+func (c *Conns) readPayloadsFromConnection(nodeId nodes.Id) {
 	netConn := c.netconnForId(nodeId)
 
 	for {
 		payload := receivePayload(netConn)
 		c.incoming <- struct {
-			From    node.Id
+			From    nodes.Id
 			Payload proto.Payload
 		}{From: nodeId, Payload: payload}
 	}
 }
 
-func (c *Conns) netconnForId(id node.Id) net.Conn {
+func (c *Conns) netconnForId(id nodes.Id) net.Conn {
 	conn := c.conns[id]
 	if conn.netConn != nil {
 		return c.conns[id].netConn

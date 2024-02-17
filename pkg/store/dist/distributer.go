@@ -3,27 +3,27 @@ package dist
 import (
 	"sort"
 	h "tealfs/pkg/hash"
-	"tealfs/pkg/model/node"
+	"tealfs/pkg/nodes"
 )
 
 type Distributer struct {
-	dist    map[key]node.Id
-	weights map[node.Id]int
+	dist    map[key]nodes.Id
+	weights map[nodes.Id]int
 }
 
 func NewDistributer() *Distributer {
 	return &Distributer{
-		dist:    make(map[key]node.Id),
-		weights: make(map[node.Id]int),
+		dist:    make(map[key]nodes.Id),
+		weights: make(map[nodes.Id]int),
 	}
 }
 
-func (d *Distributer) NodeIdForHash(hash h.Hash) node.Id {
+func (d *Distributer) NodeIdForHash(hash h.Hash) nodes.Id {
 	k := key{value: hash.Value[0]}
 	return d.dist[k]
 }
 
-func (d *Distributer) SetWeight(id node.Id, weight int) {
+func (d *Distributer) SetWeight(id nodes.Id, weight int) {
 	d.weights[id] = weight
 	d.applyWeights()
 }
@@ -52,9 +52,9 @@ func (d *Distributer) applyWeights() {
 	}
 }
 
-func get(paths node.Slice, idx int) node.Id {
+func get(paths nodes.Slice, idx int) nodes.Id {
 	if len(paths) <= 0 {
-		return node.Id{}
+		return nodes.Id{}
 	}
 
 	if idx >= len(paths) {
@@ -64,7 +64,7 @@ func get(paths node.Slice, idx int) node.Id {
 	return paths[idx]
 }
 
-func (d *Distributer) numSlotsForPath(p node.Id) int {
+func (d *Distributer) numSlotsForPath(p nodes.Id) int {
 	weight := d.weights[p]
 	totalWeight := d.totalWeights()
 	return weight * 256 / totalWeight
@@ -78,8 +78,8 @@ func (d *Distributer) totalWeights() int {
 	return total
 }
 
-func (d *Distributer) sortedPaths() node.Slice {
-	paths := make(node.Slice, 0)
+func (d *Distributer) sortedPaths() nodes.Slice {
+	paths := make(nodes.Slice, 0)
 	for k := range d.weights {
 		paths = append(paths, k)
 	}

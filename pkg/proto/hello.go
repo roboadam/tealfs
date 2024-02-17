@@ -1,9 +1,12 @@
 package proto
 
-import "tealfs/pkg/model/node"
+import (
+	"tealfs/pkg/mgr"
+	"tealfs/pkg/nodes"
+)
 
 type Hello struct {
-	NodeId node.Id
+	NodeId mgr.NodeNewId
 }
 
 func (h *Hello) ToBytes() []byte {
@@ -14,6 +17,6 @@ func (h *Hello) ToBytes() []byte {
 func ToHello(data []byte) *Hello {
 	rawId, _ := StringFromBytes(data)
 	return &Hello{
-		NodeId: node.IdFromRaw(rawId),
+		NodeId: nodes.IdFromRaw(rawId),
 	}
 }

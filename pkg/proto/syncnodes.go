@@ -2,6 +2,7 @@ package proto
 
 import (
 	"tealfs/pkg/model/node"
+	"tealfs/pkg/nodes"
 	"tealfs/pkg/set"
 )
 
@@ -26,15 +27,15 @@ func nodeToBytes(node node.Node) []byte {
 	return result
 }
 
-func (s *SyncNodes) GetIds() set.Set[node.Id] {
-	result := set.NewSet[node.Id]()
+func (s *SyncNodes) GetIds() set.Set[nodes.Id] {
+	result := set.NewSet[nodes.Id]()
 	for _, n := range s.Nodes.GetValues() {
 		result.Add(n.Id)
 	}
 	return result
 }
 
-func (s *SyncNodes) NodeForId(id node.Id) (node.Node, bool) {
+func (s *SyncNodes) NodeForId(id nodes.Id) (node.Node, bool) {
 	for _, n := range s.Nodes.GetValues() {
 		if n.Id == id {
 			return n, true
@@ -61,5 +62,5 @@ func toNode(data []byte) (node.Node, []byte) {
 	remainder := data
 	id, remainder = StringFromBytes(remainder)
 	address, remainder = StringFromBytes(remainder)
-	return node.Node{Id: node.IdFromRaw(id), Address: node.NewAddress(address)}, remainder
+	return node.Node{Id: nodes.IdFromRaw(id), Address: node.NewAddress(address)}, remainder
 }

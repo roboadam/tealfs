@@ -1,7 +1,11 @@
 package mgr
 
+import (
+	"tealfs/pkg/nodes"
+)
+
 type NodeConnMap struct {
-	nodeToConn map[NodeNewId]ConnNewId
+	nodeToConn map[nodes.Id]ConnNewId
 	connToNode map[ConnNewId]NodeNewId
 }
 

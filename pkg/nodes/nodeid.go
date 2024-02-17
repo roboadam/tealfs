@@ -1,4 +1,4 @@
-package node
+package nodes
 
 import (
 	"github.com/google/uuid"

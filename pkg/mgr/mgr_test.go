@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model/events"
-	"tealfs/pkg/model/node"
+	"tealfs/pkg/nodes"
 	"tealfs/pkg/set"
 	"tealfs/pkg/store"
 	"tealfs/pkg/test"
@@ -58,7 +58,7 @@ func TestIncomingConnection(t *testing.T) {
 	n := mgr.New(userCmds, &mockNet, dir)
 	n.Start()
 
-	remoteNodeId := node.NewNodeId()
+	remoteNodeId := nodes.NewNodeId()
 	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
 
 	expected := validHello(n.GetId())
@@ -76,7 +76,7 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	userCmds := make(chan events.Event)
 	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
 	n := mgr.New(userCmds, &tNet, dir)
-	remoteNodeId := node.NewNodeId()
+	remoteNodeId := nodes.NewNodeId()
 	remoteNodeAddress := "remoteAddress"
 	n.Start()
 
@@ -135,7 +135,7 @@ func TestSaveAndRead(t *testing.T) {
 	}
 }
 
-func validHello(nodeId node.Id) []byte {
+func validHello(nodeId nodes.Id) []byte {
 
 	serializedHello := int8Serialized(1)
 	serializedNodeId := []byte(nodeId.String())

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	h "tealfs/pkg/hash"
-	"tealfs/pkg/model/node"
+	"tealfs/pkg/nodes"
 	"time"
 )
 
@@ -15,7 +15,7 @@ type Path struct {
 
 type Store struct {
 	path  Path
-	id    node.Id
+	id    nodes.Id
 	saves chan struct {
 		hash h.Hash
 		data []byte
@@ -89,7 +89,7 @@ func NewPath(rawPath string) Path {
 	}
 }
 
-func New(path Path, id node.Id) Store {
+func New(path Path, id nodes.Id) Store {
 	p := Store{
 		id:   id,
 		path: path,
