@@ -1,11 +1,16 @@
 package mgr
 
-import "net"
+import (
+	"net"
+	"tealfs/pkg/proto"
+	"tealfs/pkg/tnet"
+)
 
 type ConnNewId int32
 type ConnsNew struct {
 	netConns map[ConnNewId]net.Conn
 	nextId   ConnNewId
+	iAmReq   chan<- IAmReq
 }
 
 type ConnectToReq struct {
@@ -26,6 +31,17 @@ type IncomingConnResp struct {
 	Success      bool
 	Id           ConnNewId
 	ErrorMessage string
+}
+
+func (c *ConnsNew) consumeData(conn ConnNewId) {
+	for {
+		netConn := c.netConns[conn]
+		bytes, err := tnet.ReadPayload(netConn)
+		if err != nil {
+			return
+		}
+		payload := proto.ToPayload(bytes)
+	}
 }
 
 func (c *ConnsNew) HandleIncoming(req IncomingConnReq) {

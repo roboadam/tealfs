@@ -9,6 +9,7 @@ type MgrNew struct {
 	saveToDiskReq    <-chan SaveToDiskReq
 
 	conns ConnsNew
+	nodes NodesNew
 }
 
 func (m *MgrNew) Start() {
