@@ -7,6 +7,8 @@ type MgrNew struct {
 	myNodesReq       <-chan MyNodesReq
 	saveToClusterReq <-chan SaveToClusterReq
 	saveToDiskReq    <-chan SaveToDiskReq
+
+	conns ConnsNew
 }
 
 func (m *MgrNew) Start() {
@@ -17,9 +19,9 @@ func (m *MgrNew) eventLoop() {
 	for {
 		select {
 		case r := <-m.connToReq:
-			m.handleConnTo(r)
+			m.conns.ConnectTo(r)
 		case r := <-m.incomingConnReq:
-			m.handleIncomingConn(r)
+			m.conns.HandleIncoming(r)
 		case r := <-m.iAmReq:
 			m.handleIAm(r)
 		case r := <-m.myNodesReq:
@@ -30,18 +32,6 @@ func (m *MgrNew) eventLoop() {
 			m.handleSaveToDisk(r)
 		}
 	}
-}
-
-type ConnectToReq struct {
-	resp chan<- ConnectToResp
-}
-type ConnectToResp struct {
-}
-
-type IncomingConnReq struct {
-	resp chan<- IncomingConnResp
-}
-type IncomingConnResp struct {
 }
 
 type IAmReq struct {
@@ -68,10 +58,6 @@ type SaveToDiskReq struct {
 type SaveToDiskResp struct {
 }
 
-func (m *MgrNew) handleConnTo(_ ConnectToReq) {
-
-}
-func (m *MgrNew) handleIncomingConn(_ IncomingConnReq)   {}
 func (m *MgrNew) handleIAm(_ IAmReq)                     {}
 func (m *MgrNew) handleMyNodes(_ MyNodesReq)             {}
 func (m *MgrNew) handleSaveToCluster(_ SaveToClusterReq) {}
