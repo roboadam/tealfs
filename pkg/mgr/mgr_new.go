@@ -64,7 +64,9 @@ type SaveToDiskReq struct {
 type SaveToDiskResp struct {
 }
 
-func (m *MgrNew) handleConnTo(_ ConnectToReq)            {}
+func (m *MgrNew) handleConnTo(_ ConnectToReq) {
+
+}
 func (m *MgrNew) handleIncomingConn(_ IncomingConnReq)   {}
 func (m *MgrNew) handleIAm(_ IAmReq)                     {}
 func (m *MgrNew) handleMyNodes(_ MyNodesReq)             {}
