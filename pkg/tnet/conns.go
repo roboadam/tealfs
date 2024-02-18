@@ -2,7 +2,6 @@ package tnet
 
 import (
 	"net"
-	"tealfs/pkg/model/node"
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/set"
@@ -25,17 +24,17 @@ type Conns struct {
 		Payload proto.Payload
 	}
 	getlist chan struct {
-		response chan set.Set[node.Node]
+		response chan set.Set[nodes.Node]
 	}
 }
 
 type Conn struct {
 	id      nodes.Id
-	address node.Address
+	address nodes.Address
 	netConn net.Conn
 }
 
-func NewConn(address node.Address) Conn {
+func NewConn(address nodes.Address) Conn {
 	return Conn{address: address}
 }
 
@@ -56,7 +55,7 @@ func NewConns(tnet TNet, myNodeId nodes.Id) *Conns {
 			Payload proto.Payload
 		}, 100),
 		getlist: make(chan struct {
-			response chan set.Set[node.Node]
+			response chan set.Set[nodes.Node]
 		}, 100),
 	}
 
@@ -69,7 +68,7 @@ func NewConns(tnet TNet, myNodeId nodes.Id) *Conns {
 func (c *Conns) Add(conn Conn) {
 	for {
 		if conn.netConn == nil {
-			netConn := c.tnet.Dial(conn.address.Value)
+			netConn := c.tnet.Dial(string(conn.address))
 			conn = Conn{address: conn.address, netConn: netConn}
 		}
 
@@ -120,9 +119,9 @@ func (c *Conns) GetIds() set.Set[nodes.Id] {
 	return result
 }
 
-func (c *Conns) GetNodes() set.Set[node.Node] {
-	response := make(chan set.Set[node.Node])
-	c.getlist <- struct{ response chan set.Set[node.Node] }{response: response}
+func (c *Conns) GetNodes() set.Set[nodes.Node] {
+	response := make(chan set.Set[nodes.Node])
+	c.getlist <- struct{ response chan set.Set[nodes.Node] }{response: response}
 	result := <-response
 	return result
 }
@@ -148,10 +147,10 @@ func (c *Conns) consumeChannels() {
 			_ = SendPayload(netconn, payload.ToBytes())
 
 		case getList := <-c.getlist:
-			result := set.NewSet[node.Node]()
+			result := set.NewSet[nodes.Node]()
 			for id := range c.conns {
 				conn := c.conns[id]
-				result.Add(node.Node{Id: conn.id, Address: conn.address})
+				result.Add(nodes.Node{Id: conn.id, Address: conn.address})
 			}
 			getList.response <- result
 		default:
@@ -183,7 +182,7 @@ func (c *Conns) netconnForId(id nodes.Id) net.Conn {
 	if conn.netConn != nil {
 		return c.conns[id].netConn
 	}
-	conn.netConn = c.tnet.Dial(conn.address.Value)
+	conn.netConn = c.tnet.Dial(string(conn.address))
 	return conn.netConn
 }
 
@@ -194,7 +193,7 @@ func (c *Conns) acceptConnections() {
 }
 
 func (c *Conns) handleConnection(netConn net.Conn) {
-	address := node.NewAddress(netConn.RemoteAddr().String())
+	address := nodes.Address(netConn.RemoteAddr().String())
 	conn := Conn{address: address, netConn: netConn}
 	c.Add(conn)
 }

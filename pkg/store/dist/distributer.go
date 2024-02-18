@@ -30,7 +30,7 @@ func (d *Distributer) SetWeight(id nodes.Id, weight int) {
 
 func (d *Distributer) PrintDist() {
 	for i := 0; i <= 255; i++ {
-		println("byteIdx:", i, ", nodeId:", d.dist[key{byte(i)}].String())
+		println("byteIdx:", i, ", nodeId:", d.dist[key{byte(i)}])
 	}
 }
 
@@ -54,7 +54,7 @@ func (d *Distributer) applyWeights() {
 
 func get(paths nodes.Slice, idx int) nodes.Id {
 	if len(paths) <= 0 {
-		return nodes.Id{}
+		return ""
 	}
 
 	if idx >= len(paths) {

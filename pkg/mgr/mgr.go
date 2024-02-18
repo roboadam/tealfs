@@ -3,7 +3,6 @@ package mgr
 import (
 	"tealfs/pkg/hash"
 	"tealfs/pkg/model/events"
-	"tealfs/pkg/model/node"
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/set"
@@ -13,7 +12,7 @@ import (
 )
 
 type Mgr struct {
-	node   node.Node
+	node   nodes.Node
 	events chan events.Event
 	tNet   tnet.TNet
 	conns  *tnet.Conns
@@ -23,7 +22,7 @@ type Mgr struct {
 
 func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
 	id := nodes.NewNodeId()
-	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
+	n := nodes.Node{Id: id, Address: nodes.NewAddress(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
 	s := store.New(path, id)
 	dist := d.NewDistributer()
@@ -93,13 +92,13 @@ func (m *Mgr) buildSyncNodesPayload() proto.SyncNodes {
 	return toSend
 }
 
-func (m *Mgr) GetRemoteNodes() set.Set[node.Node] {
+func (m *Mgr) GetRemoteNodes() set.Set[nodes.Node] {
 	result := m.conns.GetNodes()
 	return result
 }
 
 func (m *Mgr) addRemoteNode(cmd events.Event) {
-	remoteAddress := node.NewAddress(cmd.GetString())
+	remoteAddress := nodes.NewAddress(cmd.GetString())
 	m.conns.Add(tnet.NewConn(remoteAddress))
 	m.syncNodes()
 }

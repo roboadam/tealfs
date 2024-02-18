@@ -41,7 +41,7 @@ func (c *ConnsNew) consumeData(conn ConnNewId) {
 			return
 		}
 		payload := proto.ToPayload(bytes)
-		switch p := payload.(type) {
+		switch _ := payload.(type) {
 		case *proto.Hello:
 			c.iAmReq <- IAmReq{}
 		case *proto.SyncNodes:
