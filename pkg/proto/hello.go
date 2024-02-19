@@ -4,18 +4,18 @@ import (
 	"tealfs/pkg/nodes"
 )
 
-type Hello struct {
+type IAm struct {
 	NodeId nodes.Id
 }
 
-func (h *Hello) ToBytes() []byte {
+func (h *IAm) ToBytes() []byte {
 	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(HelloType, nodeId)
+	return AddType(IAmType, nodeId)
 }
 
-func ToHello(data []byte) *Hello {
+func ToHello(data []byte) *IAm {
 	rawId, _ := StringFromBytes(data)
-	return &Hello{
+	return &IAm{
 		NodeId: nodes.Id(rawId),
 	}
 }

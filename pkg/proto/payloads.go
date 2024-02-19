@@ -2,7 +2,7 @@ package proto
 
 const (
 	NoOpType     = uint8(0)
-	HelloType    = uint8(1)
+	IAmType      = uint8(1)
 	SyncType     = uint8(2)
 	SaveDataType = uint8(3)
 )
@@ -13,7 +13,7 @@ type Payload interface {
 
 func ToPayload(data []byte) Payload {
 	switch payloadType(data) {
-	case HelloType:
+	case IAmType:
 		return ToHello(payloadData(data))
 	case SyncType:
 		return ToSyncNodes(payloadData(data))

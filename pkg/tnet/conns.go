@@ -75,7 +75,7 @@ func (c *Conns) Add(conn Conn) {
 		c.sendHello(conn.netConn)
 		payload := receivePayload(conn.netConn)
 		switch p := payload.(type) {
-		case *proto.Hello:
+		case *proto.IAm:
 			conn := Conn{address: conn.address, netConn: conn.netConn, id: p.NodeId}
 			c.adds <- conn
 			return
@@ -112,8 +112,8 @@ func (c *Conns) SendPayload(to nodes.Id, payload proto.Payload) {
 
 func (c *Conns) GetIds() set.Set[nodes.Id] {
 	result := set.NewSet[nodes.Id]()
-	nodes := c.GetNodes()
-	for _, n := range nodes.GetValues() {
+	nds := c.GetNodes()
+	for _, n := range nds.GetValues() {
 		result.Add(n.Id)
 	}
 	return result
@@ -199,7 +199,7 @@ func (c *Conns) handleConnection(netConn net.Conn) {
 }
 
 func (c *Conns) sendHello(conn net.Conn) {
-	hello := proto.Hello{NodeId: c.MyNodeId}
+	hello := proto.IAm{NodeId: c.MyNodeId}
 	_ = SendPayload(conn, hello.ToBytes())
 }
 

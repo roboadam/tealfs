@@ -92,8 +92,8 @@ func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
 	tNet.Conn.SendMockBytes(validHello(remoteNodeId))
 
 	expected := CommandAndNodes{Command: 2, Nodes: set.NewSet[NodeInfo]()}
-	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: remoteNodeAddress})
-	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: tNet.GetBinding()})
+	expected.Nodes.Add(NodeInfo{NodeId: string(remoteNodeId), Address: remoteNodeAddress})
+	expected.Nodes.Add(NodeInfo{NodeId: string(n.GetId()), Address: tNet.GetBinding()})
 
 	time.Sleep(time.Millisecond * 20)
 	payload := readPayloadBytesWritten(&tNet)
@@ -138,7 +138,7 @@ func TestSaveAndRead(t *testing.T) {
 func validHello(nodeId nodes.Id) []byte {
 
 	serializedHello := int8Serialized(1)
-	serializedNodeId := []byte(nodeId.String())
+	serializedNodeId := []byte(nodeId)
 	serializedNodeIdLen := intSerialized(len(serializedNodeId))
 
 	payload := append(append(serializedHello, serializedNodeIdLen...), serializedNodeId...)
@@ -176,7 +176,7 @@ func commandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
 	if command != 2 {
 		return nil, errors.New("not a SyncNodes")
 	}
-	nodes := set.NewSet[NodeInfo]()
+	nds := set.NewSet[NodeInfo]()
 
 	start := 5
 
@@ -189,10 +189,10 @@ func commandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
 		start += 4
 		address := string(data[start : start+addressLen])
 		start += addressLen
-		nodes.Add(NodeInfo{NodeId: id, Address: address})
+		nds.Add(NodeInfo{NodeId: id, Address: address})
 	}
 
-	return &CommandAndNodes{Command: command, Nodes: nodes}, nil
+	return &CommandAndNodes{Command: command, Nodes: nds}, nil
 }
 
 func intSerialized(number int) []byte {
@@ -206,7 +206,7 @@ func int8Serialized(number int8) []byte {
 }
 
 func nodeIdIsValid(mgr *mgr.Mgr) bool {
-	return len(mgr.GetId().String()) > 0
+	return len(mgr.GetId()) > 0
 }
 
 func removeAll(dir string, t *testing.T) {

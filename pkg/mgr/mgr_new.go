@@ -1,5 +1,7 @@
 package mgr
 
+import "tealfs/pkg/nodes"
+
 type MgrNew struct {
 	connToReq        <-chan ConnectToReq
 	incomingConnReq  <-chan IncomingConnReq
@@ -9,7 +11,7 @@ type MgrNew struct {
 	saveToDiskReq    <-chan SaveToDiskReq
 
 	conns ConnsNew
-	nodes NodesNew
+	nodes nodes.Nodes
 }
 
 func (m *MgrNew) Start() {
@@ -36,7 +38,8 @@ func (m *MgrNew) eventLoop() {
 }
 
 type IAmReq struct {
-	resp chan<- IAmResp
+	nodeId nodes.Id
+	resp   chan<- IAmResp
 }
 type IAmResp struct {
 }

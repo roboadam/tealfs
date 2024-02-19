@@ -22,7 +22,7 @@ type Mgr struct {
 
 func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
 	id := nodes.NewNodeId()
-	n := nodes.Node{Id: id, Address: nodes.NewAddress(tNet.GetBinding())}
+	n := nodes.Node{Id: id, Address: nodes.Address(tNet.GetBinding())}
 	conns := tnet.NewConns(tNet, id)
 	s := store.New(path, id)
 	dist := d.NewDistributer()
@@ -98,7 +98,7 @@ func (m *Mgr) GetRemoteNodes() set.Set[nodes.Node] {
 }
 
 func (m *Mgr) addRemoteNode(cmd events.Event) {
-	remoteAddress := nodes.NewAddress(cmd.GetString())
+	remoteAddress := nodes.Address(cmd.GetString())
 	m.conns.Add(tnet.NewConn(remoteAddress))
 	m.syncNodes()
 }

@@ -19,8 +19,8 @@ func (s *SyncNodes) ToBytes() []byte {
 
 func nodeToBytes(node nodes.Node) []byte {
 	result := make([]byte, 0)
-	id := StringToBytes(node.Id.String())
-	address := StringToBytes(node.Address.Value)
+	id := StringToBytes(string(node.Id))
+	address := StringToBytes(string(node.Address))
 	result = append(result, id...)
 	result = append(result, address...)
 	return result
@@ -61,5 +61,5 @@ func toNode(data []byte) (nodes.Node, []byte) {
 	remainder := data
 	id, remainder = StringFromBytes(remainder)
 	address, remainder = StringFromBytes(remainder)
-	return nodes.Node{Id: nodes.IdFromRaw(id), Address: nodes.NewAddress(address)}, remainder
+	return nodes.Node{Id: nodes.Id(id), Address: nodes.Address(address)}, remainder
 }
