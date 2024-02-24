@@ -13,6 +13,14 @@ type ConnsNew struct {
 	iAmReq   chan<- IAmReq
 }
 
+func ConnsNewNew(iamReqs chan<- IAmReq) ConnsNew {
+	return ConnsNew{
+		netConns: make(map[ConnNewId]net.Conn, 3),
+		nextId:   ConnNewId(0),
+		iAmReq:   iamReqs,
+	}
+}
+
 type ConnectToReq struct {
 	address string
 	resp    chan<- ConnectToResp
