@@ -3,7 +3,7 @@ package mgr
 import "tealfs/pkg/nodes"
 
 type MgrNew struct {
-	connToReq        <-chan ConnectToReq
+	connToReq        chan ConnectToReq
 	incomingConnReq  <-chan IncomingConnReq
 	iAmReq           <-chan IAmReq
 	myNodesReq       <-chan MyNodesReq
