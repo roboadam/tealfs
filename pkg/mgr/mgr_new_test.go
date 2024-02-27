@@ -2,7 +2,6 @@ package mgr
 
 import (
 	"bytes"
-	"fmt"
 	"net"
 	"os"
 	"tealfs/pkg/model/events"
@@ -192,31 +191,24 @@ func TestConnectToRemoteNodeNew(t *testing.T) {
 //	return len(mgr.GetId()) > 0
 //}
 
-func testListener() {
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		fmt.Println("Error listening:", err)
-		return
-	}
-	defer listener.Close()
+func testListener(listener net.Listener, received chan []byte, toSend chan []byte) {
+	//listener, err := net.Listen("tcp", ":0")
+	//if err != nil {
+	//	fmt.Println("Error listening:", err)
+	//	return
+	//}
+	//defer listener.Close()
 
-	// Get the address
-	address := listener.Addr().(*net.TCPAddr)
-
-	fmt.Println("Listening on port:", address.Port)
-
-	// Accept connections
 	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println("Error accepting connection:", err)
-			continue
-		}
-		defer conn.Close()
-
-		fmt.Println("Accepted connection from:", conn.RemoteAddr())
-		// Handle connections here...
+		AcceptAndRead(listener)
 	}
+}
+
+func AcceptAndRead(listener net.Listener) {
+	conn, _ := listener.Accept()
+	defer func(conn net.Conn) {
+		_ = conn.Close()
+	}(conn)
 }
 
 func removeAll(dir string, t *testing.T) {
