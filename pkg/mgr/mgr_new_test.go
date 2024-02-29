@@ -1,13 +1,11 @@
 package mgr
 
 import (
-	"bytes"
+	"fmt"
 	"net"
 	"os"
-	"tealfs/pkg/model/events"
 	"tealfs/pkg/store"
 	"testing"
-	"time"
 )
 
 func TestConnectToRemoteNodeNew(t *testing.T) {
@@ -16,19 +14,14 @@ func TestConnectToRemoteNodeNew(t *testing.T) {
 	m := NewNew()
 	m.Start()
 
-	m.connToReq <- ConnectToReq{}
+	listener, _ := net.Listen("tcp", ":0")
+	responseChan := make(chan ConnectToResp)
+	m.connToReq <- ConnectToReq{address: listener.Addr().String(), resp: responseChan}
 
-	userCmds <- events.NewString(events.ConnectTo, "someAddress")
+	response := <-responseChan
 
-	if !tNet.IsDialed() {
+	if !response.Success {
 		t.Error("Node did not connect")
-	}
-
-	expected := validHello(n.GetId())
-
-	time.Sleep(time.Millisecond * 100)
-	if !bytes.Equal(tNet.Conn.BytesWritten, expected) {
-		t.Errorf("Node did not send valid hello, %d %d", len(tNet.Conn.BytesWritten), len(expected))
 	}
 }
 
@@ -200,15 +193,28 @@ func testListener(listener net.Listener, received chan []byte, toSend chan []byt
 	//defer listener.Close()
 
 	for {
-		AcceptAndRead(listener)
+		AcceptReadSend(listener, received)
 	}
 }
 
-func AcceptAndRead(listener net.Listener) {
+func AcceptReadSend(listener net.Listener, received chan []byte) {
 	conn, _ := listener.Accept()
 	defer func(conn net.Conn) {
 		_ = conn.Close()
 	}(conn)
+	readConnection(conn, received)
+}
+
+func readConnection(conn net.Conn, received chan []byte) {
+	for {
+		buf := make([]byte, 1024)
+		n, err := conn.Read(buf)
+		if err != nil {
+			fmt.Println("Error reading:", err)
+			return
+		}
+		received <- buf[:n]
+	}
 }
 
 func removeAll(dir string, t *testing.T) {
