@@ -36,7 +36,10 @@ func (m *MgrNew) eventLoop() {
 	for {
 		select {
 		case r := <-m.connToReq:
-			m.conns.ConnectTo(r)
+			id, err := m.conns.ConnectTo(r.address)
+			if err == nil {
+
+			}
 		case r := <-m.incomingConnReq:
 			m.conns.HandleIncoming(r)
 		case r := <-m.iAmReq:

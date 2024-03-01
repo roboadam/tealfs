@@ -67,13 +67,25 @@ func (c *ConnsNew) HandleIncoming(req IncomingConnReq) {
 	req.resp <- IncomingConnResp{Success: true, Id: id}
 }
 
-func (c *ConnsNew) ConnectTo(req ConnectToReq) {
-	netConn, err := net.Dial("tcp", req.address)
+func (c *ConnsNew) ConnectTo(address string) (ConnNewId, error) {
+	netConn, err := net.Dial("tcp", address)
 	if err != nil {
-		req.resp <- ConnectToResp{Success: false}
+		return 0, err
 	}
 	id := c.saveNetConn(netConn)
-	req.resp <- ConnectToResp{Success: true, Id: id}
+	return id, nil
+}
+
+func (c *ConnsNew) Send(id ConnNewId, data []byte) error {
+	bytesWritten := 0
+	for bytesWritten < len(data) {
+		n, err := c.netConns[id].Write(data[bytesWritten:])
+		if err != nil {
+			return err
+		}
+		bytesWritten += n
+	}
+	return nil
 }
 
 func (c *ConnsNew) saveNetConn(netConn net.Conn) ConnNewId {
