@@ -9,12 +9,11 @@ func New() Nodes {
 }
 
 func (n *Nodes) AddOrUpdate(node NodeNew) {
-	n.nodes[node.id] = node
+	n.nodes[node.Id] = node
 }
 
 type NodeNew struct {
-	id      Id
-	address Address
+	Id Id
 }
 
 type Address string

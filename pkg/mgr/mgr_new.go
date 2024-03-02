@@ -13,9 +13,10 @@ type MgrNew struct {
 	saveToClusterReq <-chan SaveToClusterReq
 	saveToDiskReq    <-chan SaveToDiskReq
 
-	conns  ConnsNew
-	nodes  nodes.Nodes
-	nodeId nodes.Id
+	conns       ConnsNew
+	nodes       nodes.Nodes
+	nodeConnMap NodeConnMap
+	nodeId      nodes.Id
 }
 
 func NewNew() MgrNew {
@@ -28,6 +29,7 @@ func NewNew() MgrNew {
 		saveToClusterReq: make(chan SaveToClusterReq, 100),
 		saveToDiskReq:    make(chan SaveToDiskReq, 100),
 		conns:            ConnsNewNew(iAmReq),
+		nodeConnMap:      NodeConnMap{},
 		nodeId:           nodes.NewNodeId(),
 	}
 	return mgr
@@ -67,6 +69,7 @@ func (m *MgrNew) handleConnectToReq(r ConnectToReq) {
 
 type IAmReq struct {
 	nodeId nodes.Id
+	connId ConnNewId
 	resp   chan<- IAmResp
 }
 type IAmResp struct {
@@ -90,7 +93,10 @@ type SaveToDiskReq struct {
 type SaveToDiskResp struct {
 }
 
-func (m *MgrNew) handleIAm(_ IAmReq)                     {}
+func (m *MgrNew) handleIAm(r IAmReq) {
+	m.nodes.AddOrUpdate(nodes.NodeNew{Id: r.nodeId})
+	m.nodeConnMap.Add(r.nodeId, r.connId)
+}
 func (m *MgrNew) handleMyNodes(_ MyNodesReq)             {}
 func (m *MgrNew) handleSaveToCluster(_ SaveToClusterReq) {}
 func (m *MgrNew) handleSaveToDisk(_ SaveToDiskReq)       {}
