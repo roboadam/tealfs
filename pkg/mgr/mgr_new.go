@@ -21,14 +21,15 @@ type MgrNew struct {
 
 func NewNew() MgrNew {
 	iAmReq := make(chan IAmReq, 100)
+	incomingConnReq := make(chan IncomingConnReq, 100)
 	mgr := MgrNew{
 		connToReq:        make(chan ConnectToReq, 100),
-		incomingConnReq:  make(chan IncomingConnReq, 100),
+		incomingConnReq:  incomingConnReq,
 		iAmReq:           iAmReq,
 		myNodesReq:       make(chan MyNodesReq, 100),
 		saveToClusterReq: make(chan SaveToClusterReq, 100),
 		saveToDiskReq:    make(chan SaveToDiskReq, 100),
-		conns:            ConnsNewNew(iAmReq),
+		conns:            ConnsNewNew(iAmReq, incomingConnReq),
 		nodeConnMap:      NodeConnMap{},
 		nodeId:           nodes.NewNodeId(),
 	}

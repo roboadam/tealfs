@@ -8,16 +8,35 @@ import (
 
 type ConnNewId int32
 type ConnsNew struct {
-	netConns map[ConnNewId]net.Conn
-	nextId   ConnNewId
-	iAmReq   chan<- IAmReq
+	netConns        map[ConnNewId]net.Conn
+	nextId          ConnNewId
+	iAmReq          chan<- IAmReq
+	incomingConnReq chan<- IncomingConnReq
+	listener        net.Listener
 }
 
-func ConnsNewNew(iamReqs chan<- IAmReq) ConnsNew {
-	return ConnsNew{
-		netConns: make(map[ConnNewId]net.Conn, 3),
-		nextId:   ConnNewId(0),
-		iAmReq:   iamReqs,
+func ConnsNewNew(iamReqs chan<- IAmReq, incomingConnReq chan<- IncomingConnReq) ConnsNew {
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		panic(err)
+	}
+	c := ConnsNew{
+		netConns:        make(map[ConnNewId]net.Conn, 3),
+		nextId:          ConnNewId(0),
+		iAmReq:          iamReqs,
+		incomingConnReq: incomingConnReq,
+	}
+	c.listen(listener)
+	return c
+}
+
+func (c *ConnsNew) listen(listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		if err == nil {
+			incomingConnReq := IncomingConnReq{netConn: conn}
+			c.incomingConnReq <- incomingConnReq
+		}
 	}
 }
 
@@ -33,12 +52,6 @@ type ConnectToResp struct {
 
 type IncomingConnReq struct {
 	netConn net.Conn
-	resp    chan<- IncomingConnResp
-}
-type IncomingConnResp struct {
-	Success      bool
-	Id           ConnNewId
-	ErrorMessage string
 }
 
 func (c *ConnsNew) consumeData(conn ConnNewId) {
@@ -64,7 +77,7 @@ func (c *ConnsNew) consumeData(conn ConnNewId) {
 
 func (c *ConnsNew) HandleIncoming(req IncomingConnReq) {
 	id := c.saveNetConn(req.netConn)
-	req.resp <- IncomingConnResp{Success: true, Id: id}
+	//req.resp <- IncomingConnResp{Success: true, Id: id}
 }
 
 func (c *ConnsNew) ConnectTo(address string) (ConnNewId, error) {
