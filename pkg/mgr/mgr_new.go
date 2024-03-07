@@ -46,9 +46,9 @@ func (m *MgrNew) eventLoop() {
 		case r := <-m.connToReq:
 			m.handleConnectToReq(r)
 		case r := <-m.incomingConnReq:
-			m.conns.HandleIncoming(r)
+			m.conns.SaveIncoming(r)
 		case r := <-m.iAmReq:
-			m.handleIAm(r)
+			m.addNodeToCluster(r)
 		case r := <-m.myNodesReq:
 			m.handleMyNodes(r)
 		case r := <-m.saveToClusterReq:
@@ -94,7 +94,7 @@ type SaveToDiskReq struct {
 type SaveToDiskResp struct {
 }
 
-func (m *MgrNew) handleIAm(r IAmReq) {
+func (m *MgrNew) addNodeToCluster(r IAmReq) {
 	m.nodes.AddOrUpdate(nodes.NodeNew{Id: r.nodeId})
 	m.nodeConnMap.Add(r.nodeId, r.connId)
 }

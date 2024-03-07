@@ -75,9 +75,8 @@ func (c *ConnsNew) consumeData(conn ConnNewId) {
 	}
 }
 
-func (c *ConnsNew) HandleIncoming(req IncomingConnReq) {
-	id := c.saveNetConn(req.netConn)
-	//req.resp <- IncomingConnResp{Success: true, Id: id}
+func (c *ConnsNew) SaveIncoming(req IncomingConnReq) {
+	_ = c.saveNetConn(req.netConn)
 }
 
 func (c *ConnsNew) ConnectTo(address string) (ConnNewId, error) {
