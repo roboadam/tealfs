@@ -41,8 +41,8 @@ func (c *ConnsNew) listen(listener net.Listener) {
 }
 
 type ConnectToReq struct {
-	address string
-	resp    chan<- ConnectToResp
+	Address string
+	Resp    chan<- ConnectToResp
 }
 type ConnectToResp struct {
 	Success      bool

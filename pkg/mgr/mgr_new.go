@@ -3,6 +3,7 @@ package mgr
 import (
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/ui"
 )
 
 type MgrNew struct {
@@ -17,13 +18,15 @@ type MgrNew struct {
 	nodes       nodes.Nodes
 	nodeConnMap NodeConnMap
 	nodeId      nodes.Id
+	ui          ui.Ui
 }
 
 func NewNew() MgrNew {
 	iAmReq := make(chan IAmReq, 100)
 	incomingConnReq := make(chan IncomingConnReq, 100)
+	connToReq := make(chan ConnectToReq, 100)
 	mgr := MgrNew{
-		connToReq:        make(chan ConnectToReq, 100),
+		connToReq:        connToReq,
 		incomingConnReq:  incomingConnReq,
 		iAmReq:           iAmReq,
 		myNodesReq:       make(chan MyNodesReq, 100),
@@ -32,7 +35,9 @@ func NewNew() MgrNew {
 		conns:            ConnsNewNew(iAmReq, incomingConnReq),
 		nodeConnMap:      NodeConnMap{},
 		nodeId:           nodes.NewNodeId(),
+		ui:               ui.NewUi(connToReq),
 	}
+
 	return mgr
 }
 
@@ -60,12 +65,12 @@ func (m *MgrNew) eventLoop() {
 }
 
 func (m *MgrNew) handleConnectToReq(r ConnectToReq) {
-	id, err := m.conns.ConnectTo(r.address)
+	id, err := m.conns.ConnectTo(r.Address)
 	if err == nil {
 		iam := &proto.IAm{NodeId: m.nodeId}
 		err = m.conns.Send(id, iam.ToBytes())
 	}
-	r.resp <- ConnectToResp{Id: id, Success: err == nil}
+	r.Resp <- ConnectToResp{Id: id, Success: err == nil}
 }
 
 type IAmReq struct {
