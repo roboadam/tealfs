@@ -6,33 +6,39 @@ import (
 )
 
 type MgrNew struct {
-	ConnToReq        chan ConnectToReq
-	incomingConnReq  <-chan IncomingConnReq
-	iAmReq           <-chan IAmReq
-	myNodesReq       <-chan MyNodesReq
-	saveToClusterReq <-chan SaveToClusterReq
-	saveToDiskReq    <-chan SaveToDiskReq
+	InUiConnectTo          chan InUiConnectTo
+	OutConnsConnectTo      chan OutConnsConnectTo
+	InConnsConnectedStatus chan InConnsConnectedStatus
+	OutConnsSend           chan OutConnsSend
+	InConnsSendStatus      chan InConnsSendStatus
+	InConnsReceive         chan InConnsReceive
+	OutDiskSave            chan OutDiskSave
+	OutDiskSaveStatus      chan OutDiskSaveStatus
 
-	conns       ConnsNew
+	//IncomingConnReq  chan IncomingConnReq
+	//IAmReq           chan IAmReq
+	//myNodesReq       <-chan MyNodesReq
+	//saveToClusterReq <-chan SaveToClusterReq
+	//saveToDiskReq    <-chan SaveToDiskReq
+
 	nodes       nodes.Nodes
 	nodeConnMap NodeConnMap
 	nodeId      nodes.Id
 }
 
 func NewNew() MgrNew {
-	iAmReq := make(chan IAmReq, 100)
-	incomingConnReq := make(chan IncomingConnReq, 100)
-	connToReq := make(chan ConnectToReq, 100)
 	mgr := MgrNew{
-		ConnToReq:        connToReq,
-		incomingConnReq:  incomingConnReq,
-		iAmReq:           iAmReq,
-		myNodesReq:       make(chan MyNodesReq, 100),
-		saveToClusterReq: make(chan SaveToClusterReq, 100),
-		saveToDiskReq:    make(chan SaveToDiskReq, 100),
-		conns:            ConnsNewNew(iAmReq, incomingConnReq),
-		nodeConnMap:      NodeConnMap{},
-		nodeId:           nodes.NewNodeId(),
+		InUiConnectTo:          make(chan InUiConnectTo, 1),
+		OutConnsConnectTo:      make(chan OutConnsConnectTo, 1),
+		InConnsConnectedStatus: make(chan InConnsConnectedStatus, 1),
+		OutConnsSend:           make(chan OutConnsSend, 1),
+		InConnsSendStatus:      make(chan InConnsSendStatus, 1),
+		InConnsReceive:         make(chan InConnsReceive, 1),
+		OutDiskSave:            make(chan OutDiskSave, 1),
+		OutDiskSaveStatus:      make(chan OutDiskSaveStatus, 1),
+		nodes:                  nodes.Nodes{},
+		nodeConnMap:            NodeConnMap{},
+		nodeId:                 nodes.NewNodeId(),
 	}
 
 	return mgr
@@ -45,11 +51,11 @@ func (m *MgrNew) Start() {
 func (m *MgrNew) eventLoop() {
 	for {
 		select {
-		case r := <-m.ConnToReq:
+		case r := <-m.InUiConnectTo:
 			m.handleConnectToReq(r)
-		case r := <-m.incomingConnReq:
+		case r := <-m.IncomingConnReq:
 			m.conns.SaveIncoming(r)
-		case r := <-m.iAmReq:
+		case r := <-m.IAmReq:
 			m.addNodeToCluster(r)
 		case r := <-m.myNodesReq:
 			m.handleMyNodes(r)
@@ -61,7 +67,7 @@ func (m *MgrNew) eventLoop() {
 	}
 }
 
-func (m *MgrNew) handleConnectToReq(r ConnectToReq) {
+func (m *MgrNew) handleConnectToReq(r InUiConnectTo) {
 	id, err := m.conns.ConnectTo(r.Address)
 	if err == nil {
 		iam := &proto.IAm{NodeId: m.nodeId}
@@ -95,6 +101,20 @@ type SaveToDiskReq struct {
 }
 type SaveToDiskResp struct {
 }
+
+type OutConnsConnectTo struct{}
+
+type InConnsConnectedStatus struct{}
+
+type OutConnsSend struct{}
+
+type InConnsSendStatus struct{}
+
+type InConnsReceive struct{}
+
+type OutDiskSave struct{}
+
+type OutDiskSaveStatus struct{}
 
 func (m *MgrNew) addNodeToCluster(r IAmReq) {
 	m.nodes.AddOrUpdate(nodes.NodeNew{Id: r.nodeId})

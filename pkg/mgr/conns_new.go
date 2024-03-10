@@ -40,7 +40,7 @@ func (c *ConnsNew) listen(listener net.Listener) {
 	}
 }
 
-type ConnectToReq struct {
+type InUiConnectTo struct {
 	Address string
 	Resp    chan<- ConnectToResp
 }
