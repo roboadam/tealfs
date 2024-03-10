@@ -3,11 +3,10 @@ package mgr
 import (
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
-	"tealfs/pkg/ui"
 )
 
 type MgrNew struct {
-	connToReq        chan ConnectToReq
+	ConnToReq        chan ConnectToReq
 	incomingConnReq  <-chan IncomingConnReq
 	iAmReq           <-chan IAmReq
 	myNodesReq       <-chan MyNodesReq
@@ -18,7 +17,6 @@ type MgrNew struct {
 	nodes       nodes.Nodes
 	nodeConnMap NodeConnMap
 	nodeId      nodes.Id
-	ui          ui.Ui
 }
 
 func NewNew() MgrNew {
@@ -26,7 +24,7 @@ func NewNew() MgrNew {
 	incomingConnReq := make(chan IncomingConnReq, 100)
 	connToReq := make(chan ConnectToReq, 100)
 	mgr := MgrNew{
-		connToReq:        connToReq,
+		ConnToReq:        connToReq,
 		incomingConnReq:  incomingConnReq,
 		iAmReq:           iAmReq,
 		myNodesReq:       make(chan MyNodesReq, 100),
@@ -35,7 +33,6 @@ func NewNew() MgrNew {
 		conns:            ConnsNewNew(iAmReq, incomingConnReq),
 		nodeConnMap:      NodeConnMap{},
 		nodeId:           nodes.NewNodeId(),
-		ui:               ui.NewUi(connToReq),
 	}
 
 	return mgr
@@ -48,7 +45,7 @@ func (m *MgrNew) Start() {
 func (m *MgrNew) eventLoop() {
 	for {
 		select {
-		case r := <-m.connToReq:
+		case r := <-m.ConnToReq:
 			m.handleConnectToReq(r)
 		case r := <-m.incomingConnReq:
 			m.conns.SaveIncoming(r)

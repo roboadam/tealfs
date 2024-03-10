@@ -16,7 +16,7 @@ func TestConnectToRemoteNodeNew(t *testing.T) {
 
 	listener, _ := net.Listen("tcp", ":0")
 	responseChan := make(chan ConnectToResp)
-	m.connToReq <- ConnectToReq{Address: listener.Addr().String(), Resp: responseChan}
+	m.ConnToReq <- ConnectToReq{Address: listener.Addr().String(), Resp: responseChan}
 
 	response := <-responseChan
 

@@ -26,7 +26,7 @@ func ConnsNewNew(iamReqs chan<- IAmReq, incomingConnReq chan<- IncomingConnReq) 
 		iAmReq:          iamReqs,
 		incomingConnReq: incomingConnReq,
 	}
-	c.listen(listener)
+	go c.listen(listener)
 	return c
 }
 
