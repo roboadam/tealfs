@@ -42,7 +42,6 @@ func (c *ConnsNew) listen(listener net.Listener) {
 
 type InUiConnectTo struct {
 	Address string
-	Resp    chan<- ConnectToResp
 }
 type ConnectToResp struct {
 	Success      bool

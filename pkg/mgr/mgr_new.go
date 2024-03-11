@@ -2,7 +2,6 @@ package mgr
 
 import (
 	"tealfs/pkg/nodes"
-	"tealfs/pkg/proto"
 )
 
 type MgrNew struct {
@@ -67,13 +66,8 @@ func (m *MgrNew) eventLoop() {
 	}
 }
 
-func (m *MgrNew) handleConnectToReq(r InUiConnectTo) {
-	id, err := m.conns.ConnectTo(r.Address)
-	if err == nil {
-		iam := &proto.IAm{NodeId: m.nodeId}
-		err = m.conns.Send(id, iam.ToBytes())
-	}
-	r.Resp <- ConnectToResp{Id: id, Success: err == nil}
+func (m *MgrNew) handleConnectToReq(i InUiConnectTo) {
+	m.OutConnsConnectTo <- OutConnsConnectTo{Address: i.Address}
 }
 
 type IAmReq struct {
@@ -102,7 +96,9 @@ type SaveToDiskReq struct {
 type SaveToDiskResp struct {
 }
 
-type OutConnsConnectTo struct{}
+type OutConnsConnectTo struct {
+	Address string
+}
 
 type InConnsConnectedStatus struct{}
 
