@@ -8,26 +8,43 @@ import (
 
 type ConnNewId int32
 type ConnsNew struct {
-	netConns        map[ConnNewId]net.Conn
-	nextId          ConnNewId
-	iAmReq          chan<- IAmReq
-	incomingConnReq chan<- IncomingConnReq
-	listener        net.Listener
+	netConns               map[ConnNewId]net.Conn
+	nextId                 ConnNewId
+	outConnsConnectTo      <-chan OutConnsConnectTo
+	inConnsConnectedStatus chan<- InConnsConnectedStatus
+	iAmReq                 chan<- IAmReq
+	incomingConnReq        chan<- IncomingConnReq
+	listener               net.Listener
 }
 
-func ConnsNewNew(iamReqs chan<- IAmReq, incomingConnReq chan<- IncomingConnReq) ConnsNew {
+func ConnsNewNew(outConnsConnectTo <-chan OutConnsConnectTo, status chan<- InConnsConnectedStatus) ConnsNew {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		panic(err)
 	}
 	c := ConnsNew{
-		netConns:        make(map[ConnNewId]net.Conn, 3),
-		nextId:          ConnNewId(0),
-		iAmReq:          iamReqs,
-		incomingConnReq: incomingConnReq,
+		netConns:               make(map[ConnNewId]net.Conn, 3),
+		nextId:                 ConnNewId(0),
+		outConnsConnectTo:      outConnsConnectTo,
+		inConnsConnectedStatus: status,
 	}
 	go c.listen(listener)
 	return c
+}
+
+func (c *ConnsNew) consumeChannels() {
+	select {
+	case connectToReq := <-c.outConnsConnectTo:
+		id, err := c.connectTo(connectToReq.Address)
+		if err == nil {
+			c.inConnsConnectedStatus <- InConnsConnectedStatus{
+				Type: Connected,
+				Msg:  "Success",
+				Id:   id,
+			}
+		}
+
+	}
 }
 
 func (c *ConnsNew) listen(listener net.Listener) {
@@ -78,7 +95,7 @@ func (c *ConnsNew) SaveIncoming(req IncomingConnReq) {
 	_ = c.saveNetConn(req.netConn)
 }
 
-func (c *ConnsNew) ConnectTo(address string) (ConnNewId, error) {
+func (c *ConnsNew) connectTo(address string) (ConnNewId, error) {
 	netConn, err := net.Dial("tcp", address)
 	if err != nil {
 		return 0, err

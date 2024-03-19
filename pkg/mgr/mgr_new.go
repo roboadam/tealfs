@@ -14,12 +14,6 @@ type MgrNew struct {
 	OutDiskSave            chan OutDiskSave
 	OutDiskSaveStatus      chan OutDiskSaveStatus
 
-	//IncomingConnReq  chan IncomingConnReq
-	//IAmReq           chan IAmReq
-	//myNodesReq       <-chan MyNodesReq
-	//saveToClusterReq <-chan SaveToClusterReq
-	//saveToDiskReq    <-chan SaveToDiskReq
-
 	nodes       nodes.Nodes
 	nodeConnMap NodeConnMap
 	nodeId      nodes.Id
@@ -52,8 +46,8 @@ func (m *MgrNew) eventLoop() {
 		select {
 		case r := <-m.InUiConnectTo:
 			m.handleConnectToReq(r)
-		case r := <-m.IncomingConnReq:
-			m.conns.SaveIncoming(r)
+		case r := <-m.InConnsConnectedStatus:
+			m.handleInConnsConnectedStatus(r)
 		case r := <-m.IAmReq:
 			m.addNodeToCluster(r)
 		case r := <-m.myNodesReq:
@@ -100,7 +94,17 @@ type OutConnsConnectTo struct {
 	Address string
 }
 
-type InConnsConnectedStatus struct{}
+type InConnsConnectedStatus struct {
+	Type ConnectedStatus
+	Msg  string
+	Id   ConnNewId
+}
+type ConnectedStatus int
+
+const (
+	Connected ConnectedStatus = iota
+	NotConnected
+)
 
 type OutConnsSend struct{}
 
@@ -119,3 +123,9 @@ func (m *MgrNew) addNodeToCluster(r IAmReq) {
 func (m *MgrNew) handleMyNodes(_ MyNodesReq)             {}
 func (m *MgrNew) handleSaveToCluster(_ SaveToClusterReq) {}
 func (m *MgrNew) handleSaveToDisk(_ SaveToDiskReq)       {}
+
+func (m *MgrNew) handleInConnsConnectedStatus(cs InConnsConnectedStatus) {
+	if cs.Type == Connected {
+		// Send to OutConnsSend
+	}
+}
