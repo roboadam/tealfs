@@ -8,11 +8,11 @@ import (
 )
 
 type Ui struct {
-	connToReq  chan mgr.InUiConnectTo
+	connToReq  chan mgr.UiMgrConnectTo
 	connToResp chan mgr.ConnectToResp
 }
 
-func NewUi(connToReq chan mgr.InUiConnectTo) Ui {
+func NewUi(connToReq chan mgr.UiMgrConnectTo) Ui {
 	connToResp := make(chan mgr.ConnectToResp, 100)
 	return Ui{connToReq, connToResp}
 }
@@ -29,7 +29,7 @@ func (ui Ui) Start() {
 func (ui Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
-		ui.connToReq <- mgr.InUiConnectTo{Address: hostAndPort, Resp: ui.connToResp}
+		ui.connToReq <- mgr.UiMgrConnectTo{Address: hostAndPort, Resp: ui.connToResp}
 		_, _ = fmt.Fprintf(w, "Connecting to: %s", hostAndPort)
 		resp := <-ui.connToResp
 		if resp.Success {

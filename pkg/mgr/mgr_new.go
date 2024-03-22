@@ -2,17 +2,18 @@ package mgr
 
 import (
 	"tealfs/pkg/nodes"
+	"tealfs/pkg/proto"
 )
 
 type MgrNew struct {
-	InUiConnectTo          chan InUiConnectTo
-	OutConnsConnectTo      chan OutConnsConnectTo
-	InConnsConnectedStatus chan InConnsConnectedStatus
-	OutConnsSend           chan OutConnsSend
-	InConnsSendStatus      chan InConnsSendStatus
-	InConnsReceive         chan InConnsReceive
-	OutDiskSave            chan OutDiskSave
-	OutDiskSaveStatus      chan OutDiskSaveStatus
+	UiMgrConnectTos           chan UiMgrConnectTo
+	ConnsMgrConnectedStatuses chan ConnsMgrConnectedStatus
+	ConnsMgrReceives          chan ConnsMgrReceive
+	DiskMgrRead               chan DiskMgrRead
+	MgrConnsConnectTos        chan MgrConnsConnectTo
+	MgrConnsSends             chan MgrConnsSend
+	MgrDiskSaves              chan MgrDiskSave
+	MgrDiskRead               chan MgrDiskRead
 
 	nodes       nodes.Nodes
 	nodeConnMap NodeConnMap
@@ -21,17 +22,15 @@ type MgrNew struct {
 
 func NewNew() MgrNew {
 	mgr := MgrNew{
-		InUiConnectTo:          make(chan InUiConnectTo, 1),
-		OutConnsConnectTo:      make(chan OutConnsConnectTo, 1),
-		InConnsConnectedStatus: make(chan InConnsConnectedStatus, 1),
-		OutConnsSend:           make(chan OutConnsSend, 1),
-		InConnsSendStatus:      make(chan InConnsSendStatus, 1),
-		InConnsReceive:         make(chan InConnsReceive, 1),
-		OutDiskSave:            make(chan OutDiskSave, 1),
-		OutDiskSaveStatus:      make(chan OutDiskSaveStatus, 1),
-		nodes:                  nodes.Nodes{},
-		nodeConnMap:            NodeConnMap{},
-		nodeId:                 nodes.NewNodeId(),
+		UiMgrConnectTos:           make(chan UiMgrConnectTo, 1),
+		ConnsMgrConnectedStatuses: make(chan ConnsMgrConnectedStatus, 1),
+		ConnsMgrReceives:          make(chan ConnsMgrReceive, 1),
+		MgrConnsConnectTos:        make(chan MgrConnsConnectTo, 1),
+		MgrConnsSends:             make(chan MgrConnsSend, 1),
+		MgrDiskSaves:              make(chan MgrDiskSave, 1),
+		nodes:                     nodes.Nodes{},
+		nodeConnMap:               NodeConnMap{},
+		nodeId:                    nodes.NewNodeId(),
 	}
 
 	return mgr
@@ -44,25 +43,24 @@ func (m *MgrNew) Start() {
 func (m *MgrNew) eventLoop() {
 	for {
 		select {
-		case r := <-m.InUiConnectTo:
+		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
-		case r := <-m.InConnsConnectedStatus:
-			m.handleInConnsConnectedStatus(r)
-		case r := <-m.IAmReq:
-			m.addNodeToCluster(r)
-		case r := <-m.myNodesReq:
-			m.handleMyNodes(r)
-		case r := <-m.saveToClusterReq:
-			m.handleSaveToCluster(r)
-		case r := <-m.saveToDiskReq:
-			m.handleSaveToDisk(r)
+		case r := <-m.ConnsMgrConnectedStatuses:
+			m.handleConnectedStatus(r)
+		case r := <-m.ConnsMgrReceives:
+			m.handleReceives(r)
+		case r := <-m.DiskMgrRead:
+			m.handleReads(r)
 		}
 	}
 }
 
-func (m *MgrNew) handleConnectToReq(i InUiConnectTo) {
-	m.OutConnsConnectTo <- OutConnsConnectTo{Address: i.Address}
+func (m *MgrNew) handleConnectToReq(i UiMgrConnectTo) {
+	m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: i.Address}
 }
+
+func (m *MgrNew) handleReceives(i ConnsMgrReceive) {}
+func (m *MgrNew) handleReads(i DiskMgrRead)        {}
 
 type IAmReq struct {
 	nodeId nodes.Id
@@ -90,11 +88,11 @@ type SaveToDiskReq struct {
 type SaveToDiskResp struct {
 }
 
-type OutConnsConnectTo struct {
+type MgrConnsConnectTo struct {
 	Address string
 }
 
-type InConnsConnectedStatus struct {
+type ConnsMgrConnectedStatus struct {
 	Type ConnectedStatus
 	Msg  string
 	Id   ConnNewId
@@ -106,15 +104,19 @@ const (
 	NotConnected
 )
 
-type OutConnsSend struct{}
+type MgrConnsSend struct {
+	ConnId  ConnNewId
+	Payload proto.Payload
+}
 
-type InConnsSendStatus struct{}
+type ConnsMgrReceive struct {
+	ConnId  ConnNewId
+	Payload proto.Payload
+}
 
-type InConnsReceive struct{}
-
-type OutDiskSave struct{}
-
-type OutDiskSaveStatus struct{}
+type MgrDiskSave struct{}
+type DiskMgrRead struct{}
+type MgrDiskRead struct{}
 
 func (m *MgrNew) addNodeToCluster(r IAmReq) {
 	m.nodes.AddOrUpdate(nodes.NodeNew{Id: r.nodeId})
@@ -124,8 +126,14 @@ func (m *MgrNew) handleMyNodes(_ MyNodesReq)             {}
 func (m *MgrNew) handleSaveToCluster(_ SaveToClusterReq) {}
 func (m *MgrNew) handleSaveToDisk(_ SaveToDiskReq)       {}
 
-func (m *MgrNew) handleInConnsConnectedStatus(cs InConnsConnectedStatus) {
-	if cs.Type == Connected {
-		// Send to OutConnsSend
+func (m *MgrNew) handleConnectedStatus(cs ConnsMgrConnectedStatus) {
+	switch cs.Type {
+	case Connected:
+		m.MgrConnsSends <- MgrConnsSend{
+			ConnId:  cs.Id,
+			Payload: &proto.IAm{NodeId: m.nodeId},
+		}
+	case NotConnected:
+		println("Not Connected")
 	}
 }

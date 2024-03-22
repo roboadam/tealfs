@@ -10,14 +10,14 @@ type ConnNewId int32
 type ConnsNew struct {
 	netConns               map[ConnNewId]net.Conn
 	nextId                 ConnNewId
-	outConnsConnectTo      <-chan OutConnsConnectTo
-	inConnsConnectedStatus chan<- InConnsConnectedStatus
+	outConnsConnectTo      <-chan MgrConnsConnectTo
+	inConnsConnectedStatus chan<- ConnsMgrConnectedStatus
 	iAmReq                 chan<- IAmReq
 	incomingConnReq        chan<- IncomingConnReq
 	listener               net.Listener
 }
 
-func ConnsNewNew(outConnsConnectTo <-chan OutConnsConnectTo, status chan<- InConnsConnectedStatus) ConnsNew {
+func ConnsNewNew(outConnsConnectTo <-chan MgrConnsConnectTo, status chan<- ConnsMgrConnectedStatus) ConnsNew {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		panic(err)
@@ -37,7 +37,7 @@ func (c *ConnsNew) consumeChannels() {
 	case connectToReq := <-c.outConnsConnectTo:
 		id, err := c.connectTo(connectToReq.Address)
 		if err == nil {
-			c.inConnsConnectedStatus <- InConnsConnectedStatus{
+			c.inConnsConnectedStatus <- ConnsMgrConnectedStatus{
 				Type: Connected,
 				Msg:  "Success",
 				Id:   id,
@@ -57,7 +57,7 @@ func (c *ConnsNew) listen(listener net.Listener) {
 	}
 }
 
-type InUiConnectTo struct {
+type UiMgrConnectTo struct {
 	Address string
 }
 type ConnectToResp struct {
