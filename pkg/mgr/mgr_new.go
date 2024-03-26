@@ -59,8 +59,15 @@ func (m *MgrNew) handleConnectToReq(i UiMgrConnectTo) {
 	m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: i.Address}
 }
 
-func (m *MgrNew) handleReceives(i ConnsMgrReceive) {}
-func (m *MgrNew) handleReads(i DiskMgrRead)        {}
+func (m *MgrNew) handleReceives(i ConnsMgrReceive) {
+	switch p := i.Payload.(type) {
+	case *proto.IAm:
+		m.nodes.AddOrUpdate(nodes.NodeNew{Id: p.NodeId})
+		m.nodeConnMap.Add(p.NodeId, i.ConnId)
+		// TODO send out sync nodes if anything changed
+	}
+}
+func (m *MgrNew) handleReads(i DiskMgrRead) {}
 
 type IAmReq struct {
 	nodeId nodes.Id

@@ -29,7 +29,7 @@ func (ui Ui) Start() {
 func (ui Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
-		ui.connToReq <- mgr.UiMgrConnectTo{Address: hostAndPort, Resp: ui.connToResp}
+		ui.connToReq <- mgr.UiMgrConnectTo{Address: hostAndPort}
 		_, _ = fmt.Fprintf(w, "Connecting to: %s", hostAndPort)
 		resp := <-ui.connToResp
 		if resp.Success {
