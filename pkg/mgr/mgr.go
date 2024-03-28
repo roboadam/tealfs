@@ -3,7 +3,6 @@ package mgr
 import (
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
-	"tealfs/pkg/set"
 )
 
 type Mgr struct {
@@ -67,7 +66,8 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 		m.nodes.AddOrUpdate(nodes.Node{Id: p.NodeId})
 		m.nodeConnMap.Add(p.NodeId, i.ConnId)
 
-		syncNodes := proto.SyncNodes{Nodes: set.NewSet[nodes.Node]()}
+		syncNodes := proto.SyncNodes{Nodes: m.nodes.ToSet()}
+		syncNodes.Nodes.Add(nodes.Node{m.nodeId})
 		m.MgrConnsSends <- MgrConnsSend{
 			ConnId:  i.ConnId,
 			Payload: &syncNodes,

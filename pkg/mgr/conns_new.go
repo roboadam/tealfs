@@ -17,7 +17,7 @@ type Conns struct {
 	listener               net.Listener
 }
 
-func ConnsNewNew(outConnsConnectTo <-chan MgrConnsConnectTo, status chan<- ConnsMgrConnectedStatus) Conns {
+func ConnsNew(outConnsConnectTo <-chan MgrConnsConnectTo, status chan<- ConnsMgrConnectedStatus) Conns {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		panic(err)
