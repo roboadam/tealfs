@@ -5,7 +5,7 @@ import (
 	"tealfs/pkg/set"
 )
 
-func remoteIsMissingNodes(local *set.Set[nodes.NodeNew], remote *set.Set[nodes.NodeNew]) bool {
+func remoteIsMissingNodes(local *set.Set[nodes.Node], remote *set.Set[nodes.Node]) bool {
 	if remote.Len() < local.Len() {
 		return true
 	}

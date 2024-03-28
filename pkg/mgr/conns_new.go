@@ -7,7 +7,7 @@ import (
 )
 
 type ConnNewId int32
-type ConnsNew struct {
+type Conns struct {
 	netConns               map[ConnNewId]net.Conn
 	nextId                 ConnNewId
 	outConnsConnectTo      <-chan MgrConnsConnectTo
@@ -17,12 +17,12 @@ type ConnsNew struct {
 	listener               net.Listener
 }
 
-func ConnsNewNew(outConnsConnectTo <-chan MgrConnsConnectTo, status chan<- ConnsMgrConnectedStatus) ConnsNew {
+func ConnsNewNew(outConnsConnectTo <-chan MgrConnsConnectTo, status chan<- ConnsMgrConnectedStatus) Conns {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		panic(err)
 	}
-	c := ConnsNew{
+	c := Conns{
 		netConns:               make(map[ConnNewId]net.Conn, 3),
 		nextId:                 ConnNewId(0),
 		outConnsConnectTo:      outConnsConnectTo,
@@ -32,7 +32,7 @@ func ConnsNewNew(outConnsConnectTo <-chan MgrConnsConnectTo, status chan<- Conns
 	return c
 }
 
-func (c *ConnsNew) consumeChannels() {
+func (c *Conns) consumeChannels() {
 	select {
 	case connectToReq := <-c.outConnsConnectTo:
 		id, err := c.connectTo(connectToReq.Address)
@@ -47,7 +47,7 @@ func (c *ConnsNew) consumeChannels() {
 	}
 }
 
-func (c *ConnsNew) listen(listener net.Listener) {
+func (c *Conns) listen(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err == nil {
@@ -70,7 +70,7 @@ type IncomingConnReq struct {
 	netConn net.Conn
 }
 
-func (c *ConnsNew) consumeData(conn ConnNewId) {
+func (c *Conns) consumeData(conn ConnNewId) {
 	for {
 		netConn := c.netConns[conn]
 		bytes, err := tnet.ReadPayload(netConn)
@@ -91,11 +91,11 @@ func (c *ConnsNew) consumeData(conn ConnNewId) {
 	}
 }
 
-func (c *ConnsNew) SaveIncoming(req IncomingConnReq) {
+func (c *Conns) SaveIncoming(req IncomingConnReq) {
 	_ = c.saveNetConn(req.netConn)
 }
 
-func (c *ConnsNew) connectTo(address string) (ConnNewId, error) {
+func (c *Conns) connectTo(address string) (ConnNewId, error) {
 	netConn, err := net.Dial("tcp", address)
 	if err != nil {
 		return 0, err
@@ -104,7 +104,7 @@ func (c *ConnsNew) connectTo(address string) (ConnNewId, error) {
 	return id, nil
 }
 
-func (c *ConnsNew) Send(id ConnNewId, data []byte) error {
+func (c *Conns) Send(id ConnNewId, data []byte) error {
 	bytesWritten := 0
 	for bytesWritten < len(data) {
 		n, err := c.netConns[id].Write(data[bytesWritten:])
@@ -116,7 +116,7 @@ func (c *ConnsNew) Send(id ConnNewId, data []byte) error {
 	return nil
 }
 
-func (c *ConnsNew) saveNetConn(netConn net.Conn) ConnNewId {
+func (c *Conns) saveNetConn(netConn net.Conn) ConnNewId {
 	id := c.nextId
 	c.nextId++
 	c.netConns[id] = netConn
