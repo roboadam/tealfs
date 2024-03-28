@@ -67,7 +67,7 @@ func (m *MgrNew) handleReceives(i ConnsMgrReceive) {
 		m.nodes.AddOrUpdate(nodes.NodeNew{Id: p.NodeId})
 		m.nodeConnMap.Add(p.NodeId, i.ConnId)
 
-		syncNodes := proto.SyncNodes{Nodes: set.NewSet[nodes.Node]()}
+		syncNodes := proto.SyncNodes{Nodes: set.NewSet[nodes.NodeNew]()}
 		m.MgrConnsSends <- MgrConnsSend{
 			ConnId:  i.ConnId,
 			Payload: &syncNodes,
