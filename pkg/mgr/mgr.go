@@ -61,6 +61,13 @@ func (m *Mgr) handleConnectToReq(i UiMgrConnectTo) {
 	m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: i.Address}
 }
 
+func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
+	result := proto.SyncNodes{}
+	for node := range m.nodes.GetValues() {
+		conn := m.nodeConnMap.Conn()
+	}
+}
+
 func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *proto.IAm:
