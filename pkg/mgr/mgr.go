@@ -3,6 +3,7 @@ package mgr
 import (
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/set"
 )
 
 type Mgr struct {
@@ -15,7 +16,7 @@ type Mgr struct {
 	MgrDiskSaves              chan MgrDiskSave
 	MgrDiskRead               chan MgrDiskRead
 
-	nodes       nodes.Nodes
+	nodes       set.Set[nodes.Node]
 	nodeConnMap NodeConnMap
 	nodeId      nodes.Id
 }
@@ -29,7 +30,7 @@ func NewNew() Mgr {
 		MgrConnsConnectTos:        make(chan MgrConnsConnectTo, 1),
 		MgrConnsSends:             make(chan MgrConnsSend, 1),
 		MgrDiskSaves:              make(chan MgrDiskSave, 1),
-		nodes:                     nodes.Nodes{},
+		nodes:                     set.NewSet[nodes.Node](),
 		nodeConnMap:               NodeConnMap{},
 		nodeId:                    nodes.NewNodeId(),
 	}
@@ -63,17 +64,19 @@ func (m *Mgr) handleConnectToReq(i UiMgrConnectTo) {
 func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *proto.IAm:
-		m.nodes.AddOrUpdate(nodes.Node{Id: p.NodeId})
+		m.nodes.Add(nodes.Node{Id: p.NodeId})
 		m.nodeConnMap.Add(p.NodeId, i.ConnId)
 
-		syncNodes := proto.SyncNodes{Nodes: m.nodes.ToSet()}
+		syncNodes := proto.SyncNodes{Nodes: m.nodes}
 		syncNodes.Nodes.Add(nodes.Node{Id: m.nodeId})
 		m.MgrConnsSends <- MgrConnsSend{
 			ConnId:  i.ConnId,
 			Payload: &syncNodes,
 		}
 	case *proto.SyncNodes:
-		
+		missing := p.Nodes.Minus(&m.nodes)
+		missing.Remove(nodes.Node{Id: m.nodeId})
+		// TODO Need to add address to Node or whatever goes over the wire to include the address to connect
 	}
 }
 func (m *Mgr) handleReads(i DiskMgrRead) {}
@@ -135,7 +138,7 @@ type DiskMgrRead struct{}
 type MgrDiskRead struct{}
 
 func (m *Mgr) addNodeToCluster(r IAmReq) {
-	m.nodes.AddOrUpdate(nodes.Node{Id: r.nodeId})
+	m.nodes.Add(nodes.Node{Id: r.nodeId})
 	m.nodeConnMap.Add(r.nodeId, r.connId)
 }
 func (m *Mgr) handleMyNodes(_ MyNodesReq)             {}

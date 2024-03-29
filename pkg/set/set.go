@@ -1,5 +1,7 @@
 package set
 
+import "maps"
+
 type Set[K comparable] struct {
 	data map[K]bool
 }
@@ -10,6 +12,10 @@ func NewSet[K comparable]() Set[K] {
 
 func (s *Set[K]) Add(item K) {
 	s.data[item] = true
+}
+
+func (s *Set[K]) Remove(item K) {
+	delete(s.data, item)
 }
 
 func (s *Set[K]) Equal(b *Set[K]) bool {
@@ -53,4 +59,10 @@ func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
 
 func (s *Set[K]) Len() int {
 	return len(s.data)
+}
+
+func (s *Set[K]) Clone() Set[K] {
+	return Set[K]{
+		data: maps.Clone(s.data),
+	}
 }
