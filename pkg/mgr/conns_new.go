@@ -6,10 +6,10 @@ import (
 	"tealfs/pkg/tnet"
 )
 
-type ConnNewId int32
+type ConnId int32
 type Conns struct {
-	netConns               map[ConnNewId]net.Conn
-	nextId                 ConnNewId
+	netConns               map[ConnId]net.Conn
+	nextId                 ConnId
 	outConnsConnectTo      <-chan MgrConnsConnectTo
 	inConnsConnectedStatus chan<- ConnsMgrConnectedStatus
 	iAmReq                 chan<- IAmReq
@@ -23,8 +23,8 @@ func ConnsNew(outConnsConnectTo <-chan MgrConnsConnectTo, status chan<- ConnsMgr
 		panic(err)
 	}
 	c := Conns{
-		netConns:               make(map[ConnNewId]net.Conn, 3),
-		nextId:                 ConnNewId(0),
+		netConns:               make(map[ConnId]net.Conn, 3),
+		nextId:                 ConnId(0),
 		outConnsConnectTo:      outConnsConnectTo,
 		inConnsConnectedStatus: status,
 	}
@@ -62,7 +62,7 @@ type UiMgrConnectTo struct {
 }
 type ConnectToResp struct {
 	Success      bool
-	Id           ConnNewId
+	Id           ConnId
 	ErrorMessage string
 }
 
@@ -70,7 +70,7 @@ type IncomingConnReq struct {
 	netConn net.Conn
 }
 
-func (c *Conns) consumeData(conn ConnNewId) {
+func (c *Conns) consumeData(conn ConnId) {
 	for {
 		netConn := c.netConns[conn]
 		bytes, err := tnet.ReadPayload(netConn)
@@ -95,7 +95,7 @@ func (c *Conns) SaveIncoming(req IncomingConnReq) {
 	_ = c.saveNetConn(req.netConn)
 }
 
-func (c *Conns) connectTo(address string) (ConnNewId, error) {
+func (c *Conns) connectTo(address string) (ConnId, error) {
 	netConn, err := net.Dial("tcp", address)
 	if err != nil {
 		return 0, err
@@ -104,7 +104,7 @@ func (c *Conns) connectTo(address string) (ConnNewId, error) {
 	return id, nil
 }
 
-func (c *Conns) Send(id ConnNewId, data []byte) error {
+func (c *Conns) Send(id ConnId, data []byte) error {
 	bytesWritten := 0
 	for bytesWritten < len(data) {
 		n, err := c.netConns[id].Write(data[bytesWritten:])
@@ -116,7 +116,7 @@ func (c *Conns) Send(id ConnNewId, data []byte) error {
 	return nil
 }
 
-func (c *Conns) saveNetConn(netConn net.Conn) ConnNewId {
+func (c *Conns) saveNetConn(netConn net.Conn) ConnId {
 	id := c.nextId
 	c.nextId++
 	c.netConns[id] = netConn

@@ -19,6 +19,7 @@ type Mgr struct {
 	nodes       set.Set[nodes.Node]
 	nodeConnMap NodeConnMap
 	nodeId      nodes.Id
+	connAddress map[ConnId]string
 }
 
 func NewNew() Mgr {
@@ -63,9 +64,18 @@ func (m *Mgr) handleConnectToReq(i UiMgrConnectTo) {
 
 func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
 	result := proto.SyncNodes{}
-	for node := range m.nodes.GetValues() {
-		conn := m.nodeConnMap.Conn()
+	for _, node := range m.nodes.GetValues() {
+		connId, success := m.nodeConnMap.Conn(node.Id)
+		if success {
+			if address, ok := m.connAddress[connId]; ok {
+				result.Nodes.Add(struct {
+					Node    nodes.Node
+					Address string
+				}{Node: node, Address: address})
+			}
+		}
 	}
+	return result
 }
 
 func (m *Mgr) handleReceives(i ConnsMgrReceive) {
@@ -74,8 +84,7 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 		m.nodes.Add(nodes.Node{Id: p.NodeId})
 		m.nodeConnMap.Add(p.NodeId, i.ConnId)
 
-		syncNodes := proto.SyncNodes{Nodes: m.nodes}
-		syncNodes.Nodes.Add(nodes.Node{Id: m.nodeId})
+		syncNodes := m.syncNodesPayloadToSend()
 		m.MgrConnsSends <- MgrConnsSend{
 			ConnId:  i.ConnId,
 			Payload: &syncNodes,
@@ -90,7 +99,7 @@ func (m *Mgr) handleReads(i DiskMgrRead) {}
 
 type IAmReq struct {
 	nodeId nodes.Id
-	connId ConnNewId
+	connId ConnId
 	resp   chan<- IAmResp
 }
 type IAmResp struct {
@@ -119,9 +128,10 @@ type MgrConnsConnectTo struct {
 }
 
 type ConnsMgrConnectedStatus struct {
-	Type ConnectedStatus
-	Msg  string
-	Id   ConnNewId
+	Type          ConnectedStatus
+	RemoteAddress string
+	Msg           string
+	Id            ConnId
 }
 type ConnectedStatus int
 
@@ -131,12 +141,12 @@ const (
 )
 
 type MgrConnsSend struct {
-	ConnId  ConnNewId
+	ConnId  ConnId
 	Payload proto.Payload
 }
 
 type ConnsMgrReceive struct {
-	ConnId  ConnNewId
+	ConnId  ConnId
 	Payload proto.Payload
 }
 
@@ -155,6 +165,7 @@ func (m *Mgr) handleSaveToDisk(_ SaveToDiskReq)       {}
 func (m *Mgr) handleConnectedStatus(cs ConnsMgrConnectedStatus) {
 	switch cs.Type {
 	case Connected:
+		m.connAddress[cs.Id] = cs.RemoteAddress
 		m.MgrConnsSends <- MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &proto.IAm{NodeId: m.nodeId},
