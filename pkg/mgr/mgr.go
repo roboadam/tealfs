@@ -16,6 +16,7 @@ type Mgr struct {
 	MgrDiskSaves              chan MgrDiskSave
 	MgrDiskRead               chan MgrDiskRead
 
+	// TODO Dump the node type for now
 	nodes       set.Set[nodes.Node]
 	nodeConnMap NodeConnMap
 	nodeId      nodes.Id
@@ -90,7 +91,8 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 			Payload: &syncNodes,
 		}
 	case *proto.SyncNodes:
-		missing := p.Nodes.Minus(&m.nodes)
+		remoteNodes := p.GetNodes()
+		missing := remoteNodes.Minus(&m.nodes)
 		missing.Remove(nodes.Node{Id: m.nodeId})
 		// TODO Need to add address to Node or whatever goes over the wire to include the address to connect
 	}

@@ -33,6 +33,14 @@ func (s *SyncNodes) GetIds() set.Set[nodes.Id] {
 	return result
 }
 
+func (s *SyncNodes) GetNodes() set.Set[nodes.Node] {
+	result := set.NewSet[nodes.Node]()
+	for _, n := range s.Nodes.GetValues() {
+		result.Add(n.Node)
+	}
+	return result
+}
+
 func (s *SyncNodes) NodeForId(id nodes.Id) (nodes.Node, bool) {
 	for _, n := range s.Nodes.GetValues() {
 		if n.Node.Id == id {
