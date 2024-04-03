@@ -100,6 +100,10 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 			address := p.AddressForNode(n)
 			m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: address}
 		}
+	case *proto.SaveData:
+		// Todo: Decide if this is where the data lives
+		// Todo: If it lives here send message to save to disk
+		// Todo: Otherwise send a SaveData to the destination node
 	}
 }
 func (m *Mgr) handleReads(i DiskMgrRead) {}
@@ -156,6 +160,7 @@ type MgrDiskRead struct{}
 func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
 	m.nodes.Add(n)
 	m.nodeConnMap.Add(n, c)
+	// Todo: Manage the hash/node mappings here
 }
 func (m *Mgr) handleMyNodes(_ MyNodesReq)             {}
 func (m *Mgr) handleSaveToCluster(_ SaveToClusterReq) {}
