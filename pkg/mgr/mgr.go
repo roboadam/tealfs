@@ -16,8 +16,7 @@ type Mgr struct {
 	MgrDiskSaves              chan MgrDiskSave
 	MgrDiskRead               chan MgrDiskRead
 
-	// TODO Dump the node type for now
-	nodes       set.Set[nodes.Node]
+	nodes       set.Set[nodes.Id]
 	nodeConnMap NodeConnMap
 	nodeId      nodes.Id
 	connAddress map[ConnId]string
@@ -32,7 +31,7 @@ func NewNew() Mgr {
 		MgrConnsConnectTos:        make(chan MgrConnsConnectTo, 1),
 		MgrConnsSends:             make(chan MgrConnsSend, 1),
 		MgrDiskSaves:              make(chan MgrDiskSave, 1),
-		nodes:                     set.NewSet[nodes.Node](),
+		nodes:                     set.NewSet[nodes.Id](),
 		nodeConnMap:               NodeConnMap{},
 		nodeId:                    nodes.NewNodeId(),
 	}
@@ -66,11 +65,11 @@ func (m *Mgr) handleConnectToReq(i UiMgrConnectTo) {
 func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
 	result := proto.SyncNodes{}
 	for _, node := range m.nodes.GetValues() {
-		connId, success := m.nodeConnMap.Conn(node.Id)
+		connId, success := m.nodeConnMap.Conn(node)
 		if success {
 			if address, ok := m.connAddress[connId]; ok {
 				result.Nodes.Add(struct {
-					Node    nodes.Node
+					Node    nodes.Id
 					Address string
 				}{Node: node, Address: address})
 			}
@@ -82,7 +81,7 @@ func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
 func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *proto.IAm:
-		m.nodes.Add(nodes.Node{Id: p.NodeId})
+		m.nodes.Add(p.NodeId)
 		m.nodeConnMap.Add(p.NodeId, i.ConnId)
 
 		syncNodes := m.syncNodesPayloadToSend()
@@ -93,7 +92,7 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 	case *proto.SyncNodes:
 		remoteNodes := p.GetNodes()
 		missing := remoteNodes.Minus(&m.nodes)
-		missing.Remove(nodes.Node{Id: m.nodeId})
+		missing.Remove(m.nodeId)
 		// TODO Need to add address to Node or whatever goes over the wire to include the address to connect
 	}
 }
@@ -157,7 +156,7 @@ type DiskMgrRead struct{}
 type MgrDiskRead struct{}
 
 func (m *Mgr) addNodeToCluster(r IAmReq) {
-	m.nodes.Add(nodes.Node{Id: r.nodeId})
+	m.nodes.Add(r.nodeId)
 	m.nodeConnMap.Add(r.nodeId, r.connId)
 }
 func (m *Mgr) handleMyNodes(_ MyNodesReq)             {}
