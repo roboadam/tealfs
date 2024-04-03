@@ -33,6 +33,15 @@ func (s *SyncNodes) GetNodes() set.Set[nodes.Id] {
 	return result
 }
 
+func (s *SyncNodes) AddressForNode(id nodes.Id) string {
+	for _, val := range s.Nodes.GetValues() {
+		if val.Node == id {
+			return val.Address
+		}
+	}
+	return ""
+}
+
 func ToSyncNodes(data []byte) *SyncNodes {
 	remainder := data
 	result := set.NewSet[struct {

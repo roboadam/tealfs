@@ -12,7 +12,6 @@ type Conns struct {
 	nextId                 ConnId
 	outConnsConnectTo      <-chan MgrConnsConnectTo
 	inConnsConnectedStatus chan<- ConnsMgrConnectedStatus
-	iAmReq                 chan<- IAmReq
 	incomingConnReq        chan<- IncomingConnReq
 	listener               net.Listener
 }
@@ -78,9 +77,7 @@ func (c *Conns) consumeData(conn ConnId) {
 			return
 		}
 		payload := proto.ToPayload(bytes)
-		switch p := payload.(type) {
-		case *proto.IAm:
-			c.iAmReq <- IAmReq{nodeId: p.NodeId}
+		switch _ := payload.(type) {
 		case *proto.SyncNodes:
 			break
 		case *proto.SaveData:

@@ -17,7 +17,7 @@ type Mgr struct {
 	MgrDiskRead               chan MgrDiskRead
 
 	nodes       set.Set[nodes.Id]
-	nodeConnMap NodeConnMap
+	nodeConnMap set.Bimap[nodes.Id, ConnId]
 	nodeId      nodes.Id
 	connAddress map[ConnId]string
 }
@@ -32,7 +32,6 @@ func NewNew() Mgr {
 		MgrConnsSends:             make(chan MgrConnsSend, 1),
 		MgrDiskSaves:              make(chan MgrDiskSave, 1),
 		nodes:                     set.NewSet[nodes.Id](),
-		nodeConnMap:               NodeConnMap{},
 		nodeId:                    nodes.NewNodeId(),
 	}
 
@@ -65,7 +64,7 @@ func (m *Mgr) handleConnectToReq(i UiMgrConnectTo) {
 func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
 	result := proto.SyncNodes{}
 	for _, node := range m.nodes.GetValues() {
-		connId, success := m.nodeConnMap.Conn(node)
+		connId, success := m.nodeConnMap.Get1(node)
 		if success {
 			if address, ok := m.connAddress[connId]; ok {
 				result.Nodes.Add(struct {
@@ -81,30 +80,29 @@ func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
 func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *proto.IAm:
-		m.nodes.Add(p.NodeId)
-		m.nodeConnMap.Add(p.NodeId, i.ConnId)
-
+		m.addNodeToCluster(p.NodeId, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
-		m.MgrConnsSends <- MgrConnsSend{
-			ConnId:  i.ConnId,
-			Payload: &syncNodes,
+		for _, n := range m.nodes.GetValues() {
+			connId, ok := m.nodeConnMap.Get1(n)
+			if ok {
+				m.MgrConnsSends <- MgrConnsSend{
+					ConnId:  connId,
+					Payload: &syncNodes,
+				}
+			}
 		}
 	case *proto.SyncNodes:
 		remoteNodes := p.GetNodes()
+		localNodes := m.nodes.Clone()
+		localNodes.Add(m.nodeId)
 		missing := remoteNodes.Minus(&m.nodes)
-		missing.Remove(m.nodeId)
-		// TODO Need to add address to Node or whatever goes over the wire to include the address to connect
+		for _, n := range missing.GetValues() {
+			address := p.AddressForNode(n)
+			m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: address}
+		}
 	}
 }
 func (m *Mgr) handleReads(i DiskMgrRead) {}
-
-type IAmReq struct {
-	nodeId nodes.Id
-	connId ConnId
-	resp   chan<- IAmResp
-}
-type IAmResp struct {
-}
 
 type MyNodesReq struct {
 	resp chan<- MyNodesResp
@@ -155,9 +153,9 @@ type MgrDiskSave struct{}
 type DiskMgrRead struct{}
 type MgrDiskRead struct{}
 
-func (m *Mgr) addNodeToCluster(r IAmReq) {
-	m.nodes.Add(r.nodeId)
-	m.nodeConnMap.Add(r.nodeId, r.connId)
+func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
+	m.nodes.Add(n)
+	m.nodeConnMap.Add(n, c)
 }
 func (m *Mgr) handleMyNodes(_ MyNodesReq)             {}
 func (m *Mgr) handleSaveToCluster(_ SaveToClusterReq) {}
