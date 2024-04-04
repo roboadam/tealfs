@@ -11,13 +11,6 @@ type Distributer struct {
 	weights map[nodes.Id]int
 }
 
-func NewDistributer() *Distributer {
-	return &Distributer{
-		dist:    make(map[key]nodes.Id),
-		weights: make(map[nodes.Id]int),
-	}
-}
-
 func (d *Distributer) NodeIdForHash(hash h.Hash) nodes.Id {
 	k := key{value: hash.Value[0]}
 	return d.dist[k]

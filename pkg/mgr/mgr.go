@@ -1,9 +1,11 @@
 package mgr
 
 import (
+	"tealfs/pkg/hash"
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/set"
+	"tealfs/pkg/store/dist"
 )
 
 type Mgr struct {
@@ -20,6 +22,7 @@ type Mgr struct {
 	nodeConnMap set.Bimap[nodes.Id, ConnId]
 	nodeId      nodes.Id
 	connAddress map[ConnId]string
+	distributer dist.Distributer
 }
 
 func NewNew() Mgr {
@@ -101,9 +104,19 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 			m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: address}
 		}
 	case *proto.SaveData:
-		// Todo: Decide if this is where the data lives
-		// Todo: If it lives here send message to save to disk
-		// Todo: Otherwise send a SaveData to the destination node
+		h := hash.ForData(p.Data)
+		n := m.distributer.NodeIdForHash(h)
+		if m.nodeId == n {
+			m.MgrDiskSaves <- MgrDiskSave{Hash: h, Data: p.Data}
+		} else {
+			c, ok := m.nodeConnMap.Get1(n)
+			if ok {
+				m.MgrConnsSends <- MgrConnsSend{ConnId: c, Payload: p}
+			} else {
+				// Todo: not sure what to do here
+			}
+			// Todo: Otherwise send a SaveData to the destination node
+		}
 	}
 }
 func (m *Mgr) handleReads(i DiskMgrRead) {}
@@ -153,14 +166,17 @@ type ConnsMgrReceive struct {
 	Payload proto.Payload
 }
 
-type MgrDiskSave struct{}
+type MgrDiskSave struct {
+	Hash hash.Hash
+	Data []byte
+}
 type DiskMgrRead struct{}
 type MgrDiskRead struct{}
 
 func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
 	m.nodes.Add(n)
 	m.nodeConnMap.Add(n, c)
-	// Todo: Manage the hash/node mappings here
+	m.distributer.SetWeight(n, 1)
 }
 func (m *Mgr) handleMyNodes(_ MyNodesReq)             {}
 func (m *Mgr) handleSaveToCluster(_ SaveToClusterReq) {}
