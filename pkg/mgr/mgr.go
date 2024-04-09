@@ -5,6 +5,7 @@ import (
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/set"
+	"tealfs/pkg/store"
 	"tealfs/pkg/store/dist"
 )
 
@@ -12,11 +13,11 @@ type Mgr struct {
 	UiMgrConnectTos           chan UiMgrConnectTo
 	ConnsMgrConnectedStatuses chan ConnsMgrConnectedStatus
 	ConnsMgrReceives          chan ConnsMgrReceive
-	DiskMgrRead               chan DiskMgrRead
+	DiskMgrReads              chan DiskMgrRead
 	MgrConnsConnectTos        chan MgrConnsConnectTo
 	MgrConnsSends             chan MgrConnsSend
-	MgrDiskSaves              chan MgrDiskSave
-	MgrDiskRead               chan MgrDiskRead
+	MgrDiskSaves              chan store.Block
+	MgrDiskReads              chan store.Id
 
 	nodes       set.Set[nodes.Id]
 	nodeConnMap set.Bimap[nodes.Id, ConnId]
@@ -30,10 +31,11 @@ func NewNew() Mgr {
 		UiMgrConnectTos:           make(chan UiMgrConnectTo, 1),
 		ConnsMgrConnectedStatuses: make(chan ConnsMgrConnectedStatus, 1),
 		ConnsMgrReceives:          make(chan ConnsMgrReceive, 1),
-		DiskMgrRead:               make(chan DiskMgrRead, 1),
+		DiskMgrReads:              make(chan DiskMgrRead, 1),
 		MgrConnsConnectTos:        make(chan MgrConnsConnectTo, 1),
 		MgrConnsSends:             make(chan MgrConnsSend, 1),
-		MgrDiskSaves:              make(chan MgrDiskSave, 1),
+		MgrDiskSaves:              make(chan store.Block, 1),
+		MgrDiskReads:              make(chan store.Id, 1),
 		nodes:                     set.NewSet[nodes.Id](),
 		nodeId:                    nodes.NewNodeId(),
 	}
@@ -54,7 +56,7 @@ func (m *Mgr) eventLoop() {
 			m.handleConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
-		case r := <-m.DiskMgrRead:
+		case r := <-m.DiskMgrReads:
 			m.handleReads(r)
 		}
 	}
@@ -107,36 +109,25 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 		h := hash.ForData(p.Data)
 		n := m.distributer.NodeIdForHash(h)
 		if m.nodeId == n {
-			m.MgrDiskSaves <- MgrDiskSave{Hash: h, Data: p.Data}
+			m.MgrDiskSaves <- store.Block{
+				Id:       0,
+				Parent:   0,
+				Data:     nil,
+				Hash:     hash.Hash{},
+				Children: nil,
+			} MgrDiskSave{Hash: h, Data: p.Data}
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)
 			if ok {
 				m.MgrConnsSends <- MgrConnsSend{ConnId: c, Payload: p}
 			} else {
-				// Todo: not sure what to do here
+				m.MgrDiskSaves <- MgrDiskSave{Hash: h, Data: p.Data}
 			}
-			// Todo: Otherwise send a SaveData to the destination node
 		}
 	}
 }
-func (m *Mgr) handleReads(i DiskMgrRead) {}
-
-type MyNodesReq struct {
-	resp chan<- MyNodesResp
-}
-type MyNodesResp struct {
-}
-
-type SaveToClusterReq struct {
-	resp chan<- SaveToClusterResp
-}
-type SaveToClusterResp struct {
-}
-
-type SaveToDiskReq struct {
-	resp chan<- SaveToDiskResp
-}
-type SaveToDiskResp struct {
+func (m *Mgr) handleReads(i DiskMgrRead) {
+	// Todo: need to handle read results from disk
 }
 
 type MgrConnsConnectTo struct {
@@ -170,7 +161,11 @@ type MgrDiskSave struct {
 	Hash hash.Hash
 	Data []byte
 }
-type DiskMgrRead struct{}
+type DiskMgrRead struct {
+	Ok      bool
+	Message string
+	Block   store.Block
+}
 type MgrDiskRead struct{}
 
 func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
@@ -178,9 +173,6 @@ func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
 	m.nodeConnMap.Add(n, c)
 	m.distributer.SetWeight(n, 1)
 }
-func (m *Mgr) handleMyNodes(_ MyNodesReq)             {}
-func (m *Mgr) handleSaveToCluster(_ SaveToClusterReq) {}
-func (m *Mgr) handleSaveToDisk(_ SaveToDiskReq)       {}
 
 func (m *Mgr) handleConnectedStatus(cs ConnsMgrConnectedStatus) {
 	switch cs.Type {
