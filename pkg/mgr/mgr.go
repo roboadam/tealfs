@@ -107,14 +107,13 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 		}
 	case *proto.SaveData:
 		h := hash.ForData(p.Data)
-		n := m.distributer.NodeIdForHash(h)
+		n := m.distributer.NodeIdForStoreId(p.Id)
 		if m.nodeId == n {
 			m.MgrDiskSaves <- store.Block{
-				Id:       0,
-				Parent:   0,
-				Data:     nil,
-				Hash:     hash.Hash{},
-				Children: nil,
+				Id:       p.Id,
+				Data:     p.Data,
+				Hash:     h,
+				Children: p.Children,
 			} MgrDiskSave{Hash: h, Data: p.Data}
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)

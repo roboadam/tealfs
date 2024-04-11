@@ -1,7 +1,11 @@
 package proto
 
+import "tealfs/pkg/store"
+
 type SaveData struct {
-	Data []byte
+	Id       store.Id
+	Data     []byte
+	Children []store.Id
 }
 
 func (s *SaveData) ToBytes() []byte {

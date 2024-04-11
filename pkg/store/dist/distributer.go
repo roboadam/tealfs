@@ -2,8 +2,8 @@ package dist
 
 import (
 	"sort"
-	h "tealfs/pkg/hash"
 	"tealfs/pkg/nodes"
+	"tealfs/pkg/store"
 )
 
 type Distributer struct {
@@ -11,8 +11,8 @@ type Distributer struct {
 	weights map[nodes.Id]int
 }
 
-func (d *Distributer) NodeIdForHash(hash h.Hash) nodes.Id {
-	k := key{value: hash.Value[0]}
+func (d *Distributer) NodeIdForStoreId(id store.Id) nodes.Id {
+	k := key{value: byte(id)}
 	return d.dist[k]
 }
 
