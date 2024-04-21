@@ -10,14 +10,19 @@ import (
 )
 
 type Mgr struct {
-	UiMgrConnectTos           chan UiMgrConnectTo
-	ConnsMgrConnectedStatuses chan ConnsMgrConnectedStatus
-	ConnsMgrReceives          chan ConnsMgrReceive
-	DiskMgrReads              chan DiskMgrRead
-	MgrConnsConnectTos        chan MgrConnsConnectTo
-	MgrConnsSends             chan MgrConnsSend
-	MgrDiskSaves              chan store.Block
-	MgrDiskReads              chan store.Id
+	UiMgrConnectTos    chan UiMgrConnectTo
+	ConnsMgrStatuses   chan ConnsMgrStatus
+	ConnsMgrReceives   chan ConnsMgrReceive
+	DiskMgrReads       chan ReadResult
+	DiskMgrWrites      chan WriteResult
+	WebdavMgrGets      chan store.Id
+	WebdavMgrPuts      chan store.Block
+	MgrConnsConnectTos chan MgrConnsConnectTo
+	MgrConnsSends      chan MgrConnsSend
+	MgrDiskWrites      chan store.Block
+	MgrDiskReads       chan store.Id
+	MgrWebdavGets      chan ReadResult
+	MgrWebdavPuts      chan WriteResult
 
 	nodes       set.Set[nodes.Id]
 	nodeConnMap set.Bimap[nodes.Id, ConnId]
@@ -28,16 +33,20 @@ type Mgr struct {
 
 func NewNew() Mgr {
 	mgr := Mgr{
-		UiMgrConnectTos:           make(chan UiMgrConnectTo, 1),
-		ConnsMgrConnectedStatuses: make(chan ConnsMgrConnectedStatus, 1),
-		ConnsMgrReceives:          make(chan ConnsMgrReceive, 1),
-		DiskMgrReads:              make(chan DiskMgrRead, 1),
-		MgrConnsConnectTos:        make(chan MgrConnsConnectTo, 1),
-		MgrConnsSends:             make(chan MgrConnsSend, 1),
-		MgrDiskSaves:              make(chan store.Block, 1),
-		MgrDiskReads:              make(chan store.Id, 1),
-		nodes:                     set.NewSet[nodes.Id](),
-		nodeId:                    nodes.NewNodeId(),
+		UiMgrConnectTos:    make(chan UiMgrConnectTo, 1),
+		ConnsMgrStatuses:   make(chan ConnsMgrStatus, 1),
+		ConnsMgrReceives:   make(chan ConnsMgrReceive, 1),
+		DiskMgrReads:       make(chan ReadResult, 1),
+		WebdavMgrGets:      make(chan store.Id, 1),
+		WebdavMgrPuts:      make(chan store.Block, 1),
+		MgrConnsConnectTos: make(chan MgrConnsConnectTo, 1),
+		MgrConnsSends:      make(chan MgrConnsSend, 1),
+		MgrDiskWrites:      make(chan store.Block, 1),
+		MgrDiskReads:       make(chan store.Id, 1),
+		MgrWebdavGets:      make(chan ReadResult, 1),
+		MgrWebdavPuts:      make(chan WriteResult, 1),
+		nodes:              set.NewSet[nodes.Id](),
+		nodeId:             nodes.NewNodeId(),
 	}
 
 	return mgr
@@ -52,12 +61,16 @@ func (m *Mgr) eventLoop() {
 		select {
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
-		case r := <-m.ConnsMgrConnectedStatuses:
+		case r := <-m.ConnsMgrStatuses:
 			m.handleConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
 			m.handleReads(r)
+		case r := <-m.WebdavMgrGets:
+			m.handleGets(r)
+		case r := <-m.WebdavMgrPuts:
+			m.handlePuts(r)
 		}
 	}
 }
@@ -106,26 +119,21 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 			m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: address}
 		}
 	case *proto.SaveData:
-		h := hash.ForData(p.Data)
-		n := m.distributer.NodeIdForStoreId(p.Id)
+		n := m.distributer.NodeIdForStoreId(p.Block.Id)
 		if m.nodeId == n {
-			m.MgrDiskSaves <- store.Block{
-				Id:       p.Id,
-				Data:     p.Data,
-				Hash:     h,
-				Children: p.Children,
-			} MgrDiskSave{Hash: h, Data: p.Data}
+			m.MgrDiskWrites <- p.Block
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)
 			if ok {
 				m.MgrConnsSends <- MgrConnsSend{ConnId: c, Payload: p}
 			} else {
-				m.MgrDiskSaves <- MgrDiskSave{Hash: h, Data: p.Data}
+				m.MgrDiskWrites <- p.Block
 			}
 		}
 	}
 }
-func (m *Mgr) handleReads(i DiskMgrRead) {
+
+func (m *Mgr) handleReads(i ReadResult) {
 	// Todo: need to handle read results from disk
 }
 
@@ -133,7 +141,7 @@ type MgrConnsConnectTo struct {
 	Address string
 }
 
-type ConnsMgrConnectedStatus struct {
+type ConnsMgrStatus struct {
 	Type          ConnectedStatus
 	RemoteAddress string
 	Msg           string
@@ -160,12 +168,15 @@ type MgrDiskSave struct {
 	Hash hash.Hash
 	Data []byte
 }
-type DiskMgrRead struct {
+type ReadResult struct {
 	Ok      bool
 	Message string
 	Block   store.Block
 }
-type MgrDiskRead struct{}
+type WriteResult struct {
+	Ok      bool
+	Message string
+}
 
 func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
 	m.nodes.Add(n)
@@ -173,7 +184,7 @@ func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
 	m.distributer.SetWeight(n, 1)
 }
 
-func (m *Mgr) handleConnectedStatus(cs ConnsMgrConnectedStatus) {
+func (m *Mgr) handleConnectedStatus(cs ConnsMgrStatus) {
 	switch cs.Type {
 	case Connected:
 		m.connAddress[cs.Id] = cs.RemoteAddress
@@ -184,4 +195,18 @@ func (m *Mgr) handleConnectedStatus(cs ConnsMgrConnectedStatus) {
 	case NotConnected:
 		println("Not Connected")
 	}
+}
+
+func (m *Mgr) handleGets(r store.Id) {
+	n := m.distributer.NodeIdForStoreId(r)
+	if m.nodeId == n {
+		m.MgrDiskReads <- r
+	} else {
+		m.MgrConnsSends <- proto.
+	}
+	// Todo: Take get request from webdav and request data from another server or get it from the local disk
+}
+
+func (m *Mgr) handlePuts(_ store.Block) {
+	// Todo: Take put request from webdav and save the data to another server or save it to the local disk
 }

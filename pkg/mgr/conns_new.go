@@ -11,12 +11,12 @@ type Conns struct {
 	netConns               map[ConnId]net.Conn
 	nextId                 ConnId
 	outConnsConnectTo      <-chan MgrConnsConnectTo
-	inConnsConnectedStatus chan<- ConnsMgrConnectedStatus
+	inConnsConnectedStatus chan<- ConnsMgrStatus
 	incomingConnReq        chan<- IncomingConnReq
 	listener               net.Listener
 }
 
-func ConnsNew(outConnsConnectTo <-chan MgrConnsConnectTo, status chan<- ConnsMgrConnectedStatus) Conns {
+func ConnsNew(outConnsConnectTo <-chan MgrConnsConnectTo, status chan<- ConnsMgrStatus) Conns {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		panic(err)
@@ -36,7 +36,7 @@ func (c *Conns) consumeChannels() {
 	case connectToReq := <-c.outConnsConnectTo:
 		id, err := c.connectTo(connectToReq.Address)
 		if err == nil {
-			c.inConnsConnectedStatus <- ConnsMgrConnectedStatus{
+			c.inConnsConnectedStatus <- ConnsMgrStatus{
 				Type: Connected,
 				Msg:  "Success",
 				Id:   id,

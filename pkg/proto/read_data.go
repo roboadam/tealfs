@@ -2,14 +2,15 @@ package proto
 
 import "tealfs/pkg/store"
 
-type SaveData struct {
-	Block store.Block
+type ReadData struct {
+	StoreId store.Id
 }
 
-func (s *SaveData) ToBytes() []byte {
+func (r *ReadData) ToBytes() []byte {
 	// Todo: This needs to be enhanced to serialize all the Block, not just the data
 	// The logic should probably live in the block and be called from here
-	return AddType(SaveDataType, s.Block.Data)
+	data := IntToBytes(uint32(r.StoreId))
+	return AddType(ReadDataType, s.Block.Data)
 }
 
 func ToSaveData(data []byte) *SaveData {
