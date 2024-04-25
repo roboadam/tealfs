@@ -15,12 +15,12 @@ type Mgr struct {
 	ConnsMgrReceives   chan ConnsMgrReceive
 	DiskMgrReads       chan ReadResult
 	DiskMgrWrites      chan WriteResult
-	WebdavMgrGets      chan store.Id
+	WebdavMgrGets      chan ReadRequest
 	WebdavMgrPuts      chan store.Block
 	MgrConnsConnectTos chan MgrConnsConnectTo
 	MgrConnsSends      chan MgrConnsSend
 	MgrDiskWrites      chan store.Block
-	MgrDiskReads       chan store.Id
+	MgrDiskReads       chan ReadRequest
 	MgrWebdavGets      chan ReadResult
 	MgrWebdavPuts      chan WriteResult
 
@@ -37,12 +37,12 @@ func NewNew() Mgr {
 		ConnsMgrStatuses:   make(chan ConnsMgrStatus, 1),
 		ConnsMgrReceives:   make(chan ConnsMgrReceive, 1),
 		DiskMgrReads:       make(chan ReadResult, 1),
-		WebdavMgrGets:      make(chan store.Id, 1),
+		WebdavMgrGets:      make(chan ReadRequest, 1),
 		WebdavMgrPuts:      make(chan store.Block, 1),
 		MgrConnsConnectTos: make(chan MgrConnsConnectTo, 1),
 		MgrConnsSends:      make(chan MgrConnsSend, 1),
 		MgrDiskWrites:      make(chan store.Block, 1),
-		MgrDiskReads:       make(chan store.Id, 1),
+		MgrDiskReads:       make(chan ReadRequest, 1),
 		MgrWebdavGets:      make(chan ReadResult, 1),
 		MgrWebdavPuts:      make(chan WriteResult, 1),
 		nodes:              set.NewSet[nodes.Id](),
@@ -134,7 +134,17 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 }
 
 func (m *Mgr) handleReads(i ReadResult) {
-	// Todo: need to handle read results from disk
+	if i.Caller == m.nodeId {
+		m.MgrWebdavGets <- i
+	} else {
+		c, ok := m.nodeConnMap.Get1(i.Caller)
+		if ok {
+			// Todo: need to create read result
+			m.MgrConnsSends <- MgrConnsSend{ConnId: c, Payload: proto.ReadResult{}}
+		} else {
+			// Todo: need a ticket to create queuing for offline nodes
+		}
+	}
 }
 
 type MgrConnsConnectTo struct {
@@ -168,9 +178,14 @@ type MgrDiskSave struct {
 	Hash hash.Hash
 	Data []byte
 }
+type ReadRequest struct {
+	Caller  nodes.Id
+	BlockId store.Id
+}
 type ReadResult struct {
 	Ok      bool
 	Message string
+	Caller  nodes.Id
 	Block   store.Block
 }
 type WriteResult struct {
@@ -197,14 +212,26 @@ func (m *Mgr) handleConnectedStatus(cs ConnsMgrStatus) {
 	}
 }
 
-func (m *Mgr) handleGets(r store.Id) {
-	n := m.distributer.NodeIdForStoreId(r)
+func (m *Mgr) handleGets(rr ReadRequest) {
+	n := m.distributer.NodeIdForStoreId(rr.BlockId)
 	if m.nodeId == n {
-		m.MgrDiskReads <- r
+		m.MgrDiskReads <- rr
 	} else {
-		m.MgrConnsSends <- proto.
+		c, ok := m.nodeConnMap.Get1(n)
+		if ok {
+			m.MgrConnsSends <- MgrConnsSend{
+				ConnId:  c,
+				Payload: &proto.ReadRequest{Caller: rr.Caller, BlockId: rr.BlockId},
+			}
+		} else {
+			m.MgrWebdavGets <- ReadResult{
+				Ok:      false,
+				Message: "Not connected",
+				Block:   store.Block{Id: rr.BlockId},
+				Caller:  rr.Caller,
+			}
+		}
 	}
-	// Todo: Take get request from webdav and request data from another server or get it from the local disk
 }
 
 func (m *Mgr) handlePuts(_ store.Block) {

@@ -1,22 +1,23 @@
 package proto
 
-import "tealfs/pkg/store"
+import (
+	"tealfs/pkg/nodes"
+	"tealfs/pkg/store"
+)
 
-type ReadData struct {
-	StoreId store.Id
+type ReadRequest struct {
+	Caller  nodes.Id
+	BlockId store.Id
 }
 
-func (r *ReadData) ToBytes() []byte {
-	// Todo: This needs to be enhanced to serialize all the Block, not just the data
-	// The logic should probably live in the block and be called from here
-	data := IntToBytes(uint32(r.StoreId))
-	return AddType(ReadDataType, s.Block.Data)
+func (r *ReadRequest) ToBytes() []byte {
+	data := IntToBytes(uint32(r.BlockId))
+	return AddType(ReadDataType, data)
 }
 
-func ToSaveData(data []byte) *SaveData {
-	// Todo: This needs to be enhanced to deserialize all the Block, not just the data
-	// The logic should probably live in the block and be called from here
-	return &SaveData{
-		Block: store.Block{Data: data},
-	}
+func ToReadData(data []byte) (*ReadRequest, []byte) {
+	id, remainder := IntFromBytes(data)
+	return &ReadRequest{
+		BlockId: store.Id(id),
+	}, remainder
 }
