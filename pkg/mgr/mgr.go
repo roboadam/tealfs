@@ -182,12 +182,7 @@ type ReadRequest struct {
 	Caller  nodes.Id
 	BlockId store.Id
 }
-type ReadResult struct {
-	Ok      bool
-	Message string
-	Caller  nodes.Id
-	Block   store.Block
-}
+
 type WriteResult struct {
 	Ok      bool
 	Message string

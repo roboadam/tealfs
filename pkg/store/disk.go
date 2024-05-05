@@ -2,7 +2,7 @@ package store
 
 import "tealfs/pkg/hash"
 
-type Id int
+type Id string
 
 type Block struct {
 	Id       Id
