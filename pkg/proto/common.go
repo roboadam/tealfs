@@ -39,6 +39,10 @@ func BoolToBytes(value bool) []byte {
 	return result
 }
 
+func BoolFromBytes(value []byte) (bool, []byte) {
+	return value[0] == 1, value[1:]
+}
+
 func BlockToBytes(value store.Block) []byte {
 	result := make([]byte, 0)
 	id := StringToBytes(string(value.Id))
@@ -52,6 +56,11 @@ func BlockToBytes(value store.Block) []byte {
 		result = append(result, StringToBytes(string(child))...)
 	}
 	return result
+}
+
+func BlockFromBytes(value []byte) (store.Block, []byte) {
+	id, remainder := StringFromBytes(value)
+	data := remainder
 }
 
 func AddType(id uint8, data []byte) []byte {
