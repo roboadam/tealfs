@@ -3,6 +3,7 @@ package proto
 import (
 	"bytes"
 	"encoding/binary"
+	hash2 "tealfs/pkg/hash"
 	"tealfs/pkg/store"
 )
 
@@ -74,13 +75,21 @@ func BlockFromBytes(value []byte) (store.Block, []byte) {
 	id, remainder := StringFromBytes(value)
 	data, remainder := BytesFromBytes(remainder)
 	hash, remainder := BytesFromBytes(remainder)
-	//todo: get number of children
-	var children []store.Block
-	for {
-		if len(remainder) == 0 {
-			return store.Block{}, rem
-		}
+	numChildren, remainder := IntFromBytes(remainder)
+
+	var children []store.Id
+	for numChildren > 0 {
+		numChildren--
+		var child string
+		child, remainder = StringFromBytes(remainder)
+		children = append(children, store.Id(child))
 	}
+	return store.Block{
+		Id:       store.Id(id),
+		Data:     data,
+		Hash:     hash2.FromRaw(hash),
+		Children: children,
+	}, remainder
 }
 
 func AddType(id uint8, data []byte) []byte {
