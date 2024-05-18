@@ -77,7 +77,7 @@ func (c *Conns) consumeData(conn ConnId) {
 			return
 		}
 		payload := proto.ToPayload(bytes)
-		switch _ := payload.(type) {
+		switch payload.(type) {
 		case *proto.SyncNodes:
 			break
 		case *proto.SaveData:
