@@ -48,6 +48,8 @@ func NewNew() Mgr {
 		nodes:              set.NewSet[nodes.Id](),
 		nodeId:             nodes.NewNodeId(),
 		connAddress:        make(map[ConnId]string),
+		nodeConnMap:        set.NewBimap[nodes.Id, ConnId](),
+		distributer:        dist.New(),
 	}
 
 	return mgr
@@ -81,7 +83,7 @@ func (m *Mgr) handleConnectToReq(i UiMgrConnectTo) {
 }
 
 func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
-	result := proto.SyncNodes{}
+	result := proto.NewSyncNodes()
 	for _, node := range m.nodes.GetValues() {
 		connId, success := m.nodeConnMap.Get1(node)
 		if success {

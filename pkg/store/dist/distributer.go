@@ -11,6 +11,13 @@ type Distributer struct {
 	weights map[nodes.Id]int
 }
 
+func New() Distributer {
+	return Distributer{
+		dist:    make(map[key]nodes.Id),
+		weights: make(map[nodes.Id]int),
+	}
+}
+
 func (d *Distributer) NodeIdForStoreId(id store.Id) nodes.Id {
 	idb := []byte(id)
 	k := key{value: idb[0]}

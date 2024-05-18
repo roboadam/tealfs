@@ -12,6 +12,15 @@ type SyncNodes struct {
 	}]
 }
 
+func NewSyncNodes() SyncNodes {
+	return SyncNodes{
+		Nodes: set.NewSet[struct {
+			Node    nodes.Id
+			Address string
+		}](),
+	}
+}
+
 func (s *SyncNodes) ToBytes() []byte {
 	result := make([]byte, 0)
 	for _, n := range s.Nodes.GetValues() {

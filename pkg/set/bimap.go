@@ -5,6 +5,13 @@ type Bimap[K comparable, J comparable] struct {
 	dataJk map[J]K
 }
 
+func NewBimap[K comparable, J comparable]() Bimap[K, J] {
+	return Bimap[K, J]{
+		dataKj: make(map[K]J),
+		dataJk: make(map[J]K),
+	}
+}
+
 func (b *Bimap[K, J]) Add(item1 K, item2 J) {
 	b.dataKj[item1] = item2
 	b.dataJk[item2] = item1
