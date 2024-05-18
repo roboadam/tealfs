@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"bytes"
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/store"
 )
@@ -11,13 +12,16 @@ type ReadRequest struct {
 }
 
 func (r *ReadRequest) ToBytes() []byte {
-	data := IntToBytes(uint32(r.BlockId))
-	return AddType(ReadDataType, data)
+	callerId := StringToBytes(string(r.Caller))
+	blockId := StringToBytes(string(r.BlockId))
+	return AddType(ReadDataType, bytes.Join([][]byte{callerId, blockId}, []byte{}))
 }
 
 func ToReadData(data []byte) (*ReadRequest, []byte) {
-	id, remainder := IntFromBytes(data)
+	callerId, remainder := StringFromBytes(data)
+	blockId, remainder := StringFromBytes(data)
 	return &ReadRequest{
-		BlockId: store.Id(id),
+		Caller:  nodes.Id(callerId),
+		BlockId: store.Id(blockId),
 	}, remainder
 }

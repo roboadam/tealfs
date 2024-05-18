@@ -12,7 +12,8 @@ type Distributer struct {
 }
 
 func (d *Distributer) NodeIdForStoreId(id store.Id) nodes.Id {
-	k := key{value: byte(id)}
+	idb := []byte(id)
+	k := key{value: idb[0]}
 	return d.dist[k]
 }
 

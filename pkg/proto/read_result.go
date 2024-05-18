@@ -25,5 +25,11 @@ func ToReadResult(data []byte) *ReadResult {
 	ok, remainder := BoolFromBytes(data)
 	message, remainder := StringFromBytes(remainder)
 	caller, remainder := StringFromBytes(remainder)
-
+	block, remainder := BlockFromBytes(remainder)
+	return &ReadResult{
+		Ok:      ok,
+		Message: message,
+		Caller:  nodes.Id(caller),
+		Block:   block,
+	}
 }
