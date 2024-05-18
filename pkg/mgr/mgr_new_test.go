@@ -1,6 +1,7 @@
 package mgr
 
 import (
+	"tealfs/pkg/proto"
 	"testing"
 )
 
@@ -34,6 +35,16 @@ func TestConnectToSuccess(t *testing.T) {
 		Id:            expectedConnectionId,
 	}
 
-	// Fixme: Verify mgr sends IAM
+	expectedIam := <-m.MgrConnsSends
+	payload := expectedIam.Payload
+	switch p := payload.(type) {
+	case *proto.IAm:
+		if p.NodeId != m.nodeId {
+			t.Error("Unexpected nodeId")
+		}
+		if expectedIam.ConnId != expectedConnectionId {
+			t.Error("Unexpected connId")
+		}
+	}
 	// Fixme: Understand what connAddress is for and test it or remove it
 }

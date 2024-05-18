@@ -47,6 +47,7 @@ func NewNew() Mgr {
 		MgrWebdavPuts:      make(chan WriteResult, 1),
 		nodes:              set.NewSet[nodes.Id](),
 		nodeId:             nodes.NewNodeId(),
+		connAddress:        make(map[ConnId]string),
 	}
 
 	return mgr
