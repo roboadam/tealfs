@@ -1,3 +1,17 @@
+// Copyright (C) 2024 Adam Hess
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, version 3.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 package mgr
 
 import (
@@ -35,6 +49,41 @@ func TestConnectToSuccess(t *testing.T) {
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
 	}, t)
+}
+
+func TestReceiveSyncNodes(t *testing.T) {
+	const sharedAddress = "some-address:123"
+	const sharedConnectionId = 1
+	var sharedNodeId = nodes.NewNodeId()
+	const localAddress = "some-address2:234"
+	const localConnectionId = 2
+	var localNodeId = nodes.NewNodeId()
+	const remoteAddress = "some-address3:345"
+	var remoteNodeId = nodes.NewNodeId()
+
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId},
+		{address: localAddress, conn: localConnectionId, node: localNodeId},
+	}, t)
+
+	sn := proto.NewSyncNodes()
+	sn.Nodes.Add(struct {
+		Node    nodes.Id
+		Address string
+	}{Node: sharedNodeId, Address: sharedAddress})
+	sn.Nodes.Add(struct {
+		Node    nodes.Id
+		Address string
+	}{Node: remoteNodeId, Address: remoteAddress})
+	m.ConnsMgrReceives <- ConnsMgrReceive{
+		ConnId:  sharedConnectionId,
+		Payload: &sn,
+	}
+
+	expectedConnectTo := <-m.MgrConnsConnectTos
+	if expectedConnectTo.Address != remoteAddress {
+		t.Error("expected to connect to", remoteAddress)
+	}
 }
 
 type connectedNode struct {
@@ -84,13 +133,18 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 		}
 
 		// In response to the Iam, Mgr should reply
-		// with a SyncNodes payload
-		expectedSendPayload := <-m.MgrConnsSends
+		// with a SyncNodes payload to all nodes it
+		// has in the cluster
+		var payloads []MgrConnsSend
+		for _, _ = range nodes {
+			expectedSendPayload := <-m.MgrConnsSends
+			payloads = append(payloads, expectedSendPayload)
+		}
 		switch p := expectedSendPayload.Payload.(type) {
 		case *proto.SyncNodes:
-			// The payload was not sent to the correct connection
+			// The payload was not sent to a valid connection
 			if expectedSendPayload.ConnId != n.conn {
-				t.Error("Sent a SyncNodes to an unexpected connection")
+				t.Error("Sent a SyncNodes to an unexpected connection got:", expectedSendPayload.ConnId, "instead of", n.conn)
 			}
 
 			// The length of the payload (in number of nodes synced) is incorrect
