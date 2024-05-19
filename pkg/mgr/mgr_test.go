@@ -31,59 +31,10 @@ func TestConnectToSuccess(t *testing.T) {
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = nodes.NewNodeId()
 
-	m := mgrWithConnectedNodes([]connectedNode{
+	mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
 	}, t)
-
-	iamPayload1 := proto.IAm{
-		NodeId: expectedNodeId1,
-	}
-
-	m.ConnsMgrReceives <- ConnsMgrReceive{
-		ConnId:  expectedConnectionId1,
-		Payload: &iamPayload1,
-	}
-
-	expectedSendPayload1 := <-m.MgrConnsSends
-	switch p := expectedSendPayload1.Payload.(type) {
-	case *proto.SyncNodes:
-		if p.Nodes.Len() != 1 {
-			t.Error("Unexpected number of nodes", p.Nodes.Len())
-		}
-	default:
-		t.Error("Unexpected payload", p)
-	}
-
-	iamPayload2 := proto.IAm{
-		NodeId: expectedNodeId2,
-	}
-
-	m.ConnsMgrReceives <- ConnsMgrReceive{
-		ConnId:  expectedConnectionId2,
-		Payload: &iamPayload2,
-	}
-
-	expectedSendPayload2 := <-m.MgrConnsSends
-	switch p := expectedSendPayload2.Payload.(type) {
-	case *proto.SyncNodes:
-		if p.Nodes.Len() != 2 {
-			t.Error("Unexpected number of nodes", p.Nodes.Len())
-		}
-		for _, n := range p.Nodes.GetValues() {
-			if n.Node != expectedNodeId1 && n.Node != expectedNodeId2 {
-				t.Error("Unexpected node", n)
-			}
-			if n.Node == expectedNodeId1 && n.Address != expectedAddress1 {
-				t.Error("Node id doesn't match address")
-			}
-			if n.Node == expectedNodeId2 && n.Address != expectedAddress2 {
-				t.Error("Node id doesn't match address")
-			}
-		}
-	default:
-		t.Error("Unexpected payload", p)
-	}
 }
 
 type connectedNode struct {
@@ -97,12 +48,17 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 	m.Start()
 
 	for i, n := range nodes {
+		// Send a message to Mgr indicating another
+		// node has connected
 		m.ConnsMgrStatuses <- ConnsMgrStatus{
 			Type:          Connected,
 			RemoteAddress: n.address,
 			Id:            n.conn,
 		}
 
+		// Then Mgr should send an Iam payload to
+		// the appropriate connection id with its
+		// own node id
 		expectedIam := <-m.MgrConnsSends
 		payload := expectedIam.Payload
 		switch p := payload.(type) {
@@ -117,33 +73,53 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 			t.Error("Unexpected payload", p)
 		}
 
+		// Send a message to Mgr indicating the newly
+		// connected node has sent us an Iam payload
 		iamPayload := proto.IAm{
 			NodeId: n.node,
 		}
-
 		m.ConnsMgrReceives <- ConnsMgrReceive{
 			ConnId:  n.conn,
 			Payload: &iamPayload,
 		}
 
+		// In response to the Iam, Mgr should reply
+		// with a SyncNodes payload
 		expectedSendPayload := <-m.MgrConnsSends
 		switch p := expectedSendPayload.Payload.(type) {
 		case *proto.SyncNodes:
+			// The payload was not sent to the correct connection
+			if expectedSendPayload.ConnId != n.conn {
+				t.Error("Sent a SyncNodes to an unexpected connection")
+			}
+
+			// The length of the payload (in number of nodes synced) is incorrect
 			if p.Nodes.Len() != i+1 {
 				t.Error("Unexpected number of nodes", p.Nodes.Len())
 			}
+
 			for _, n := range p.Nodes.GetValues() {
-				if n.Node != expectedNodeId1 && n.Node != expectedNodeId2 {
-					t.Error("Unexpected node", n)
+				nodeIdIsExpected := false
+				for _, expectedNode := range nodes {
+					if n.Node == expectedNode.node {
+						nodeIdIsExpected = true
+
+						// The nodeId/address pair in the SyncNodes payload
+						// did not match
+						if n.Address != expectedNode.address {
+							t.Error("Node id doesn't match address")
+						}
+					}
 				}
-				if n.Node == expectedNodeId1 && n.Address != expectedAddress1 {
-					t.Error("Node id doesn't match address")
-				}
-				if n.Node == expectedNodeId2 && n.Address != expectedAddress2 {
-					t.Error("Node id doesn't match address")
+
+				// At least one of the nodes in our SyncNodes payload has
+				// a nodeId that is unexpected
+				if !nodeIdIsExpected {
+					t.Error("Unexpected node id", n)
 				}
 			}
 		default:
+			// We sent the wrong type of payload
 			t.Error("Unexpected payload", p)
 		}
 	}
