@@ -31,45 +31,10 @@ func TestConnectToSuccess(t *testing.T) {
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = nodes.NewNodeId()
 
-	m := NewNew()
-	m.Start()
-
-	m.ConnsMgrStatuses <- ConnsMgrStatus{
-		Type:          Connected,
-		RemoteAddress: expectedAddress1,
-		Id:            expectedConnectionId1,
-	}
-
-	expectedIam := <-m.MgrConnsSends
-	payload := expectedIam.Payload
-	switch p := payload.(type) {
-	case *proto.IAm:
-		if p.NodeId != m.nodeId {
-			t.Error("Unexpected nodeId")
-		}
-		if expectedIam.ConnId != expectedConnectionId1 {
-			t.Error("Unexpected connId")
-		}
-	}
-
-	m.ConnsMgrStatuses <- ConnsMgrStatus{
-		Type:          Connected,
-		RemoteAddress: expectedAddress2,
-		Id:            expectedConnectionId2,
-	}
-	expectedIam2 := <-m.MgrConnsSends
-	payload2 := expectedIam2.Payload
-	switch p := payload2.(type) {
-	case *proto.IAm:
-		if p.NodeId != m.nodeId {
-			t.Error("Unexpected nodeId")
-		}
-		if expectedIam2.ConnId != expectedConnectionId2 {
-			t.Error("Unexpected connId")
-		}
-	default:
-		t.Error("Unexpected payload", p)
-	}
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
 
 	iamPayload1 := proto.IAm{
 		NodeId: expectedNodeId1,
@@ -119,4 +84,69 @@ func TestConnectToSuccess(t *testing.T) {
 	default:
 		t.Error("Unexpected payload", p)
 	}
+}
+
+type connectedNode struct {
+	address string
+	conn    ConnId
+	node    nodes.Id
+}
+
+func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
+	m := NewNew()
+	m.Start()
+
+	for i, n := range nodes {
+		m.ConnsMgrStatuses <- ConnsMgrStatus{
+			Type:          Connected,
+			RemoteAddress: n.address,
+			Id:            n.conn,
+		}
+
+		expectedIam := <-m.MgrConnsSends
+		payload := expectedIam.Payload
+		switch p := payload.(type) {
+		case *proto.IAm:
+			if p.NodeId != m.nodeId {
+				t.Error("Unexpected nodeId")
+			}
+			if expectedIam.ConnId != n.conn {
+				t.Error("Unexpected connId")
+			}
+		default:
+			t.Error("Unexpected payload", p)
+		}
+
+		iamPayload := proto.IAm{
+			NodeId: n.node,
+		}
+
+		m.ConnsMgrReceives <- ConnsMgrReceive{
+			ConnId:  n.conn,
+			Payload: &iamPayload,
+		}
+
+		expectedSendPayload := <-m.MgrConnsSends
+		switch p := expectedSendPayload.Payload.(type) {
+		case *proto.SyncNodes:
+			if p.Nodes.Len() != i+1 {
+				t.Error("Unexpected number of nodes", p.Nodes.Len())
+			}
+			for _, n := range p.Nodes.GetValues() {
+				if n.Node != expectedNodeId1 && n.Node != expectedNodeId2 {
+					t.Error("Unexpected node", n)
+				}
+				if n.Node == expectedNodeId1 && n.Address != expectedAddress1 {
+					t.Error("Node id doesn't match address")
+				}
+				if n.Node == expectedNodeId2 && n.Address != expectedAddress2 {
+					t.Error("Node id doesn't match address")
+				}
+			}
+		default:
+			t.Error("Unexpected payload", p)
+		}
+	}
+
+	return m
 }
