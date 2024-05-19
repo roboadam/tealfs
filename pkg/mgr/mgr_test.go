@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestConnectToRemoteNodeNew(t *testing.T) {
+func TestConnectTo(t *testing.T) {
 	const expectedAddress = "some-address:123"
 
 	m := NewNew()
@@ -52,7 +52,6 @@ func TestConnectToSuccess(t *testing.T) {
 		}
 	}
 
-	// Fixme: Understand what connAddress is for and test it or remove it
 	m.ConnsMgrStatuses <- ConnsMgrStatus{
 		Type:          Connected,
 		RemoteAddress: expectedAddress2,
@@ -105,6 +104,17 @@ func TestConnectToSuccess(t *testing.T) {
 	case *proto.SyncNodes:
 		if p.Nodes.Len() != 2 {
 			t.Error("Unexpected number of nodes", p.Nodes.Len())
+		}
+		for _, n := range p.Nodes.GetValues() {
+			if n.Node != expectedNodeId1 && n.Node != expectedNodeId2 {
+				t.Error("Unexpected node", n)
+			}
+			if n.Node == expectedNodeId1 && n.Address != expectedAddress1 {
+				t.Error("Node id doesn't match address")
+			}
+			if n.Node == expectedNodeId2 && n.Address != expectedAddress2 {
+				t.Error("Node id doesn't match address")
+			}
 		}
 	default:
 		t.Error("Unexpected payload", p)

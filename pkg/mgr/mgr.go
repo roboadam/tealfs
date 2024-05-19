@@ -205,6 +205,7 @@ func (m *Mgr) handleConnectedStatus(cs ConnsMgrStatus) {
 			Payload: &proto.IAm{NodeId: m.nodeId},
 		}
 	case NotConnected:
+		// Todo: reflect this in the ui
 		println("Not Connected")
 	}
 }
