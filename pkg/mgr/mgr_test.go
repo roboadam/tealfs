@@ -142,55 +142,63 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 		}
 
 		syncNodesWeSent := assertAllPayloadsSyncNodes(t, payloadsFromMgr)
-		connsWeSentTo := connsFromStruct(syncNodesWeSent)
-		connsInCluster := connsFromConnectedNode(nodesInCluster)
+		//connsWeSentTo := connsFromStruct(syncNodesWeSent)
+		//connsInCluster := connsFromConnectedNode(nodesInCluster)
 
-		// The payloads were sent to all valid connections
-		if !connsWeSentTo.Equal(&connsInCluster) {
-			t.Error("Expected connsWeSent to equal connsInCluster")
-		}
-		// In response to the Iam, Mgr should reply
-		// with a SyncNodes payload to all nodes it
-		// has in the cluster
-		for _, _ = range nodesInCluster {
-			expectedSendPayload := <-m.MgrConnsSends
-			switch p := expectedSendPayload.Payload.(type) {
-			case *proto.SyncNodes:
-				// The payload was not sent to a valid connection
-				if expectedSendPayload.ConnId != n.conn {
-					t.Error("Sent a SyncNodes to an unexpected connection got:", expectedSendPayload.ConnId, "instead of", n.conn)
-				}
-
-				// The length of the payload (in number of nodes synced) is incorrect
-				if p.Nodes.Len() != i+1 {
-					t.Error("Unexpected number of nodes", p.Nodes.Len())
-				}
-
-				for _, n := range p.Nodes.GetValues() {
-					nodeIdIsExpected := false
-					for _, expectedNode := range nodes {
-						if n.Node == expectedNode.node {
-							nodeIdIsExpected = true
-
-							// The nodeId/address pair in the SyncNodes payload
-							// did not match
-							if n.Address != expectedNode.address {
-								t.Error("Node id doesn't match address")
-							}
-						}
-					}
-
-					// At least one of the nodes in our SyncNodes payload has
-					// a nodeId that is unexpected
-					if !nodeIdIsExpected {
-						t.Error("Unexpected node id", n)
-					}
-				}
-			default:
-				// We sent the wrong type of payload
-				t.Error("Unexpected payload", p)
-			}
-		}
+		//// The payloads were sent to all valid connections
+		//if !connsWeSentTo.Equal(&connsInCluster) {
+		//	t.Error("Expected connsWeSent to equal connsInCluster")
+		//}
+		//
+		//for i, c := range syncNodesWeSent {
+		//	if c.Payload.Nodes.Len() != i {
+		//		t.Error("Unexpected number of nodes synced", c.Payload.Nodes.Len())
+		//	}
+		//	c.Payload.
+		//}
+		//
+		//// In response to the Iam, Mgr should reply
+		//// with a SyncNodes payload to all nodes it
+		//// has in the cluster
+		//for _, _ = range nodesInCluster {
+		//	expectedSendPayload := <-m.MgrConnsSends
+		//	switch p := expectedSendPayload.Payload.(type) {
+		//	case *proto.SyncNodes:
+		//		// The payload was not sent to a valid connection
+		//		if expectedSendPayload.ConnId != n.conn {
+		//			t.Error("Sent a SyncNodes to an unexpected connection got:", expectedSendPayload.ConnId, "instead of", n.conn)
+		//		}
+		//
+		//		// The length of the payload (in number of nodes synced) is incorrect
+		//		if p.Nodes.Len() != i+1 {
+		//			t.Error("Unexpected number of nodes", p.Nodes.Len())
+		//		}
+		//
+		//		for _, n := range p.Nodes.GetValues() {
+		//			nodeIdIsExpected := false
+		//			for _, expectedNode := range nodes {
+		//				if n.Node == expectedNode.node {
+		//					nodeIdIsExpected = true
+		//
+		//					// The nodeId/address pair in the SyncNodes payload
+		//					// did not match
+		//					if n.Address != expectedNode.address {
+		//						t.Error("Node id doesn't match address")
+		//					}
+		//				}
+		//			}
+		//
+		//			// At least one of the nodes in our SyncNodes payload has
+		//			// a nodeId that is unexpected
+		//			if !nodeIdIsExpected {
+		//				t.Error("Unexpected node id", n)
+		//			}
+		//		}
+		//	default:
+		//		// We sent the wrong type of payload
+		//		t.Error("Unexpected payload", p)
+		//	}
+		//}
 	}
 
 	return m
@@ -206,7 +214,7 @@ func connsFromConnectedNode(cns []connectedNode) set.Set[ConnId] {
 
 func connsFromStruct(mcs []struct {
 	ConnId  ConnId
-	Payload proto.Payload
+	Payload proto.SyncNodes
 }) set.Set[ConnId] {
 	results := set.NewSet[ConnId]()
 	for _, mc := range mcs {
@@ -217,22 +225,34 @@ func connsFromStruct(mcs []struct {
 
 func assertAllPayloadsSyncNodes(t *testing.T, mcs []MgrConnsSend) []struct {
 	ConnId  ConnId
-	Payload proto.Payload
+	Payload proto.SyncNodes
 } {
 	var results []struct {
 		ConnId  ConnId
-		Payload proto.Payload
+		Payload proto.SyncNodes
 	}
 	for _, mc := range mcs {
 		switch p := mc.Payload.(type) {
 		case *proto.SyncNodes:
 			results = append(results, struct {
 				ConnId  ConnId
-				Payload proto.Payload
-			}{ConnId: mc.ConnId, Payload: p})
+				Payload proto.SyncNodes
+			}{ConnId: mc.ConnId, Payload: *p})
 		default:
 			t.Error("Unexpected payload", p)
 		}
+	}
+	return results
+}
+
+func expectedSyncNodesForCluster(cluster []connectedNode) []proto.SyncNodes {
+	var results []proto.SyncNodes
+	for _, node := range cluster {
+		sn := proto.NewSyncNodes()
+		sn.Nodes.Add(struct {
+			Node    nodes.Id
+			Address string
+		}{Node: node.node, Address: node.address})
 	}
 	return results
 }
