@@ -17,7 +17,6 @@ package mgr
 import (
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
-	"tealfs/pkg/set"
 	"testing"
 )
 
@@ -98,7 +97,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 	m.Start()
 	var nodesInCluster []connectedNode
 
-	for i, n := range nodes {
+	for _, n := range nodes {
 		// Send a message to Mgr indicating another
 		// node has connected
 		m.ConnsMgrStatuses <- ConnsMgrStatus{
@@ -144,7 +143,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 		expectedSyncNodes := expectedSyncNodesForCluster(nodesInCluster)
 		syncNodesWeSent := assertAllPayloadsSyncNodes(t, payloadsFromMgr)
 
-		if expectedSyncNodes != syncNodesWeSent {
+		if !cIdSnSliceEquals(expectedSyncNodes, syncNodesWeSent) {
 			t.Error("Expected sync nodes to match", expectedSyncNodes, syncNodesWeSent)
 		}
 	}
@@ -152,33 +151,8 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 	return m
 }
 
-func connsFromConnectedNode(cns []connectedNode) set.Set[ConnId] {
-	results := set.NewSet[ConnId]()
-	for _, cn := range cns {
-		results.Add(cn.conn)
-	}
-	return results
-}
-
-func connsFromStruct(mcs []struct {
-	ConnId  ConnId
-	Payload proto.SyncNodes
-}) set.Set[ConnId] {
-	results := set.NewSet[ConnId]()
-	for _, mc := range mcs {
-		results.Add(mc.ConnId)
-	}
-	return results
-}
-
-func assertAllPayloadsSyncNodes(t *testing.T, mcs []MgrConnsSend) []struct {
-	ConnId  ConnId
-	Payload proto.SyncNodes
-} {
-	var results []struct {
-		ConnId  ConnId
-		Payload proto.SyncNodes
-	}
+func assertAllPayloadsSyncNodes(t *testing.T, mcs []MgrConnsSend) []connIdAndSyncNodes {
+	var results []connIdAndSyncNodes
 	for _, mc := range mcs {
 		switch p := mc.Payload.(type) {
 		case *proto.SyncNodes:
@@ -193,14 +167,32 @@ func assertAllPayloadsSyncNodes(t *testing.T, mcs []MgrConnsSend) []struct {
 	return results
 }
 
-func expectedSyncNodesForCluster(cluster []connectedNode) []struct {
+type connIdAndSyncNodes struct {
 	ConnId  ConnId
 	Payload proto.SyncNodes
-} {
-	var results []struct {
-		ConnId  ConnId
-		Payload proto.SyncNodes
+}
+
+func cIdSnSliceEquals(a, b []connIdAndSyncNodes) bool {
+	if len(a) != len(b) {
+		return false
 	}
+	for i := range a {
+		if !cIdSnEquals(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func cIdSnEquals(a, b connIdAndSyncNodes) bool {
+	if a.ConnId != b.ConnId {
+		return false
+	}
+	return a.Payload.Equals(&b.Payload)
+}
+
+func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {
+	var results []connIdAndSyncNodes
 
 	sn := proto.NewSyncNodes()
 	for _, node := range cluster {

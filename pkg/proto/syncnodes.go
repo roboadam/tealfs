@@ -21,6 +21,10 @@ func NewSyncNodes() SyncNodes {
 	}
 }
 
+func (s *SyncNodes) Equals(s2 *SyncNodes) bool {
+	return s.Nodes.Equal(&s2.Nodes)
+}
+
 func (s *SyncNodes) ToBytes() []byte {
 	result := make([]byte, 0)
 	for _, n := range s.Nodes.GetValues() {
