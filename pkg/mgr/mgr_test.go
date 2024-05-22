@@ -15,15 +15,17 @@
 package mgr
 
 import (
+	"tealfs/pkg/hash"
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/store"
 	"testing"
 )
 
 func TestConnectTo(t *testing.T) {
 	const expectedAddress = "some-address:123"
 
-	m := NewNew()
+	m := NewWithChanSize(0)
 	m.Start()
 
 	m.UiMgrConnectTos <- UiMgrConnectTo{
@@ -86,6 +88,44 @@ func TestReceiveSyncNodes(t *testing.T) {
 	}
 }
 
+func TestReceiveSaveData(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = nodes.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = nodes.NewNodeId()
+
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
+
+	data := []byte("123")
+	m.ConnsMgrReceives <- ConnsMgrReceive{
+		ConnId: expectedConnectionId1,
+		Payload: &proto.SaveData{
+			Block: store.Block{
+				Id:       "1",
+				Data:     data,
+				Hash:     hash.ForData(data),
+				Children: []store.Id{},
+			},
+		},
+	}
+
+	select {
+	case w := <-m.MgrDiskWrites:
+		if w.Id != "1" {
+			t.Error("expected to write to 1, got", w.Id)
+		}
+	case s := <-m.MgrConnsSends:
+		if s.ConnId != expectedConnectionId1 {
+			t.Error("expected to connect to", s.ConnId)
+		}
+	}
+}
+
 type connectedNode struct {
 	address string
 	conn    ConnId
@@ -93,7 +133,7 @@ type connectedNode struct {
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
-	m := NewNew()
+	m := NewWithChanSize(0)
 	m.Start()
 	var nodesInCluster []connectedNode
 
@@ -136,7 +176,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 		nodesInCluster = append(nodesInCluster, n)
 		var payloadsFromMgr []MgrConnsSend
 
-		for _, _ = range nodesInCluster {
+		for range nodesInCluster {
 			payloadsFromMgr = append(payloadsFromMgr, <-m.MgrConnsSends)
 		}
 

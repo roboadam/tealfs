@@ -45,26 +45,27 @@ type Mgr struct {
 	distributer dist.Distributer
 }
 
-func NewNew() Mgr {
+func NewWithChanSize(chanSize int) Mgr {
 	mgr := Mgr{
-		UiMgrConnectTos:    make(chan UiMgrConnectTo, 1),
-		ConnsMgrStatuses:   make(chan ConnsMgrStatus, 1),
-		ConnsMgrReceives:   make(chan ConnsMgrReceive, 1),
-		DiskMgrReads:       make(chan proto.ReadResult, 1),
-		WebdavMgrGets:      make(chan ReadRequest, 1),
-		WebdavMgrPuts:      make(chan store.Block, 1),
-		MgrConnsConnectTos: make(chan MgrConnsConnectTo, 1),
-		MgrConnsSends:      make(chan MgrConnsSend, 1),
-		MgrDiskWrites:      make(chan store.Block, 1),
-		MgrDiskReads:       make(chan ReadRequest, 1),
-		MgrWebdavGets:      make(chan proto.ReadResult, 1),
-		MgrWebdavPuts:      make(chan WriteResult, 1),
+		UiMgrConnectTos:    make(chan UiMgrConnectTo, chanSize),
+		ConnsMgrStatuses:   make(chan ConnsMgrStatus, chanSize),
+		ConnsMgrReceives:   make(chan ConnsMgrReceive, chanSize),
+		DiskMgrReads:       make(chan proto.ReadResult, chanSize),
+		WebdavMgrGets:      make(chan ReadRequest, chanSize),
+		WebdavMgrPuts:      make(chan store.Block, chanSize),
+		MgrConnsConnectTos: make(chan MgrConnsConnectTo, chanSize),
+		MgrConnsSends:      make(chan MgrConnsSend, chanSize),
+		MgrDiskWrites:      make(chan store.Block, chanSize),
+		MgrDiskReads:       make(chan ReadRequest, chanSize),
+		MgrWebdavGets:      make(chan proto.ReadResult, chanSize),
+		MgrWebdavPuts:      make(chan WriteResult, chanSize),
 		nodes:              set.NewSet[nodes.Id](),
 		nodeId:             nodes.NewNodeId(),
 		connAddress:        make(map[ConnId]string),
 		nodeConnMap:        set.NewBimap[nodes.Id, ConnId](),
 		distributer:        dist.New(),
 	}
+	mgr.distributer.SetWeight(mgr.nodeId, 1)
 
 	return mgr
 }
