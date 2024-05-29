@@ -101,28 +101,65 @@ func TestReceiveSaveData(t *testing.T) {
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
 	}, t)
 
-	data := []byte("123")
-	m.ConnsMgrReceives <- ConnsMgrReceive{
-		ConnId: expectedConnectionId1,
-		Payload: &proto.SaveData{
-			Block: store.Block{
-				Id:       "1",
-				Data:     data,
-				Hash:     hash.ForData(data),
-				Children: []store.Id{},
-			},
-		},
+	data := [][]byte{
+		[]byte("000"),
+		[]byte("001"),
+		[]byte("002"),
+		[]byte("003"),
+		[]byte("004"),
+		[]byte("005"),
+		[]byte("006"),
+		[]byte("007"),
+		[]byte("008"),
+		[]byte("009"),
+		[]byte("010"),
+		[]byte("011"),
+		[]byte("012"),
+		[]byte("013"),
+		[]byte("014"),
+		[]byte("015"),
+		[]byte("016"),
+		[]byte("017"),
+		[]byte("018"),
+		[]byte("019"),
+		[]byte("020"),
 	}
 
-	select {
-	case w := <-m.MgrDiskWrites:
-		if w.Id != "1" {
-			t.Error("expected to write to 1, got", w.Id)
+	meCount := 0
+	oneCount := 0
+	twoCount := 0
+
+	for _, val := range data {
+		m.ConnsMgrReceives <- ConnsMgrReceive{
+			ConnId: expectedConnectionId1,
+			Payload: &proto.SaveData{
+				Block: store.Block{
+					Id:       "1",
+					Data:     val,
+					Hash:     hash.ForData(val),
+					Children: []store.Id{},
+				},
+			},
 		}
-	case s := <-m.MgrConnsSends:
-		if s.ConnId != expectedConnectionId1 {
-			t.Error("expected to connect to", s.ConnId)
+
+		select {
+		case w := <-m.MgrDiskWrites:
+			meCount++
+			if w.Id != "1" {
+				t.Error("expected to write to 1, got", w.Id)
+			}
+		case s := <-m.MgrConnsSends:
+			if s.ConnId == expectedConnectionId1 {
+				oneCount++
+			} else if s.ConnId == expectedConnectionId2 {
+				twoCount++
+			} else {
+				t.Error("expected to connect to", s.ConnId)
+			}
 		}
+	}
+	if meCount == 0 || oneCount == 0 || twoCount == 0 {
+		t.Error("Expected everyone to get some data")
 	}
 }
 
@@ -217,7 +254,13 @@ func cIdSnSliceEquals(a, b []connIdAndSyncNodes) bool {
 		return false
 	}
 	for i := range a {
-		if !cIdSnEquals(a[i], b[i]) {
+		oneEqual := false
+		for j := range b {
+			if cIdSnEquals(a[i], b[j]) {
+				oneEqual = true
+			}
+		}
+		if !oneEqual {
 			return false
 		}
 	}
