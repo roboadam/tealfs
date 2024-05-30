@@ -1,27 +1,38 @@
 package dist
 
 import (
+	"hash"
+	"hash/crc32"
 	"sort"
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/store"
 )
 
 type Distributer struct {
-	dist    map[key]nodes.Id
-	weights map[nodes.Id]int
+	dist     map[key]nodes.Id
+	weights  map[nodes.Id]int
+	checksum hash.Hash32
 }
 
 func New() Distributer {
 	return Distributer{
-		dist:    make(map[key]nodes.Id),
-		weights: make(map[nodes.Id]int),
+		dist:     make(map[key]nodes.Id),
+		weights:  make(map[nodes.Id]int),
+		checksum: crc32.NewIEEE(),
 	}
 }
 
 func (d *Distributer) NodeIdForStoreId(id store.Id) nodes.Id {
 	idb := []byte(id)
-	k := key{value: idb[0]}
+	sum := d.Checksum(idb)
+	k := key{value: sum[0]}
 	return d.dist[k]
+}
+
+func (d *Distributer) Checksum(data []byte) []byte {
+	d.checksum.Reset()
+	d.checksum.Write(data)
+	return d.checksum.Sum(nil)
 }
 
 func (d *Distributer) SetWeight(id nodes.Id, weight int) {
@@ -36,7 +47,7 @@ func (d *Distributer) PrintDist() {
 }
 
 func (d *Distributer) applyWeights() {
-	paths := d.sortedPaths()
+	paths := d.sortedIds()
 	if len(paths) == 0 {
 		return
 	}
@@ -79,13 +90,13 @@ func (d *Distributer) totalWeights() int {
 	return total
 }
 
-func (d *Distributer) sortedPaths() nodes.Slice {
-	paths := make(nodes.Slice, 0)
+func (d *Distributer) sortedIds() nodes.Slice {
+	ids := make(nodes.Slice, 0)
 	for k := range d.weights {
-		paths = append(paths, k)
+		ids = append(ids, k)
 	}
-	sort.Sort(paths)
-	return paths
+	sort.Sort(ids)
+	return ids
 }
 
 type key struct {

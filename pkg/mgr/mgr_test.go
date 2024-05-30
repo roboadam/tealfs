@@ -101,42 +101,25 @@ func TestReceiveSaveData(t *testing.T) {
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
 	}, t)
 
-	data := [][]byte{
-		[]byte("000"),
-		[]byte("001"),
-		[]byte("002"),
-		[]byte("003"),
-		[]byte("004"),
-		[]byte("005"),
-		[]byte("006"),
-		[]byte("007"),
-		[]byte("008"),
-		[]byte("009"),
-		[]byte("010"),
-		[]byte("011"),
-		[]byte("012"),
-		[]byte("013"),
-		[]byte("014"),
-		[]byte("015"),
-		[]byte("016"),
-		[]byte("017"),
-		[]byte("018"),
-		[]byte("019"),
-		[]byte("020"),
+	ids := []store.Id{}
+	for range 100 {
+		ids = append(ids, store.NewId())
 	}
+
+	value := []byte("123")
 
 	meCount := 0
 	oneCount := 0
 	twoCount := 0
 
-	for _, val := range data {
+	for _, id := range ids {
 		m.ConnsMgrReceives <- ConnsMgrReceive{
 			ConnId: expectedConnectionId1,
 			Payload: &proto.SaveData{
 				Block: store.Block{
-					Id:       "1",
-					Data:     val,
-					Hash:     hash.ForData(val),
+					Id:       store.Id(id),
+					Data:     value,
+					Hash:     hash.ForData(value),
 					Children: []store.Id{},
 				},
 			},
@@ -145,7 +128,7 @@ func TestReceiveSaveData(t *testing.T) {
 		select {
 		case w := <-m.MgrDiskWrites:
 			meCount++
-			if w.Id != "1" {
+			if w.Id != id {
 				t.Error("expected to write to 1, got", w.Id)
 			}
 		case s := <-m.MgrConnsSends:
