@@ -146,6 +146,35 @@ func TestReceiveSaveData(t *testing.T) {
 	}
 }
 
+func TestReceiveDiskRead(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = nodes.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = nodes.NewNodeId()
+
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
+
+	storeId1 := store.NewId()
+	data1 := []byte{0x00, 0x01, 0x02}
+	hash1 := hash.ForData(data1)
+
+	m.DiskMgrReads <- proto.ReadResult{
+		Ok:      false,
+		Message: "",
+		Caller:  expectedNodeId1,
+		Block: store.Block{
+			Id:   storeId1,
+			Data: data1,
+			Hash: hash1,
+		},
+	}
+}
+
 type connectedNode struct {
 	address string
 	conn    ConnId
