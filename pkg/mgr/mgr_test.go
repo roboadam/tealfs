@@ -162,8 +162,27 @@ func TestReceiveDiskRead(t *testing.T) {
 	data1 := []byte{0x00, 0x01, 0x02}
 	hash1 := hash.ForData(data1)
 
-	m.DiskMgrReads <- proto.ReadResult{
-		Ok:      false,
+	rr := proto.ReadResult{
+		Ok:      true,
+		Message: "",
+		Caller:  m.nodeId,
+		Block: store.Block{
+			Id:   storeId1,
+			Data: data1,
+			Hash: hash1,
+		},
+	}
+
+	m.DiskMgrReads <- rr
+
+	toWebdav := <-m.MgrWebdavGets
+
+	if !rr.Equal(&toWebdav) {
+		t.Errorf("rr didn't equal toWebdav")
+	}
+
+	rr2 := proto.ReadResult{
+		Ok:      true,
 		Message: "",
 		Caller:  expectedNodeId1,
 		Block: store.Block{
@@ -171,6 +190,17 @@ func TestReceiveDiskRead(t *testing.T) {
 			Data: data1,
 			Hash: hash1,
 		},
+	}
+
+	sent2 := <-m.MgrConnsSends
+
+	expectedMCS2 := MgrConnsSend{
+		ConnId:  expectedConnectionId1,
+		Payload: &rr2,
+	}
+
+	if !sent2.Equal(&expectedMCS2) {
+		t.Errorf("sent2 not equal expectedMCS2")
 	}
 }
 

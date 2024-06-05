@@ -27,6 +27,23 @@ type ReadResult struct {
 	Block   store.Block
 }
 
+func (r *ReadResult) Equal(o *ReadResult) bool {
+	if r.Ok != o.Ok {
+		return false
+	}
+	if r.Message != o.Message {
+		return false
+	}
+	if r.Caller != o.Caller {
+		return false
+	}
+	if !r.Block.Equal(&o.Block) {
+		return false
+	}
+
+	return true
+}
+
 func (r *ReadResult) ToBytes() []byte {
 	ok := BoolToBytes(r.Ok)
 	message := StringToBytes(r.Message)
