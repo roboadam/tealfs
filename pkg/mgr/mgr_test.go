@@ -117,10 +117,9 @@ func TestReceiveSaveData(t *testing.T) {
 			ConnId: expectedConnectionId1,
 			Payload: &proto.SaveData{
 				Block: store.Block{
-					Id:       store.Id(id),
-					Data:     value,
-					Hash:     hash.ForData(value),
-					Children: []store.Id{},
+					Id:   store.Id(id),
+					Data: value,
+					Hash: hash.ForData(value),
 				},
 			},
 		}

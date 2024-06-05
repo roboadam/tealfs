@@ -61,12 +61,7 @@ func BlockToBytes(value store.Block) []byte {
 	id := StringToBytes(string(value.Id))
 	data := BytesToBytes(value.Data)
 	hash := BytesToBytes(value.Hash.Value)
-	numChildren := IntToBytes(uint32(len(value.Children)))
-
-	result := bytes.Join([][]byte{id, data, hash, numChildren}, []byte{})
-	for _, child := range value.Children {
-		result = append(result, StringToBytes(string(child))...)
-	}
+	result := bytes.Join([][]byte{id, data, hash}, []byte{})
 
 	return result
 }
@@ -75,20 +70,11 @@ func BlockFromBytes(value []byte) (store.Block, []byte) {
 	id, remainder := StringFromBytes(value)
 	data, remainder := BytesFromBytes(remainder)
 	hash, remainder := BytesFromBytes(remainder)
-	numChildren, remainder := IntFromBytes(remainder)
 
-	var children []store.Id
-	for numChildren > 0 {
-		numChildren--
-		var child string
-		child, remainder = StringFromBytes(remainder)
-		children = append(children, store.Id(child))
-	}
 	return store.Block{
-		Id:       store.Id(id),
-		Data:     data,
-		Hash:     hash2.FromRaw(hash),
-		Children: children,
+		Id:   store.Id(id),
+		Data: data,
+		Hash: hash2.FromRaw(hash),
 	}, remainder
 }
 

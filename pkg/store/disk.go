@@ -14,8 +14,7 @@ func NewId() Id {
 }
 
 type Block struct {
-	Id       Id
-	Data     []byte
-	Hash     hash.Hash
-	Children []Id
+	Id   Id
+	Data []byte
+	Hash hash.Hash
 }
