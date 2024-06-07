@@ -186,6 +186,14 @@ type MgrConnsSend struct {
 	Payload proto.Payload
 }
 
+func (m *MgrConnsSend) Equal(o *MgrConnsSend) bool {
+	if m.ConnId != o.ConnId {
+		return false
+	}
+
+	return m.Payload
+}
+
 type ConnsMgrReceive struct {
 	ConnId  ConnId
 	Payload proto.Payload
