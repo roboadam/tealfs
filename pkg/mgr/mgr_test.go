@@ -312,7 +312,7 @@ func cIdSnEquals(a, b connIdAndSyncNodes) bool {
 	if a.ConnId != b.ConnId {
 		return false
 	}
-	return a.Payload.Equals(&b.Payload)
+	return a.Payload.Equal(&b.Payload)
 }
 
 func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {

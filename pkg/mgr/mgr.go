@@ -191,7 +191,7 @@ func (m *MgrConnsSend) Equal(o *MgrConnsSend) bool {
 		return false
 	}
 
-	return m.Payload
+	return m.Payload.Equal(o.Payload)
 }
 
 type ConnsMgrReceive struct {
