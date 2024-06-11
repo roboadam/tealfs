@@ -192,6 +192,7 @@ func TestReceiveDiskRead(t *testing.T) {
 		},
 	}
 
+	m.DiskMgrReads <- rr2
 	sent2 := <-m.MgrConnsSends
 
 	expectedMCS2 := MgrConnsSend{
