@@ -131,6 +131,7 @@ func TestReceiveSaveData(t *testing.T) {
 				t.Error("expected to write to 1, got", w.Id)
 			}
 		case s := <-m.MgrConnsSends:
+			//Todo: s.Payload should be checked for the correct value
 			if s.ConnId == expectedConnectionId1 {
 				oneCount++
 			} else if s.ConnId == expectedConnectionId2 {
@@ -202,6 +203,55 @@ func TestReceiveDiskRead(t *testing.T) {
 
 	if !sent2.Equal(&expectedMCS2) {
 		t.Errorf("sent2 not equal expectedMCS2")
+	}
+}
+
+func TestWebdavGet(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = nodes.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = nodes.NewNodeId()
+
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
+
+	ids := []store.Id{}
+	for range 100 {
+		ids = append(ids, store.NewId())
+	}
+
+	meCount := 0
+	oneCount := 0
+	twoCount := 0
+
+	for _, id := range ids {
+		m.WebdavMgrGets <- proto.ReadRequest{
+			Caller:  m.nodeId,
+			BlockId: id,
+		}
+
+		select {
+		case r := <-m.MgrDiskReads:
+			meCount++
+			if r.BlockId != id {
+				t.Error("expected to read to 1, got", r.BlockId)
+			}
+		case s := <-m.MgrConnsSends:
+			if s.ConnId == expectedConnectionId1 {
+				oneCount++
+			} else if s.ConnId == expectedConnectionId2 {
+				twoCount++
+			} else {
+				t.Error("expected to connect to", s.ConnId)
+			}
+		}
+	}
+	if meCount == 0 || oneCount == 0 || twoCount == 0 {
+		t.Error("Expected everyone to get some data")
 	}
 }
 

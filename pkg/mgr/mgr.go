@@ -29,12 +29,12 @@ type Mgr struct {
 	ConnsMgrReceives   chan ConnsMgrReceive
 	DiskMgrReads       chan proto.ReadResult
 	DiskMgrWrites      chan WriteResult
-	WebdavMgrGets      chan ReadRequest
+	WebdavMgrGets      chan proto.ReadRequest
 	WebdavMgrPuts      chan store.Block
 	MgrConnsConnectTos chan MgrConnsConnectTo
 	MgrConnsSends      chan MgrConnsSend
 	MgrDiskWrites      chan store.Block
-	MgrDiskReads       chan ReadRequest
+	MgrDiskReads       chan proto.ReadRequest
 	MgrWebdavGets      chan proto.ReadResult
 	MgrWebdavPuts      chan WriteResult
 
@@ -51,12 +51,12 @@ func NewWithChanSize(chanSize int) Mgr {
 		ConnsMgrStatuses:   make(chan ConnsMgrStatus, chanSize),
 		ConnsMgrReceives:   make(chan ConnsMgrReceive, chanSize),
 		DiskMgrReads:       make(chan proto.ReadResult, chanSize),
-		WebdavMgrGets:      make(chan ReadRequest, chanSize),
+		WebdavMgrGets:      make(chan proto.ReadRequest, chanSize),
 		WebdavMgrPuts:      make(chan store.Block, chanSize),
 		MgrConnsConnectTos: make(chan MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan store.Block, chanSize),
-		MgrDiskReads:       make(chan ReadRequest, chanSize),
+		MgrDiskReads:       make(chan proto.ReadRequest, chanSize),
 		MgrWebdavGets:      make(chan proto.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan WriteResult, chanSize),
 		nodes:              set.NewSet[nodes.Id](),
@@ -203,10 +203,6 @@ type MgrDiskSave struct {
 	Hash hash.Hash
 	Data []byte
 }
-type ReadRequest struct {
-	Caller  nodes.Id
-	BlockId store.Id
-}
 
 type WriteResult struct {
 	Ok      bool
@@ -233,7 +229,7 @@ func (m *Mgr) handleConnectedStatus(cs ConnsMgrStatus) {
 	}
 }
 
-func (m *Mgr) handleWebdavGets(rr ReadRequest) {
+func (m *Mgr) handleWebdavGets(rr proto.ReadRequest) {
 	n := m.distributer.NodeIdForStoreId(rr.BlockId)
 	if m.nodeId == n {
 		m.MgrDiskReads <- rr
@@ -242,7 +238,7 @@ func (m *Mgr) handleWebdavGets(rr ReadRequest) {
 		if ok {
 			m.MgrConnsSends <- MgrConnsSend{
 				ConnId:  c,
-				Payload: &proto.ReadRequest{Caller: rr.Caller, BlockId: rr.BlockId},
+				Payload: &rr,
 			}
 		} else {
 			m.MgrWebdavGets <- proto.ReadResult{
