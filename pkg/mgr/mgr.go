@@ -28,7 +28,7 @@ type Mgr struct {
 	ConnsMgrStatuses   chan ConnsMgrStatus
 	ConnsMgrReceives   chan ConnsMgrReceive
 	DiskMgrReads       chan proto.ReadResult
-	DiskMgrWrites      chan WriteResult
+	DiskMgrWrites      chan proto.WriteResult
 	WebdavMgrGets      chan proto.ReadRequest
 	WebdavMgrPuts      chan store.Block
 	MgrConnsConnectTos chan MgrConnsConnectTo
@@ -36,7 +36,7 @@ type Mgr struct {
 	MgrDiskWrites      chan store.Block
 	MgrDiskReads       chan proto.ReadRequest
 	MgrWebdavGets      chan proto.ReadResult
-	MgrWebdavPuts      chan WriteResult
+	MgrWebdavPuts      chan proto.WriteResult
 
 	nodes       set.Set[nodes.Id]
 	nodeConnMap set.Bimap[nodes.Id, ConnId]
@@ -58,7 +58,7 @@ func NewWithChanSize(chanSize int) Mgr {
 		MgrDiskWrites:      make(chan store.Block, chanSize),
 		MgrDiskReads:       make(chan proto.ReadRequest, chanSize),
 		MgrWebdavGets:      make(chan proto.ReadResult, chanSize),
-		MgrWebdavPuts:      make(chan WriteResult, chanSize),
+		MgrWebdavPuts:      make(chan proto.WriteResult, chanSize),
 		nodes:              set.NewSet[nodes.Id](),
 		nodeId:             nodes.NewNodeId(),
 		connAddress:        make(map[ConnId]string),
@@ -204,11 +204,6 @@ type MgrDiskSave struct {
 	Data []byte
 }
 
-type WriteResult struct {
-	Ok      bool
-	Message string
-}
-
 func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
 	m.nodes.Add(n)
 	m.nodeConnMap.Add(n, c)
@@ -251,6 +246,22 @@ func (m *Mgr) handleWebdavGets(rr proto.ReadRequest) {
 	}
 }
 
-func (m *Mgr) handlePuts(_ store.Block) {
-	// Todo: Take put request from webdav and save the data to another server or save it to the local disk
+func (m *Mgr) handlePuts(w store.Block) {
+	n := m.distributer.NodeIdForStoreId(w.Id)
+	if n == m.nodeId {
+		m.MgrDiskWrites <- w
+	} else {
+		c, ok := m.nodeConnMap.Get1(n)
+		if ok {
+			m.MgrConnsSends <- MgrConnsSend{
+				ConnId: c,
+				Payload: &proto.WriteRequest{
+					Caller: m.nodeId,
+					Block:  w,
+				},
+			}
+		} else {
+			// Todo handle no connections here
+		}
+	}
 }

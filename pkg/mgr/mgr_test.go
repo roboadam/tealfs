@@ -255,6 +255,59 @@ func TestWebdavGet(t *testing.T) {
 	}
 }
 
+func TestWebdavPut(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = nodes.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = nodes.NewNodeId()
+
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
+
+	blocks := []store.Block{}
+	for i := range 100 {
+		data := []byte{byte(i)}
+		hash := hash.ForData(data)
+		block := store.Block{
+			Id:   store.NewId(),
+			Data: data,
+			Hash: hash,
+		}
+		blocks = append(blocks, block)
+	}
+
+	meCount := 0
+	oneCount := 0
+	twoCount := 0
+
+	for _, block := range blocks {
+		m.WebdavMgrPuts <- block
+
+		select {
+		case w := <-m.MgrDiskWrites:
+			meCount++
+			if !w.Equal(&block) {
+				t.Error("expected the origial block")
+			}
+		case s := <-m.MgrConnsSends:
+			if s.ConnId == expectedConnectionId1 {
+				oneCount++
+			} else if s.ConnId == expectedConnectionId2 {
+				twoCount++
+			} else {
+				t.Error("expected to connect to", s.ConnId)
+			}
+		}
+	}
+	if meCount == 0 || oneCount == 0 || twoCount == 0 {
+		t.Error("Expected everyone to fetch some data")
+	}
+}
+
 type connectedNode struct {
 	address string
 	conn    ConnId
