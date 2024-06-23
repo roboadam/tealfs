@@ -22,26 +22,28 @@ import (
 
 type ConnId int32
 type Conns struct {
-	netConns             map[ConnId]net.Conn
-	nextId               ConnId
-	incomingConnReq      chan<- IncomingConnReq
-	listener             net.Listener
-	connsMgrStatuses     chan ConnsMgrStatus
-	connsMgrReceives     chan ConnsMgrReceive
-	inConnectionRequests <-chan MgrConnsConnectTo
-	inSendRequests        <-chan MgrConnsSend
+	netConns        map[ConnId]net.Conn
+	nextId          ConnId
+	incomingConnReq chan<- IncomingConnReq
+	listener        net.Listener
+	outStatuses     chan<- ConnsMgrStatus
+	outReceives     chan<- ConnsMgrReceive
+	inConnectTo     <-chan MgrConnsConnectTo
+	inSends         <-chan MgrConnsSend
 }
 
-func ConnsNew(mgrConnsConnectTo <-chan MgrConnsConnectTo, connsMgrStatuses chan<- ConnsMgrStatus) Conns {
+func New(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrReceive, inConnectTo <-chan MgrConnsConnectTo, inSends <-chan MgrConnsSend) Conns {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		panic(err)
 	}
 	c := Conns{
-		netConns:           make(map[ConnId]net.Conn, 3),
-		nextId:             ConnId(0),
-		inConnectionRequests: mgrConnsConnectTo,
-		connsMgrStatuses:   connsMgrStatuses,
+		netConns:    make(map[ConnId]net.Conn, 3),
+		nextId:      ConnId(0),
+		outStatuses: outStatuses,
+		outReceives: outReceives,
+		inConnectTo: inConnectTo,
+		inSends:     inSends,
 	}
 	go c.listen(listener)
 	return c
@@ -49,7 +51,7 @@ func ConnsNew(mgrConnsConnectTo <-chan MgrConnsConnectTo, connsMgrStatuses chan<
 
 func (c *Conns) consumeChannels() {
 	select {
-	case connectToReq := <-c.outConnsConnectTo:
+	case connectTo := <-c.inConnectTo:
 		id, err := c.connectTo(connectToReq.Address)
 		if err == nil {
 			c.inConnsConnectedStatus <- ConnsMgrStatus{
