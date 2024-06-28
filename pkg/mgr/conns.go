@@ -22,14 +22,13 @@ import (
 
 type ConnId int32
 type Conns struct {
-	netConns        map[ConnId]net.Conn
-	nextId          ConnId
-	incomingConnReq chan<- IncomingConnReq
-	listener        net.Listener
-	outStatuses     chan<- ConnsMgrStatus
-	outReceives     chan<- ConnsMgrReceive
-	inConnectTo     <-chan MgrConnsConnectTo
-	inSends         <-chan MgrConnsSend
+	netConns      map[ConnId]net.Conn
+	nextId        ConnId
+	acceptedConns chan AcceptedConns
+	outStatuses   chan<- ConnsMgrStatus
+	outReceives   chan<- ConnsMgrReceive
+	inConnectTo   <-chan MgrConnsConnectTo
+	inSends       <-chan MgrConnsSend
 }
 
 func New(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrReceive, inConnectTo <-chan MgrConnsConnectTo, inSends <-chan MgrConnsSend) Conns {
@@ -45,22 +44,43 @@ func New(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrReceive, 
 		inConnectTo: inConnectTo,
 		inSends:     inSends,
 	}
+
+	go c.consumeChannels()
 	go c.listen(listener)
+
 	return c
 }
 
 func (c *Conns) consumeChannels() {
-	select {
-	case connectTo := <-c.inConnectTo:
-		id, err := c.connectTo(connectToReq.Address)
-		if err == nil {
-			c.inConnsConnectedStatus <- ConnsMgrStatus{
-				Type: Connected,
-				Msg:  "Success",
-				Id:   id,
+	for {
+		select {
+		case acceptedConn := <-c.acceptedConns:
+			id := c.saveNetConn(acceptedConn.netConn)
+			c.outStatuses <- ConnsMgrStatus{
+				Type:          Connected,
+				Msg:           "Success",
+				RemoteAddress: acceptedConn.netConn.LocalAddr().String(),
+				Id:            id,
 			}
+			go c.consumeData(id)
+		case connectTo := <-c.inConnectTo:
+			// Todo: this needs to be non blocking
+			id, err := c.connectTo(connectTo.Address)
+			if err == nil {
+				c.outStatuses <- ConnsMgrStatus{
+					Type:          Connected,
+					Msg:           "Success",
+					RemoteAddress: connectTo.Address,
+					Id:            id,
+				}
+				go c.consumeData(id)
+			} else {
+				// Todo
+			}
+		case sendReq := <-c.inSends:
+			//Todo maybe this should be async
+			c.netConns[sendReq.ConnId].Write(sendReq.Payload.ToBytes())
 		}
-
 	}
 }
 
@@ -68,8 +88,8 @@ func (c *Conns) listen(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err == nil {
-			incomingConnReq := IncomingConnReq{netConn: conn}
-			c.incomingConnReq <- incomingConnReq
+			incomingConnReq := AcceptedConns{netConn: conn}
+			c.acceptedConns <- incomingConnReq
 		}
 	}
 }
@@ -83,7 +103,7 @@ type ConnectToResp struct {
 	ErrorMessage string
 }
 
-type IncomingConnReq struct {
+type AcceptedConns struct {
 	netConn net.Conn
 }
 
@@ -106,7 +126,7 @@ func (c *Conns) consumeData(conn ConnId) {
 	}
 }
 
-func (c *Conns) SaveIncoming(req IncomingConnReq) {
+func (c *Conns) SaveIncoming(req AcceptedConns) {
 	_ = c.saveNetConn(req.netConn)
 }
 
