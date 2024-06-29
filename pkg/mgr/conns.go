@@ -29,9 +29,10 @@ type Conns struct {
 	outReceives   chan<- ConnsMgrReceive
 	inConnectTo   <-chan MgrConnsConnectTo
 	inSends       <-chan MgrConnsSend
+	Address       string
 }
 
-func New(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrReceive, inConnectTo <-chan MgrConnsConnectTo, inSends <-chan MgrConnsSend) Conns {
+func NewConns(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrReceive, inConnectTo <-chan MgrConnsConnectTo, inSends <-chan MgrConnsSend) Conns {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		panic(err)
@@ -43,6 +44,7 @@ func New(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrReceive, 
 		outReceives: outReceives,
 		inConnectTo: inConnectTo,
 		inSends:     inSends,
+		Address:     listener.Addr().String(),
 	}
 
 	go c.consumeChannels()
@@ -115,19 +117,11 @@ func (c *Conns) consumeData(conn ConnId) {
 			return
 		}
 		payload := proto.ToPayload(bytes)
-		switch payload.(type) {
-		case *proto.SyncNodes:
-			break
-		case *proto.SaveData:
-			break
-		default:
-			// Do nothing
+		c.outReceives <- ConnsMgrReceive{
+			ConnId:  conn,
+			Payload: payload,
 		}
 	}
-}
-
-func (c *Conns) SaveIncoming(req AcceptedConns) {
-	_ = c.saveNetConn(req.netConn)
 }
 
 func (c *Conns) connectTo(address string) (ConnId, error) {
