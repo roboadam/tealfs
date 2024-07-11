@@ -38,13 +38,14 @@ func NewConns(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrRece
 		panic(err)
 	}
 	c := Conns{
-		netConns:    make(map[ConnId]net.Conn, 3),
-		nextId:      ConnId(0),
-		outStatuses: outStatuses,
-		outReceives: outReceives,
-		inConnectTo: inConnectTo,
-		inSends:     inSends,
-		Address:     listener.Addr().String(),
+		netConns:      make(map[ConnId]net.Conn, 3),
+		nextId:        ConnId(0),
+		acceptedConns: make(chan AcceptedConns),
+		outStatuses:   outStatuses,
+		outReceives:   outReceives,
+		inConnectTo:   inConnectTo,
+		inSends:       inSends,
+		Address:       listener.Addr().String(),
 	}
 
 	go c.consumeChannels()

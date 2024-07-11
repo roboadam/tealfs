@@ -20,9 +20,12 @@ import (
 )
 
 func TestAcceptConn(t *testing.T) {
-	c, _, _, _, _ := newConnsTest()
+	c, status, _, _, _ := newConnsTest()
 	net.Dial("tcp", c.Address)
-	t.Error("Received address")
+	s := <-status
+	if s.Type != Connected {
+		t.Error("Received address")
+	}
 }
 
 func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrConnsConnectTo, chan MgrConnsSend) {
