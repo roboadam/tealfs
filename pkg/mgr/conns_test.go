@@ -28,6 +28,10 @@ func TestAcceptConn(t *testing.T) {
 	}
 }
 
+func TestConnectTo(t *testing.T) {
+	c, _, _, inConnectTo, outStatuses := newConnsTest()
+}
+
 func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrConnsConnectTo, chan MgrConnsSend) {
 	outStatuses := make(chan ConnsMgrStatus)
 	outReceives := make(chan ConnsMgrReceive)
