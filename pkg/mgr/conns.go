@@ -30,10 +30,11 @@ type Conns struct {
 	inConnectTo   <-chan MgrConnsConnectTo
 	inSends       <-chan MgrConnsSend
 	Address       string
+	provider      ConnectionProvider
 }
 
-func NewConns(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrReceive, inConnectTo <-chan MgrConnsConnectTo, inSends <-chan MgrConnsSend) Conns {
-	listener, err := net.Listen("tcp", "localhost:0")
+func NewConns(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrReceive, inConnectTo <-chan MgrConnsConnectTo, inSends <-chan MgrConnsSend, provider ConnectionProvider) Conns {
+	listener, err := provider.GetListener("localhost:0")
 	if err != nil {
 		panic(err)
 	}
@@ -46,6 +47,7 @@ func NewConns(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrRece
 		inConnectTo:   inConnectTo,
 		inSends:       inSends,
 		Address:       listener.Addr().String(),
+		provider:      provider,
 	}
 
 	go c.consumeChannels()
@@ -126,7 +128,7 @@ func (c *Conns) consumeData(conn ConnId) {
 }
 
 func (c *Conns) connectTo(address string) (ConnId, error) {
-	netConn, err := net.Dial("tcp", address)
+	netConn, err := c.provider.GetConnection(address)
 	if err != nil {
 		return 0, err
 	}

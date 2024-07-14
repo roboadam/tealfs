@@ -21,6 +21,7 @@ import (
 
 type ConnectionProvider interface {
 	GetConnection(address string) (net.Conn, error)
+	GetListener(address string) (net.Listener, error)
 }
 
 type TcpConnectionProvider struct{}
@@ -29,10 +30,18 @@ func (r *TcpConnectionProvider) GetConnection(address string) (net.Conn, error) 
 	return net.Dial("tcp", address)
 }
 
+func (r *TcpConnectionProvider) GetListener(address string) (net.Listener, error) {
+	return net.Listen("tcp", address)
+}
+
 type MockConnectionProvider struct{}
 
-func (m *MockConnectionProvider) GetConnection(address string) (net.Conn, error) {
-	return nil, nil
+func (m MockConnectionProvider) GetConnection(address string) (net.Conn, error) {
+	return MockConn{}, nil
+}
+
+func (m MockConnectionProvider) GetListener(address string) (net.Listener, error) {
+	return MockListener{}, nil
 }
 
 type MockConn struct{}
@@ -66,5 +75,19 @@ func (m MockConn) SetReadDeadline(t time.Time) error {
 }
 
 func (m MockConn) SetWriteDeadline(t time.Time) error {
+	panic("not implemented") // TODO: Implement
+}
+
+type MockListener struct{}
+
+func (m MockListener) Accept() (net.Conn, error) {
+	return MockConn{}, nil
+}
+
+func (m MockListener) Close() error {
+	panic("not implemented") // TODO: Implement
+}
+
+func (m MockListener) Addr() net.Addr {
 	panic("not implemented") // TODO: Implement
 }

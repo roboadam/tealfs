@@ -28,8 +28,9 @@ func TestAcceptConn(t *testing.T) {
 	}
 }
 
-func TestConnectTo(t *testing.T) {
-	c, _, _, inConnectTo, outStatuses := newConnsTest()
+func TestConnectToConns(t *testing.T) {
+	//c, _, _, inConnectTo, outStatuses := newConnsTest()
+
 }
 
 func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrConnsConnectTo, chan MgrConnsSend) {
@@ -37,6 +38,6 @@ func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrC
 	outReceives := make(chan ConnsMgrReceive)
 	inConnectTo := make(chan MgrConnsConnectTo)
 	inSends := make(chan MgrConnsSend)
-	c := NewConns(outStatuses, outReceives, inConnectTo, inSends)
+	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, MockConnectionProvider{})
 	return c, outStatuses, outReceives, inConnectTo, inSends
 }

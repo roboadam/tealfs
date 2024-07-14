@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-func TestConnectTo(t *testing.T) {
+func TestConnectToMgr(t *testing.T) {
 	const expectedAddress = "some-address:123"
 
 	m := NewWithChanSize(0)
