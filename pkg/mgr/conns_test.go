@@ -15,13 +15,12 @@
 package mgr
 
 import (
-	"net"
 	"testing"
 )
 
 func TestAcceptConn(t *testing.T) {
-	c, status, _, _, _ := newConnsTest()
-	net.Dial("tcp", c.Address)
+	_, status, _, _, _, provider := newConnsTest()
+	provider.Listener.accept <- true
 	s := <-status
 	if s.Type != Connected {
 		t.Error("Received address")
@@ -33,11 +32,12 @@ func TestConnectToConns(t *testing.T) {
 
 }
 
-func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrConnsConnectTo, chan MgrConnsSend) {
+func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrConnsConnectTo, chan MgrConnsSend, MockConnectionProvider) {
 	outStatuses := make(chan ConnsMgrStatus)
 	outReceives := make(chan ConnsMgrReceive)
 	inConnectTo := make(chan MgrConnsConnectTo)
 	inSends := make(chan MgrConnsSend)
-	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, MockConnectionProvider{})
-	return c, outStatuses, outReceives, inConnectTo, inSends
+	provider := MockConnectionProvider{}
+	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, provider)
+	return c, outStatuses, outReceives, inConnectTo, inSends, provider
 }

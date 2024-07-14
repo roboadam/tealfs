@@ -34,7 +34,9 @@ func (r *TcpConnectionProvider) GetListener(address string) (net.Listener, error
 	return net.Listen("tcp", address)
 }
 
-type MockConnectionProvider struct{}
+type MockConnectionProvider struct {
+	Listener MockListener
+}
 
 func (m MockConnectionProvider) GetConnection(address string) (net.Conn, error) {
 	return MockConn{}, nil
@@ -45,49 +47,61 @@ func (m MockConnectionProvider) GetListener(address string) (net.Listener, error
 }
 
 type MockConn struct{}
+type MockAddr struct{}
 
 func (m MockConn) Read(b []byte) (n int, err error) {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented1") // TODO: Implement
 }
 
 func (m MockConn) Write(b []byte) (n int, err error) {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented2") // TODO: Implement
 }
 
 func (m MockConn) Close() error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented3") // TODO: Implement
 }
 
 func (m MockConn) LocalAddr() net.Addr {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented4") // TODO: Implement
 }
 
 func (m MockConn) RemoteAddr() net.Addr {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented5") // TODO: Implement
 }
 
 func (m MockConn) SetDeadline(t time.Time) error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented6") // TODO: Implement
 }
 
 func (m MockConn) SetReadDeadline(t time.Time) error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented7") // TODO: Implement
 }
 
 func (m MockConn) SetWriteDeadline(t time.Time) error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented8") // TODO: Implement
 }
 
-type MockListener struct{}
+func (m MockAddr) Network() string {
+	return "tcp"
+}
+
+func (m MockAddr) String() string {
+	return "mockaddress:123"
+}
+
+type MockListener struct {
+	accept chan bool
+}
 
 func (m MockListener) Accept() (net.Conn, error) {
+	<-m.accept
 	return MockConn{}, nil
 }
 
 func (m MockListener) Close() error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented9") // TODO: Implement
 }
 
 func (m MockListener) Addr() net.Addr {
-	panic("not implemented") // TODO: Implement
+	return MockAddr{}
 }
