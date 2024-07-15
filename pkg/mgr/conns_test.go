@@ -28,11 +28,13 @@ func TestAcceptConn(t *testing.T) {
 }
 
 func TestConnectToConns(t *testing.T) {
-	_, _, _, inConnectTo, outStatuses := newConnsTest()
-	inConnectTo <- MgrConnsConnectTo{ "expectedAddress:1234" }
-	status <- outStatuses
-	if status.
-
+	_, outStatuses, _, inConnectTo, _, _ := newConnsTest()
+	const expectedAddress = "expectedAddress:1234"
+	inConnectTo <- MgrConnsConnectTo{expectedAddress}
+	status := <-outStatuses
+	if status.Type != Connected || status.RemoteAddress != expectedAddress {
+		t.Error("Connection didn't work")
+	}
 }
 
 func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrConnsConnectTo, chan MgrConnsSend, MockConnectionProvider) {
