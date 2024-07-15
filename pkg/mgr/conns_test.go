@@ -28,7 +28,10 @@ func TestAcceptConn(t *testing.T) {
 }
 
 func TestConnectToConns(t *testing.T) {
-	//c, _, _, inConnectTo, outStatuses := newConnsTest()
+	_, _, _, inConnectTo, outStatuses := newConnsTest()
+	inConnectTo <- MgrConnsConnectTo{ "expectedAddress:1234" }
+	status <- outStatuses
+	if status.
 
 }
 
@@ -37,7 +40,7 @@ func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrC
 	outReceives := make(chan ConnsMgrReceive)
 	inConnectTo := make(chan MgrConnsConnectTo)
 	inSends := make(chan MgrConnsSend)
-	provider := MockConnectionProvider{}
+	provider := NewMockConnectionProvider()
 	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, provider)
 	return c, outStatuses, outReceives, inConnectTo, inSends, provider
 }

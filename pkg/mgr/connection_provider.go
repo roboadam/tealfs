@@ -38,19 +38,29 @@ type MockConnectionProvider struct {
 	Listener MockListener
 }
 
+func NewMockConnectionProvider() MockConnectionProvider {
+	return MockConnectionProvider{
+		Listener: NewMockListener(),
+	}
+}
+
 func (m MockConnectionProvider) GetConnection(address string) (net.Conn, error) {
-	return MockConn{}, nil
+	return MockConn{data: make(chan []byte)}, nil
 }
 
 func (m MockConnectionProvider) GetListener(address string) (net.Listener, error) {
-	return MockListener{}, nil
+	return &m.Listener, nil
 }
 
-type MockConn struct{}
+type MockConn struct {
+	data chan []byte
+}
 type MockAddr struct{}
 
 func (m MockConn) Read(b []byte) (n int, err error) {
-	panic("not implemented1") // TODO: Implement
+	d := <-m.data
+	copy(b, d)
+	return min(len(b), len(d)), nil
 }
 
 func (m MockConn) Write(b []byte) (n int, err error) {
@@ -62,7 +72,7 @@ func (m MockConn) Close() error {
 }
 
 func (m MockConn) LocalAddr() net.Addr {
-	panic("not implemented4") // TODO: Implement
+	return MockAddr{}
 }
 
 func (m MockConn) RemoteAddr() net.Addr {
@@ -93,15 +103,21 @@ type MockListener struct {
 	accept chan bool
 }
 
-func (m MockListener) Accept() (net.Conn, error) {
+func NewMockListener() MockListener {
+	return MockListener{
+		accept: make(chan bool),
+	}
+}
+
+func (m *MockListener) Accept() (net.Conn, error) {
 	<-m.accept
 	return MockConn{}, nil
 }
 
-func (m MockListener) Close() error {
+func (m *MockListener) Close() error {
 	panic("not implemented9") // TODO: Implement
 }
 
-func (m MockListener) Addr() net.Addr {
+func (m *MockListener) Addr() net.Addr {
 	return MockAddr{}
 }
