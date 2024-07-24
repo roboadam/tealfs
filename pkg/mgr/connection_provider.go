@@ -46,8 +46,11 @@ func NewMockConnectionProvider() MockConnectionProvider {
 }
 
 func (m MockConnectionProvider) GetConnection(address string) (net.Conn, error) {
-	m.Conn = MockConn{data: make(chan []byte)}
-	return m.Conn, nil
+	m.Conn = MockConn{
+		dataToRead: make(chan []byte),
+		dataWritten: make(chan []byte),
+	}
+	return &m.Conn, nil
 }
 
 func (m MockConnectionProvider) GetListener(address string) (net.Listener, error) {
@@ -55,42 +58,43 @@ func (m MockConnectionProvider) GetListener(address string) (net.Listener, error
 }
 
 type MockConn struct {
-	data chan []byte
+	dataToRead  chan []byte
+	dataWritten chan []byte
 }
 type MockAddr struct{}
 
-func (m MockConn) Read(b []byte) (n int, err error) {
-	d := <-m.data
+func (m *MockConn) Read(b []byte) (n int, err error) {
+	d := <-m.dataToRead
 	copy(b, d)
 	return min(len(b), len(d)), nil
 }
 
-func (m MockConn) Write(b []byte) (n int, err error) {
-	m.data <- b
+func (m *MockConn) Write(b []byte) (n int, err error) {
+	m.dataWritten <- b
 	return len(b), nil
 }
 
-func (m MockConn) Close() error {
+func (m *MockConn) Close() error {
 	panic("not implemented3") // TODO: Implement
 }
 
-func (m MockConn) LocalAddr() net.Addr {
+func (m *MockConn) LocalAddr() net.Addr {
 	return MockAddr{}
 }
 
-func (m MockConn) RemoteAddr() net.Addr {
+func (m *MockConn) RemoteAddr() net.Addr {
 	panic("not implemented5") // TODO: Implement
 }
 
-func (m MockConn) SetDeadline(t time.Time) error {
+func (m *MockConn) SetDeadline(t time.Time) error {
 	panic("not implemented6") // TODO: Implement
 }
 
-func (m MockConn) SetReadDeadline(t time.Time) error {
+func (m *MockConn) SetReadDeadline(t time.Time) error {
 	panic("not implemented7") // TODO: Implement
 }
 
-func (m MockConn) SetWriteDeadline(t time.Time) error {
+func (m *MockConn) SetWriteDeadline(t time.Time) error {
 	panic("not implemented8") // TODO: Implement
 }
 
@@ -114,7 +118,7 @@ func NewMockListener() MockListener {
 
 func (m *MockListener) Accept() (net.Conn, error) {
 	<-m.accept
-	return MockConn{}, nil
+	return &MockConn{}, nil
 }
 
 func (m *MockListener) Close() error {
