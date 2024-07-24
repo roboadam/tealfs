@@ -15,6 +15,10 @@
 package mgr
 
 import (
+	"bytes"
+	"tealfs/pkg/hash"
+	"tealfs/pkg/proto"
+	"tealfs/pkg/store"
 	"testing"
 )
 
@@ -28,13 +32,36 @@ func TestAcceptConn(t *testing.T) {
 }
 
 func TestConnectToConns(t *testing.T) {
-	_, outStatuses, _, inConnectTo, _, _ := newConnsTest()
+	_, outStatus, _, inConnectTo, _, _ := newConnsTest()
 	const expectedAddress = "expectedAddress:1234"
-	inConnectTo <- MgrConnsConnectTo{expectedAddress}
-	status := <-outStatuses
+	status := connectTo(expectedAddress, outStatus, inConnectTo)
 	if status.Type != Connected || status.RemoteAddress != expectedAddress {
 		t.Error("Connection didn't work")
 	}
+}
+
+func TestSendData(t *testing.T) {
+	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest()
+	status := connectTo("address:123", outStatus, inConnectTo)
+	inSend <- MgrConnsSend{
+		ConnId: status.Id,
+		Payload: &proto.SaveData{
+			Block: store.Block{
+				Id:   "blockId",
+				Data: []byte{1, 2, 3},
+				Hash: hash.ForData([]byte{1, 2, 3}),
+			},
+		}}
+
+	writtenData := <-provider.Conn.data
+	if !bytes.Equal(writtenData, []byte{1, 2, 3}) {
+		t.Error("Wrong data written")
+	}
+}
+
+func connectTo(address string, outStatus chan ConnsMgrStatus, inConnectTo chan MgrConnsConnectTo) ConnsMgrStatus {
+	inConnectTo <- MgrConnsConnectTo{address}
+	return <-outStatus
 }
 
 func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrConnsConnectTo, chan MgrConnsSend, MockConnectionProvider) {

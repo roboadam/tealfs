@@ -36,6 +36,7 @@ func (r *TcpConnectionProvider) GetListener(address string) (net.Listener, error
 
 type MockConnectionProvider struct {
 	Listener MockListener
+	Conn     MockConn
 }
 
 func NewMockConnectionProvider() MockConnectionProvider {
@@ -45,7 +46,8 @@ func NewMockConnectionProvider() MockConnectionProvider {
 }
 
 func (m MockConnectionProvider) GetConnection(address string) (net.Conn, error) {
-	return MockConn{data: make(chan []byte)}, nil
+	m.Conn = MockConn{data: make(chan []byte)}
+	return m.Conn, nil
 }
 
 func (m MockConnectionProvider) GetListener(address string) (net.Listener, error) {
@@ -64,7 +66,8 @@ func (m MockConn) Read(b []byte) (n int, err error) {
 }
 
 func (m MockConn) Write(b []byte) (n int, err error) {
-	panic("not implemented2") // TODO: Implement
+	m.data <- b
+	return len(b), nil
 }
 
 func (m MockConn) Close() error {
