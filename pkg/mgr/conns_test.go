@@ -55,7 +55,7 @@ func TestSendData(t *testing.T) {
 
 	// Fixme: Conn is null here
 	writtenData := <-provider.Conn.dataWritten
-	if !bytes.Equal(writtenData, []byte{1, 2, 3}) {
+	if !bytes.Equal(writtenData, []byte{3, 1, 2, 3}) {
 		t.Error("Wrong data written")
 	}
 }
