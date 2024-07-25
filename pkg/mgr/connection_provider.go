@@ -42,18 +42,18 @@ type MockConnectionProvider struct {
 func NewMockConnectionProvider() MockConnectionProvider {
 	return MockConnectionProvider{
 		Listener: NewMockListener(),
+		Conn: MockConn{
+			dataToRead:  make(chan []byte),
+			dataWritten: make(chan []byte),
+		},
 	}
 }
 
-func (m MockConnectionProvider) GetConnection(address string) (net.Conn, error) {
-	m.Conn = MockConn{
-		dataToRead: make(chan []byte),
-		dataWritten: make(chan []byte),
-	}
+func (m *MockConnectionProvider) GetConnection(address string) (net.Conn, error) {
 	return &m.Conn, nil
 }
 
-func (m MockConnectionProvider) GetListener(address string) (net.Listener, error) {
+func (m *MockConnectionProvider) GetListener(address string) (net.Listener, error) {
 	return &m.Listener, nil
 }
 
@@ -118,7 +118,10 @@ func NewMockListener() MockListener {
 
 func (m *MockListener) Accept() (net.Conn, error) {
 	<-m.accept
-	return &MockConn{}, nil
+	return &MockConn{
+		dataToRead:  make(chan []byte),
+		dataWritten: make(chan []byte),
+	}, nil
 }
 
 func (m *MockListener) Close() error {

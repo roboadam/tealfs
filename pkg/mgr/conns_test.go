@@ -71,6 +71,6 @@ func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrC
 	inConnectTo := make(chan MgrConnsConnectTo)
 	inSends := make(chan MgrConnsSend)
 	provider := NewMockConnectionProvider()
-	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, provider)
+	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider)
 	return c, outStatuses, outReceives, inConnectTo, inSends, provider
 }
