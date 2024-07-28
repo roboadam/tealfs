@@ -20,12 +20,12 @@ import (
 )
 
 func ReadPayload(conn net.Conn) ([]byte, error) {
-	rawLen, err := ReadBytes(conn, 4)
+	rawLen, err := ReadBytes(conn, 1)
 	if err != nil {
 		return nil, err
 	}
-	size := binary.BigEndian.Uint32(rawLen)
-	a, b := ReadBytes(conn, size)
+	size := uint8(rawLen[0])
+	a, b := ReadBytes(conn, uint32(size))
 	return a, b
 }
 

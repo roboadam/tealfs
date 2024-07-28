@@ -23,7 +23,8 @@ type SaveData struct {
 func (s *SaveData) ToBytes() []byte {
 	// Todo: This needs to be enhanced to serialize all the Block, not just the data
 	// The logic should probably live in the block and be called from here
-	return AddType(SaveDataType, s.Block.Data)
+	result := BlockToBytes(s.Block)
+	return AddType(SaveDataType, result)
 }
 
 func (s *SaveData) Equal(p Payload) bool {

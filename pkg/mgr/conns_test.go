@@ -53,11 +53,32 @@ func TestSendData(t *testing.T) {
 			},
 		}}
 
-	// Fixme: Conn is null here
 	writtenData := <-provider.Conn.dataWritten
-	if !bytes.Equal(writtenData, []byte{3, 1, 2, 3}) {
+	expectedBytes := []byte{
+		3, 0, 0, 0, 7, 98, 108, 111, 99, 107, 73, 100, 0, 0, 0, 3, 1, 2, 3, 0, 0, 0, 32, 3,
+		144, 88, 198, 242, 192, 203, 73, 44, 83, 59, 10, 77, 20, 239, 119, 204, 15, 120, 171,
+		204, 206, 213, 40, 125, 132, 161, 162, 1, 28, 251, 129}
+	if !bytes.Equal(writtenData, expectedBytes) {
 		t.Error("Wrong data written")
 	}
+}
+
+func TestGetData(t *testing.T) {
+	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest()
+	status := connectTo("address:123", outStatus, inConnectTo)
+	payload := &proto.NoOp{}
+	dataReceived := payload.ToBytes()
+	provider.Conn.dataToRead <- dataReceived
+
+	result := <- cmr
+
+	if result.ConnId != status.Id {
+		t.Error("We didn't pass the message")
+	}
+
+	// if !bytes.Equal(writtenData, expectedBytes) {
+	// 	t.Error("Wrong data written")
+	// }
 }
 
 func connectTo(address string, outStatus chan ConnsMgrStatus, inConnectTo chan MgrConnsConnectTo) ConnsMgrStatus {
