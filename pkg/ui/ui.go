@@ -1,3 +1,17 @@
+// Copyright (C) 2024 Adam Hess
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, version 3.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 package ui
 
 import (
@@ -5,16 +19,16 @@ import (
 	"net/http"
 	"os"
 	"tealfs/pkg/mgr"
-	"tealfs/pkg/model/events"
 )
 
 type Ui struct {
-	manager  *mgr.Mgr
-	userCmds chan events.Event
+	connToReq  chan mgr.UiMgrConnectTo
+	connToResp chan mgr.ConnectToResp
 }
 
-func NewUi(manager *mgr.Mgr, userCmds chan events.Event) Ui {
-	return Ui{manager, userCmds}
+func NewUi(connToReq chan mgr.UiMgrConnectTo) Ui {
+	connToResp := make(chan mgr.ConnectToResp, 100)
+	return Ui{connToReq, connToResp}
 }
 
 func (ui Ui) Start() {
@@ -29,8 +43,14 @@ func (ui Ui) Start() {
 func (ui Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
-		ui.userCmds <- events.NewString(events.ConnectTo, hostAndPort)
+		ui.connToReq <- mgr.UiMgrConnectTo{Address: hostAndPort}
 		_, _ = fmt.Fprintf(w, "Connecting to: %s", hostAndPort)
+		resp := <-ui.connToResp
+		if resp.Success {
+			_, _ = fmt.Fprintf(w, "Connected! to: %s", string(resp.Id))
+		} else {
+			_, _ = fmt.Fprintf(w, "Connection Failure: %s", resp.ErrorMessage)
+		}
 	})
 }
 
@@ -46,7 +66,7 @@ func (ui Ui) handleRoot() {
 			</head>
 			<body>
 			    <main>
-					<h1>TealFS: ` + ui.manager.GetId().String() + `</h1>
+					<h1>TealFS</h1>
 					` + htmlMyhost("TODO") + `
 					<p>Input the host and port of a node to add</p>
 					<form hx-put="/connect-to">

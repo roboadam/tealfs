@@ -15,28 +15,40 @@
 package proto
 
 import (
+	"bytes"
 	"tealfs/pkg/nodes"
+	"tealfs/pkg/store"
 )
 
-type IAm struct {
-	NodeId nodes.Id
+type WriteRequest struct {
+	Caller nodes.Id
+	Block  store.Block
 }
 
-func (h *IAm) ToBytes() []byte {
-	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(IAmType, nodeId)
-}
-
-func (h *IAm) Equal(p Payload) bool {
-	if h2, ok := p.(*IAm); ok {
-		return h2.NodeId == h.NodeId
+func (r *WriteRequest) Equal(p Payload) bool {
+	if o, ok := p.(*WriteRequest); ok {
+		if r.Caller != o.Caller {
+			return false
+		}
+		if r.Block.Equal(&o.Block) {
+			return false
+		}
+		return true
 	}
 	return false
 }
 
-func ToHello(data []byte) *IAm {
-	rawId, _ := StringFromBytes(data)
-	return &IAm{
-		NodeId: nodes.Id(rawId),
+func (r *WriteRequest) ToBytes() []byte {
+	caller := StringToBytes(string(r.Caller))
+	block := BlockToBytes(r.Block)
+	return bytes.Join([][]byte{caller, block}, []byte{})
+}
+
+func ToWriteRequest(data []byte) *WriteRequest {
+	caller, remainder := StringFromBytes(data)
+	block, _ := BlockFromBytes(remainder)
+	return &WriteRequest{
+		Caller: nodes.Id(caller),
+		Block:  block,
 	}
 }

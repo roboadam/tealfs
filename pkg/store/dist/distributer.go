@@ -1,41 +1,67 @@
+// Copyright (C) 2024 Adam Hess
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, version 3.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 package dist
 
 import (
+	"hash"
+	"hash/crc32"
 	"sort"
-	h "tealfs/pkg/hash"
-	"tealfs/pkg/model/node"
+	"tealfs/pkg/nodes"
+	"tealfs/pkg/store"
 )
 
 type Distributer struct {
-	dist    map[key]node.Id
-	weights map[node.Id]int
+	dist     map[key]nodes.Id
+	weights  map[nodes.Id]int
+	checksum hash.Hash32
 }
 
-func NewDistributer() *Distributer {
-	return &Distributer{
-		dist:    make(map[key]node.Id),
-		weights: make(map[node.Id]int),
+func New() Distributer {
+	return Distributer{
+		dist:     make(map[key]nodes.Id),
+		weights:  make(map[nodes.Id]int),
+		checksum: crc32.NewIEEE(),
 	}
 }
 
-func (d *Distributer) NodeIdForHash(hash h.Hash) node.Id {
-	k := key{value: hash.Value[0]}
+func (d *Distributer) NodeIdForStoreId(id store.Id) nodes.Id {
+	idb := []byte(id)
+	sum := d.Checksum(idb)
+	k := key{value: sum[0]}
 	return d.dist[k]
 }
 
-func (d *Distributer) SetWeight(id node.Id, weight int) {
+func (d *Distributer) Checksum(data []byte) []byte {
+	d.checksum.Reset()
+	d.checksum.Write(data)
+	return d.checksum.Sum(nil)
+}
+
+func (d *Distributer) SetWeight(id nodes.Id, weight int) {
 	d.weights[id] = weight
 	d.applyWeights()
 }
 
 func (d *Distributer) PrintDist() {
 	for i := 0; i <= 255; i++ {
-		println("byteIdx:", i, ", nodeId:", d.dist[key{byte(i)}].String())
+		println("byteIdx:", i, ", nodeId:", d.dist[key{byte(i)}])
 	}
 }
 
 func (d *Distributer) applyWeights() {
-	paths := d.sortedPaths()
+	paths := d.sortedIds()
 	if len(paths) == 0 {
 		return
 	}
@@ -52,9 +78,9 @@ func (d *Distributer) applyWeights() {
 	}
 }
 
-func get(paths node.Slice, idx int) node.Id {
+func get(paths nodes.Slice, idx int) nodes.Id {
 	if len(paths) <= 0 {
-		return node.Id{}
+		return ""
 	}
 
 	if idx >= len(paths) {
@@ -64,7 +90,7 @@ func get(paths node.Slice, idx int) node.Id {
 	return paths[idx]
 }
 
-func (d *Distributer) numSlotsForPath(p node.Id) int {
+func (d *Distributer) numSlotsForPath(p nodes.Id) int {
 	weight := d.weights[p]
 	totalWeight := d.totalWeights()
 	return weight * 256 / totalWeight
@@ -78,13 +104,13 @@ func (d *Distributer) totalWeights() int {
 	return total
 }
 
-func (d *Distributer) sortedPaths() node.Slice {
-	paths := make(node.Slice, 0)
+func (d *Distributer) sortedIds() nodes.Slice {
+	ids := make(nodes.Slice, 0)
 	for k := range d.weights {
-		paths = append(paths, k)
+		ids = append(ids, k)
 	}
-	sort.Sort(paths)
-	return paths
+	sort.Sort(ids)
+	return ids
 }
 
 type key struct {

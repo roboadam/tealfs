@@ -12,31 +12,39 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package set
 
-import (
-	"tealfs/pkg/nodes"
-)
-
-type IAm struct {
-	NodeId nodes.Id
+type Bimap[K comparable, J comparable] struct {
+	dataKj map[K]J
+	dataJk map[J]K
 }
 
-func (h *IAm) ToBytes() []byte {
-	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(IAmType, nodeId)
-}
-
-func (h *IAm) Equal(p Payload) bool {
-	if h2, ok := p.(*IAm); ok {
-		return h2.NodeId == h.NodeId
+func NewBimap[K comparable, J comparable]() Bimap[K, J] {
+	return Bimap[K, J]{
+		dataKj: make(map[K]J),
+		dataJk: make(map[J]K),
 	}
-	return false
 }
 
-func ToHello(data []byte) *IAm {
-	rawId, _ := StringFromBytes(data)
-	return &IAm{
-		NodeId: nodes.Id(rawId),
-	}
+func (b *Bimap[K, J]) Add(item1 K, item2 J) {
+	b.dataKj[item1] = item2
+	b.dataJk[item2] = item1
+}
+
+func (b *Bimap[K, J]) Remove1(item K) {
+	delete(b.dataKj, item)
+}
+
+func (b *Bimap[K, J]) Remove2(item J) {
+	delete(b.dataJk, item)
+}
+
+func (b *Bimap[K, J]) Get1(item K) (J, bool) {
+	value, ok := b.dataKj[item]
+	return value, ok
+}
+
+func (b *Bimap[K, J]) Get2(item J) (K, bool) {
+	value, ok := b.dataJk[item]
+	return value, ok
 }

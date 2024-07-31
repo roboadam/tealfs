@@ -12,31 +12,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package nodes
 
 import (
-	"tealfs/pkg/nodes"
+	"github.com/google/uuid"
 )
 
-type IAm struct {
-	NodeId nodes.Id
+type Id string
+
+func NewNodeId() Id {
+	idValue := uuid.New()
+	return Id(idValue.String())
 }
 
-func (h *IAm) ToBytes() []byte {
-	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(IAmType, nodeId)
-}
+type Slice []Id
 
-func (h *IAm) Equal(p Payload) bool {
-	if h2, ok := p.(*IAm); ok {
-		return h2.NodeId == h.NodeId
-	}
-	return false
-}
-
-func ToHello(data []byte) *IAm {
-	rawId, _ := StringFromBytes(data)
-	return &IAm{
-		NodeId: nodes.Id(rawId),
-	}
-}
+func (p Slice) Len() int           { return len(p) }
+func (p Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

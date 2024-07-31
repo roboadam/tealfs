@@ -12,31 +12,38 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package store
 
 import (
-	"tealfs/pkg/nodes"
+	"bytes"
+	"tealfs/pkg/hash"
+
+	"github.com/google/uuid"
 )
 
-type IAm struct {
-	NodeId nodes.Id
+type Id string
+
+func NewId() Id {
+	idValue := uuid.New()
+	return Id(idValue.String())
 }
 
-func (h *IAm) ToBytes() []byte {
-	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(IAmType, nodeId)
+type Block struct {
+	Id   Id
+	Data []byte
+	Hash hash.Hash
 }
 
-func (h *IAm) Equal(p Payload) bool {
-	if h2, ok := p.(*IAm); ok {
-		return h2.NodeId == h.NodeId
+func (r *Block) Equal(o *Block) bool {
+	if r.Id != o.Id {
+		return false
 	}
-	return false
-}
-
-func ToHello(data []byte) *IAm {
-	rawId, _ := StringFromBytes(data)
-	return &IAm{
-		NodeId: nodes.Id(rawId),
+	if !bytes.Equal(r.Data, o.Data) {
+		return false
 	}
+	if !bytes.Equal(r.Hash.Value, o.Hash.Value) {
+		return false
+	}
+
+	return true
 }

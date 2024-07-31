@@ -1,3 +1,17 @@
+// Copyright (C) 2024 Adam Hess
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, version 3.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 package store
 
 import (
@@ -5,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	h "tealfs/pkg/hash"
-	"tealfs/pkg/model/node"
+	"tealfs/pkg/nodes"
 	"time"
 )
 
@@ -15,7 +29,7 @@ type Path struct {
 
 type Store struct {
 	path  Path
-	id    node.Id
+	id    nodes.Id
 	saves chan struct {
 		hash h.Hash
 		data []byte
@@ -89,7 +103,7 @@ func NewPath(rawPath string) Path {
 	}
 }
 
-func New(path Path, id node.Id) Store {
+func New(path Path, id nodes.Id) Store {
 	p := Store{
 		id:   id,
 		path: path,

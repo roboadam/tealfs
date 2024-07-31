@@ -1,7 +1,22 @@
+// Copyright (C) 2024 Adam Hess
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, version 3.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 package tnet
 
 import (
 	"tealfs/pkg/proto"
+	"tealfs/pkg/store"
 	"tealfs/pkg/test"
 	"testing"
 )
@@ -12,7 +27,7 @@ func TestSaveData(t *testing.T) {
 	}
 
 	dataToSave := []byte{0x01, 0x02, 0x03}
-	payload := proto.SaveData{Data: dataToSave}
+	payload := proto.SaveData{Block: store.Block{Data: dataToSave}}
 	err := SendPayload(&testConn, payload.ToBytes())
 	if err != nil {
 		t.Error("Error!")
@@ -29,7 +44,7 @@ func TestSaveData(t *testing.T) {
 
 	switch p := samePayload.(type) {
 	case *proto.SaveData:
-		if !equalSlices(p.Data, dataToSave) {
+		if !equalSlices(p.Block.Data, dataToSave) {
 			t.Error("What data??")
 		}
 	default:

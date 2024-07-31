@@ -15,28 +15,38 @@
 package proto
 
 import (
-	"tealfs/pkg/nodes"
+	"bytes"
 )
 
-type IAm struct {
-	NodeId nodes.Id
+type WriteResult struct {
+	Ok      bool
+	Message string
 }
 
-func (h *IAm) ToBytes() []byte {
-	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(IAmType, nodeId)
-}
-
-func (h *IAm) Equal(p Payload) bool {
-	if h2, ok := p.(*IAm); ok {
-		return h2.NodeId == h.NodeId
+func (r *WriteResult) Equal(p Payload) bool {
+	if o, ok := p.(*WriteResult); ok {
+		if r.Ok != o.Ok {
+			return false
+		}
+		if r.Message != o.Message {
+			return false
+		}
+		return true
 	}
 	return false
 }
 
-func ToHello(data []byte) *IAm {
-	rawId, _ := StringFromBytes(data)
-	return &IAm{
-		NodeId: nodes.Id(rawId),
+func (r *WriteResult) ToBytes() []byte {
+	ok := BoolToBytes(r.Ok)
+	message := StringToBytes(r.Message)
+	return bytes.Join([][]byte{ok, message}, []byte{})
+}
+
+func ToWriteResult(data []byte) *WriteResult {
+	ok, remainder := BoolFromBytes(data)
+	message, _ := StringFromBytes(remainder)
+	return &WriteResult{
+		Ok:      ok,
+		Message: message,
 	}
 }

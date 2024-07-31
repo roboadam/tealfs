@@ -12,31 +12,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package mgr
 
 import (
 	"tealfs/pkg/nodes"
 )
 
-type IAm struct {
-	NodeId nodes.Id
+type NodeConnMap struct {
+	nodeToConn map[nodes.Id]ConnId
+	connToNode map[ConnId]nodes.Id
 }
 
-func (h *IAm) ToBytes() []byte {
-	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(IAmType, nodeId)
+func (n *NodeConnMap) Add(node nodes.Id, conn ConnId) {
+	n.nodeToConn[node] = conn
+	n.connToNode[conn] = node
 }
 
-func (h *IAm) Equal(p Payload) bool {
-	if h2, ok := p.(*IAm); ok {
-		return h2.NodeId == h.NodeId
-	}
-	return false
+func (n *NodeConnMap) Node(conn ConnId) (nodes.Id, bool) {
+	result, ok := n.connToNode[conn]
+	return result, ok
 }
-
-func ToHello(data []byte) *IAm {
-	rawId, _ := StringFromBytes(data)
-	return &IAm{
-		NodeId: nodes.Id(rawId),
-	}
+func (n *NodeConnMap) Conn(node nodes.Id) (ConnId, bool) {
+	result, ok := n.nodeToConn[node]
+	return result, ok
 }

@@ -1,148 +1,269 @@
+// Copyright (C) 2024 Adam Hess
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, version 3.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 package mgr
 
 import (
 	"tealfs/pkg/hash"
-	"tealfs/pkg/model/events"
-	"tealfs/pkg/model/node"
+	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
+	"tealfs/pkg/set"
 	"tealfs/pkg/store"
-	d "tealfs/pkg/store/dist"
-	"tealfs/pkg/tnet"
-	"tealfs/pkg/util"
+	"tealfs/pkg/store/dist"
 )
 
 type Mgr struct {
-	node   node.Node
-	events chan events.Event
-	tNet   tnet.TNet
-	conns  *tnet.Conns
-	store  *store.Store
-	dist   *d.Distributer
+	UiMgrConnectTos    chan UiMgrConnectTo
+	ConnsMgrStatuses   chan ConnsMgrStatus
+	ConnsMgrReceives   chan ConnsMgrReceive
+	DiskMgrReads       chan proto.ReadResult
+	DiskMgrWrites      chan proto.WriteResult
+	WebdavMgrGets      chan proto.ReadRequest
+	WebdavMgrPuts      chan store.Block
+	MgrConnsConnectTos chan MgrConnsConnectTo
+	MgrConnsSends      chan MgrConnsSend
+	MgrDiskWrites      chan store.Block
+	MgrDiskReads       chan proto.ReadRequest
+	MgrWebdavGets      chan proto.ReadResult
+	MgrWebdavPuts      chan proto.WriteResult
+
+	nodes       set.Set[nodes.Id]
+	nodeConnMap set.Bimap[nodes.Id, ConnId]
+	nodeId      nodes.Id
+	connAddress map[ConnId]string
+	distributer dist.Distributer
 }
 
-func New(events chan events.Event, tNet tnet.TNet, path store.Path) Mgr {
-	id := node.NewNodeId()
-	n := node.Node{Id: id, Address: node.NewAddress(tNet.GetBinding())}
-	conns := tnet.NewConns(tNet, id)
-	s := store.New(path, id)
-	dist := d.NewDistributer()
-	dist.SetWeight(id, 1)
-	return Mgr{
-		node:   n,
-		events: events,
-		conns:  conns,
-		tNet:   tNet,
-		store:  &s,
-		dist:   dist,
+func NewWithChanSize(chanSize int) Mgr {
+	mgr := Mgr{
+		UiMgrConnectTos:    make(chan UiMgrConnectTo, chanSize),
+		ConnsMgrStatuses:   make(chan ConnsMgrStatus, chanSize),
+		ConnsMgrReceives:   make(chan ConnsMgrReceive, chanSize),
+		DiskMgrReads:       make(chan proto.ReadResult, chanSize),
+		WebdavMgrGets:      make(chan proto.ReadRequest, chanSize),
+		WebdavMgrPuts:      make(chan store.Block, chanSize),
+		MgrConnsConnectTos: make(chan MgrConnsConnectTo, chanSize),
+		MgrConnsSends:      make(chan MgrConnsSend, chanSize),
+		MgrDiskWrites:      make(chan store.Block, chanSize),
+		MgrDiskReads:       make(chan proto.ReadRequest, chanSize),
+		MgrWebdavGets:      make(chan proto.ReadResult, chanSize),
+		MgrWebdavPuts:      make(chan proto.WriteResult, chanSize),
+		nodes:              set.NewSet[nodes.Id](),
+		nodeId:             nodes.NewNodeId(),
+		connAddress:        make(map[ConnId]string),
+		nodeConnMap:        set.NewBimap[nodes.Id, ConnId](),
+		distributer:        dist.New(),
 	}
+	mgr.distributer.SetWeight(mgr.nodeId, 1)
+
+	return mgr
 }
 
 func (m *Mgr) Start() {
-	go m.handleUiCommands()
-	go m.readPayloads()
-	go m.handleNewlyConnectedNodes()
+	go m.eventLoop()
 }
 
-func (m *Mgr) Close() {
-	m.tNet.Close()
-}
-
-func (m *Mgr) PrintDist() {
-	m.dist.PrintDist()
-}
-
-func (m *Mgr) GetId() node.Id {
-	return m.node.Id
-}
-
-func (m *Mgr) handleNewlyConnectedNodes() {
+func (m *Mgr) eventLoop() {
 	for {
-		n := m.conns.AddedNode()
-		m.dist.SetWeight(n, 1)
-		m.syncNodes()
-	}
-}
-
-func (m *Mgr) readPayloads() {
-	for {
-		remoteId, payload := m.conns.ReceivePayload()
-
-		switch p := payload.(type) {
-		case *proto.SyncNodes:
-			missingConns := findMyMissingConns(*m.conns, p)
-			for _, c := range missingConns.GetValues() {
-				m.conns.Add(c)
-			}
-			if remoteIsMissingNodes(*m.conns, p) {
-				toSend := m.buildSyncNodesPayload()
-				m.conns.SendPayload(remoteId, &toSend)
-			}
-		case *proto.SaveData:
-			m.saveToAppropriateNode(p.Data)
-		default:
-			// Do nothing
+		select {
+		case r := <-m.UiMgrConnectTos:
+			m.handleConnectToReq(r)
+		case r := <-m.ConnsMgrStatuses:
+			m.handleConnectedStatus(r)
+		case r := <-m.ConnsMgrReceives:
+			m.handleReceives(r)
+		case r := <-m.DiskMgrReads:
+			m.handleDiskReads(r)
+		case r := <-m.WebdavMgrGets:
+			m.handleWebdavGets(r)
+		case r := <-m.WebdavMgrPuts:
+			m.handlePuts(r)
 		}
 	}
 }
 
-func (m *Mgr) buildSyncNodesPayload() proto.SyncNodes {
-	myNodes := m.conns.GetNodes()
-	myNodes.Add(m.node)
-	toSend := proto.SyncNodes{Nodes: myNodes}
-	return toSend
+func (m *Mgr) handleConnectToReq(i UiMgrConnectTo) {
+	m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: string(i.Address)}
 }
 
-func (m *Mgr) GetRemoteNodes() util.Set[node.Node] {
-	result := m.conns.GetNodes()
+func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
+	result := proto.NewSyncNodes()
+	for _, node := range m.nodes.GetValues() {
+		connId, success := m.nodeConnMap.Get1(node)
+		if success {
+			if address, ok := m.connAddress[connId]; ok {
+				result.Nodes.Add(struct {
+					Node    nodes.Id
+					Address string
+				}{Node: node, Address: address})
+			}
+		}
+	}
 	return result
 }
 
-func (m *Mgr) addRemoteNode(cmd events.Event) {
-	remoteAddress := node.NewAddress(cmd.GetString())
-	m.conns.Add(tnet.NewConn(remoteAddress))
-	m.syncNodes()
-}
-
-func (m *Mgr) handleUiCommands() {
-	for {
-		command := <-m.events
-		switch command.EventType {
-		case events.ConnectTo:
-			m.addRemoteNode(command)
-		case events.AddData:
-			m.addData(command)
-		case events.ReadData:
-			m.readData(command)
+func (m *Mgr) handleReceives(i ConnsMgrReceive) {
+	switch p := i.Payload.(type) {
+	case *proto.IAm:
+		m.addNodeToCluster(p.NodeId, i.ConnId)
+		syncNodes := m.syncNodesPayloadToSend()
+		for _, n := range m.nodes.GetValues() {
+			connId, ok := m.nodeConnMap.Get1(n)
+			if ok {
+				m.MgrConnsSends <- MgrConnsSend{
+					ConnId:  connId,
+					Payload: &syncNodes,
+				}
+			}
+		}
+	case *proto.SyncNodes:
+		remoteNodes := p.GetNodes()
+		localNodes := m.nodes.Clone()
+		localNodes.Add(m.nodeId)
+		missing := remoteNodes.Minus(&m.nodes)
+		for _, n := range missing.GetValues() {
+			address := p.AddressForNode(n)
+			m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: address}
+		}
+	case *proto.SaveData:
+		n := m.distributer.NodeIdForStoreId(p.Block.Id)
+		if m.nodeId == n {
+			m.MgrDiskWrites <- p.Block
+		} else {
+			c, ok := m.nodeConnMap.Get1(n)
+			if ok {
+				m.MgrConnsSends <- MgrConnsSend{ConnId: c, Payload: p}
+			} else {
+				m.MgrDiskWrites <- p.Block
+			}
 		}
 	}
 }
 
-func (m *Mgr) addData(d events.Event) {
-	data := d.GetBytes()
-	m.saveToAppropriateNode(data)
-}
-
-func (m *Mgr) saveToAppropriateNode(data []byte) {
-	h := hash.ForData(data)
-	id := m.dist.NodeIdForHash(h)
-	if m.GetId() == id {
-		m.store.Save(h, data)
+func (m *Mgr) handleDiskReads(r proto.ReadResult) {
+	if r.Caller == m.nodeId {
+		m.MgrWebdavGets <- r
 	} else {
-		payload := proto.ToSaveData(data)
-		m.conns.SendPayload(id, payload)
+		c, ok := m.nodeConnMap.Get1(r.Caller)
+		if ok {
+			m.MgrConnsSends <- MgrConnsSend{ConnId: c, Payload: &r}
+		} else {
+			panic("Oh no")
+			// Todo: need a ticket to create queuing for offline nodes
+		}
 	}
 }
 
-func (m *Mgr) readData(d events.Event) {
-	h := hash.FromRaw(d.GetBytes())
-	r := d.GetResult()
-	r <- m.store.Read(h)
+type MgrConnsConnectTo struct {
+	Address string
 }
 
-func (m *Mgr) syncNodes() {
-	allIds := m.conns.GetIds()
-	for _, id := range allIds.GetValues() {
-		payload := m.buildSyncNodesPayload()
-		m.conns.SendPayload(id, &payload)
+type ConnsMgrStatus struct {
+	Type          ConnectedStatus
+	RemoteAddress string
+	Msg           string
+	Id            ConnId
+}
+type ConnectedStatus int
+
+const (
+	Connected ConnectedStatus = iota
+	NotConnected
+)
+
+type MgrConnsSend struct {
+	ConnId  ConnId
+	Payload proto.Payload
+}
+
+func (m *MgrConnsSend) Equal(o *MgrConnsSend) bool {
+	if m.ConnId != o.ConnId {
+		return false
+	}
+
+	return m.Payload.Equal(o.Payload)
+}
+
+type ConnsMgrReceive struct {
+	ConnId  ConnId
+	Payload proto.Payload
+}
+
+type MgrDiskSave struct {
+	Hash hash.Hash
+	Data []byte
+}
+
+func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
+	m.nodes.Add(n)
+	m.nodeConnMap.Add(n, c)
+	m.distributer.SetWeight(n, 1)
+}
+
+func (m *Mgr) handleConnectedStatus(cs ConnsMgrStatus) {
+	switch cs.Type {
+	case Connected:
+		m.connAddress[cs.Id] = cs.RemoteAddress
+		m.MgrConnsSends <- MgrConnsSend{
+			ConnId:  cs.Id,
+			Payload: &proto.IAm{NodeId: m.nodeId},
+		}
+	case NotConnected:
+		// Todo: reflect this in the ui
+		println("Not Connected")
+	}
+}
+
+func (m *Mgr) handleWebdavGets(rr proto.ReadRequest) {
+	n := m.distributer.NodeIdForStoreId(rr.BlockId)
+	if m.nodeId == n {
+		m.MgrDiskReads <- rr
+	} else {
+		c, ok := m.nodeConnMap.Get1(n)
+		if ok {
+			m.MgrConnsSends <- MgrConnsSend{
+				ConnId:  c,
+				Payload: &rr,
+			}
+		} else {
+			m.MgrWebdavGets <- proto.ReadResult{
+				Ok:      false,
+				Message: "Not connected",
+				Block:   store.Block{Id: rr.BlockId},
+				Caller:  rr.Caller,
+			}
+		}
+	}
+}
+
+func (m *Mgr) handlePuts(w store.Block) {
+	n := m.distributer.NodeIdForStoreId(w.Id)
+	if n == m.nodeId {
+		m.MgrDiskWrites <- w
+	} else {
+		c, ok := m.nodeConnMap.Get1(n)
+		if ok {
+			m.MgrConnsSends <- MgrConnsSend{
+				ConnId: c,
+				Payload: &proto.WriteRequest{
+					Caller: m.nodeId,
+					Block:  w,
+				},
+			}
+		} else {
+			panic("no connection!")
+			// Todo handle no connections here
+		}
 	}
 }

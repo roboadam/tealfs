@@ -1,226 +1,440 @@
-package mgr_test
+// Copyright (C) 2024 Adam Hess
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, version 3.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+package mgr
 
 import (
-	"bytes"
-	"encoding/binary"
-	"errors"
-	"os"
-	"strconv"
-	"tealfs/pkg/mgr"
-	"tealfs/pkg/model/events"
-	"tealfs/pkg/model/node"
+	"tealfs/pkg/hash"
+	"tealfs/pkg/nodes"
+	"tealfs/pkg/proto"
 	"tealfs/pkg/store"
-	"tealfs/pkg/test"
-	"tealfs/pkg/util"
 	"testing"
-	"time"
 )
 
-func TestManagerCreation(t *testing.T) {
-	userCmds := make(chan events.Event)
-	tNet := test.MockNet{}
-	dir := tmpDir()
-	defer cleanDir(dir, t)
-	localNode := mgr.New(userCmds, &tNet, dir)
+func TestConnectToMgr(t *testing.T) {
+	const expectedAddress = "some-address:123"
 
-	if !nodeIdIsValid(&localNode) {
-		t.Error("Id is invalid")
+	m := NewWithChanSize(0)
+	m.Start()
+
+	m.UiMgrConnectTos <- UiMgrConnectTo{
+		Address: expectedAddress,
+	}
+
+	expectedMessage := <-m.MgrConnsConnectTos
+
+	if expectedMessage.Address != expectedAddress {
+		t.Error("Received address", expectedMessage.Address)
 	}
 }
 
-func TestConnectToRemoteNode(t *testing.T) {
-	dir := tmpDir()
-	defer cleanDir(dir, t)
-	userCmds := make(chan events.Event)
-	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
-	n := mgr.New(userCmds, &tNet, dir)
-	n.Start()
+func TestConnectToSuccess(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = nodes.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = nodes.NewNodeId()
 
-	userCmds <- events.NewString(events.ConnectTo, "someAddress")
-
-	if !tNet.IsDialed() {
-		t.Error("Node did not connect")
-	}
-
-	expected := validHello(n.GetId())
-
-	time.Sleep(time.Millisecond * 100)
-	if !bytes.Equal(tNet.Conn.BytesWritten, expected) {
-		t.Errorf("Node did not send valid hello, %d %d", len(tNet.Conn.BytesWritten), len(expected))
-	}
+	mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
 }
 
-func TestIncomingConnection(t *testing.T) {
-	dir := tmpDir()
-	defer cleanDir(dir, t)
-	userCmds := make(chan events.Event)
-	mockNet := test.MockNet{Dialed: false, AcceptsConnections: true}
-	n := mgr.New(userCmds, &mockNet, dir)
-	n.Start()
+func TestReceiveSyncNodes(t *testing.T) {
+	const sharedAddress = "some-address:123"
+	const sharedConnectionId = 1
+	var sharedNodeId = nodes.NewNodeId()
+	const localAddress = "some-address2:234"
+	const localConnectionId = 2
+	var localNodeId = nodes.NewNodeId()
+	const remoteAddress = "some-address3:345"
+	var remoteNodeId = nodes.NewNodeId()
 
-	remoteNodeId := node.NewNodeId()
-	mockNet.Conn.SendMockBytes(validHello(remoteNodeId))
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId},
+		{address: localAddress, conn: localConnectionId, node: localNodeId},
+	}, t)
 
-	expected := validHello(n.GetId())
-	time.Sleep(time.Millisecond * 100)
-
-	result := readPayloadBytesWritten(&mockNet)
-	if !bytes.Equal(result, expected) {
-		t.Error("You didn't hello back!")
-	}
-}
-
-func TestSendNodeSyncAfterReceiveHello(t *testing.T) {
-	dir := tmpDir()
-	defer cleanDir(dir, t)
-	userCmds := make(chan events.Event)
-	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
-	n := mgr.New(userCmds, &tNet, dir)
-	remoteNodeId := node.NewNodeId()
-	remoteNodeAddress := "remoteAddress"
-	n.Start()
-
-	userCmds <- events.NewString(events.ConnectTo, remoteNodeAddress)
-
-	if !tNet.IsDialed() {
-		t.Error("Node did not connect")
+	sn := proto.NewSyncNodes()
+	sn.Nodes.Add(struct {
+		Node    nodes.Id
+		Address string
+	}{Node: sharedNodeId, Address: sharedAddress})
+	sn.Nodes.Add(struct {
+		Node    nodes.Id
+		Address string
+	}{Node: remoteNodeId, Address: remoteAddress})
+	m.ConnsMgrReceives <- ConnsMgrReceive{
+		ConnId:  sharedConnectionId,
+		Payload: &sn,
 	}
 
-	time.Sleep(time.Millisecond * 50)
-
-	tNet.Conn.BytesWritten = make([]byte, 0)
-	tNet.Conn.SendMockBytes(validHello(remoteNodeId))
-
-	expected := CommandAndNodes{Command: 2, Nodes: util.NewSet[NodeInfo]()}
-	expected.Nodes.Add(NodeInfo{NodeId: remoteNodeId.String(), Address: remoteNodeAddress})
-	expected.Nodes.Add(NodeInfo{NodeId: n.GetId().String(), Address: tNet.GetBinding()})
-
-	time.Sleep(time.Millisecond * 20)
-	payload := readPayloadBytesWritten(&tNet)
-	commandAndNodes, err := commandAndNodesFrom(payload)
-	if err != nil {
-		t.Error(err.Error())
-		return
-	}
-
-	if commandAndNodes.Command != expected.Command {
-		t.Error("Invalid command " + strconv.Itoa(int(commandAndNodes.Command)))
-	}
-
-	if !commandAndNodes.Nodes.Equal(&expected.Nodes) {
-		t.Error("Node set is not correct")
+	expectedConnectTo := <-m.MgrConnsConnectTos
+	if expectedConnectTo.Address != remoteAddress {
+		t.Error("expected to connect to", remoteAddress)
 	}
 }
 
-func TestSaveAndRead(t *testing.T) {
-	dir := tmpDir()
-	defer cleanDir(dir, t)
-	expected := "BlahBlaHereIsTheDataAndItsLong"
-	userCmds := make(chan events.Event)
-	tNet := test.MockNet{Dialed: false, AcceptsConnections: false}
-	n := mgr.New(userCmds, &tNet, dir)
-	n.Start()
+func TestReceiveSaveData(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = nodes.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = nodes.NewNodeId()
 
-	tempDir, _ := os.MkdirTemp("", "*-test-save-mgr")
-	defer removeAll(tempDir, t)
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
 
-	userCmds <- events.NewString(events.AddData, expected)
-	time.Sleep(100 * time.Millisecond)
-	result := make(chan []byte)
-	h := []byte{0x29, 0x4a, 0xe5, 0x7d, 0xde, 0xda, 0x37, 0xca, 0xb7, 0x44, 0xf7, 0x9e, 0xad, 0xdc, 0x15, 0x82, 0xae, 0xdc, 0x0c, 0x3e, 0x51, 0x7c, 0xff, 0x81, 0x49, 0xa1, 0x8b, 0x85, 0x34, 0xd4, 0xc0, 0x45}
-	userCmds <- events.NewBytesWithResult(events.ReadData, h, result)
-	r := string(<-result)
-	if r != expected {
-		t.Error("Not equal result: ", r, " vs expected: ", expected)
+	ids := []store.Id{}
+	for range 100 {
+		ids = append(ids, store.NewId())
+	}
+
+	value := []byte("123")
+
+	meCount := 0
+	oneCount := 0
+	twoCount := 0
+
+	for _, id := range ids {
+		m.ConnsMgrReceives <- ConnsMgrReceive{
+			ConnId: expectedConnectionId1,
+			Payload: &proto.SaveData{
+				Block: store.Block{
+					Id:   store.Id(id),
+					Data: value,
+					Hash: hash.ForData(value),
+				},
+			},
+		}
+
+		select {
+		case w := <-m.MgrDiskWrites:
+			meCount++
+			if w.Id != id {
+				t.Error("expected to write to 1, got", w.Id)
+			}
+		case s := <-m.MgrConnsSends:
+			//Todo: s.Payload should be checked for the correct value
+			if s.ConnId == expectedConnectionId1 {
+				oneCount++
+			} else if s.ConnId == expectedConnectionId2 {
+				twoCount++
+			} else {
+				t.Error("expected to connect to", s.ConnId)
+			}
+		}
+	}
+	if meCount == 0 || oneCount == 0 || twoCount == 0 {
+		t.Error("Expected everyone to get some data")
 	}
 }
 
-func validHello(nodeId node.Id) []byte {
+func TestReceiveDiskRead(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = nodes.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = nodes.NewNodeId()
 
-	serializedHello := int8Serialized(1)
-	serializedNodeId := []byte(nodeId.String())
-	serializedNodeIdLen := intSerialized(len(serializedNodeId))
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
 
-	payload := append(append(serializedHello, serializedNodeIdLen...), serializedNodeId...)
-	serializedPayload := intSerialized(len(payload))
+	storeId1 := store.NewId()
+	data1 := []byte{0x00, 0x01, 0x02}
+	hash1 := hash.ForData(data1)
 
-	return append(serializedPayload, payload...)
-}
-
-func readPayloadBytesWritten(tnet *test.MockNet) []byte {
-	if len(tnet.Conn.BytesWritten) < 4 {
-		return make([]byte, 0)
-	}
-	payloadLen := binary.BigEndian.Uint32(tnet.Conn.BytesWritten)
-	returnVal := tnet.Conn.BytesWritten[:4+payloadLen]
-	tnet.Conn.BytesWritten = tnet.Conn.BytesWritten[4+payloadLen:]
-	return returnVal
-}
-
-type NodeInfo struct {
-	NodeId  string
-	Address string
-}
-
-type CommandAndNodes struct {
-	Command int8
-	Nodes   util.Set[NodeInfo]
-}
-
-func commandAndNodesFrom(data []byte) (*CommandAndNodes, error) {
-	length := binary.BigEndian.Uint32(data)
-	if int(length) != len(data)-4 {
-		return nil, errors.New("invalid length")
-	}
-	command := int8(data[4])
-	if command != 2 {
-		return nil, errors.New("not a SyncNodes")
-	}
-	nodes := util.NewSet[NodeInfo]()
-
-	start := 5
-
-	for start < len(data) {
-		idLen := int(binary.BigEndian.Uint32(data[start:]))
-		start += 4
-		id := string(data[start : start+idLen])
-		start += idLen
-		addressLen := int(binary.BigEndian.Uint32(data[start:]))
-		start += 4
-		address := string(data[start : start+addressLen])
-		start += addressLen
-		nodes.Add(NodeInfo{NodeId: id, Address: address})
+	rr := proto.ReadResult{
+		Ok:      true,
+		Message: "",
+		Caller:  m.nodeId,
+		Block: store.Block{
+			Id:   storeId1,
+			Data: data1,
+			Hash: hash1,
+		},
 	}
 
-	return &CommandAndNodes{Command: command, Nodes: nodes}, nil
-}
+	m.DiskMgrReads <- rr
 
-func intSerialized(number int) []byte {
-	serializedInt := make([]byte, 4)
-	binary.BigEndian.PutUint32(serializedInt, uint32(number))
-	return serializedInt
-}
+	toWebdav := <-m.MgrWebdavGets
 
-func int8Serialized(number int8) []byte {
-	return []byte{byte(number)}
-}
+	if !rr.Equal(&toWebdav) {
+		t.Errorf("rr didn't equal toWebdav")
+	}
 
-func nodeIdIsValid(mgr *mgr.Mgr) bool {
-	return len(mgr.GetId().String()) > 0
-}
+	rr2 := proto.ReadResult{
+		Ok:      true,
+		Message: "",
+		Caller:  expectedNodeId1,
+		Block: store.Block{
+			Id:   storeId1,
+			Data: data1,
+			Hash: hash1,
+		},
+	}
 
-func removeAll(dir string, t *testing.T) {
-	err := os.RemoveAll(dir)
-	if err != nil {
-		t.Errorf("Error [%v] deleting temp dir [%v]", err, dir)
+	m.DiskMgrReads <- rr2
+	sent2 := <-m.MgrConnsSends
+
+	expectedMCS2 := MgrConnsSend{
+		ConnId:  expectedConnectionId1,
+		Payload: &rr2,
+	}
+
+	if !sent2.Equal(&expectedMCS2) {
+		t.Errorf("sent2 not equal expectedMCS2")
 	}
 }
 
-func tmpDir() store.Path {
-	tempDir, _ := os.MkdirTemp("", "*-test")
-	return store.NewPath(tempDir)
+func TestWebdavGet(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = nodes.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = nodes.NewNodeId()
+
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
+
+	ids := []store.Id{}
+	for range 100 {
+		ids = append(ids, store.NewId())
+	}
+
+	meCount := 0
+	oneCount := 0
+	twoCount := 0
+
+	for _, id := range ids {
+		m.WebdavMgrGets <- proto.ReadRequest{
+			Caller:  m.nodeId,
+			BlockId: id,
+		}
+
+		select {
+		case r := <-m.MgrDiskReads:
+			meCount++
+			if r.BlockId != id {
+				t.Error("expected to read to 1, got", r.BlockId)
+			}
+		case s := <-m.MgrConnsSends:
+			if s.ConnId == expectedConnectionId1 {
+				oneCount++
+			} else if s.ConnId == expectedConnectionId2 {
+				twoCount++
+			} else {
+				t.Error("expected to connect to", s.ConnId)
+			}
+		}
+	}
+	if meCount == 0 || oneCount == 0 || twoCount == 0 {
+		t.Error("Expected everyone to get some data")
+	}
 }
 
-func cleanDir(path store.Path, t *testing.T) {
-	removeAll(path.String(), t)
+func TestWebdavPut(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = nodes.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = nodes.NewNodeId()
+
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, t)
+
+	blocks := []store.Block{}
+	for i := range 100 {
+		data := []byte{byte(i)}
+		hash := hash.ForData(data)
+		block := store.Block{
+			Id:   store.NewId(),
+			Data: data,
+			Hash: hash,
+		}
+		blocks = append(blocks, block)
+	}
+
+	meCount := 0
+	oneCount := 0
+	twoCount := 0
+
+	for _, block := range blocks {
+		m.WebdavMgrPuts <- block
+
+		select {
+		case w := <-m.MgrDiskWrites:
+			meCount++
+			if !w.Equal(&block) {
+				t.Error("expected the origial block")
+			}
+		case s := <-m.MgrConnsSends:
+			if s.ConnId == expectedConnectionId1 {
+				oneCount++
+			} else if s.ConnId == expectedConnectionId2 {
+				twoCount++
+			} else {
+				t.Error("expected to connect to", s.ConnId)
+			}
+		}
+	}
+	if meCount == 0 || oneCount == 0 || twoCount == 0 {
+		t.Error("Expected everyone to fetch some data")
+	}
+}
+
+type connectedNode struct {
+	address string
+	conn    ConnId
+	node    nodes.Id
+}
+
+func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
+	m := NewWithChanSize(0)
+	m.Start()
+	var nodesInCluster []connectedNode
+
+	for _, n := range nodes {
+		// Send a message to Mgr indicating another
+		// node has connected
+		m.ConnsMgrStatuses <- ConnsMgrStatus{
+			Type:          Connected,
+			RemoteAddress: n.address,
+			Id:            n.conn,
+		}
+
+		// Then Mgr should send an Iam payload to
+		// the appropriate connection id with its
+		// own node id
+		expectedIam := <-m.MgrConnsSends
+		payload := expectedIam.Payload
+		switch p := payload.(type) {
+		case *proto.IAm:
+			if p.NodeId != m.nodeId {
+				t.Error("Unexpected nodeId")
+			}
+			if expectedIam.ConnId != n.conn {
+				t.Error("Unexpected connId")
+			}
+		default:
+			t.Error("Unexpected payload", p)
+		}
+
+		// Send a message to Mgr indicating the newly
+		// connected node has sent us an Iam payload
+		iamPayload := proto.IAm{
+			NodeId: n.node,
+		}
+		m.ConnsMgrReceives <- ConnsMgrReceive{
+			ConnId:  n.conn,
+			Payload: &iamPayload,
+		}
+
+		nodesInCluster = append(nodesInCluster, n)
+		var payloadsFromMgr []MgrConnsSend
+
+		for range nodesInCluster {
+			payloadsFromMgr = append(payloadsFromMgr, <-m.MgrConnsSends)
+		}
+
+		expectedSyncNodes := expectedSyncNodesForCluster(nodesInCluster)
+		syncNodesWeSent := assertAllPayloadsSyncNodes(t, payloadsFromMgr)
+
+		if !cIdSnSliceEquals(expectedSyncNodes, syncNodesWeSent) {
+			t.Error("Expected sync nodes to match", expectedSyncNodes, syncNodesWeSent)
+		}
+	}
+
+	return m
+}
+
+func assertAllPayloadsSyncNodes(t *testing.T, mcs []MgrConnsSend) []connIdAndSyncNodes {
+	var results []connIdAndSyncNodes
+	for _, mc := range mcs {
+		switch p := mc.Payload.(type) {
+		case *proto.SyncNodes:
+			results = append(results, struct {
+				ConnId  ConnId
+				Payload proto.SyncNodes
+			}{ConnId: mc.ConnId, Payload: *p})
+		default:
+			t.Error("Unexpected payload", p)
+		}
+	}
+	return results
+}
+
+type connIdAndSyncNodes struct {
+	ConnId  ConnId
+	Payload proto.SyncNodes
+}
+
+func cIdSnSliceEquals(a, b []connIdAndSyncNodes) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		oneEqual := false
+		for j := range b {
+			if cIdSnEquals(a[i], b[j]) {
+				oneEqual = true
+			}
+		}
+		if !oneEqual {
+			return false
+		}
+	}
+	return true
+}
+
+func cIdSnEquals(a, b connIdAndSyncNodes) bool {
+	if a.ConnId != b.ConnId {
+		return false
+	}
+	return a.Payload.Equal(&b.Payload)
+}
+
+func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {
+	var results []connIdAndSyncNodes
+
+	sn := proto.NewSyncNodes()
+	for _, node := range cluster {
+		sn.Nodes.Add(struct {
+			Node    nodes.Id
+			Address string
+		}{Node: node.node, Address: node.address})
+	}
+
+	for _, node := range cluster {
+		results = append(results, struct {
+			ConnId  ConnId
+			Payload proto.SyncNodes
+		}{ConnId: node.conn, Payload: sn})
+	}
+	return results
 }

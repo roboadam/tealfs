@@ -15,28 +15,35 @@
 package proto
 
 import (
+	"bytes"
 	"tealfs/pkg/nodes"
+	"tealfs/pkg/store"
 )
 
-type IAm struct {
-	NodeId nodes.Id
+type ReadRequest struct {
+	Caller  nodes.Id
+	BlockId store.Id
 }
 
-func (h *IAm) ToBytes() []byte {
-	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(IAmType, nodeId)
+func (r *ReadRequest) ToBytes() []byte {
+	callerId := StringToBytes(string(r.Caller))
+	blockId := StringToBytes(string(r.BlockId))
+	return AddType(ReadDataType, bytes.Join([][]byte{callerId, blockId}, []byte{}))
 }
 
-func (h *IAm) Equal(p Payload) bool {
-	if h2, ok := p.(*IAm); ok {
-		return h2.NodeId == h.NodeId
+func (r *ReadRequest) Equal(p Payload) bool {
+	if o, ok := p.(*ReadRequest); ok {
+		return r.Caller == o.Caller && r.BlockId == o.BlockId
 	}
 	return false
 }
 
-func ToHello(data []byte) *IAm {
-	rawId, _ := StringFromBytes(data)
-	return &IAm{
-		NodeId: nodes.Id(rawId),
+func ToReadRequest(data []byte) *ReadRequest {
+	callerId, remainder := StringFromBytes(data)
+	blockId, _ := StringFromBytes(remainder)
+	rq := ReadRequest{
+		Caller:  nodes.Id(callerId),
+		BlockId: store.Id(blockId),
 	}
+	return &rq
 }
