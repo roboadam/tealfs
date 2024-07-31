@@ -42,7 +42,11 @@ func ToPayload(data []byte) Payload {
 }
 
 func payloadData(data []byte) []byte {
-	return data[1:]
+	if len(data) > 0 {
+		return data[1:]
+	} else {
+		return data
+	}
 }
 
 func payloadType(data []byte) byte {

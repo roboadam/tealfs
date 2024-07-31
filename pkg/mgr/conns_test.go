@@ -16,6 +16,7 @@ package mgr
 
 import (
 	"bytes"
+	"encoding/binary"
 	"tealfs/pkg/hash"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/store"
@@ -53,24 +54,38 @@ func TestSendData(t *testing.T) {
 			},
 		}}
 
-	writtenData := <-provider.Conn.dataWritten
-	expectedBytes := []byte{
+	expectedBytes := []byte{0, 0, 0, 55,
 		3, 0, 0, 0, 7, 98, 108, 111, 99, 107, 73, 100, 0, 0, 0, 3, 1, 2, 3, 0, 0, 0, 32, 3,
 		144, 88, 198, 242, 192, 203, 73, 44, 83, 59, 10, 77, 20, 239, 119, 204, 15, 120, 171,
 		204, 206, 213, 40, 125, 132, 161, 162, 1, 28, 251, 129}
-	if !bytes.Equal(writtenData, expectedBytes) {
+	if !dataMatched(expectedBytes, provider.Conn.dataWritten) {
 		t.Error("Wrong data written")
 	}
+}
+
+func dataMatched(expected []byte, incoming chan []byte) bool {
+	buffer := make([]byte, 0)
+	for readBytes := range incoming {
+		buffer = append(buffer, readBytes...)
+		if len(buffer) >= len(expected) {
+			return bytes.Equal(expected, buffer[:len(expected)])
+		}
+	}
+	return false
 }
 
 func TestGetData(t *testing.T) {
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest()
 	status := connectTo("address:123", outStatus, inConnectTo)
-	payload := &proto.NoOp{}
+	payload := &proto.IAm{
+		NodeId: "nodeId",
+	}
 	dataReceived := payload.ToBytes()
+	length := lenAsBytes(dataReceived)
+	provider.Conn.dataToRead <- length
 	provider.Conn.dataToRead <- dataReceived
 
-	result := <- cmr
+	result := <-cmr
 
 	if result.ConnId != status.Id {
 		t.Error("We didn't pass the message")
@@ -79,6 +94,13 @@ func TestGetData(t *testing.T) {
 	// if !bytes.Equal(writtenData, expectedBytes) {
 	// 	t.Error("Wrong data written")
 	// }
+}
+
+func lenAsBytes(data []byte) []byte {
+	size := uint32(len(data))
+	buf := make([]byte, 4)
+	binary.BigEndian.PutUint32(buf, size)
+	return buf
 }
 
 func connectTo(address string, outStatus chan ConnsMgrStatus, inConnectTo chan MgrConnsConnectTo) ConnsMgrStatus {

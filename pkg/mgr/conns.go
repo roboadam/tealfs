@@ -84,7 +84,7 @@ func (c *Conns) consumeChannels() {
 			}
 		case sendReq := <-c.inSends:
 			//Todo maybe this should be async
-			c.netConns[sendReq.ConnId].Write(sendReq.Payload.ToBytes())
+			tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
 		}
 	}
 }
@@ -134,18 +134,6 @@ func (c *Conns) connectTo(address string) (ConnId, error) {
 	}
 	id := c.saveNetConn(netConn)
 	return id, nil
-}
-
-func (c *Conns) Send(id ConnId, data []byte) error {
-	bytesWritten := 0
-	for bytesWritten < len(data) {
-		n, err := c.netConns[id].Write(data[bytesWritten:])
-		if err != nil {
-			return err
-		}
-		bytesWritten += n
-	}
-	return nil
 }
 
 func (c *Conns) saveNetConn(netConn net.Conn) ConnId {
