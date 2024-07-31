@@ -18,16 +18,22 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"tealfs/pkg/mgr"
+	"tealfs/pkg/model"
 )
 
 type Ui struct {
-	connToReq  chan mgr.UiMgrConnectTo
-	connToResp chan mgr.ConnectToResp
+	connToReq  chan model.UiMgrConnectTo
+	connToResp chan ConnectToResp
 }
 
-func NewUi(connToReq chan mgr.UiMgrConnectTo) Ui {
-	connToResp := make(chan mgr.ConnectToResp, 100)
+type ConnectToResp struct {
+	Success      bool
+	Id           model.ConnId
+	ErrorMessage string
+}
+
+func NewUi(connToReq chan model.UiMgrConnectTo) Ui {
+	connToResp := make(chan ConnectToResp, 100)
 	return Ui{connToReq, connToResp}
 }
 
@@ -43,7 +49,7 @@ func (ui Ui) Start() {
 func (ui Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
-		ui.connToReq <- mgr.UiMgrConnectTo{Address: hostAndPort}
+		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
 		_, _ = fmt.Fprintf(w, "Connecting to: %s", hostAndPort)
 		resp := <-ui.connToResp
 		if resp.Success {

@@ -12,35 +12,35 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package mgr
+package conns
 
 import (
 	"net"
+	"tealfs/pkg/model"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/tnet"
 )
 
-type ConnId int32
 type Conns struct {
-	netConns      map[ConnId]net.Conn
-	nextId        ConnId
+	netConns      map[model.ConnId]net.Conn
+	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
-	outStatuses   chan<- ConnsMgrStatus
-	outReceives   chan<- ConnsMgrReceive
-	inConnectTo   <-chan MgrConnsConnectTo
-	inSends       <-chan MgrConnsSend
+	outStatuses   chan<- model.ConnsMgrStatus
+	outReceives   chan<- model.ConnsMgrReceive
+	inConnectTo   <-chan model.MgrConnsConnectTo
+	inSends       <-chan model.MgrConnsSend
 	Address       string
 	provider      ConnectionProvider
 }
 
-func NewConns(outStatuses chan<- ConnsMgrStatus, outReceives chan<- ConnsMgrReceive, inConnectTo <-chan MgrConnsConnectTo, inSends <-chan MgrConnsSend, provider ConnectionProvider) Conns {
+func NewConns(outStatuses chan<- model.ConnsMgrStatus, outReceives chan<- model.ConnsMgrReceive, inConnectTo <-chan model.MgrConnsConnectTo, inSends <-chan model.MgrConnsSend, provider ConnectionProvider) Conns {
 	listener, err := provider.GetListener("localhost:0")
 	if err != nil {
 		panic(err)
 	}
 	c := Conns{
-		netConns:      make(map[ConnId]net.Conn, 3),
-		nextId:        ConnId(0),
+		netConns:      make(map[model.ConnId]net.Conn, 3),
+		nextId:        model.ConnId(0),
 		acceptedConns: make(chan AcceptedConns),
 		outStatuses:   outStatuses,
 		outReceives:   outReceives,
@@ -61,8 +61,8 @@ func (c *Conns) consumeChannels() {
 		select {
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
-			c.outStatuses <- ConnsMgrStatus{
-				Type:          Connected,
+			c.outStatuses <- model.ConnsMgrStatus{
+				Type:          model.Connected,
 				Msg:           "Success",
 				RemoteAddress: acceptedConn.netConn.LocalAddr().String(),
 				Id:            id,
@@ -72,16 +72,16 @@ func (c *Conns) consumeChannels() {
 			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
-				c.outStatuses <- ConnsMgrStatus{
-					Type:          Connected,
+				c.outStatuses <- model.ConnsMgrStatus{
+					Type:          model.Connected,
 					Msg:           "Success",
 					RemoteAddress: connectTo.Address,
 					Id:            id,
 				}
 				go c.consumeData(id)
 			} else {
-				c.outStatuses <- ConnsMgrStatus{
-					Type:          NotConnected,
+				c.outStatuses <- model.ConnsMgrStatus{
+					Type:          model.NotConnected,
 					Msg:           "Failure connecting",
 					RemoteAddress: connectTo.Address,
 					Id:            id,
@@ -104,20 +104,11 @@ func (c *Conns) listen(listener net.Listener) {
 	}
 }
 
-type UiMgrConnectTo struct {
-	Address string
-}
-type ConnectToResp struct {
-	Success      bool
-	Id           ConnId
-	ErrorMessage string
-}
-
 type AcceptedConns struct {
 	netConn net.Conn
 }
 
-func (c *Conns) consumeData(conn ConnId) {
+func (c *Conns) consumeData(conn model.ConnId) {
 	for {
 		netConn := c.netConns[conn]
 		bytes, err := tnet.ReadPayload(netConn)
@@ -125,14 +116,14 @@ func (c *Conns) consumeData(conn ConnId) {
 			return
 		}
 		payload := proto.ToPayload(bytes)
-		c.outReceives <- ConnsMgrReceive{
+		c.outReceives <- model.ConnsMgrReceive{
 			ConnId:  conn,
 			Payload: payload,
 		}
 	}
 }
 
-func (c *Conns) connectTo(address string) (ConnId, error) {
+func (c *Conns) connectTo(address string) (model.ConnId, error) {
 	netConn, err := c.provider.GetConnection(address)
 	if err != nil {
 		return 0, err
@@ -141,7 +132,7 @@ func (c *Conns) connectTo(address string) (ConnId, error) {
 	return id, nil
 }
 
-func (c *Conns) saveNetConn(netConn net.Conn) ConnId {
+func (c *Conns) saveNetConn(netConn net.Conn) model.ConnId {
 	id := c.nextId
 	c.nextId++
 	c.netConns[id] = netConn

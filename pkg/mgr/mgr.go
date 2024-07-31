@@ -15,7 +15,7 @@
 package mgr
 
 import (
-	"tealfs/pkg/hash"
+	"tealfs/pkg/model"
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/set"
@@ -24,45 +24,45 @@ import (
 )
 
 type Mgr struct {
-	UiMgrConnectTos    chan UiMgrConnectTo
-	ConnsMgrStatuses   chan ConnsMgrStatus
-	ConnsMgrReceives   chan ConnsMgrReceive
+	UiMgrConnectTos    chan model.UiMgrConnectTo
+	ConnsMgrStatuses   chan model.ConnsMgrStatus
+	ConnsMgrReceives   chan model.ConnsMgrReceive
 	DiskMgrReads       chan proto.ReadResult
 	DiskMgrWrites      chan proto.WriteResult
 	WebdavMgrGets      chan proto.ReadRequest
 	WebdavMgrPuts      chan store.Block
-	MgrConnsConnectTos chan MgrConnsConnectTo
-	MgrConnsSends      chan MgrConnsSend
+	MgrConnsConnectTos chan model.MgrConnsConnectTo
+	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan store.Block
 	MgrDiskReads       chan proto.ReadRequest
 	MgrWebdavGets      chan proto.ReadResult
 	MgrWebdavPuts      chan proto.WriteResult
 
 	nodes       set.Set[nodes.Id]
-	nodeConnMap set.Bimap[nodes.Id, ConnId]
+	nodeConnMap set.Bimap[nodes.Id, model.ConnId]
 	nodeId      nodes.Id
-	connAddress map[ConnId]string
+	connAddress map[model.ConnId]string
 	distributer dist.Distributer
 }
 
 func NewWithChanSize(chanSize int) Mgr {
 	mgr := Mgr{
-		UiMgrConnectTos:    make(chan UiMgrConnectTo, chanSize),
-		ConnsMgrStatuses:   make(chan ConnsMgrStatus, chanSize),
-		ConnsMgrReceives:   make(chan ConnsMgrReceive, chanSize),
+		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
+		ConnsMgrStatuses:   make(chan model.ConnsMgrStatus, chanSize),
+		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrReads:       make(chan proto.ReadResult, chanSize),
 		WebdavMgrGets:      make(chan proto.ReadRequest, chanSize),
 		WebdavMgrPuts:      make(chan store.Block, chanSize),
-		MgrConnsConnectTos: make(chan MgrConnsConnectTo, chanSize),
-		MgrConnsSends:      make(chan MgrConnsSend, chanSize),
+		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
+		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan store.Block, chanSize),
 		MgrDiskReads:       make(chan proto.ReadRequest, chanSize),
 		MgrWebdavGets:      make(chan proto.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan proto.WriteResult, chanSize),
 		nodes:              set.NewSet[nodes.Id](),
 		nodeId:             nodes.NewNodeId(),
-		connAddress:        make(map[ConnId]string),
-		nodeConnMap:        set.NewBimap[nodes.Id, ConnId](),
+		connAddress:        make(map[model.ConnId]string),
+		nodeConnMap:        set.NewBimap[nodes.Id, model.ConnId](),
 		distributer:        dist.New(),
 	}
 	mgr.distributer.SetWeight(mgr.nodeId, 1)
@@ -93,8 +93,8 @@ func (m *Mgr) eventLoop() {
 	}
 }
 
-func (m *Mgr) handleConnectToReq(i UiMgrConnectTo) {
-	m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: string(i.Address)}
+func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
+	m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: string(i.Address)}
 }
 
 func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
@@ -113,7 +113,7 @@ func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
 	return result
 }
 
-func (m *Mgr) handleReceives(i ConnsMgrReceive) {
+func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *proto.IAm:
 		m.addNodeToCluster(p.NodeId, i.ConnId)
@@ -121,7 +121,7 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 		for _, n := range m.nodes.GetValues() {
 			connId, ok := m.nodeConnMap.Get1(n)
 			if ok {
-				m.MgrConnsSends <- MgrConnsSend{
+				m.MgrConnsSends <- model.MgrConnsSend{
 					ConnId:  connId,
 					Payload: &syncNodes,
 				}
@@ -134,7 +134,7 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 		missing := remoteNodes.Minus(&m.nodes)
 		for _, n := range missing.GetValues() {
 			address := p.AddressForNode(n)
-			m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: address}
+			m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: address}
 		}
 	case *proto.SaveData:
 		n := m.distributer.NodeIdForStoreId(p.Block.Id)
@@ -143,7 +143,7 @@ func (m *Mgr) handleReceives(i ConnsMgrReceive) {
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)
 			if ok {
-				m.MgrConnsSends <- MgrConnsSend{ConnId: c, Payload: p}
+				m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: p}
 			} else {
 				m.MgrDiskWrites <- p.Block
 			}
@@ -157,7 +157,7 @@ func (m *Mgr) handleDiskReads(r proto.ReadResult) {
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
 		if ok {
-			m.MgrConnsSends <- MgrConnsSend{ConnId: c, Payload: &r}
+			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
 		} else {
 			panic("Oh no")
 			// Todo: need a ticket to create queuing for offline nodes
@@ -165,61 +165,21 @@ func (m *Mgr) handleDiskReads(r proto.ReadResult) {
 	}
 }
 
-type MgrConnsConnectTo struct {
-	Address string
-}
-
-type ConnsMgrStatus struct {
-	Type          ConnectedStatus
-	RemoteAddress string
-	Msg           string
-	Id            ConnId
-}
-type ConnectedStatus int
-
-const (
-	Connected ConnectedStatus = iota
-	NotConnected
-)
-
-type MgrConnsSend struct {
-	ConnId  ConnId
-	Payload proto.Payload
-}
-
-func (m *MgrConnsSend) Equal(o *MgrConnsSend) bool {
-	if m.ConnId != o.ConnId {
-		return false
-	}
-
-	return m.Payload.Equal(o.Payload)
-}
-
-type ConnsMgrReceive struct {
-	ConnId  ConnId
-	Payload proto.Payload
-}
-
-type MgrDiskSave struct {
-	Hash hash.Hash
-	Data []byte
-}
-
-func (m *Mgr) addNodeToCluster(n nodes.Id, c ConnId) {
+func (m *Mgr) addNodeToCluster(n nodes.Id, c model.ConnId) {
 	m.nodes.Add(n)
 	m.nodeConnMap.Add(n, c)
 	m.distributer.SetWeight(n, 1)
 }
 
-func (m *Mgr) handleConnectedStatus(cs ConnsMgrStatus) {
+func (m *Mgr) handleConnectedStatus(cs model.ConnsMgrStatus) {
 	switch cs.Type {
-	case Connected:
+	case model.Connected:
 		m.connAddress[cs.Id] = cs.RemoteAddress
-		m.MgrConnsSends <- MgrConnsSend{
+		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &proto.IAm{NodeId: m.nodeId},
 		}
-	case NotConnected:
+	case model.NotConnected:
 		// Todo: reflect this in the ui
 		println("Not Connected")
 	}
@@ -232,7 +192,7 @@ func (m *Mgr) handleWebdavGets(rr proto.ReadRequest) {
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
 		if ok {
-			m.MgrConnsSends <- MgrConnsSend{
+			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId:  c,
 				Payload: &rr,
 			}
@@ -254,7 +214,7 @@ func (m *Mgr) handlePuts(w store.Block) {
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
 		if ok {
-			m.MgrConnsSends <- MgrConnsSend{
+			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId: c,
 				Payload: &proto.WriteRequest{
 					Caller: m.nodeId,

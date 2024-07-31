@@ -16,6 +16,7 @@ package mgr
 
 import (
 	"tealfs/pkg/hash"
+	"tealfs/pkg/model"
 	"tealfs/pkg/nodes"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/store"
@@ -28,7 +29,7 @@ func TestConnectToMgr(t *testing.T) {
 	m := NewWithChanSize(0)
 	m.Start()
 
-	m.UiMgrConnectTos <- UiMgrConnectTo{
+	m.UiMgrConnectTos <- model.UiMgrConnectTo{
 		Address: expectedAddress,
 	}
 
@@ -77,7 +78,7 @@ func TestReceiveSyncNodes(t *testing.T) {
 		Node    nodes.Id
 		Address string
 	}{Node: remoteNodeId, Address: remoteAddress})
-	m.ConnsMgrReceives <- ConnsMgrReceive{
+	m.ConnsMgrReceives <- model.ConnsMgrReceive{
 		ConnId:  sharedConnectionId,
 		Payload: &sn,
 	}
@@ -113,7 +114,7 @@ func TestReceiveSaveData(t *testing.T) {
 	twoCount := 0
 
 	for _, id := range ids {
-		m.ConnsMgrReceives <- ConnsMgrReceive{
+		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId: expectedConnectionId1,
 			Payload: &proto.SaveData{
 				Block: store.Block{
@@ -196,7 +197,7 @@ func TestReceiveDiskRead(t *testing.T) {
 	m.DiskMgrReads <- rr2
 	sent2 := <-m.MgrConnsSends
 
-	expectedMCS2 := MgrConnsSend{
+	expectedMCS2 := model.MgrConnsSend{
 		ConnId:  expectedConnectionId1,
 		Payload: &rr2,
 	}
@@ -310,7 +311,7 @@ func TestWebdavPut(t *testing.T) {
 
 type connectedNode struct {
 	address string
-	conn    ConnId
+	conn    model.ConnId
 	node    nodes.Id
 }
 
@@ -322,8 +323,8 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 	for _, n := range nodes {
 		// Send a message to Mgr indicating another
 		// node has connected
-		m.ConnsMgrStatuses <- ConnsMgrStatus{
-			Type:          Connected,
+		m.ConnsMgrStatuses <- model.ConnsMgrStatus{
+			Type:          model.Connected,
 			RemoteAddress: n.address,
 			Id:            n.conn,
 		}
@@ -350,13 +351,13 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 		iamPayload := proto.IAm{
 			NodeId: n.node,
 		}
-		m.ConnsMgrReceives <- ConnsMgrReceive{
+		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId:  n.conn,
 			Payload: &iamPayload,
 		}
 
 		nodesInCluster = append(nodesInCluster, n)
-		var payloadsFromMgr []MgrConnsSend
+		var payloadsFromMgr []model.MgrConnsSend
 
 		for range nodesInCluster {
 			payloadsFromMgr = append(payloadsFromMgr, <-m.MgrConnsSends)
@@ -373,13 +374,13 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 	return m
 }
 
-func assertAllPayloadsSyncNodes(t *testing.T, mcs []MgrConnsSend) []connIdAndSyncNodes {
+func assertAllPayloadsSyncNodes(t *testing.T, mcs []model.MgrConnsSend) []connIdAndSyncNodes {
 	var results []connIdAndSyncNodes
 	for _, mc := range mcs {
 		switch p := mc.Payload.(type) {
 		case *proto.SyncNodes:
 			results = append(results, struct {
-				ConnId  ConnId
+				ConnId  model.ConnId
 				Payload proto.SyncNodes
 			}{ConnId: mc.ConnId, Payload: *p})
 		default:
@@ -390,7 +391,7 @@ func assertAllPayloadsSyncNodes(t *testing.T, mcs []MgrConnsSend) []connIdAndSyn
 }
 
 type connIdAndSyncNodes struct {
-	ConnId  ConnId
+	ConnId  model.ConnId
 	Payload proto.SyncNodes
 }
 
@@ -432,7 +433,7 @@ func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {
 
 	for _, node := range cluster {
 		results = append(results, struct {
-			ConnId  ConnId
+			ConnId  model.ConnId
 			Payload proto.SyncNodes
 		}{ConnId: node.conn, Payload: sn})
 	}

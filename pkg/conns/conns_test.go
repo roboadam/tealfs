@@ -12,12 +12,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package mgr
+package conns
 
 import (
 	"bytes"
 	"encoding/binary"
 	"tealfs/pkg/hash"
+	"tealfs/pkg/model"
 	"tealfs/pkg/proto"
 	"tealfs/pkg/store"
 	"testing"
@@ -27,7 +28,7 @@ func TestAcceptConn(t *testing.T) {
 	_, status, _, _, _, provider := newConnsTest()
 	provider.Listener.accept <- true
 	s := <-status
-	if s.Type != Connected {
+	if s.Type != model.Connected {
 		t.Error("Received address")
 	}
 }
@@ -36,7 +37,7 @@ func TestConnectToConns(t *testing.T) {
 	_, outStatus, _, inConnectTo, _, _ := newConnsTest()
 	const expectedAddress = "expectedAddress:1234"
 	status := connectTo(expectedAddress, outStatus, inConnectTo)
-	if status.Type != Connected || status.RemoteAddress != expectedAddress {
+	if status.Type != model.Connected || status.RemoteAddress != expectedAddress {
 		t.Error("Connection didn't work")
 	}
 }
@@ -44,7 +45,7 @@ func TestConnectToConns(t *testing.T) {
 func TestSendData(t *testing.T) {
 	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest()
 	status := connectTo("address:123", outStatus, inConnectTo)
-	inSend <- MgrConnsSend{
+	inSend <- model.MgrConnsSend{
 		ConnId: status.Id,
 		Payload: &proto.SaveData{
 			Block: store.Block{
@@ -103,16 +104,16 @@ func lenAsBytes(data []byte) []byte {
 	return buf
 }
 
-func connectTo(address string, outStatus chan ConnsMgrStatus, inConnectTo chan MgrConnsConnectTo) ConnsMgrStatus {
-	inConnectTo <- MgrConnsConnectTo{address}
+func connectTo(address string, outStatus chan model.ConnsMgrStatus, inConnectTo chan model.MgrConnsConnectTo) model.ConnsMgrStatus {
+	inConnectTo <- model.MgrConnsConnectTo{Address: address}
 	return <-outStatus
 }
 
-func newConnsTest() (Conns, chan ConnsMgrStatus, chan ConnsMgrReceive, chan MgrConnsConnectTo, chan MgrConnsSend, MockConnectionProvider) {
-	outStatuses := make(chan ConnsMgrStatus)
-	outReceives := make(chan ConnsMgrReceive)
-	inConnectTo := make(chan MgrConnsConnectTo)
-	inSends := make(chan MgrConnsSend)
+func newConnsTest() (Conns, chan model.ConnsMgrStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, MockConnectionProvider) {
+	outStatuses := make(chan model.ConnsMgrStatus)
+	outReceives := make(chan model.ConnsMgrReceive)
+	inConnectTo := make(chan model.MgrConnsConnectTo)
+	inSends := make(chan model.MgrConnsSend)
 	provider := NewMockConnectionProvider()
 	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider)
 	return c, outStatuses, outReceives, inConnectTo, inSends, provider
