@@ -80,7 +80,12 @@ func (c *Conns) consumeChannels() {
 				}
 				go c.consumeData(id)
 			} else {
-				// Todo
+				c.outStatuses <- ConnsMgrStatus{
+					Type:          NotConnected,
+					Msg:           "Failure connecting",
+					RemoteAddress: connectTo.Address,
+					Id:            id,
+				}
 			}
 		case sendReq := <-c.inSends:
 			//Todo maybe this should be async

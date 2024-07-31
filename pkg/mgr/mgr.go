@@ -94,7 +94,7 @@ func (m *Mgr) eventLoop() {
 }
 
 func (m *Mgr) handleConnectToReq(i UiMgrConnectTo) {
-	m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: i.Address}
+	m.MgrConnsConnectTos <- MgrConnsConnectTo{Address: string(i.Address)}
 }
 
 func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
@@ -159,6 +159,7 @@ func (m *Mgr) handleDiskReads(r proto.ReadResult) {
 		if ok {
 			m.MgrConnsSends <- MgrConnsSend{ConnId: c, Payload: &r}
 		} else {
+			panic("Oh no")
 			// Todo: need a ticket to create queuing for offline nodes
 		}
 	}
@@ -261,6 +262,7 @@ func (m *Mgr) handlePuts(w store.Block) {
 				},
 			}
 		} else {
+			panic("no connection!")
 			// Todo handle no connections here
 		}
 	}
