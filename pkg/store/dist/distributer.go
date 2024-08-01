@@ -18,25 +18,25 @@ import (
 	"hash"
 	"hash/crc32"
 	"sort"
-	"tealfs/pkg/nodes"
+	"tealfs/pkg/model"
 	"tealfs/pkg/store"
 )
 
 type Distributer struct {
-	dist     map[key]nodes.Id
-	weights  map[nodes.Id]int
+	dist     map[key]model.Id
+	weights  map[model.Id]int
 	checksum hash.Hash32
 }
 
 func New() Distributer {
 	return Distributer{
-		dist:     make(map[key]nodes.Id),
-		weights:  make(map[nodes.Id]int),
+		dist:     make(map[key]model.Id),
+		weights:  make(map[model.Id]int),
 		checksum: crc32.NewIEEE(),
 	}
 }
 
-func (d *Distributer) NodeIdForStoreId(id store.Id) nodes.Id {
+func (d *Distributer) NodeIdForStoreId(id store.Id) model.Id {
 	idb := []byte(id)
 	sum := d.Checksum(idb)
 	k := key{value: sum[0]}
@@ -49,7 +49,7 @@ func (d *Distributer) Checksum(data []byte) []byte {
 	return d.checksum.Sum(nil)
 }
 
-func (d *Distributer) SetWeight(id nodes.Id, weight int) {
+func (d *Distributer) SetWeight(id model.Id, weight int) {
 	d.weights[id] = weight
 	d.applyWeights()
 }
@@ -78,7 +78,7 @@ func (d *Distributer) applyWeights() {
 	}
 }
 
-func get(paths nodes.Slice, idx int) nodes.Id {
+func get(paths Slice, idx int) model.Id {
 	if len(paths) <= 0 {
 		return ""
 	}
@@ -90,7 +90,7 @@ func get(paths nodes.Slice, idx int) nodes.Id {
 	return paths[idx]
 }
 
-func (d *Distributer) numSlotsForPath(p nodes.Id) int {
+func (d *Distributer) numSlotsForPath(p model.Id) int {
 	weight := d.weights[p]
 	totalWeight := d.totalWeights()
 	return weight * 256 / totalWeight
@@ -104,8 +104,8 @@ func (d *Distributer) totalWeights() int {
 	return total
 }
 
-func (d *Distributer) sortedIds() nodes.Slice {
-	ids := make(nodes.Slice, 0)
+func (d *Distributer) sortedIds() Slice {
+	ids := make(Slice, 0)
 	for k := range d.weights {
 		ids = append(ids, k)
 	}
@@ -123,3 +123,9 @@ func (k key) next() (bool, key) {
 	}
 	return true, key{k.value + 1}
 }
+
+type Slice []model.Id
+
+func (p Slice) Len() int           { return len(p) }
+func (p Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

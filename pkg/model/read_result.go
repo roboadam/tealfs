@@ -12,43 +12,57 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package model
 
 import (
 	"bytes"
-	"tealfs/pkg/nodes"
-	"tealfs/pkg/store"
 )
 
-type WriteRequest struct {
-	Caller nodes.Id
-	Block  store.Block
+type ReadResult struct {
+	Ok      bool
+	Message string
+	Caller  Id
+	Block   Block
 }
 
-func (r *WriteRequest) Equal(p Payload) bool {
-	if o, ok := p.(*WriteRequest); ok {
+func (r *ReadResult) Equal(p Payload) bool {
+
+	if o, ok := p.(*ReadResult); ok {
+		if r.Ok != o.Ok {
+			return false
+		}
+		if r.Message != o.Message {
+			return false
+		}
 		if r.Caller != o.Caller {
 			return false
 		}
-		if r.Block.Equal(&o.Block) {
+		if !r.Block.Equal(&o.Block) {
 			return false
 		}
+
 		return true
 	}
 	return false
 }
 
-func (r *WriteRequest) ToBytes() []byte {
+func (r *ReadResult) ToBytes() []byte {
+	ok := BoolToBytes(r.Ok)
+	message := StringToBytes(r.Message)
 	caller := StringToBytes(string(r.Caller))
 	block := BlockToBytes(r.Block)
-	return bytes.Join([][]byte{caller, block}, []byte{})
+	return bytes.Join([][]byte{ok, message, caller, block}, []byte{})
 }
 
-func ToWriteRequest(data []byte) *WriteRequest {
-	caller, remainder := StringFromBytes(data)
+func ToReadResult(data []byte) *ReadResult {
+	ok, remainder := BoolFromBytes(data)
+	message, remainder := StringFromBytes(remainder)
+	caller, remainder := StringFromBytes(remainder)
 	block, _ := BlockFromBytes(remainder)
-	return &WriteRequest{
-		Caller: nodes.Id(caller),
-		Block:  block,
+	return &ReadResult{
+		Ok:      ok,
+		Message: message,
+		Caller:  Id(caller),
+		Block:   block,
 	}
 }

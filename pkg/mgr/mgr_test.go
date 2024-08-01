@@ -17,8 +17,6 @@ package mgr
 import (
 	"tealfs/pkg/hash"
 	"tealfs/pkg/model"
-	"tealfs/pkg/nodes"
-	"tealfs/pkg/proto"
 	"tealfs/pkg/store"
 	"testing"
 )
@@ -43,10 +41,10 @@ func TestConnectToMgr(t *testing.T) {
 func TestConnectToSuccess(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	var expectedNodeId1 = nodes.NewNodeId()
+	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	var expectedNodeId2 = nodes.NewNodeId()
+	var expectedNodeId2 = model.NewNodeId()
 
 	mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
@@ -57,25 +55,25 @@ func TestConnectToSuccess(t *testing.T) {
 func TestReceiveSyncNodes(t *testing.T) {
 	const sharedAddress = "some-address:123"
 	const sharedConnectionId = 1
-	var sharedNodeId = nodes.NewNodeId()
+	var sharedNodeId = model.NewNodeId()
 	const localAddress = "some-address2:234"
 	const localConnectionId = 2
-	var localNodeId = nodes.NewNodeId()
+	var localNodeId = model.NewNodeId()
 	const remoteAddress = "some-address3:345"
-	var remoteNodeId = nodes.NewNodeId()
+	var remoteNodeId = model.NewNodeId()
 
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId},
 		{address: localAddress, conn: localConnectionId, node: localNodeId},
 	}, t)
 
-	sn := proto.NewSyncNodes()
+	sn := model.NewSyncNodes()
 	sn.Nodes.Add(struct {
-		Node    nodes.Id
+		Node    model.Id
 		Address string
 	}{Node: sharedNodeId, Address: sharedAddress})
 	sn.Nodes.Add(struct {
-		Node    nodes.Id
+		Node    model.Id
 		Address string
 	}{Node: remoteNodeId, Address: remoteAddress})
 	m.ConnsMgrReceives <- model.ConnsMgrReceive{
@@ -92,10 +90,10 @@ func TestReceiveSyncNodes(t *testing.T) {
 func TestReceiveSaveData(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	var expectedNodeId1 = nodes.NewNodeId()
+	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	var expectedNodeId2 = nodes.NewNodeId()
+	var expectedNodeId2 = model.NewNodeId()
 
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
@@ -116,7 +114,7 @@ func TestReceiveSaveData(t *testing.T) {
 	for _, id := range ids {
 		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId: expectedConnectionId1,
-			Payload: &proto.SaveData{
+			Payload: &model.SaveData{
 				Block: store.Block{
 					Id:   store.Id(id),
 					Data: value,
@@ -150,10 +148,10 @@ func TestReceiveSaveData(t *testing.T) {
 func TestReceiveDiskRead(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	var expectedNodeId1 = nodes.NewNodeId()
+	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	var expectedNodeId2 = nodes.NewNodeId()
+	var expectedNodeId2 = model.NewNodeId()
 
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
@@ -164,7 +162,7 @@ func TestReceiveDiskRead(t *testing.T) {
 	data1 := []byte{0x00, 0x01, 0x02}
 	hash1 := hash.ForData(data1)
 
-	rr := proto.ReadResult{
+	rr := model.ReadResult{
 		Ok:      true,
 		Message: "",
 		Caller:  m.nodeId,
@@ -183,7 +181,7 @@ func TestReceiveDiskRead(t *testing.T) {
 		t.Errorf("rr didn't equal toWebdav")
 	}
 
-	rr2 := proto.ReadResult{
+	rr2 := model.ReadResult{
 		Ok:      true,
 		Message: "",
 		Caller:  expectedNodeId1,
@@ -210,10 +208,10 @@ func TestReceiveDiskRead(t *testing.T) {
 func TestWebdavGet(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	var expectedNodeId1 = nodes.NewNodeId()
+	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	var expectedNodeId2 = nodes.NewNodeId()
+	var expectedNodeId2 = model.NewNodeId()
 
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
@@ -230,7 +228,7 @@ func TestWebdavGet(t *testing.T) {
 	twoCount := 0
 
 	for _, id := range ids {
-		m.WebdavMgrGets <- proto.ReadRequest{
+		m.WebdavMgrGets <- model.ReadRequest{
 			Caller:  m.nodeId,
 			BlockId: id,
 		}
@@ -259,10 +257,10 @@ func TestWebdavGet(t *testing.T) {
 func TestWebdavPut(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	var expectedNodeId1 = nodes.NewNodeId()
+	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	var expectedNodeId2 = nodes.NewNodeId()
+	var expectedNodeId2 = model.NewNodeId()
 
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
@@ -312,7 +310,7 @@ func TestWebdavPut(t *testing.T) {
 type connectedNode struct {
 	address string
 	conn    model.ConnId
-	node    nodes.Id
+	node    model.Id
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
@@ -335,7 +333,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 		expectedIam := <-m.MgrConnsSends
 		payload := expectedIam.Payload
 		switch p := payload.(type) {
-		case *proto.IAm:
+		case *model.IAm:
 			if p.NodeId != m.nodeId {
 				t.Error("Unexpected nodeId")
 			}
@@ -348,7 +346,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 
 		// Send a message to Mgr indicating the newly
 		// connected node has sent us an Iam payload
-		iamPayload := proto.IAm{
+		iamPayload := model.IAm{
 			NodeId: n.node,
 		}
 		m.ConnsMgrReceives <- model.ConnsMgrReceive{
@@ -378,10 +376,10 @@ func assertAllPayloadsSyncNodes(t *testing.T, mcs []model.MgrConnsSend) []connId
 	var results []connIdAndSyncNodes
 	for _, mc := range mcs {
 		switch p := mc.Payload.(type) {
-		case *proto.SyncNodes:
+		case *model.SyncNodes:
 			results = append(results, struct {
 				ConnId  model.ConnId
-				Payload proto.SyncNodes
+				Payload model.SyncNodes
 			}{ConnId: mc.ConnId, Payload: *p})
 		default:
 			t.Error("Unexpected payload", p)
@@ -392,7 +390,7 @@ func assertAllPayloadsSyncNodes(t *testing.T, mcs []model.MgrConnsSend) []connId
 
 type connIdAndSyncNodes struct {
 	ConnId  model.ConnId
-	Payload proto.SyncNodes
+	Payload model.SyncNodes
 }
 
 func cIdSnSliceEquals(a, b []connIdAndSyncNodes) bool {
@@ -423,10 +421,10 @@ func cIdSnEquals(a, b connIdAndSyncNodes) bool {
 func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {
 	var results []connIdAndSyncNodes
 
-	sn := proto.NewSyncNodes()
+	sn := model.NewSyncNodes()
 	for _, node := range cluster {
 		sn.Nodes.Add(struct {
-			Node    nodes.Id
+			Node    model.Id
 			Address string
 		}{Node: node.node, Address: node.address})
 	}
@@ -434,7 +432,7 @@ func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {
 	for _, node := range cluster {
 		results = append(results, struct {
 			ConnId  model.ConnId
-			Payload proto.SyncNodes
+			Payload model.SyncNodes
 		}{ConnId: node.conn, Payload: sn})
 	}
 	return results

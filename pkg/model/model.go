@@ -16,7 +16,8 @@ package model
 
 import (
 	"hash"
-	"tealfs/pkg/proto"
+
+	"github.com/google/uuid"
 )
 
 type ConnsMgrStatus struct {
@@ -40,7 +41,7 @@ type MgrConnsConnectTo struct {
 
 type MgrConnsSend struct {
 	ConnId  ConnId
-	Payload proto.Payload
+	Payload Payload
 }
 
 func (m *MgrConnsSend) Equal(o *MgrConnsSend) bool {
@@ -53,7 +54,7 @@ func (m *MgrConnsSend) Equal(o *MgrConnsSend) bool {
 
 type ConnsMgrReceive struct {
 	ConnId  ConnId
-	Payload proto.Payload
+	Payload Payload
 }
 
 type MgrDiskSave struct {
@@ -63,4 +64,11 @@ type MgrDiskSave struct {
 
 type UiMgrConnectTo struct {
 	Address string
+}
+
+type Id string
+
+func NewNodeId() Id {
+	idValue := uuid.New()
+	return Id(idValue.String())
 }

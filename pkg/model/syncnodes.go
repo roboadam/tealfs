@@ -12,16 +12,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package model
 
 import (
-	"tealfs/pkg/nodes"
 	"tealfs/pkg/set"
 )
 
 type SyncNodes struct {
 	Nodes set.Set[struct {
-		Node    nodes.Id
+		Node    Id
 		Address string
 	}]
 }
@@ -29,7 +28,7 @@ type SyncNodes struct {
 func NewSyncNodes() SyncNodes {
 	return SyncNodes{
 		Nodes: set.NewSet[struct {
-			Node    nodes.Id
+			Node    Id
 			Address string
 		}](),
 	}
@@ -51,19 +50,19 @@ func (s *SyncNodes) ToBytes() []byte {
 	return AddType(SyncType, result)
 }
 
-func nodeToBytes(node nodes.Id) []byte {
+func nodeToBytes(node Id) []byte {
 	return StringToBytes(string(node))
 }
 
-func (s *SyncNodes) GetNodes() set.Set[nodes.Id] {
-	result := set.NewSet[nodes.Id]()
+func (s *SyncNodes) GetNodes() set.Set[Id] {
+	result := set.NewSet[Id]()
 	for _, n := range s.Nodes.GetValues() {
 		result.Add(n.Node)
 	}
 	return result
 }
 
-func (s *SyncNodes) AddressForNode(id nodes.Id) string {
+func (s *SyncNodes) AddressForNode(id Id) string {
 	for _, val := range s.Nodes.GetValues() {
 		if val.Node == id {
 			return val.Address
@@ -75,16 +74,16 @@ func (s *SyncNodes) AddressForNode(id nodes.Id) string {
 func ToSyncNodes(data []byte) *SyncNodes {
 	remainder := data
 	result := set.NewSet[struct {
-		Node    nodes.Id
+		Node    Id
 		Address string
 	}]()
 	for {
-		var n nodes.Id
+		var n Id
 		var address string
 		n, remainder = toNode(remainder)
 		address, remainder = StringFromBytes(remainder)
 		result.Add(struct {
-			Node    nodes.Id
+			Node    Id
 			Address string
 		}{Node: n, Address: address})
 		if len(remainder) <= 0 {
@@ -93,9 +92,9 @@ func ToSyncNodes(data []byte) *SyncNodes {
 	}
 }
 
-func toNode(data []byte) (nodes.Id, []byte) {
+func toNode(data []byte) (Id, []byte) {
 	var id string
 	remainder := data
 	id, remainder = StringFromBytes(remainder)
-	return nodes.Id(id), remainder
+	return Id(id), remainder
 }

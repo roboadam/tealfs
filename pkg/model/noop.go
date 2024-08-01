@@ -12,31 +12,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package model
 
-import (
-	"tealfs/pkg/nodes"
-)
+type NoOp struct{}
 
-type IAm struct {
-	NodeId nodes.Id
+func (h *NoOp) ToBytes() []byte {
+	result := make([]byte, 1)
+	result[0] = NoOpType
+	return result
 }
 
-func (h *IAm) ToBytes() []byte {
-	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(IAmType, nodeId)
-}
-
-func (h *IAm) Equal(p Payload) bool {
-	if h2, ok := p.(*IAm); ok {
-		return h2.NodeId == h.NodeId
+func (h *NoOp) Equal(p Payload) bool {
+	if _, ok := p.(*NoOp); ok {
+		return true
 	}
 	return false
 }
 
-func ToHello(data []byte) *IAm {
-	rawId, _ := StringFromBytes(data)
-	return &IAm{
-		NodeId: nodes.Id(rawId),
-	}
+func ToNoOp(_ []byte) *NoOp {
+	return &NoOp{}
 }

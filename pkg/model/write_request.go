@@ -12,38 +12,42 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package model
 
 import (
 	"bytes"
-	"tealfs/pkg/nodes"
 	"tealfs/pkg/store"
 )
 
-type ReadRequest struct {
-	Caller  nodes.Id
-	BlockId store.Id
+type WriteRequest struct {
+	Caller Id
+	Block  store.Block
 }
 
-func (r *ReadRequest) ToBytes() []byte {
-	callerId := StringToBytes(string(r.Caller))
-	blockId := StringToBytes(string(r.BlockId))
-	return AddType(ReadDataType, bytes.Join([][]byte{callerId, blockId}, []byte{}))
-}
-
-func (r *ReadRequest) Equal(p Payload) bool {
-	if o, ok := p.(*ReadRequest); ok {
-		return r.Caller == o.Caller && r.BlockId == o.BlockId
+func (r *WriteRequest) Equal(p Payload) bool {
+	if o, ok := p.(*WriteRequest); ok {
+		if r.Caller != o.Caller {
+			return false
+		}
+		if r.Block.Equal(&o.Block) {
+			return false
+		}
+		return true
 	}
 	return false
 }
 
-func ToReadRequest(data []byte) *ReadRequest {
-	callerId, remainder := StringFromBytes(data)
-	blockId, _ := StringFromBytes(remainder)
-	rq := ReadRequest{
-		Caller:  nodes.Id(callerId),
-		BlockId: store.Id(blockId),
+func (r *WriteRequest) ToBytes() []byte {
+	caller := StringToBytes(string(r.Caller))
+	block := BlockToBytes(r.Block)
+	return bytes.Join([][]byte{caller, block}, []byte{})
+}
+
+func ToWriteRequest(data []byte) *WriteRequest {
+	caller, remainder := StringFromBytes(data)
+	block, _ := BlockFromBytes(remainder)
+	return &WriteRequest{
+		Caller: Id(caller),
+		Block:  block,
 	}
-	return &rq
 }

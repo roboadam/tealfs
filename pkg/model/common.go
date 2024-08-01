@@ -12,13 +12,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package model
 
 import (
-	"bytes"
 	"encoding/binary"
-	hash2 "tealfs/pkg/hash"
-	"tealfs/pkg/store"
 )
 
 func StringFromBytes(data []byte) (string, []byte) {
@@ -69,27 +66,6 @@ func BoolToBytes(value bool) []byte {
 
 func BoolFromBytes(value []byte) (bool, []byte) {
 	return value[0] == 1, value[1:]
-}
-
-func BlockToBytes(value store.Block) []byte {
-	id := StringToBytes(string(value.Id))
-	data := BytesToBytes(value.Data)
-	hash := BytesToBytes(value.Hash.Value)
-	result := bytes.Join([][]byte{id, data, hash}, []byte{})
-
-	return result
-}
-
-func BlockFromBytes(value []byte) (store.Block, []byte) {
-	id, remainder := StringFromBytes(value)
-	data, remainder := BytesFromBytes(remainder)
-	hash, remainder := BytesFromBytes(remainder)
-
-	return store.Block{
-		Id:   store.Id(id),
-		Data: data,
-		Hash: hash2.FromRaw(hash),
-	}, remainder
 }
 
 func AddType(id uint8, data []byte) []byte {

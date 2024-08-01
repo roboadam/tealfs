@@ -12,38 +12,41 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package store
+package model
 
 import (
 	"bytes"
-	"tealfs/pkg/hash"
-
-	"github.com/google/uuid"
 )
 
-type Id string
-
-func NewId() Id {
-	idValue := uuid.New()
-	return Id(idValue.String())
+type WriteResult struct {
+	Ok      bool
+	Message string
 }
 
-type Block struct {
-	Id   Id
-	Data []byte
-	Hash hash.Hash
+func (r *WriteResult) Equal(p Payload) bool {
+	if o, ok := p.(*WriteResult); ok {
+		if r.Ok != o.Ok {
+			return false
+		}
+		if r.Message != o.Message {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
-func (r *Block) Equal(o *Block) bool {
-	if r.Id != o.Id {
-		return false
-	}
-	if !bytes.Equal(r.Data, o.Data) {
-		return false
-	}
-	if !bytes.Equal(r.Hash.Value, o.Hash.Value) {
-		return false
-	}
+func (r *WriteResult) ToBytes() []byte {
+	ok := BoolToBytes(r.Ok)
+	message := StringToBytes(r.Message)
+	return bytes.Join([][]byte{ok, message}, []byte{})
+}
 
-	return true
+func ToWriteResult(data []byte) *WriteResult {
+	ok, remainder := BoolFromBytes(data)
+	message, _ := StringFromBytes(remainder)
+	return &WriteResult{
+		Ok:      ok,
+		Message: message,
+	}
 }

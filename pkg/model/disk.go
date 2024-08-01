@@ -12,23 +12,38 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package model
 
-type NoOp struct{}
+import (
+	"bytes"
+	"tealfs/pkg/hash"
 
-func (h *NoOp) ToBytes() []byte {
-	result := make([]byte, 1)
-	result[0] = NoOpType
-	return result
+	"github.com/google/uuid"
+)
+
+type BlockId string
+
+func NewBlockId() BlockId {
+	idValue := uuid.New()
+	return BlockId(idValue.String())
 }
 
-func (h *NoOp) Equal(p Payload) bool {
-	if _, ok := p.(*NoOp); ok {
-		return true
+type Block struct {
+	Id   BlockId
+	Data []byte
+	Hash hash.Hash
+}
+
+func (r *Block) Equal(o *Block) bool {
+	if r.Id != o.Id {
+		return false
 	}
-	return false
-}
+	if !bytes.Equal(r.Data, o.Data) {
+		return false
+	}
+	if !bytes.Equal(r.Hash.Value, o.Hash.Value) {
+		return false
+	}
 
-func ToNoOp(_ []byte) *NoOp {
-	return &NoOp{}
+	return true
 }

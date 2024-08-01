@@ -16,8 +16,6 @@ package mgr
 
 import (
 	"tealfs/pkg/model"
-	"tealfs/pkg/nodes"
-	"tealfs/pkg/proto"
 	"tealfs/pkg/set"
 	"tealfs/pkg/store"
 	"tealfs/pkg/store/dist"
@@ -27,20 +25,20 @@ type Mgr struct {
 	UiMgrConnectTos    chan model.UiMgrConnectTo
 	ConnsMgrStatuses   chan model.ConnsMgrStatus
 	ConnsMgrReceives   chan model.ConnsMgrReceive
-	DiskMgrReads       chan proto.ReadResult
-	DiskMgrWrites      chan proto.WriteResult
-	WebdavMgrGets      chan proto.ReadRequest
+	DiskMgrReads       chan model.ReadResult
+	DiskMgrWrites      chan model.WriteResult
+	WebdavMgrGets      chan model.ReadRequest
 	WebdavMgrPuts      chan store.Block
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan store.Block
-	MgrDiskReads       chan proto.ReadRequest
-	MgrWebdavGets      chan proto.ReadResult
-	MgrWebdavPuts      chan proto.WriteResult
+	MgrDiskReads       chan model.ReadRequest
+	MgrWebdavGets      chan model.ReadResult
+	MgrWebdavPuts      chan model.WriteResult
 
-	nodes       set.Set[nodes.Id]
-	nodeConnMap set.Bimap[nodes.Id, model.ConnId]
-	nodeId      nodes.Id
+	nodes       set.Set[model.Id]
+	nodeConnMap set.Bimap[model.Id, model.ConnId]
+	nodeId      model.Id
 	connAddress map[model.ConnId]string
 	distributer dist.Distributer
 }
@@ -50,19 +48,19 @@ func NewWithChanSize(chanSize int) Mgr {
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.ConnsMgrStatus, chanSize),
 		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
-		DiskMgrReads:       make(chan proto.ReadResult, chanSize),
-		WebdavMgrGets:      make(chan proto.ReadRequest, chanSize),
+		DiskMgrReads:       make(chan model.ReadResult, chanSize),
+		WebdavMgrGets:      make(chan model.ReadRequest, chanSize),
 		WebdavMgrPuts:      make(chan store.Block, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan store.Block, chanSize),
-		MgrDiskReads:       make(chan proto.ReadRequest, chanSize),
-		MgrWebdavGets:      make(chan proto.ReadResult, chanSize),
-		MgrWebdavPuts:      make(chan proto.WriteResult, chanSize),
-		nodes:              set.NewSet[nodes.Id](),
-		nodeId:             nodes.NewNodeId(),
+		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
+		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
+		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
+		nodes:              set.NewSet[model.Id](),
+		nodeId:             model.NewNodeId(),
 		connAddress:        make(map[model.ConnId]string),
-		nodeConnMap:        set.NewBimap[nodes.Id, model.ConnId](),
+		nodeConnMap:        set.NewBimap[model.Id, model.ConnId](),
 		distributer:        dist.New(),
 	}
 	mgr.distributer.SetWeight(mgr.nodeId, 1)
@@ -97,14 +95,14 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 	m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: string(i.Address)}
 }
 
-func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
-	result := proto.NewSyncNodes()
+func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
+	result := model.NewSyncNodes()
 	for _, node := range m.nodes.GetValues() {
 		connId, success := m.nodeConnMap.Get1(node)
 		if success {
 			if address, ok := m.connAddress[connId]; ok {
 				result.Nodes.Add(struct {
-					Node    nodes.Id
+					Node    model.Id
 					Address string
 				}{Node: node, Address: address})
 			}
@@ -115,7 +113,7 @@ func (m *Mgr) syncNodesPayloadToSend() proto.SyncNodes {
 
 func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
-	case *proto.IAm:
+	case *model.IAm:
 		m.addNodeToCluster(p.NodeId, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
 		for _, n := range m.nodes.GetValues() {
@@ -127,7 +125,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 				}
 			}
 		}
-	case *proto.SyncNodes:
+	case *model.SyncNodes:
 		remoteNodes := p.GetNodes()
 		localNodes := m.nodes.Clone()
 		localNodes.Add(m.nodeId)
@@ -136,7 +134,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			address := p.AddressForNode(n)
 			m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: address}
 		}
-	case *proto.SaveData:
+	case *model.SaveData:
 		n := m.distributer.NodeIdForStoreId(p.Block.Id)
 		if m.nodeId == n {
 			m.MgrDiskWrites <- p.Block
@@ -151,7 +149,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	}
 }
 
-func (m *Mgr) handleDiskReads(r proto.ReadResult) {
+func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	if r.Caller == m.nodeId {
 		m.MgrWebdavGets <- r
 	} else {
@@ -165,7 +163,7 @@ func (m *Mgr) handleDiskReads(r proto.ReadResult) {
 	}
 }
 
-func (m *Mgr) addNodeToCluster(n nodes.Id, c model.ConnId) {
+func (m *Mgr) addNodeToCluster(n model.Id, c model.ConnId) {
 	m.nodes.Add(n)
 	m.nodeConnMap.Add(n, c)
 	m.distributer.SetWeight(n, 1)
@@ -177,7 +175,7 @@ func (m *Mgr) handleConnectedStatus(cs model.ConnsMgrStatus) {
 		m.connAddress[cs.Id] = cs.RemoteAddress
 		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId:  cs.Id,
-			Payload: &proto.IAm{NodeId: m.nodeId},
+			Payload: &model.IAm{NodeId: m.nodeId},
 		}
 	case model.NotConnected:
 		// Todo: reflect this in the ui
@@ -185,7 +183,7 @@ func (m *Mgr) handleConnectedStatus(cs model.ConnsMgrStatus) {
 	}
 }
 
-func (m *Mgr) handleWebdavGets(rr proto.ReadRequest) {
+func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 	n := m.distributer.NodeIdForStoreId(rr.BlockId)
 	if m.nodeId == n {
 		m.MgrDiskReads <- rr
@@ -197,7 +195,7 @@ func (m *Mgr) handleWebdavGets(rr proto.ReadRequest) {
 				Payload: &rr,
 			}
 		} else {
-			m.MgrWebdavGets <- proto.ReadResult{
+			m.MgrWebdavGets <- model.ReadResult{
 				Ok:      false,
 				Message: "Not connected",
 				Block:   store.Block{Id: rr.BlockId},
@@ -216,7 +214,7 @@ func (m *Mgr) handlePuts(w store.Block) {
 		if ok {
 			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId: c,
-				Payload: &proto.WriteRequest{
+				Payload: &model.WriteRequest{
 					Caller: m.nodeId,
 					Block:  w,
 				},

@@ -16,24 +16,23 @@ package mgr
 
 import (
 	"tealfs/pkg/model"
-	"tealfs/pkg/nodes"
 )
 
 type NodeConnMap struct {
-	nodeToConn map[nodes.Id]model.ConnId
-	connToNode map[model.ConnId]nodes.Id
+	nodeToConn map[model.Id]model.ConnId
+	connToNode map[model.ConnId]model.Id
 }
 
-func (n *NodeConnMap) Add(node nodes.Id, conn model.ConnId) {
+func (n *NodeConnMap) Add(node model.Id, conn model.ConnId) {
 	n.nodeToConn[node] = conn
 	n.connToNode[conn] = node
 }
 
-func (n *NodeConnMap) Node(conn model.ConnId) (nodes.Id, bool) {
+func (n *NodeConnMap) Node(conn model.ConnId) (model.Id, bool) {
 	result, ok := n.connToNode[conn]
 	return result, ok
 }
-func (n *NodeConnMap) Conn(node nodes.Id) (model.ConnId, bool) {
+func (n *NodeConnMap) Conn(node model.Id) (model.ConnId, bool) {
 	result, ok := n.nodeToConn[node]
 	return result, ok
 }

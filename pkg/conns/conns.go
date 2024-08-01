@@ -17,7 +17,6 @@ package conns
 import (
 	"net"
 	"tealfs/pkg/model"
-	"tealfs/pkg/proto"
 	"tealfs/pkg/tnet"
 )
 
@@ -115,7 +114,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		if err != nil {
 			return
 		}
-		payload := proto.ToPayload(bytes)
+		payload := model.ToPayload(bytes)
 		c.outReceives <- model.ConnsMgrReceive{
 			ConnId:  conn,
 			Payload: payload,

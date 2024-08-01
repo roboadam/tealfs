@@ -12,41 +12,36 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package proto
+package model
 
 import (
 	"bytes"
 )
 
-type WriteResult struct {
-	Ok      bool
-	Message string
+type ReadRequest struct {
+	Caller  Id
+	BlockId BlockId
 }
 
-func (r *WriteResult) Equal(p Payload) bool {
-	if o, ok := p.(*WriteResult); ok {
-		if r.Ok != o.Ok {
-			return false
-		}
-		if r.Message != o.Message {
-			return false
-		}
-		return true
+func (r *ReadRequest) ToBytes() []byte {
+	callerId := StringToBytes(string(r.Caller))
+	blockId := StringToBytes(string(r.BlockId))
+	return AddType(ReadDataType, bytes.Join([][]byte{callerId, blockId}, []byte{}))
+}
+
+func (r *ReadRequest) Equal(p Payload) bool {
+	if o, ok := p.(*ReadRequest); ok {
+		return r.Caller == o.Caller && r.BlockId == o.BlockId
 	}
 	return false
 }
 
-func (r *WriteResult) ToBytes() []byte {
-	ok := BoolToBytes(r.Ok)
-	message := StringToBytes(r.Message)
-	return bytes.Join([][]byte{ok, message}, []byte{})
-}
-
-func ToWriteResult(data []byte) *WriteResult {
-	ok, remainder := BoolFromBytes(data)
-	message, _ := StringFromBytes(remainder)
-	return &WriteResult{
-		Ok:      ok,
-		Message: message,
+func ToReadRequest(data []byte) *ReadRequest {
+	callerId, remainder := StringFromBytes(data)
+	blockId, _ := StringFromBytes(remainder)
+	rq := ReadRequest{
+		Caller:  Id(callerId),
+		BlockId: BlockId(blockId),
 	}
+	return &rq
 }

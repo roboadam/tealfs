@@ -19,7 +19,6 @@ import (
 	"encoding/binary"
 	"tealfs/pkg/hash"
 	"tealfs/pkg/model"
-	"tealfs/pkg/proto"
 	"tealfs/pkg/store"
 	"testing"
 )
@@ -47,7 +46,7 @@ func TestSendData(t *testing.T) {
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{
 		ConnId: status.Id,
-		Payload: &proto.SaveData{
+		Payload: &model.SaveData{
 			Block: store.Block{
 				Id:   "blockId",
 				Data: []byte{1, 2, 3},
@@ -78,7 +77,7 @@ func dataMatched(expected []byte, incoming chan []byte) bool {
 func TestGetData(t *testing.T) {
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest()
 	status := connectTo("address:123", outStatus, inConnectTo)
-	payload := &proto.IAm{
+	payload := &model.IAm{
 		NodeId: "nodeId",
 	}
 	dataReceived := payload.ToBytes()
