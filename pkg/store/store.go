@@ -123,25 +123,3 @@ func New(path Path, id model.Id) Store {
 func (p *Path) String() string {
 	return p.raw
 }
-
-func BlockToBytes(value Block) []byte {
-	id := StringToBytes(string(value.Id))
-	data := BytesToBytes(value.Data)
-	hash := BytesToBytes(value.Hash.Value)
-	result := bytes.Join([][]byte{id, data, hash}, []byte{})
-
-	return result
-}
-
-func BlockFromBytes(value []byte) (Block, []byte) {
-	id, remainder := StringFromBytes(value)
-	data, remainder := BytesFromBytes(remainder)
-	hash, remainder := BytesFromBytes(remainder)
-
-	return Block{
-		Id:   Id(id),
-		Data: data,
-		Hash: hash2.FromRaw(hash),
-	}, remainder
-}
-

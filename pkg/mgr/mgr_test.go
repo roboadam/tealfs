@@ -17,7 +17,6 @@ package mgr
 import (
 	"tealfs/pkg/hash"
 	"tealfs/pkg/model"
-	"tealfs/pkg/store"
 	"testing"
 )
 
@@ -100,9 +99,9 @@ func TestReceiveSaveData(t *testing.T) {
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
 	}, t)
 
-	ids := []store.Id{}
+	ids := []model.BlockId{}
 	for range 100 {
-		ids = append(ids, store.NewId())
+		ids = append(ids, model.NewBlockId())
 	}
 
 	value := []byte("123")
@@ -115,8 +114,8 @@ func TestReceiveSaveData(t *testing.T) {
 		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId: expectedConnectionId1,
 			Payload: &model.SaveData{
-				Block: store.Block{
-					Id:   store.Id(id),
+				Block: model.Block{
+					Id:   id,
 					Data: value,
 					Hash: hash.ForData(value),
 				},
@@ -158,7 +157,7 @@ func TestReceiveDiskRead(t *testing.T) {
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
 	}, t)
 
-	storeId1 := store.NewId()
+	storeId1 := model.NewBlockId()
 	data1 := []byte{0x00, 0x01, 0x02}
 	hash1 := hash.ForData(data1)
 
@@ -166,7 +165,7 @@ func TestReceiveDiskRead(t *testing.T) {
 		Ok:      true,
 		Message: "",
 		Caller:  m.nodeId,
-		Block: store.Block{
+		Block: model.Block{
 			Id:   storeId1,
 			Data: data1,
 			Hash: hash1,
@@ -185,7 +184,7 @@ func TestReceiveDiskRead(t *testing.T) {
 		Ok:      true,
 		Message: "",
 		Caller:  expectedNodeId1,
-		Block: store.Block{
+		Block: model.Block{
 			Id:   storeId1,
 			Data: data1,
 			Hash: hash1,
@@ -218,9 +217,9 @@ func TestWebdavGet(t *testing.T) {
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
 	}, t)
 
-	ids := []store.Id{}
+	ids := []model.BlockId{}
 	for range 100 {
-		ids = append(ids, store.NewId())
+		ids = append(ids, model.NewBlockId())
 	}
 
 	meCount := 0
@@ -267,12 +266,12 @@ func TestWebdavPut(t *testing.T) {
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
 	}, t)
 
-	blocks := []store.Block{}
+	blocks := []model.Block{}
 	for i := range 100 {
 		data := []byte{byte(i)}
 		hash := hash.ForData(data)
-		block := store.Block{
-			Id:   store.NewId(),
+		block := model.Block{
+			Id:   model.NewBlockId(),
 			Data: data,
 			Hash: hash,
 		}

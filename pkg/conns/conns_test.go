@@ -19,7 +19,6 @@ import (
 	"encoding/binary"
 	"tealfs/pkg/hash"
 	"tealfs/pkg/model"
-	"tealfs/pkg/store"
 	"testing"
 )
 
@@ -47,7 +46,7 @@ func TestSendData(t *testing.T) {
 	inSend <- model.MgrConnsSend{
 		ConnId: status.Id,
 		Payload: &model.SaveData{
-			Block: store.Block{
+			Block: model.Block{
 				Id:   "blockId",
 				Data: []byte{1, 2, 3},
 				Hash: hash.ForData([]byte{1, 2, 3}),

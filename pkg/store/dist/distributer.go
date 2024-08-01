@@ -19,7 +19,6 @@ import (
 	"hash/crc32"
 	"sort"
 	"tealfs/pkg/model"
-	"tealfs/pkg/store"
 )
 
 type Distributer struct {
@@ -36,7 +35,7 @@ func New() Distributer {
 	}
 }
 
-func (d *Distributer) NodeIdForStoreId(id store.Id) model.Id {
+func (d *Distributer) NodeIdForStoreId(id model.BlockId) model.Id {
 	idb := []byte(id)
 	sum := d.Checksum(idb)
 	k := key{value: sum[0]}

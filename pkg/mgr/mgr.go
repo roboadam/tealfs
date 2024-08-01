@@ -17,7 +17,6 @@ package mgr
 import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
-	"tealfs/pkg/store"
 	"tealfs/pkg/store/dist"
 )
 
@@ -28,10 +27,10 @@ type Mgr struct {
 	DiskMgrReads       chan model.ReadResult
 	DiskMgrWrites      chan model.WriteResult
 	WebdavMgrGets      chan model.ReadRequest
-	WebdavMgrPuts      chan store.Block
+	WebdavMgrPuts      chan model.Block
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
-	MgrDiskWrites      chan store.Block
+	MgrDiskWrites      chan model.Block
 	MgrDiskReads       chan model.ReadRequest
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
@@ -50,10 +49,10 @@ func NewWithChanSize(chanSize int) Mgr {
 		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:      make(chan model.ReadRequest, chanSize),
-		WebdavMgrPuts:      make(chan store.Block, chanSize),
+		WebdavMgrPuts:      make(chan model.Block, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
-		MgrDiskWrites:      make(chan store.Block, chanSize),
+		MgrDiskWrites:      make(chan model.Block, chanSize),
 		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
@@ -198,14 +197,14 @@ func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 			m.MgrWebdavGets <- model.ReadResult{
 				Ok:      false,
 				Message: "Not connected",
-				Block:   store.Block{Id: rr.BlockId},
+				Block:   model.Block{Id: rr.BlockId},
 				Caller:  rr.Caller,
 			}
 		}
 	}
 }
 
-func (m *Mgr) handlePuts(w store.Block) {
+func (m *Mgr) handlePuts(w model.Block) {
 	n := m.distributer.NodeIdForStoreId(w.Id)
 	if n == m.nodeId {
 		m.MgrDiskWrites <- w

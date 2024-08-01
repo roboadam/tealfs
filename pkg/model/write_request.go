@@ -16,12 +16,11 @@ package model
 
 import (
 	"bytes"
-	"tealfs/pkg/store"
 )
 
 type WriteRequest struct {
 	Caller Id
-	Block  store.Block
+	Block  Block
 }
 
 func (r *WriteRequest) Equal(p Payload) bool {

@@ -15,7 +15,9 @@
 package model
 
 import (
+	"bytes"
 	"encoding/binary"
+	"tealfs/pkg/hash"
 )
 
 func StringFromBytes(data []byte) (string, []byte) {
@@ -73,4 +75,25 @@ func AddType(id uint8, data []byte) []byte {
 	buf[0] = id
 	copy(buf[1:], data)
 	return buf
+}
+
+func BlockToBytes(value Block) []byte {
+	id := StringToBytes(string(value.Id))
+	data := BytesToBytes(value.Data)
+	hash := BytesToBytes(value.Hash.Value)
+	result := bytes.Join([][]byte{id, data, hash}, []byte{})
+
+	return result
+}
+
+func BlockFromBytes(value []byte) (Block, []byte) {
+	id, remainder := StringFromBytes(value)
+	data, remainder := BytesFromBytes(remainder)
+	h, remainder := BytesFromBytes(remainder)
+
+	return Block{
+		Id:   BlockId(id),
+		Data: data,
+		Hash: hash.FromRaw(h),
+	}, remainder
 }
