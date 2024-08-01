@@ -86,13 +86,9 @@ func TestGetData(t *testing.T) {
 
 	result := <-cmr
 
-	if result.ConnId != status.Id {
+	if result.ConnId != status.Id || !result.Payload.Equal(payload) {
 		t.Error("We didn't pass the message")
 	}
-
-	// if !bytes.Equal(writtenData, expectedBytes) {
-	// 	t.Error("Wrong data written")
-	// }
 }
 
 func lenAsBytes(data []byte) []byte {
