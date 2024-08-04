@@ -66,9 +66,9 @@ type UiMgrConnectTo struct {
 	Address string
 }
 
-type Id string
+type NodeId string
 
-func NewNodeId() Id {
+func NewNodeId() NodeId {
 	idValue := uuid.New()
-	return Id(idValue.String())
+	return NodeId(idValue.String())
 }

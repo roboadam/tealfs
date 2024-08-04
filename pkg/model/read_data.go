@@ -19,7 +19,7 @@ import (
 )
 
 type ReadRequest struct {
-	Caller  Id
+	Caller  NodeId
 	BlockId BlockId
 }
 
@@ -40,7 +40,7 @@ func ToReadRequest(data []byte) *ReadRequest {
 	callerId, remainder := StringFromBytes(data)
 	blockId, _ := StringFromBytes(remainder)
 	rq := ReadRequest{
-		Caller:  Id(callerId),
+		Caller:  NodeId(callerId),
 		BlockId: BlockId(blockId),
 	}
 	return &rq

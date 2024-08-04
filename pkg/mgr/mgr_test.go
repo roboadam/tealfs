@@ -68,11 +68,11 @@ func TestReceiveSyncNodes(t *testing.T) {
 
 	sn := model.NewSyncNodes()
 	sn.Nodes.Add(struct {
-		Node    model.Id
+		Node    model.NodeId
 		Address string
 	}{Node: sharedNodeId, Address: sharedAddress})
 	sn.Nodes.Add(struct {
-		Node    model.Id
+		Node    model.NodeId
 		Address string
 	}{Node: remoteNodeId, Address: remoteAddress})
 	m.ConnsMgrReceives <- model.ConnsMgrReceive{
@@ -309,7 +309,7 @@ func TestWebdavPut(t *testing.T) {
 type connectedNode struct {
 	address string
 	conn    model.ConnId
-	node    model.Id
+	node    model.NodeId
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
@@ -423,7 +423,7 @@ func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {
 	sn := model.NewSyncNodes()
 	for _, node := range cluster {
 		sn.Nodes.Add(struct {
-			Node    model.Id
+			Node    model.NodeId
 			Address string
 		}{Node: node.node, Address: node.address})
 	}

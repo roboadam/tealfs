@@ -29,7 +29,7 @@ type Path struct {
 
 type Disk struct {
 	path  Path
-	id    model.Id
+	id    model.NodeId
 	saves chan struct {
 		hash h.Hash
 		data []byte
@@ -107,7 +107,7 @@ func NewPath(rawPath string) Path {
 	}
 }
 
-func New(path Path, id model.Id) Disk {
+func New(path Path, id model.NodeId) Disk {
 	p := Disk{
 		id:   id,
 		path: path,

@@ -19,7 +19,7 @@ import (
 )
 
 type WriteRequest struct {
-	Caller Id
+	Caller NodeId
 	Block  Block
 }
 
@@ -46,7 +46,7 @@ func ToWriteRequest(data []byte) *WriteRequest {
 	caller, remainder := StringFromBytes(data)
 	block, _ := BlockFromBytes(remainder)
 	return &WriteRequest{
-		Caller: Id(caller),
+		Caller: NodeId(caller),
 		Block:  block,
 	}
 }

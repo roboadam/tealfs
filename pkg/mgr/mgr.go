@@ -35,9 +35,9 @@ type Mgr struct {
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
 
-	nodes       set.Set[model.Id]
-	nodeConnMap set.Bimap[model.Id, model.ConnId]
-	nodeId      model.Id
+	nodes       set.Set[model.NodeId]
+	nodeConnMap set.Bimap[model.NodeId, model.ConnId]
+	nodeId      model.NodeId
 	connAddress map[model.ConnId]string
 	distributer dist.Distributer
 }
@@ -56,10 +56,10 @@ func NewWithChanSize(chanSize int) Mgr {
 		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
-		nodes:              set.NewSet[model.Id](),
+		nodes:              set.NewSet[model.NodeId](),
 		nodeId:             model.NewNodeId(),
 		connAddress:        make(map[model.ConnId]string),
-		nodeConnMap:        set.NewBimap[model.Id, model.ConnId](),
+		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		distributer:        dist.New(),
 	}
 	mgr.distributer.SetWeight(mgr.nodeId, 1)
@@ -101,7 +101,7 @@ func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 		if success {
 			if address, ok := m.connAddress[connId]; ok {
 				result.Nodes.Add(struct {
-					Node    model.Id
+					Node    model.NodeId
 					Address string
 				}{Node: node, Address: address})
 			}
@@ -162,7 +162,7 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	}
 }
 
-func (m *Mgr) addNodeToCluster(n model.Id, c model.ConnId) {
+func (m *Mgr) addNodeToCluster(n model.NodeId, c model.ConnId) {
 	m.nodes.Add(n)
 	m.nodeConnMap.Add(n, c)
 	m.distributer.SetWeight(n, 1)

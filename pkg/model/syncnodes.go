@@ -20,7 +20,7 @@ import (
 
 type SyncNodes struct {
 	Nodes set.Set[struct {
-		Node    Id
+		Node    NodeId
 		Address string
 	}]
 }
@@ -28,7 +28,7 @@ type SyncNodes struct {
 func NewSyncNodes() SyncNodes {
 	return SyncNodes{
 		Nodes: set.NewSet[struct {
-			Node    Id
+			Node    NodeId
 			Address string
 		}](),
 	}
@@ -50,19 +50,19 @@ func (s *SyncNodes) ToBytes() []byte {
 	return AddType(SyncType, result)
 }
 
-func nodeToBytes(node Id) []byte {
+func nodeToBytes(node NodeId) []byte {
 	return StringToBytes(string(node))
 }
 
-func (s *SyncNodes) GetNodes() set.Set[Id] {
-	result := set.NewSet[Id]()
+func (s *SyncNodes) GetNodes() set.Set[NodeId] {
+	result := set.NewSet[NodeId]()
 	for _, n := range s.Nodes.GetValues() {
 		result.Add(n.Node)
 	}
 	return result
 }
 
-func (s *SyncNodes) AddressForNode(id Id) string {
+func (s *SyncNodes) AddressForNode(id NodeId) string {
 	for _, val := range s.Nodes.GetValues() {
 		if val.Node == id {
 			return val.Address
@@ -74,16 +74,16 @@ func (s *SyncNodes) AddressForNode(id Id) string {
 func ToSyncNodes(data []byte) *SyncNodes {
 	remainder := data
 	result := set.NewSet[struct {
-		Node    Id
+		Node    NodeId
 		Address string
 	}]()
 	for {
-		var n Id
+		var n NodeId
 		var address string
 		n, remainder = toNode(remainder)
 		address, remainder = StringFromBytes(remainder)
 		result.Add(struct {
-			Node    Id
+			Node    NodeId
 			Address string
 		}{Node: n, Address: address})
 		if len(remainder) <= 0 {
@@ -92,9 +92,9 @@ func ToSyncNodes(data []byte) *SyncNodes {
 	}
 }
 
-func toNode(data []byte) (Id, []byte) {
+func toNode(data []byte) (NodeId, []byte) {
 	var id string
 	remainder := data
 	id, remainder = StringFromBytes(remainder)
-	return Id(id), remainder
+	return NodeId(id), remainder
 }

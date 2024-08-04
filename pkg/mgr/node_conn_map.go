@@ -19,20 +19,20 @@ import (
 )
 
 type NodeConnMap struct {
-	nodeToConn map[model.Id]model.ConnId
-	connToNode map[model.ConnId]model.Id
+	nodeToConn map[model.NodeId]model.ConnId
+	connToNode map[model.ConnId]model.NodeId
 }
 
-func (n *NodeConnMap) Add(node model.Id, conn model.ConnId) {
+func (n *NodeConnMap) Add(node model.NodeId, conn model.ConnId) {
 	n.nodeToConn[node] = conn
 	n.connToNode[conn] = node
 }
 
-func (n *NodeConnMap) Node(conn model.ConnId) (model.Id, bool) {
+func (n *NodeConnMap) Node(conn model.ConnId) (model.NodeId, bool) {
 	result, ok := n.connToNode[conn]
 	return result, ok
 }
-func (n *NodeConnMap) Conn(node model.Id) (model.ConnId, bool) {
+func (n *NodeConnMap) Conn(node model.NodeId) (model.ConnId, bool) {
 	result, ok := n.nodeToConn[node]
 	return result, ok
 }

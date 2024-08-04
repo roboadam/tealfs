@@ -22,20 +22,20 @@ import (
 )
 
 type Distributer struct {
-	dist     map[key]model.Id
-	weights  map[model.Id]int
+	dist     map[key]model.NodeId
+	weights  map[model.NodeId]int
 	checksum hash.Hash32
 }
 
 func New() Distributer {
 	return Distributer{
-		dist:     make(map[key]model.Id),
-		weights:  make(map[model.Id]int),
+		dist:     make(map[key]model.NodeId),
+		weights:  make(map[model.NodeId]int),
 		checksum: crc32.NewIEEE(),
 	}
 }
 
-func (d *Distributer) NodeIdForStoreId(id model.BlockId) model.Id {
+func (d *Distributer) NodeIdForStoreId(id model.BlockId) model.NodeId {
 	idb := []byte(id)
 	sum := d.Checksum(idb)
 	k := key{value: sum[0]}
@@ -48,7 +48,7 @@ func (d *Distributer) Checksum(data []byte) []byte {
 	return d.checksum.Sum(nil)
 }
 
-func (d *Distributer) SetWeight(id model.Id, weight int) {
+func (d *Distributer) SetWeight(id model.NodeId, weight int) {
 	d.weights[id] = weight
 	d.applyWeights()
 }
@@ -77,7 +77,7 @@ func (d *Distributer) applyWeights() {
 	}
 }
 
-func get(paths Slice, idx int) model.Id {
+func get(paths Slice, idx int) model.NodeId {
 	if len(paths) <= 0 {
 		return ""
 	}
@@ -89,7 +89,7 @@ func get(paths Slice, idx int) model.Id {
 	return paths[idx]
 }
 
-func (d *Distributer) numSlotsForPath(p model.Id) int {
+func (d *Distributer) numSlotsForPath(p model.NodeId) int {
 	weight := d.weights[p]
 	totalWeight := d.totalWeights()
 	return weight * 256 / totalWeight
@@ -123,7 +123,7 @@ func (k key) next() (bool, key) {
 	return true, key{k.value + 1}
 }
 
-type Slice []model.Id
+type Slice []model.NodeId
 
 func (p Slice) Len() int           { return len(p) }
 func (p Slice) Less(i, j int) bool { return p[i] < p[j] }

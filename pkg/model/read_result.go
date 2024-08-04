@@ -21,7 +21,7 @@ import (
 type ReadResult struct {
 	Ok      bool
 	Message string
-	Caller  Id
+	Caller  NodeId
 	Block   Block
 }
 
@@ -62,7 +62,7 @@ func ToReadResult(data []byte) *ReadResult {
 	return &ReadResult{
 		Ok:      ok,
 		Message: message,
-		Caller:  Id(caller),
+		Caller:  NodeId(caller),
 		Block:   block,
 	}
 }

@@ -15,7 +15,7 @@
 package model
 
 type IAm struct {
-	NodeId Id
+	NodeId NodeId
 }
 
 func (h *IAm) ToBytes() []byte {
@@ -33,6 +33,6 @@ func (h *IAm) Equal(p Payload) bool {
 func ToHello(data []byte) *IAm {
 	rawId, _ := StringFromBytes(data)
 	return &IAm{
-		NodeId: Id(rawId),
+		NodeId: NodeId(rawId),
 	}
 }
