@@ -15,9 +15,9 @@
 package mgr
 
 import (
+	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
-	"tealfs/pkg/store/dist"
 )
 
 type Mgr struct {
