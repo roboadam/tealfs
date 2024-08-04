@@ -30,21 +30,13 @@ type Path struct {
 type Disk struct {
 	path  Path
 	id    model.NodeId
-	saves chan struct {
-		hash h.Hash
-		data []byte
-	}
-	reads chan struct {
-		hash  h.Hash
-		value chan []byte
-	}
-	OutReads  chan model.ReadResult
-	OutWrites chan model.WriteResult
-	InWrites  chan model.Block
-	InReads   chan model.ReadRequest
+	outReads  chan model.ReadResult
+	outWrites chan model.WriteResult
+	inWrites  chan model.Block
+	inReads   chan model.ReadRequest
 }
 
-func (d *Disk) Save(hash h.Hash, data []byte) {
+func (d *Disk) save(hash h.Hash, data []byte) {
 	d.saves <- struct {
 		hash h.Hash
 		data []byte
@@ -63,10 +55,14 @@ func (d *Disk) Read(hash h.Hash) []byte {
 func (d *Disk) consumeChannels() {
 	for {
 		select {
-		case s := <-d.saves:
-			d.path.Save(s.hash, s.data)
-		case r := <-d.reads:
-			data := d.path.Read(r.hash)
+		case s := <-d.inWrites:
+			d.path.Save(s.Hash, s.Data)
+			d.outWrites <- model.WriteResult{
+				Ok:      true,
+				Message: "",
+			}
+		case r := <-d.inReads:
+			data := d.path.Read(r.BlockId)
 			r.value <- data
 		}
 	}
@@ -74,6 +70,7 @@ func (d *Disk) consumeChannels() {
 
 func (p *Path) Save(hash h.Hash, data []byte) {
 	for {
+		// Todo, shouldn't just spin forever on error
 		hashString := hex.EncodeToString(hash.Value)
 		filePath := filepath.Join(p.raw, hashString)
 		err := os.WriteFile(filePath, data, 0644)
@@ -84,7 +81,7 @@ func (p *Path) Save(hash h.Hash, data []byte) {
 	}
 }
 
-func (p *Path) Read(hash h.Hash) []byte {
+func (p *Path) Read(id model.BlockId) []byte {
 	count := 0
 	for {
 		count++
