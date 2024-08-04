@@ -27,7 +27,7 @@ type Path struct {
 	raw string
 }
 
-type Store struct {
+type Disk struct {
 	path  Path
 	id    model.Id
 	saves chan struct {
@@ -38,31 +38,35 @@ type Store struct {
 		hash  h.Hash
 		value chan []byte
 	}
+	OutReads  chan model.ReadResult
+	OutWrites chan model.WriteResult
+	InWrites  chan model.Block
+	InReads   chan model.ReadRequest
 }
 
-func (ps *Store) Save(hash h.Hash, data []byte) {
-	ps.saves <- struct {
+func (d *Disk) Save(hash h.Hash, data []byte) {
+	d.saves <- struct {
 		hash h.Hash
 		data []byte
 	}{hash: hash, data: data}
 }
 
-func (ps *Store) Read(hash h.Hash) []byte {
+func (d *Disk) Read(hash h.Hash) []byte {
 	value := make(chan []byte)
-	ps.reads <- struct {
+	d.reads <- struct {
 		hash  h.Hash
 		value chan []byte
 	}{hash: hash, value: value}
 	return <-value
 }
 
-func (ps *Store) consumeChannels() {
+func (d *Disk) consumeChannels() {
 	for {
 		select {
-		case s := <-ps.saves:
-			ps.path.Save(s.hash, s.data)
-		case r := <-ps.reads:
-			data := ps.path.Read(r.hash)
+		case s := <-d.saves:
+			d.path.Save(s.hash, s.data)
+		case r := <-d.reads:
+			data := d.path.Read(r.hash)
 			r.value <- data
 		}
 	}
@@ -103,8 +107,8 @@ func NewPath(rawPath string) Path {
 	}
 }
 
-func New(path Path, id model.Id) Store {
-	p := Store{
+func New(path Path, id model.Id) Disk {
+	p := Disk{
 		id:   id,
 		path: path,
 		saves: make(chan struct {
