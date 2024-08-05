@@ -27,29 +27,30 @@ type Path struct {
 	raw string
 }
 
+func New(path Path, id model.NodeId,
+	mgrDiskWrites chan model.Block,
+	mgrDiskReads chan model.ReadRequest,
+	diskMgrWrites chan model.WriteResult,
+	diskMgrReads chan model.ReadResult) Disk {
+	p := Disk{
+		path:      path,
+		id:        id,
+		outReads:  make(chan model.ReadResult),
+		outWrites: make(chan model.WriteResult),
+		inWrites:  mgrDiskWrites,
+		inReads:   make(chan model.ReadRequest),
+	}
+	go p.consumeChannels()
+	return p
+}
+
 type Disk struct {
-	path  Path
-	id    model.NodeId
+	path      Path
+	id        model.NodeId
 	outReads  chan model.ReadResult
 	outWrites chan model.WriteResult
 	inWrites  chan model.Block
 	inReads   chan model.ReadRequest
-}
-
-func (d *Disk) save(hash h.Hash, data []byte) {
-	d.saves <- struct {
-		hash h.Hash
-		data []byte
-	}{hash: hash, data: data}
-}
-
-func (d *Disk) Read(hash h.Hash) []byte {
-	value := make(chan []byte)
-	d.reads <- struct {
-		hash  h.Hash
-		value chan []byte
-	}{hash: hash, value: value}
-	return <-value
 }
 
 func (d *Disk) consumeChannels() {
@@ -63,7 +64,16 @@ func (d *Disk) consumeChannels() {
 			}
 		case r := <-d.inReads:
 			data := d.path.Read(r.BlockId)
-			r.value <- data
+			d.outReads <- model.ReadResult{
+				Ok:      true,
+				Message: "",
+				Caller:  r.Caller,
+				Block: model.Block{
+					Id:   r.BlockId,
+					Data: data,
+					Hash: h.ForData(data),
+				},
+			}
 		}
 	}
 }
@@ -85,8 +95,7 @@ func (p *Path) Read(id model.BlockId) []byte {
 	count := 0
 	for {
 		count++
-		hashString := hex.EncodeToString(hash.Value)
-		filePath := filepath.Join(p.raw, hashString)
+		filePath := filepath.Join(p.raw, string(id))
 		data, err := os.ReadFile(filePath)
 		if err == nil {
 			return data
@@ -102,23 +111,6 @@ func NewPath(rawPath string) Path {
 	return Path{
 		raw: filepath.Clean(rawPath),
 	}
-}
-
-func New(path Path, id model.NodeId) Disk {
-	p := Disk{
-		id:   id,
-		path: path,
-		saves: make(chan struct {
-			hash h.Hash
-			data []byte
-		}),
-		reads: make(chan struct {
-			hash  h.Hash
-			value chan []byte
-		}),
-	}
-	go p.consumeChannels()
-	return p
 }
 
 func (p *Path) String() string {
