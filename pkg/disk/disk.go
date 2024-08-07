@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	h "tealfs/pkg/hash"
 	"tealfs/pkg/model"
-	"time"
 )
 
 type Path struct {
@@ -57,54 +56,44 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
-			d.path.Save(s.Hash, s.Data)
-			d.outWrites <- model.WriteResult{
-				Ok:      true,
-				Message: "",
+			err := d.path.Save(s.Hash, s.Data)
+			if err == nil {
+				d.outWrites <- model.WriteResult{Ok: true}
+			} else {
+				d.outWrites <- model.WriteResult{Ok: false, Message: err.Error()}
 			}
 		case r := <-d.inReads:
-			data := d.path.Read(r.BlockId)
-			d.outReads <- model.ReadResult{
-				Ok:      true,
-				Message: "",
-				Caller:  r.Caller,
-				Block: model.Block{
-					Id:   r.BlockId,
-					Data: data,
-					Hash: h.ForData(data),
-				},
+			data, err := d.path.Read(r.BlockId)
+			if err == nil {
+				d.outReads <- model.ReadResult{
+					Ok:     true,
+					Caller: r.Caller,
+					Block: model.Block{
+						Id:   r.BlockId,
+						Data: data,
+						Hash: h.ForData(data),
+					},
+				}
+			} else {
+				d.outReads <- model.ReadResult{
+					Ok:      false,
+					Message: err.Error(),
+					Caller:  r.Caller,
+				}
 			}
 		}
 	}
 }
 
-func (p *Path) Save(hash h.Hash, data []byte) {
-	for {
-		// Todo, shouldn't just spin forever on error
-		hashString := hex.EncodeToString(hash.Value)
-		filePath := filepath.Join(p.raw, hashString)
-		err := os.WriteFile(filePath, data, 0644)
-		if err == nil {
-			return
-		}
-		time.Sleep(time.Second)
-	}
+func (p *Path) Save(hash h.Hash, data []byte) error {
+	hashString := hex.EncodeToString(hash.Value)
+	filePath := filepath.Join(p.raw, hashString)
+	return os.WriteFile(filePath, data, 0644)
 }
 
-func (p *Path) Read(id model.BlockId) []byte {
-	count := 0
-	for {
-		count++
-		filePath := filepath.Join(p.raw, string(id))
-		data, err := os.ReadFile(filePath)
-		if err == nil {
-			return data
-		}
-		if count > 5 {
-			return make([]byte, 0)
-		}
-		time.Sleep(time.Second)
-	}
+func (p *Path) Read(id model.BlockId) ([]byte, error) {
+	filePath := filepath.Join(p.raw, string(id))
+	return os.ReadFile(filePath)
 }
 
 func NewPath(rawPath string) Path {
