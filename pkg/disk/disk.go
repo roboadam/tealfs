@@ -16,6 +16,7 @@ package disk
 
 import (
 	"encoding/hex"
+	"io"
 	"os"
 	"path/filepath"
 	h "tealfs/pkg/hash"
@@ -24,6 +25,7 @@ import (
 
 type Path struct {
 	raw string
+	ops io.ReadWriteCloser
 }
 
 func New(path Path, id model.NodeId,
@@ -96,9 +98,10 @@ func (p *Path) Read(id model.BlockId) ([]byte, error) {
 	return os.ReadFile(filePath)
 }
 
-func NewPath(rawPath string) Path {
+func NewPath(rawPath string, ops io.ReadWriteCloser) Path {
 	return Path{
 		raw: filepath.Clean(rawPath),
+		ops: ops,
 	}
 }
 
