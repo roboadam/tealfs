@@ -16,8 +16,6 @@ package disk
 
 import (
 	"encoding/hex"
-	"io"
-	"os"
 	"path/filepath"
 	h "tealfs/pkg/hash"
 	"tealfs/pkg/model"
@@ -25,7 +23,7 @@ import (
 
 type Path struct {
 	raw string
-	ops io.ReadWriteCloser
+	ops FileOps
 }
 
 func New(path Path, id model.NodeId,
@@ -36,10 +34,10 @@ func New(path Path, id model.NodeId,
 	p := Disk{
 		path:      path,
 		id:        id,
-		outReads:  make(chan model.ReadResult),
-		outWrites: make(chan model.WriteResult),
 		inWrites:  mgrDiskWrites,
-		inReads:   make(chan model.ReadRequest),
+		inReads:   mgrDiskReads,
+		outReads:  diskMgrReads,
+		outWrites: diskMgrWrites,
 	}
 	go p.consumeChannels()
 	return p
@@ -90,15 +88,15 @@ func (d *Disk) consumeChannels() {
 func (p *Path) Save(hash h.Hash, data []byte) error {
 	hashString := hex.EncodeToString(hash.Value)
 	filePath := filepath.Join(p.raw, hashString)
-	return os.WriteFile(filePath, data, 0644)
+	return p.ops.WriteFile(filePath, data)
 }
 
 func (p *Path) Read(id model.BlockId) ([]byte, error) {
 	filePath := filepath.Join(p.raw, string(id))
-	return os.ReadFile(filePath)
+	return p.ops.ReadFile(filePath)
 }
 
-func NewPath(rawPath string, ops io.ReadWriteCloser) Path {
+func NewPath(rawPath string, ops FileOps) Path {
 	return Path{
 		raw: filepath.Clean(rawPath),
 		ops: ops,

@@ -15,10 +15,38 @@
 package disk_test
 
 import (
-	"fmt"
+	"bytes"
+	"tealfs/pkg/disk"
+	"tealfs/pkg/hash"
+	"tealfs/pkg/model"
 	"testing"
 )
 
-func TestSendData(t *testing.T) {
-	fmt.Println("Hello World")
+func TestWriteData(t *testing.T) {
+	f := disk.MockFileOps{}
+	path := disk.NewPath("/some/fake/path", &f)
+	id := model.NewNodeId()
+	mgrDiskWrites := make(chan model.Block)
+	mgrDiskReads := make(chan model.ReadRequest)
+	diskMgrWrites := make(chan model.WriteResult)
+	diskMgrReads := make(chan model.ReadResult)
+	blockId := model.NewBlockId()
+	data := []byte{0, 1, 2, 3, 4, 5}
+	h := hash.ForData(data)
+	_ = disk.New(path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads)
+	mgrDiskWrites <- model.Block{
+		Id:   blockId,
+		Data: data,
+		Hash: h,
+	}
+	result := <-diskMgrWrites
+	if !result.Ok {
+		t.Error("Bad write result")
+	}
+	if !bytes.Equal(f.WrittenData, data) {
+		t.Error("Written data is wrong")
+	}
+	if f.WritePath != path.String() {
+		t.Error("Written path is wrong")
+	}
 }
