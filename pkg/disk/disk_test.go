@@ -16,7 +16,6 @@ package disk_test
 
 import (
 	"bytes"
-	"encoding/hex"
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/hash"
@@ -29,7 +28,7 @@ func TestWriteData(t *testing.T) {
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	h := hash.ForData(data)
-	expectedPath := filepath.Join(path.String(), hex.EncodeToString(h.Value))
+	expectedPath := filepath.Join(path.String(), string(blockId))
 	mgrDiskWrites <- model.Block{
 		Id:   blockId,
 		Data: data,
@@ -48,31 +47,24 @@ func TestWriteData(t *testing.T) {
 }
 
 func TestReadData(t *testing.T) {
-	f := disk.MockFileOps{}
-	path := disk.NewPath("/some/fake/path", &f)
-	id := model.NewNodeId()
-	mgrDiskWrites := make(chan model.Block)
-	mgrDiskReads := make(chan model.ReadRequest)
-	diskMgrWrites := make(chan model.WriteResult)
-	diskMgrReads := make(chan model.ReadResult)
+	f, path, _, _, mgrDiskReads, _, diskMgrReads, _ := newDiskService()
 	blockId := model.NewBlockId()
+	caller := model.NewNodeId()
 	data := []byte{0, 1, 2, 3, 4, 5}
-	h := hash.ForData(data)
-	expectedPath := filepath.Join(path.String(), hex.EncodeToString(h.Value))
-	_ = disk.New(path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads)
-	mgrDiskWrites <- model.Block{
-		Id:   blockId,
-		Data: data,
-		Hash: h,
+	f.ReadData = data
+	expectedPath := filepath.Join(path.String(), string(blockId))
+	mgrDiskReads <- model.ReadRequest{
+		Caller:  caller,
+		BlockId: blockId,
 	}
-	result := <-diskMgrWrites
+	result := <-diskMgrReads
 	if !result.Ok {
 		t.Error("Bad write result")
 	}
-	if !bytes.Equal(f.WrittenData, data) {
+	if !bytes.Equal(result.Block.Data, data) {
 		t.Error("Written data is wrong")
 	}
-	if f.WritePath != expectedPath {
+	if f.ReadPath != expectedPath {
 		t.Error("Written path is wrong")
 	}
 }

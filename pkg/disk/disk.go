@@ -15,7 +15,6 @@
 package disk
 
 import (
-	"encoding/hex"
 	"path/filepath"
 	h "tealfs/pkg/hash"
 	"tealfs/pkg/model"
@@ -56,7 +55,7 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Hash, s.Data)
+			err := d.path.Save(s.Id, s.Data)
 			if err == nil {
 				d.outWrites <- model.WriteResult{Ok: true}
 			} else {
@@ -85,9 +84,8 @@ func (d *Disk) consumeChannels() {
 	}
 }
 
-func (p *Path) Save(hash h.Hash, data []byte) error {
-	hashString := hex.EncodeToString(hash.Value)
-	filePath := filepath.Join(p.raw, hashString)
+func (p *Path) Save(id model.BlockId, data []byte) error {
+	filePath := filepath.Join(p.raw, string(id))
 	return p.ops.WriteFile(filePath, data)
 }
 
