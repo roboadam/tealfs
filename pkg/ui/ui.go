@@ -37,12 +37,18 @@ func NewUi(connToReq chan model.UiMgrConnectTo) Ui {
 	return Ui{connToReq, connToResp}
 }
 
-func (ui Ui) Start() {
+func (ui *Ui) Start() {
 	ui.registerHttpHandlers()
 	ui.handleRoot()
 	err := http.ListenAndServe(":0", nil)
 	if err != nil {
 		os.Exit(1)
+	}
+}
+
+func (ui *Ui) handleMessages {
+	for {
+
 	}
 }
 

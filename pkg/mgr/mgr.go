@@ -32,6 +32,7 @@ type Mgr struct {
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.Block
 	MgrDiskReads       chan model.ReadRequest
+	MgrUiStatuses      chan model.ConnectionStatus
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
 
@@ -54,6 +55,7 @@ func NewWithChanSize(chanSize int) Mgr {
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.Block, chanSize),
 		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
+		MgrUiStatuses:      make(chan model.ConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
 		nodes:              set.NewSet[model.NodeId](),
@@ -172,6 +174,7 @@ func (m *Mgr) handleConnectedStatus(cs model.ConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
 		m.connAddress[cs.Id] = cs.RemoteAddress
+		m.MgrUiStatuses <- cs
 		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &model.IAm{NodeId: m.nodeId},
