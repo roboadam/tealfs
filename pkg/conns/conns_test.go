@@ -98,13 +98,13 @@ func lenAsBytes(data []byte) []byte {
 	return buf
 }
 
-func connectTo(address string, outStatus chan model.ConnsMgrStatus, inConnectTo chan model.MgrConnsConnectTo) model.ConnsMgrStatus {
+func connectTo(address string, outStatus chan model.ConnectionStatus, inConnectTo chan model.MgrConnsConnectTo) model.ConnectionStatus {
 	inConnectTo <- model.MgrConnsConnectTo{Address: address}
 	return <-outStatus
 }
 
-func newConnsTest() (Conns, chan model.ConnsMgrStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, MockConnectionProvider) {
-	outStatuses := make(chan model.ConnsMgrStatus)
+func newConnsTest() (Conns, chan model.ConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, MockConnectionProvider) {
+	outStatuses := make(chan model.ConnectionStatus)
 	outReceives := make(chan model.ConnsMgrReceive)
 	inConnectTo := make(chan model.MgrConnsConnectTo)
 	inSends := make(chan model.MgrConnsSend)

@@ -20,7 +20,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type ConnsMgrStatus struct {
+type ConnectionStatus struct {
 	Type          ConnectedStatus
 	RemoteAddress string
 	Msg           string

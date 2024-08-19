@@ -22,7 +22,7 @@ import (
 
 type Mgr struct {
 	UiMgrConnectTos    chan model.UiMgrConnectTo
-	ConnsMgrStatuses   chan model.ConnsMgrStatus
+	ConnsMgrStatuses   chan model.ConnectionStatus
 	ConnsMgrReceives   chan model.ConnsMgrReceive
 	DiskMgrReads       chan model.ReadResult
 	DiskMgrWrites      chan model.WriteResult
@@ -45,7 +45,7 @@ type Mgr struct {
 func NewWithChanSize(chanSize int) Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
-		ConnsMgrStatuses:   make(chan model.ConnsMgrStatus, chanSize),
+		ConnsMgrStatuses:   make(chan model.ConnectionStatus, chanSize),
 		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:      make(chan model.ReadRequest, chanSize),
@@ -168,7 +168,7 @@ func (m *Mgr) addNodeToCluster(n model.NodeId, c model.ConnId) {
 	m.distributer.SetWeight(n, 1)
 }
 
-func (m *Mgr) handleConnectedStatus(cs model.ConnsMgrStatus) {
+func (m *Mgr) handleConnectedStatus(cs model.ConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
 		m.connAddress[cs.Id] = cs.RemoteAddress

@@ -320,7 +320,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
 	for _, n := range nodes {
 		// Send a message to Mgr indicating another
 		// node has connected
-		m.ConnsMgrStatuses <- model.ConnsMgrStatus{
+		m.ConnsMgrStatuses <- model.ConnectionStatus{
 			Type:          model.Connected,
 			RemoteAddress: n.address,
 			Id:            n.conn,
