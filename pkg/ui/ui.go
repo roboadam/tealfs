@@ -23,13 +23,8 @@ import (
 
 type Ui struct {
 	connToReq  chan model.UiMgrConnectTo
-	connToResp chan ConnectToResp
-}
-
-type ConnectToResp struct {
-	Success      bool
-	Id           model.ConnId
-	ErrorMessage string
+	connToResp chan model.ConnectionStatus
+	statuses map[model.ConnId]model.ConnectionStatus
 }
 
 func NewUi(connToReq chan model.UiMgrConnectTo) Ui {
@@ -46,13 +41,13 @@ func (ui *Ui) Start() {
 	}
 }
 
-func (ui *Ui) handleMessages {
-	for {
-
+func (ui *Ui) handleMessages() {
+	for status := range ui.connToResp {
+		ui.statuses[status.Id] = status
 	}
 }
 
-func (ui Ui) registerHttpHandlers() {
+func (ui *Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
 		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
