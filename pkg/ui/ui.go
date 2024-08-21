@@ -18,23 +18,31 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
+	"sync"
 	"tealfs/pkg/model"
 )
 
 type Ui struct {
 	connToReq  chan model.UiMgrConnectTo
 	connToResp chan model.ConnectionStatus
-	statuses map[model.ConnId]model.ConnectionStatus
+	statuses   map[model.ConnId]model.ConnectionStatus
+	smux       sync.Mutex
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo) Ui {
-	connToResp := make(chan ConnectToResp, 100)
-	return Ui{connToReq, connToResp}
+func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.ConnectionStatus) Ui {
+	statuses := make(map[model.ConnId]model.ConnectionStatus)
+	return Ui{
+		connToReq:  connToReq,
+		connToResp: connToResp,
+		statuses:   statuses,
+	}
 }
 
 func (ui *Ui) Start() {
 	ui.registerHttpHandlers()
 	ui.handleRoot()
+	go ui.handleMessages()
 	err := http.ListenAndServe(":0", nil)
 	if err != nil {
 		os.Exit(1)
@@ -43,7 +51,9 @@ func (ui *Ui) Start() {
 
 func (ui *Ui) handleMessages() {
 	for status := range ui.connToResp {
+		ui.smux.Lock()
 		ui.statuses[status.Id] = status
+		ui.smux.Unlock()
 	}
 }
 
@@ -51,17 +61,27 @@ func (ui *Ui) registerHttpHandlers() {
 	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
 		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
-		_, _ = fmt.Fprintf(w, "Connecting to: %s", hostAndPort)
-		resp := <-ui.connToResp
-		if resp.Success {
-			_, _ = fmt.Fprintf(w, "Connected! to: %s", string(resp.Id))
-		} else {
-			_, _ = fmt.Fprintf(w, "Connection Failure: %s", resp.ErrorMessage)
-		}
 	})
 }
 
-func (ui Ui) handleRoot() {
+func (ui *Ui) htmlStatus(divId string) string {
+	var builder strings.Builder
+	builder.WriteString(`<div id="`)
+	builder.WriteString(divId)
+	builder.WriteString(`">`)
+	ui.smux.Lock()
+	for _, value := range ui.statuses {
+		builder.WriteString(string(value.Id))
+		builder.WriteString(" ")
+		builder.WriteString(string(value.Type))
+		builder.WriteString("<br />")
+	}
+	ui.smux.Unlock()
+	builder.WriteString("</div>")
+	return builder.String()
+}
+
+func (ui *Ui) handleRoot() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		html := `
 			<!DOCTYPE html>
@@ -81,6 +101,7 @@ func (ui Ui) handleRoot() {
 						<input type="text" id="hostandport" name="hostandport">
 						<input type="submit" value="Connect">
 					</form>
+					` + ui.htmlStatus("status") + `
 				</main>
 			</body>
 			</html>
