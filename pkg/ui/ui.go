@@ -28,14 +28,16 @@ type Ui struct {
 	connToResp chan model.ConnectionStatus
 	statuses   map[model.ConnId]model.ConnectionStatus
 	smux       sync.Mutex
+	ops        HtmlOps
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.ConnectionStatus) Ui {
+func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.ConnectionStatus, ops HtmlOps) Ui {
 	statuses := make(map[model.ConnId]model.ConnectionStatus)
 	return Ui{
 		connToReq:  connToReq,
 		connToResp: connToResp,
 		statuses:   statuses,
+		ops:        ops,
 	}
 }
 
@@ -43,7 +45,7 @@ func (ui *Ui) Start() {
 	ui.registerHttpHandlers()
 	ui.handleRoot()
 	go ui.handleMessages()
-	err := http.ListenAndServe(":0", nil)
+	err := ui.ops.ListenAndServe(":0")
 	if err != nil {
 		os.Exit(1)
 	}
@@ -58,7 +60,7 @@ func (ui *Ui) handleMessages() {
 }
 
 func (ui *Ui) registerHttpHandlers() {
-	http.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
+	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		hostAndPort := r.FormValue("hostandport")
 		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
 	})
@@ -82,7 +84,7 @@ func (ui *Ui) htmlStatus(divId string) string {
 }
 
 func (ui *Ui) handleRoot() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	ui.ops.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		html := `
 			<!DOCTYPE html>
 			<html>
