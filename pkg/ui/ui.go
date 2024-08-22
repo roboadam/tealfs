@@ -75,7 +75,7 @@ func (ui *Ui) htmlStatus(divId string) string {
 	for _, value := range ui.statuses {
 		builder.WriteString(string(value.Id))
 		builder.WriteString(" ")
-		builder.WriteString(string(value.Type))
+		builder.WriteString(fmt.Sprint(value.Type))
 		builder.WriteString("<br />")
 	}
 	ui.smux.Unlock()

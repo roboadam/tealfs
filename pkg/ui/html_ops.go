@@ -19,7 +19,7 @@ func (h *HttpHtmlOps) HandleFunc(pattern string, handler func(http.ResponseWrite
 
 type MockHtmlOps struct {
 	BindAddr string
-	handlers map[string]func(http.ResponseWriter, *http.Request)
+	Handlers map[string]func(http.ResponseWriter, *http.Request)
 }
 
 func (m *MockHtmlOps) ListenAndServe(addr string) error {
@@ -28,5 +28,17 @@ func (m *MockHtmlOps) ListenAndServe(addr string) error {
 }
 
 func (m *MockHtmlOps) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
-	m.handlers[pattern] = handler
+	m.Handlers[pattern] = handler
 }
+
+type MockResponseWriter struct{}
+
+func (m *MockResponseWriter) Header() http.Header {
+	return make(http.Header)
+}
+
+func (m *MockResponseWriter) Write(data []byte) (int, error) {
+	return len(data), nil
+}
+
+func (m *MockResponseWriter) WriteHeader(statusCode int) {}
