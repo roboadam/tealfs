@@ -31,13 +31,16 @@ func (m *MockHtmlOps) HandleFunc(pattern string, handler func(http.ResponseWrite
 	m.Handlers[pattern] = handler
 }
 
-type MockResponseWriter struct{}
+type MockResponseWriter struct {
+	WrittenData string
+}
 
 func (m *MockResponseWriter) Header() http.Header {
 	return make(http.Header)
 }
 
 func (m *MockResponseWriter) Write(data []byte) (int, error) {
+	m.WrittenData = string(data)
 	return len(data), nil
 }
 

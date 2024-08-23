@@ -61,6 +61,10 @@ func (ui *Ui) handleMessages() {
 
 func (ui *Ui) registerHttpHandlers() {
 	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			return
+		}
 		hostAndPort := r.FormValue("hostandport")
 		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
 	})
@@ -73,7 +77,7 @@ func (ui *Ui) htmlStatus(divId string) string {
 	builder.WriteString(`">`)
 	ui.smux.Lock()
 	for _, value := range ui.statuses {
-		builder.WriteString(string(value.Id))
+		builder.WriteString(string(value.RemoteAddress))
 		builder.WriteString(" ")
 		builder.WriteString(fmt.Sprint(value.Type))
 		builder.WriteString("<br />")
@@ -96,7 +100,6 @@ func (ui *Ui) handleRoot() {
 			<body>
 			    <main>
 					<h1>TealFS</h1>
-					` + htmlMyhost("TODO") + `
 					<p>Input the host and port of a node to add</p>
 					<form hx-put="/connect-to">
 						<label for="textbox">Host and port:</label>
@@ -112,15 +115,4 @@ func (ui *Ui) handleRoot() {
 		// Write the HTML content to the response writer
 		_, _ = fmt.Fprintf(w, "%s", html)
 	})
-}
-
-func htmlMyhost(address string) string {
-	return wrapInDiv(`
-			<h2>My host</h2>
-			<p>Host: `+address+`</p>`,
-		"myhost")
-}
-
-func wrapInDiv(html string, divId string) string {
-	return `<div id="` + divId + `">` + html + `</div>`
 }
