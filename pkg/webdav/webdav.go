@@ -12,10 +12,28 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-module tealfs
+package webdav
 
-go 1.22
+import (
+	"net/http"
+	"os"
 
-require github.com/google/uuid v1.6.0
+	"golang.org/x/net/webdav"
+)
 
-require golang.org/x/net v0.28.0
+func Webdav() {
+	dir := "./webdav"
+
+	handler := &webdav.Handler{
+		Prefix:     "/",
+		FileSystem: webdav.Dir(dir),
+		LockSystem: webdav.NewMemLS(),
+	}
+
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		os.Mkdir(dir, 0755)
+	}
+
+	http.Handle("/", handler)
+	http.ListenAndServe(":8080", nil)
+}
