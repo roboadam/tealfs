@@ -14,24 +14,30 @@
 
 package webdav
 
-import (
-	"golang.org/x/net/webdav"
-)
+import "net/http"
 
-type Webdav struct {
-	WebdavOps WebdavOps
+type WebdavOps interface {
+	ListenAndServe(addr string) error
+	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
+	Handle(pattern string, handler http.Handler)
 }
 
-func (w *Webdav) Start() {
-	fileSystem := FileSystem{}
-	lockSystem := LockSystem{}
+type HttpWebdavOps struct{}
 
-	handler := &webdav.Handler{
-		Prefix:     "/",
-		FileSystem: &fileSystem,
-		LockSystem: &lockSystem,
-	}
+func (h *HttpWebdavOps) ListenAndServe(addr string) error {
+	return http.ListenAndServe(addr, nil)
+}
 
-	w.WebdavOps.Handle("/", handler)
-	w.WebdavOps.ListenAndServe(":8080")
+func (h *HttpWebdavOps) Handle(pattern string, handler http.Handler) {
+	http.Handle(pattern, handler)
+}
+
+type MockWebdavOps struct {
+}
+
+func (m *MockWebdavOps) ListenAndServe(addr string) error {
+	return nil
+}
+
+func (m *MockWebdavOps) Handle(pattern string, handler http.Handler) {
 }

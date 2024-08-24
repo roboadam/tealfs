@@ -15,23 +15,25 @@
 package webdav
 
 import (
+	"time"
+
 	"golang.org/x/net/webdav"
 )
 
-type Webdav struct {
-	WebdavOps WebdavOps
+type LockSystem struct{}
+
+func (l *LockSystem) Confirm(now time.Time, name0 string, name1 string, conditions ...webdav.Condition) (release func(), err error) {
+	panic("not implemented") // TODO: Implement
 }
 
-func (w *Webdav) Start() {
-	fileSystem := FileSystem{}
-	lockSystem := LockSystem{}
+func (l *LockSystem) Create(now time.Time, details webdav.LockDetails) (token string, err error) {
+	panic("not implemented") // TODO: Implement
+}
 
-	handler := &webdav.Handler{
-		Prefix:     "/",
-		FileSystem: &fileSystem,
-		LockSystem: &lockSystem,
-	}
+func (l *LockSystem) Refresh(now time.Time, token string, duration time.Duration) (webdav.LockDetails, error) {
+	panic("not implemented") // TODO: Implement
+}
 
-	w.WebdavOps.Handle("/", handler)
-	w.WebdavOps.ListenAndServe(":8080")
+func (l *LockSystem) Unlock(now time.Time, token string) error {
+	panic("not implemented") // TODO: Implement
 }
