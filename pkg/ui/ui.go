@@ -53,10 +53,14 @@ func (ui *Ui) Start() {
 
 func (ui *Ui) handleMessages() {
 	for status := range ui.connToResp {
-		ui.smux.Lock()
-		ui.statuses[status.Id] = status
-		ui.smux.Unlock()
+		ui.saveStatus(status)
 	}
+}
+
+func (ui *Ui) saveStatus(status model.ConnectionStatus) {
+	ui.smux.Lock()
+	defer ui.smux.Unlock()
+	ui.statuses[status.Id] = status
 }
 
 func (ui *Ui) registerHttpHandlers() {

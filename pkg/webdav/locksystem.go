@@ -15,25 +15,31 @@
 package webdav
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/net/webdav"
 )
 
-type LockSystem struct{}
+type LockSystem struct {
+	locks map[string]webdav.LockDetails
+}
 
 func (l *LockSystem) Confirm(now time.Time, name0 string, name1 string, conditions ...webdav.Condition) (release func(), err error) {
-	panic("not implemented") // TODO: Implement
+	return func() {}, nil
 }
 
 func (l *LockSystem) Create(now time.Time, details webdav.LockDetails) (token string, err error) {
-	panic("not implemented") // TODO: Implement
+	token = fmt.Sprintf("urn:%s", uuid.New().String())
+	l.locks[token] = details
+	return
 }
 
 func (l *LockSystem) Refresh(now time.Time, token string, duration time.Duration) (webdav.LockDetails, error) {
-	panic("not implemented") // TODO: Implement
+	return l.locks[token], nil
 }
 
 func (l *LockSystem) Unlock(now time.Time, token string) error {
-	panic("not implemented") // TODO: Implement
+	return nil
 }
