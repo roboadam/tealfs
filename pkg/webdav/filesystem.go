@@ -16,19 +16,45 @@ package webdav
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/net/webdav"
 )
 
-type FileSystem struct{
-	
+type FileSystem struct {
+	root File
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	panic("not implemented") // TODO: Implement
+	// Todo handle the context
+	names := paths(name)
+	current := f.root
+	for _, dir := range names[:len(names)-1] {
+		if hasDirWithName(&current, dir) {
+			current = current.chidren[dir]
+		} else {
+			return errors.New("Invalid path")
+		}
+	}
+	if hasChildWithName(&current, names[len(names)-1]) {
+		return errors.New("Invalid path")
+	}
+	current[name]
+	return nil
+}
+
+func hasDirWithName(file *File, dirName string) bool {
+	child, exists := file.chidren[dirName]
+	return exists && child.isDir
+}
+
+func hasChildWithName(file *File, dirName string) bool {
+	child, exists := file.chidren[dirName]
+	return exists
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
@@ -41,6 +67,17 @@ func (f *FileSystem) RemoveAll(ctx context.Context, name string) error {
 
 func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string) error {
 	panic("not implemented") // TODO: Implement
+}
+
+func paths(name string) []string {
+	raw := strings.Split(name, "/")
+	result := make([]string)
+	for value := range raw {
+		if value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
@@ -60,7 +97,11 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 	}
 }
 
-type File struct{}
+type File struct {
+	name    string
+	isDir   bool
+	chidren map[string]File
+}
 
 func (f *File) Close() error {
 	return nil
