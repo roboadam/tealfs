@@ -37,13 +37,17 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 		if hasDirWithName(&current, dir) {
 			current = current.chidren[dir]
 		} else {
-			return errors.New("Invalid path")
+			return errors.New("invalid path")
 		}
 	}
 	if hasChildWithName(&current, names[len(names)-1]) {
-		return errors.New("Invalid path")
+		return errors.New("invalid path")
 	}
-	current[name]
+	current.chidren[names[len(names)-1]] = File{
+		name:    names[len(names)-1],
+		isDir:   true,
+		chidren: map[string]File{},
+	}
 	return nil
 }
 
@@ -53,7 +57,7 @@ func hasDirWithName(file *File, dirName string) bool {
 }
 
 func hasChildWithName(file *File, dirName string) bool {
-	child, exists := file.chidren[dirName]
+	_, exists := file.chidren[dirName]
 	return exists
 }
 
@@ -71,8 +75,8 @@ func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string)
 
 func paths(name string) []string {
 	raw := strings.Split(name, "/")
-	result := make([]string)
-	for value := range raw {
+	result := make([]string, 0)
+	for _, value := range raw {
 		if value != "" {
 			result = append(result, value)
 		}
