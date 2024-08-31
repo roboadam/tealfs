@@ -26,16 +26,16 @@ import (
 )
 
 type FileSystem struct {
-	root File
+	Root File
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	// Todo handle the context
 	names := paths(name)
-	current := f.root
+	current := f.Root
 	for _, dir := range names[:len(names)-1] {
 		if hasDirWithName(&current, dir) {
-			current = current.chidren[dir]
+			current = current.Chidren[dir]
 		} else {
 			return errors.New("invalid path")
 		}
@@ -43,21 +43,21 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 	if hasChildWithName(&current, names[len(names)-1]) {
 		return errors.New("invalid path")
 	}
-	current.chidren[names[len(names)-1]] = File{
-		name:    names[len(names)-1],
-		isDir:   true,
-		chidren: map[string]File{},
+	current.Chidren[names[len(names)-1]] = File{
+		Name:    names[len(names)-1],
+		IsDir:   true,
+		Chidren: map[string]File{},
 	}
 	return nil
 }
 
 func hasDirWithName(file *File, dirName string) bool {
-	child, exists := file.chidren[dirName]
-	return exists && child.isDir
+	child, exists := file.Chidren[dirName]
+	return exists && child.IsDir
 }
 
 func hasChildWithName(file *File, dirName string) bool {
-	_, exists := file.chidren[dirName]
+	_, exists := file.Chidren[dirName]
 	return exists
 }
 
@@ -102,9 +102,9 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 }
 
 type File struct {
-	name    string
-	isDir   bool
-	chidren map[string]File
+	Name    string
+	IsDir   bool
+	Chidren map[string]File
 }
 
 func (f *File) Close() error {
