@@ -62,7 +62,19 @@ func hasChildWithName(file *File, dirName string) bool {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	panic("not implemented") // TODO: Implement
+	path_names := paths(name)
+	current := f.Root
+	for _, path_name := range path_names {
+		if !current.IsDir {
+			return nil, errors.New("invalid path")
+		}
+		file, exists := current.Chidren[path_name]
+		if !exists {
+			return nil, errors.New("file doesn't exist")
+		}
+		current = file
+	}
+	return &current, nil
 }
 
 func (f *FileSystem) RemoveAll(ctx context.Context, name string) error {
