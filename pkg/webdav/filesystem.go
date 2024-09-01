@@ -62,19 +62,34 @@ func hasChildWithName(file *File, dirName string) bool {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	path_names := paths(name)
+	ro := os.O_RDONLY&flag != 0
+	rw := os.O_RDWR&flag != 0
+	wo := os.O_WRONLY&flag != 0
+	append := os.O_APPEND&flag != 0
+	create := os.O_CREATE&flag != 0
+	failIfExists := os.O_EXCL&flag != 0
+	truncate := os.O_TRUNC&flag != 0
+
+	pathNames := paths(name)
 	current := f.Root
-	for _, path_name := range path_names {
+	for i, pathName := range pathNames {
 		if !current.IsDir {
 			return nil, errors.New("invalid path")
 		}
-		file, exists := current.Chidren[path_name]
+
+		if last(i, path_nam)
+
+		file, exists := current.Chidren[pathName]
 		if !exists {
 			return nil, errors.New("file doesn't exist")
 		}
 		current = file
 	}
 	return &current, nil
+}
+
+func last(i int, arry []string) bool {
+	return i == len(arry)-1
 }
 
 func (f *FileSystem) RemoveAll(ctx context.Context, name string) error {
