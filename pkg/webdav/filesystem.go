@@ -77,7 +77,12 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 			return nil, errors.New("invalid path")
 		}
 
-		if last(i, path_nam)
+		if last(i, pathNames) {
+			_, exists := current.Chidren[pathName]
+			if create && failIfExists && exists {
+				return nil, errors.New("file exists")
+			}
+		}
 
 		file, exists := current.Chidren[pathName]
 		if !exists {
