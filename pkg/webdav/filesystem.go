@@ -62,10 +62,10 @@ func hasChildWithName(file *File, dirName string) bool {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	return f.openFile(ctx, name, flag, perm)
+	return f.openFile(name, flag, perm)
 }
 
-func (f *FileSystem) openFile(ctx context.Context, name string, flag int, perm os.FileMode) (*File, error) {
+func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, error) {
 	ro := os.O_RDONLY&flag != 0
 	rw := os.O_RDWR&flag != 0
 	wo := os.O_WRONLY&flag != 0
@@ -89,6 +89,15 @@ func (f *FileSystem) openFile(ctx context.Context, name string, flag int, perm o
 
 			if ro && !exists {
 				return nil, errors.New("file does not exist")
+			} else if !exists {
+				current.Chidren[pathName] = File{
+					NameValue:  pathName,
+					IsDirValue: perm.IsDir(),
+					Chidren:    map[string]File{},
+					SizeValue:  0,
+					ModeValue:  perm,
+					Modtime:    time.Now(),
+				}
 			}
 		} else if !exists {
 			return nil, errors.New("file doesn't exist")
@@ -112,11 +121,46 @@ func last(i int, arry []string) bool {
 }
 
 func (f *FileSystem) RemoveAll(ctx context.Context, name string) error {
-	panic("not implemented") // TODO: Implement
+	pathsArry := paths(name)
+	parentName := strings.Join(pathsArry[:len(pathsArry)-1], "/")
+
+	file, err := f.openFile(parentName, os.O_RDWR, os.ModeDir)
+	if err != nil {
+		return err
+	}
+
+	delete(file.Chidren, pathsArry[len(pathsArry)-1])
+
+	return nil
 }
 
 func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string) error {
-	panic("not implemented") // TODO: Implement
+	oldPathsArry := paths(oldName)
+	oldParentName := strings.Join(oldPathsArry[:len(oldPathsArry)-1], "/")
+	oldParent, err := f.openFile(oldParentName, os.O_RDWR, os.ModeDir)
+	if err != nil {
+		return err
+	}
+
+	oldSimpleName := oldPathsArry[len(oldPathsArry)-1]
+	file, exists := oldParent.Chidren[oldSimpleName]
+	if !exists {
+		return errors.New("file does not exist")
+	}
+
+	newPathsArry := paths(newName)
+	newParentName := strings.Join(newPathsArry[:len(newPathsArry)-1], "/")
+
+	newParent, err := f.openFile(newParentName, os.O_RDWR, os.ModeDir)
+	if err != nil {
+		return err
+	}
+
+	file.NameValue = newPathsArry[len(newPathsArry)-1]
+	delete(oldParent.Chidren, oldSimpleName)
+	newParent.Chidren[file.NameValue] = file
+
+	return nil
 }
 
 func paths(name string) []string {
@@ -135,7 +179,8 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
-		return f.openFile(ctx, name, os.O_RDONLY, 0600)
+		// Todo. don't know what right mode is here
+		return f.openFile(name, os.O_RDONLY, os.ModeExclusive)
 	}
 }
 

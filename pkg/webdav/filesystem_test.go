@@ -10,8 +10,8 @@ import (
 func TestMkdir(t *testing.T) {
 	fs := webdav.FileSystem{
 		Root: webdav.File{
-			Name:    "/",
-			IsDir:   true,
+			NameValue:    "/",
+			IsDirValue:   true,
 			Chidren: map[string]webdav.File{},
 		},
 	}
