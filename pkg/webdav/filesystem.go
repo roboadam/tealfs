@@ -62,6 +62,10 @@ func hasChildWithName(file *File, dirName string) bool {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
+	return f.openFile(ctx, name, flag, perm)
+}
+
+func (f *FileSystem) openFile(ctx context.Context, name string, flag int, perm os.FileMode) (*File, error) {
 	ro := os.O_RDONLY&flag != 0
 	rw := os.O_RDWR&flag != 0
 	wo := os.O_WRONLY&flag != 0
@@ -131,9 +135,7 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
-		file, err := f.OpenFile(ctx, name, os.O_RDONLY, 0600)
-		filep := &file;
-		return filep, err
+		return f.openFile(ctx, name, os.O_RDONLY, 0600)
 	}
 }
 
