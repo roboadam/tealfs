@@ -44,16 +44,16 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 		return errors.New("invalid path")
 	}
 	current.Chidren[names[len(names)-1]] = File{
-		Name:    names[len(names)-1],
-		IsDir:   true,
-		Chidren: map[string]File{},
+		NameValue:  names[len(names)-1],
+		IsDirValue: true,
+		Chidren:    map[string]File{},
 	}
 	return nil
 }
 
 func hasDirWithName(file *File, dirName string) bool {
 	child, exists := file.Chidren[dirName]
-	return exists && child.IsDir
+	return exists && child.IsDirValue
 }
 
 func hasChildWithName(file *File, dirName string) bool {
@@ -73,7 +73,7 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 	pathNames := paths(name)
 	current := f.Root
 	for i, pathName := range pathNames {
-		if !current.IsDir {
+		if !current.IsDirValue {
 			return nil, errors.New("invalid path")
 		}
 
@@ -91,6 +91,14 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		}
 		current = file
 	}
+
+	current.RO = ro
+	current.RW = rw
+	current.WO = wo
+	current.Append = append
+	current.Create = create
+	current.FailIfExists = failIfExists
+	current.Truncate = truncate
 
 	return &current, nil
 }
@@ -123,22 +131,27 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
-		info := FileInfo{
-			name:    name,
-			size:    0,
-			mode:    0,
-			modtime: time.Time{},
-			isdir:   false,
-			sys:     nil,
-		}
-		return &info, nil
+		file, err := f.OpenFile(ctx, name, os.O_RDONLY, 0600)
+		filep := &file;
+		return filep, err
 	}
 }
 
 type File struct {
-	Name    string
-	IsDir   bool
-	Chidren map[string]File
+	NameValue    string
+	IsDirValue   bool
+	Chidren      map[string]File
+	RO           bool
+	RW           bool
+	WO           bool
+	Append       bool
+	Create       bool
+	FailIfExists bool
+	Truncate     bool
+	SizeValue    int64
+	ModeValue    fs.FileMode
+	Modtime      time.Time
+	SysValue     any
 }
 
 func (f *File) Close() error {
@@ -158,42 +171,33 @@ func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
 }
 
 func (f *File) Stat() (fs.FileInfo, error) {
-	panic("not implemented") // TODO: Implement
+	return f, nil
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
 	panic("not implemented") // TODO: Implement
 }
 
-type FileInfo struct {
-	name    string
-	size    int64
-	mode    fs.FileMode
-	modtime time.Time
-	isdir   bool
-	sys     any
+func (f *File) Name() string {
+	return f.NameValue
 }
 
-func (f *FileInfo) Name() string {
-	return f.name
+func (f *File) Size() int64 {
+	return f.SizeValue
 }
 
-func (f *FileInfo) Size() int64 {
-	return f.size
+func (f *File) Mode() fs.FileMode {
+	return f.ModeValue
 }
 
-func (f *FileInfo) Mode() fs.FileMode {
-	return f.mode
+func (f *File) ModTime() time.Time {
+	return f.Modtime
 }
 
-func (f *FileInfo) ModTime() time.Time {
-	return f.modtime
+func (f *File) IsDir() bool {
+	return f.IsDirValue
 }
 
-func (f *FileInfo) IsDir() bool {
-	return f.isdir
-}
-
-func (f *FileInfo) Sys() any {
-	return f.sys
+func (f *File) Sys() any {
+	return f.SysValue
 }
