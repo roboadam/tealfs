@@ -112,6 +112,11 @@ func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, e
 	current.Create = create
 	current.FailIfExists = failIfExists
 	current.Truncate = truncate
+	if append && !ro {
+		current.Position = current.SizeValue
+	} else {
+		current.Position = 0
+	}
 
 	return &current, nil
 }
@@ -199,13 +204,30 @@ type File struct {
 	ModeValue    fs.FileMode
 	Modtime      time.Time
 	SysValue     any
+	Position     int64
+	ReadReqs     chan<- ReadFileRequest
+	ReadResp     <-chan ReadFileResponse
 }
 
 func (f *File) Close() error {
 	return nil
 }
 
+type ReadFileRequest struct {
+	BuffSize int
+	Position int64
+}
+
+type ReadFileResponse struct {
+	Data []byte
+	Err  error
+}
+
 func (f *File) Read(p []byte) (n int, err error) {
+	f.ReadReqs <- ReadFileRequest{
+		BuffSize: len(p),
+		Position: f.Position,
+	}
 	panic("not implemented") // TODO: Implement
 }
 
