@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"os"
 	"strings"
+	"tealfs/pkg/model"
 	"time"
 
 	"golang.org/x/net/webdav"
@@ -73,6 +74,20 @@ func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, e
 	create := os.O_CREATE&flag != 0
 	failIfExists := os.O_EXCL&flag != 0
 	truncate := os.O_TRUNC&flag != 0
+
+	if (ro && rw) || (ro && wo) || (rw && wo) || !(ro || rw || wo) {
+		return nil, errors.New("invalid flag")
+	}
+
+	if ro && (append || create || failIfExists || truncate) {
+		return nil, errors.New("invalid flag")
+	}
+
+	if !create && failIfExists {
+		return nil, errors.New("invalid flag")
+	}
+
+	
 
 	pathNames := paths(name)
 	current := f.Root
@@ -205,29 +220,16 @@ type File struct {
 	Modtime      time.Time
 	SysValue     any
 	Position     int64
-	ReadReqs     chan<- ReadFileRequest
-	ReadResp     <-chan ReadFileResponse
+	Data         []byte
+	IsOpen       bool
+	Id           model.FileId
 }
 
 func (f *File) Close() error {
 	return nil
 }
 
-type ReadFileRequest struct {
-	BuffSize int
-	Position int64
-}
-
-type ReadFileResponse struct {
-	Data []byte
-	Err  error
-}
-
 func (f *File) Read(p []byte) (n int, err error) {
-	f.ReadReqs <- ReadFileRequest{
-		BuffSize: len(p),
-		Position: f.Position,
-	}
 	panic("not implemented") // TODO: Implement
 }
 
