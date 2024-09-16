@@ -35,8 +35,6 @@ const (
 
 type ConnId int32
 
-type FileId int64
-
 type MgrConnsConnectTo struct {
 	Address string
 }

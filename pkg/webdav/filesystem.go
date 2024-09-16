@@ -27,7 +27,9 @@ import (
 )
 
 type FileSystem struct {
-	Root File
+	Root          File
+	BlockRequest  chan model.BlockId
+	BlockResponse chan []byte
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
@@ -74,6 +76,7 @@ func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, e
 	create := os.O_CREATE&flag != 0
 	failIfExists := os.O_EXCL&flag != 0
 	truncate := os.O_TRUNC&flag != 0
+	isDir := perm.IsDir()
 
 	if (ro && rw) || (ro && wo) || (rw && wo) || !(ro || rw || wo) {
 		return nil, errors.New("invalid flag")
@@ -87,38 +90,34 @@ func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, e
 		return nil, errors.New("invalid flag")
 	}
 
-	
-
-	pathNames := paths(name)
+	dirNames, fileName := paths(name)
+	if fileName == nil {
+		if isDir {
+			return &f.Root, nil
+		} else {
+			return nil, errors.New("not a directory")
+		}
+	}
 	current := f.Root
-	for i, pathName := range pathNames {
+	for _, dirName := range dirNames {
 		if !current.IsDirValue {
 			return nil, errors.New("invalid path")
 		}
 
-		file, exists := current.Chidren[pathName]
-		if last(i, pathNames) {
-			if create && failIfExists && exists {
-				return nil, errors.New("file exists")
-			}
-
-			if ro && !exists {
-				return nil, errors.New("file does not exist")
-			} else if !exists {
-				current.Chidren[pathName] = File{
-					NameValue:  pathName,
-					IsDirValue: perm.IsDir(),
-					Chidren:    map[string]File{},
-					SizeValue:  0,
-					ModeValue:  perm,
-					Modtime:    time.Now(),
-				}
-			}
-		} else if !exists {
-			return nil, errors.New("file doesn't exist")
+		dir, exists := current.Chidren[dirName]
+		if !exists {
+			return nil, errors.New("invalid path")
 		}
-		current = file
+		current = dir
 	}
+
+	file, exists := current.Chidren[*fileName]
+
+	if exists && failIfExists {
+		return nil, errors.New("invalid path")
+	}
+
+	file
 
 	current.RO = ro
 	current.RW = rw
@@ -183,7 +182,7 @@ func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string)
 	return nil
 }
 
-func paths(name string) []string {
+func paths(name string) ([]string, *string) {
 	raw := strings.Split(name, "/")
 	result := make([]string, 0)
 	for _, value := range raw {
@@ -191,7 +190,11 @@ func paths(name string) []string {
 			result = append(result, value)
 		}
 	}
-	return result
+	last := len(result) - 1
+	if last < 0 {
+		return result, nil
+	}
+	return result[:last], &result[last]
 }
 
 func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
@@ -222,7 +225,7 @@ type File struct {
 	Position     int64
 	Data         []byte
 	IsOpen       bool
-	Id           model.FileId
+	BlockId      model.BlockId
 }
 
 func (f *File) Close() error {
