@@ -27,14 +27,62 @@ import (
 )
 
 type FileSystem struct {
-	Root          File
-	BlockRequest  chan model.BlockId
-	BlockResponse chan []byte
+	FilesByPath    map[string]File
+	FilesByBlockId map[string]File
+	BlockRequest   chan model.BlockId
+	BlockResponse  chan blockResponse
+	addFile chan 
+}
+
+type blockResponse struct {
+	data []byte
+	id   model.BlockId
+}
+
+type addFile struct {
+	string name
+	file File
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	// Todo handle the context
-	names := paths(name)
+	// Todo sync back to persistence layer
+
+	_, exists := f.FilesByPath[name]
+	if exists {
+		return errors.New("path exists path")
+	}
+
+	dirName, fileName := dirAndFileName(name)
+	_, exists = f.FilesByPath[dirName]
+	if !exists {
+		return errors.New("invalid path")
+	}
+
+	dir := File{
+		NameValue:    fileName,
+		IsDirValue:   true,
+		RO:           false,
+		RW:           false,
+		WO:           false,
+		Append:       false,
+		Create:       false,
+		FailIfExists: exists,
+		Truncate:     false,
+		SizeValue:    0,
+		ModeValue:    0,
+		Modtime:      time.Now(),
+		SysValue:     nil,
+		Position:     0,
+		Data:         []byte{},
+		IsOpen:       false,
+		BlockId:      "",
+	}
+
+	f.FilesByPath[name] = dir
+
+
+
 	current := f.Root
 	for _, dir := range names[:len(names)-1] {
 		if hasDirWithName(&current, dir) {
@@ -117,8 +165,6 @@ func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, e
 		return nil, errors.New("invalid path")
 	}
 
-	file
-
 	current.RO = ro
 	current.RW = rw
 	current.WO = wo
@@ -182,7 +228,7 @@ func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string)
 	return nil
 }
 
-func paths(name string) ([]string, *string) {
+func dirAndFileName(name string) (string, string) {
 	raw := strings.Split(name, "/")
 	result := make([]string, 0)
 	for _, value := range raw {
@@ -192,9 +238,9 @@ func paths(name string) ([]string, *string) {
 	}
 	last := len(result) - 1
 	if last < 0 {
-		return result, nil
+		return "", ""
 	}
-	return result[:last], &result[last]
+	return strings.Join(result[:last], "/"), result[last]
 }
 
 func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
@@ -210,7 +256,6 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 type File struct {
 	NameValue    string
 	IsDirValue   bool
-	Chidren      map[string]File
 	RO           bool
 	RW           bool
 	WO           bool
