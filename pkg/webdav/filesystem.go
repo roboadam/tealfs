@@ -28,10 +28,30 @@ import (
 
 type FileSystem struct {
 	FilesByPath    map[string]File
-	FilesByBlockId map[string]File
+	FilesByBlockId map[model.BlockId]File
 	BlockRequest   chan model.BlockId
 	BlockResponse  chan blockResponse
-	addFile chan 
+	addFile        chan addFileReq
+	openFileReq    chan openFileReq
+}
+
+func (f *FileSystem) run() {
+	for {
+		select {
+		case af := <-f.addFile:
+			f.FilesByPath[af.name] = af.file
+			if af.file.BlockId != "" {
+				f.FilesByBlockId[af.file.BlockId] = af.file
+			}
+		case of := <-f.openFileReq:
+			f, exists := f.FilesByPath[of.name]
+			if exists {
+				of.resp <- openFileResp{file: f}
+			} else {
+				of.resp <- openFileResp{err: errors.New("file not found")}
+			}
+		}
+	}
 }
 
 type blockResponse struct {
@@ -39,14 +59,23 @@ type blockResponse struct {
 	id   model.BlockId
 }
 
-type addFile struct {
-	string name
+type addFileReq struct {
+	name string
 	file File
+}
+
+type openFileReq struct {
+	name string
+	resp chan openFileResp
+}
+
+type openFileResp struct {
+	file File
+	err  error
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	// Todo handle the context
-	// Todo sync back to persistence layer
 
 	_, exists := f.FilesByPath[name]
 	if exists {
@@ -79,37 +108,12 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 		BlockId:      "",
 	}
 
-	f.FilesByPath[name] = dir
-
-
-
-	current := f.Root
-	for _, dir := range names[:len(names)-1] {
-		if hasDirWithName(&current, dir) {
-			current = current.Chidren[dir]
-		} else {
-			return errors.New("invalid path")
-		}
+	f.addFile <- addFileReq{
+		name: name,
+		file: dir,
 	}
-	if hasChildWithName(&current, names[len(names)-1]) {
-		return errors.New("invalid path")
-	}
-	current.Chidren[names[len(names)-1]] = File{
-		NameValue:  names[len(names)-1],
-		IsDirValue: true,
-		Chidren:    map[string]File{},
-	}
+
 	return nil
-}
-
-func hasDirWithName(file *File, dirName string) bool {
-	child, exists := file.Chidren[dirName]
-	return exists && child.IsDirValue
-}
-
-func hasChildWithName(file *File, dirName string) bool {
-	_, exists := file.Chidren[dirName]
-	return exists
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
@@ -138,9 +142,14 @@ func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, e
 		return nil, errors.New("invalid flag")
 	}
 
-	dirNames, fileName := paths(name)
-	if fileName == nil {
+	dirName, fileName := dirAndFileName(name)
+	if fileName == "" && dirName == "" {
 		if isDir {
+			f.openFileReq <- openFileReq{
+				name: "",
+				resp: make(chan openFileResp),
+			}
+			of := 
 			return &f.Root, nil
 		} else {
 			return nil, errors.New("not a directory")
