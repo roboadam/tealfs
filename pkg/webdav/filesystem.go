@@ -130,6 +130,7 @@ func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, e
 	truncate := os.O_TRUNC&flag != 0
 	isDir := perm.IsDir()
 
+	// only one of ro, rw, wo allowed
 	if (ro && rw) || (ro && wo) || (rw && wo) || !(ro || rw || wo) {
 		return nil, errors.New("invalid flag")
 	}
@@ -142,20 +143,28 @@ func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, e
 		return nil, errors.New("invalid flag")
 	}
 
+	// opening the root directory
 	dirName, fileName := dirAndFileName(name)
 	if fileName == "" && dirName == "" {
 		if isDir {
-			f.openFileReq <- openFileReq{
-				name: "",
-				resp: make(chan openFileResp),
-			}
-			of := 
-			return &f.Root, nil
+			resp := make(chan openFileResp)
+			f.openFileReq <- openFileReq{name: "", resp: resp}
+			of := <-resp
+			return &of.file, of.err
 		} else {
 			return nil, errors.New("not a directory")
 		}
 	}
-	current := f.Root
+
+	// make sure parent directory is valid
+	resp := make(chan openFileResp)
+	f.openFileReq <- openFileReq{name: dirName, resp: resp}
+	of := <- resp
+	if of.err != nil {
+		return nil, of.err
+	}
+
+	
 	for _, dirName := range dirNames {
 		if !current.IsDirValue {
 			return nil, errors.New("invalid path")
