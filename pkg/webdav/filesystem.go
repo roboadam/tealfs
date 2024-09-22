@@ -139,27 +139,25 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 
 	// only one of ro, rw, wo allowed
 	if (ro && rw) || (ro && wo) || (rw && wo) || !(ro || rw || wo) {
-		return openFileResp{file: nil, err: errors.New("invalid flag")}
+		return openFileResp{err: errors.New("invalid flag")}
 	}
 
 	if ro && (append || create || failIfExists || truncate) {
-		return openFileResp{file: nil, err: errors.New("invalid flag")}
+		return openFileResp{err: errors.New("invalid flag")}
 	}
 
 	if !create && failIfExists {
-		return openFileResp{file: nil, err: errors.New("invalid flag")}
+		return openFileResp{err: errors.New("invalid flag")}
 	}
 
 	// opening the root directory
 	dirName, fileName := dirAndFileName(req.name)
 	if fileName == "" && dirName == "" {
 		if isDir {
-			resp := make(chan openFileResp)
-			f.openFileReq <- openFileReq{name: "", resp: resp}
-			of := <-resp
-			return &of.file, of.err
+			file := f.FilesByPath["/"]
+			return openFileResp{file: &file}
 		} else {
-			return nil, errors.New("not a directory")
+			return openFileResp{err: errors.New("not a directory")}
 		}
 	}
 
