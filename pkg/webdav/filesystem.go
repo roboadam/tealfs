@@ -27,47 +27,47 @@ import (
 )
 
 type FileSystem struct {
-	FilesByPath    map[string]File
-	FilesByBlockId map[model.BlockId]File
-	BlockRequest   chan model.BlockId
-	BlockResponse  chan blockResponse
-	addFile        chan addFileReq
-	openFileReq    chan openFileReq
+	FilesByPath map[string]File
+	mkdirReq    chan mkdirReq
+	openFileReq chan openFileReq
 }
 
 func (f *FileSystem) run() {
 	for {
 		select {
-		case af := <-f.addFile:
-			f.FilesByPath[af.name] = af.file
-			if af.file.BlockId != "" {
-				f.FilesByBlockId[af.file.BlockId] = af.file
-			}
+		case req := <-f.mkdirReq:
+			req.respChan <- f.mkdir(&req)
 		case req := <-f.openFileReq:
 			req.respChan <- f.openFile(&req)
 		}
 	}
 }
 
-type blockResponse struct {
-	data []byte
-	id   model.BlockId
-}
-
-type addFileReq struct {
-	name string
-	file File
+type mkdirReq struct {
+	ctx      context.Context
+	name     string
+	perm     os.FileMode
+	respChan chan error
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	// Todo handle the context
+	respChan := make(chan error)
+	f.mkdirReq <- mkdirReq{
+		ctx:      ctx,
+		name:     name,
+		perm:     perm,
+		respChan: respChan,
+	}
+	return <-respChan
+}
 
-	_, exists := f.FilesByPath[name]
+func (f *FileSystem) mkdir(req *mkdirReq) error {
+	_, exists := f.FilesByPath[req.name]
 	if exists {
-		return errors.New("path exists path")
+		return errors.New("path exists")
 	}
 
-	dirName, fileName := dirAndFileName(name)
+	dirName, fileName := dirAndFileName(req.name)
 	_, exists = f.FilesByPath[dirName]
 	if !exists {
 		return errors.New("invalid path")
@@ -93,10 +93,7 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 		BlockId:      "",
 	}
 
-	f.addFile <- addFileReq{
-		name: name,
-		file: dir,
-	}
+	f.FilesByPath[req.name] = dir
 
 	return nil
 }
@@ -161,50 +158,53 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 		}
 	}
 
-	// make sure parent directory is valid
-	resp := make(chan openFileResp)
-	f.openFileReq <- openFileReq{name: dirName, resp: resp}
-	of := <-resp
-	if of.err != nil {
-		return nil, of.err
+	// handle failIfExists scenario
+	file, exists := f.FilesByPath[req.name]
+	if failIfExists && exists {
+		return openFileResp{err: errors.New("file exists")}
 	}
 
-	for _, dirName := range dirNames {
-		if !current.IsDirValue {
-			return nil, errors.New("invalid path")
+	// can't open a file that doesn't exist in read-only mode
+	if !exists && ro {
+		return openFileResp{err: errors.New("file not found")}
+	}
+
+	if exists && isDir && !file.IsDir() {
+		return openFileResp{err: errors.New("file isn't directory")}
+	}
+
+	if exists && !isDir && file.IsDir() {
+		return openFileResp{err: errors.New("file is directory")}
+	}
+
+	if !exists {
+		file = File{
+			NameValue:    fileName,
+			IsDirValue:   isDir,
+			RO:           ro,
+			RW:           rw,
+			WO:           wo,
+			Append:       append,
+			Create:       create,
+			FailIfExists: failIfExists,
+			Truncate:     truncate,
+			SizeValue:    0,
+			ModeValue:    0,
+			Modtime:      time.Now(),
+			SysValue:     nil,
+			Position:     0,
+			Data:         []byte{},
+			IsOpen:       false,
+			BlockId:      "",
 		}
-
-		dir, exists := current.Chidren[dirName]
-		if !exists {
-			return nil, errors.New("invalid path")
-		}
-		current = dir
+		f.FilesByPath[req.name] = file
 	}
 
-	file, exists := current.Chidren[*fileName]
-
-	if exists && failIfExists {
-		return nil, errors.New("invalid path")
+	if append {
+		file.Position = file.SizeValue
 	}
 
-	current.RO = ro
-	current.RW = rw
-	current.WO = wo
-	current.Append = append
-	current.Create = create
-	current.FailIfExists = failIfExists
-	current.Truncate = truncate
-	if append && !ro {
-		current.Position = current.SizeValue
-	} else {
-		current.Position = 0
-	}
-
-	return &current, nil
-}
-
-func last(i int, arry []string) bool {
-	return i == len(arry)-1
+	return openFileResp{file: &file}
 }
 
 func (f *FileSystem) RemoveAll(ctx context.Context, name string) error {

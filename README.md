@@ -7,6 +7,7 @@ Reliable file storage for everyone!
 3. Usability
 4. Performance
 
-2024-09-22:
+### 2024-09-22:
 - Making filesystem openFile method work with filesystem synchronous loop
 - filesystem.OpenFile should just send message and receive response. openFile should run inside synchronous loop
+- still working on converting rest of filesystem public methods to use the above pattern
