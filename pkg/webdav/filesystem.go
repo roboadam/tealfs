@@ -43,13 +43,8 @@ func (f *FileSystem) run() {
 			if af.file.BlockId != "" {
 				f.FilesByBlockId[af.file.BlockId] = af.file
 			}
-		case of := <-f.openFileReq:
-			f, exists := f.FilesByPath[of.name]
-			if exists {
-				of.resp <- openFileResp{file: f}
-			} else {
-				of.resp <- openFileResp{err: errors.New("file not found")}
-			}
+		case req := <-f.openFileReq:
+			req.respChan <- f.openFile(&req)
 		}
 	}
 }
@@ -62,16 +57,6 @@ type blockResponse struct {
 type addFileReq struct {
 	name string
 	file File
-}
-
-type openFileReq struct {
-	name string
-	resp chan openFileResp
-}
-
-type openFileResp struct {
-	file File
-	err  error
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
@@ -116,35 +101,57 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 	return nil
 }
 
-func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	return f.openFile(name, flag, perm)
+type openFileReq struct {
+	ctx      context.Context
+	name     string
+	flag     int
+	perm     os.FileMode
+	respChan chan openFileResp
 }
 
-func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, error) {
-	ro := os.O_RDONLY&flag != 0
-	rw := os.O_RDWR&flag != 0
-	wo := os.O_WRONLY&flag != 0
-	append := os.O_APPEND&flag != 0
-	create := os.O_CREATE&flag != 0
-	failIfExists := os.O_EXCL&flag != 0
-	truncate := os.O_TRUNC&flag != 0
-	isDir := perm.IsDir()
+type openFileResp struct {
+	file *File
+	err  error
+}
+
+func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
+	respChan := make(chan openFileResp)
+	f.openFileReq <- openFileReq{
+		ctx:      ctx,
+		name:     name,
+		flag:     flag,
+		perm:     perm,
+		respChan: respChan,
+	}
+	resp := <-respChan
+	return resp.file, resp.err
+}
+
+func (f *FileSystem) openFile(req *openFileReq) openFileResp {
+	ro := os.O_RDONLY&req.flag != 0
+	rw := os.O_RDWR&req.flag != 0
+	wo := os.O_WRONLY&req.flag != 0
+	append := os.O_APPEND&req.flag != 0
+	create := os.O_CREATE&req.flag != 0
+	failIfExists := os.O_EXCL&req.flag != 0
+	truncate := os.O_TRUNC&req.flag != 0
+	isDir := req.perm.IsDir()
 
 	// only one of ro, rw, wo allowed
 	if (ro && rw) || (ro && wo) || (rw && wo) || !(ro || rw || wo) {
-		return nil, errors.New("invalid flag")
+		return openFileResp{file: nil, err: errors.New("invalid flag")}
 	}
 
 	if ro && (append || create || failIfExists || truncate) {
-		return nil, errors.New("invalid flag")
+		return openFileResp{file: nil, err: errors.New("invalid flag")}
 	}
 
 	if !create && failIfExists {
-		return nil, errors.New("invalid flag")
+		return openFileResp{file: nil, err: errors.New("invalid flag")}
 	}
 
 	// opening the root directory
-	dirName, fileName := dirAndFileName(name)
+	dirName, fileName := dirAndFileName(req.name)
 	if fileName == "" && dirName == "" {
 		if isDir {
 			resp := make(chan openFileResp)
@@ -159,12 +166,11 @@ func (f *FileSystem) openFile(name string, flag int, perm os.FileMode) (*File, e
 	// make sure parent directory is valid
 	resp := make(chan openFileResp)
 	f.openFileReq <- openFileReq{name: dirName, resp: resp}
-	of := <- resp
+	of := <-resp
 	if of.err != nil {
 		return nil, of.err
 	}
 
-	
 	for _, dirName := range dirNames {
 		if !current.IsDirValue {
 			return nil, errors.New("invalid path")
