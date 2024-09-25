@@ -14,3 +14,7 @@ Reliable file storage for everyone!
 
 ### 2024-09-23:
 - did some research, no changes
+
+### 2024-09-25:
+- removeall refactored for filesystem
+- started rename refactor

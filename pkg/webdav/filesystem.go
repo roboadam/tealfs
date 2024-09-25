@@ -31,6 +31,7 @@ type FileSystem struct {
 	mkdirReq     chan mkdirReq
 	openFileReq  chan openFileReq
 	removeAllReq chan removeAllReq
+	renameReq    chan renameReq
 }
 
 func (f *FileSystem) run() {
@@ -42,6 +43,8 @@ func (f *FileSystem) run() {
 			req.respChan <- f.openFile(&req)
 		case req := <-f.removeAllReq:
 			req.respChan <- f.removeAll(&req)
+		case req := <-f.renameReq:
+			req.respChan <- f.rename(&req)
 		}
 	}
 }
@@ -220,26 +223,44 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 	fileName := req.name
 	prefix := fileName + "/"
 	for key := range f.FilesByPath {
-		if strings.HasPrefix(key, fileName)
+		if strings.HasPrefix(key, prefix) {
+			delete(f.FilesByPath, key)
+		}
 	}
-}
-
-func (f *FileSystem) RemoveAll(ctx context.Context, name string) error {
-
-	pathsArry := paths(name)
-	parentName := strings.Join(pathsArry[:len(pathsArry)-1], "/")
-
-	file, err := f.openFile(parentName, os.O_RDWR, os.ModeDir)
-	if err != nil {
-		return err
-	}
-
-	delete(file.Chidren, pathsArry[len(pathsArry)-1])
-
+	delete(f.FilesByPath, fileName)
 	return nil
 }
 
+func (f *FileSystem) RemoveAll(ctx context.Context, name string) error {
+	respChan := make(chan error)
+	f.removeAllReq <- removeAllReq{
+		ctx:      ctx,
+		name:     name,
+		respChan: respChan,
+	}
+	return <-respChan
+}
+
+type renameReq struct {
+	ctx      context.Context
+	oldName  string
+	newName  string
+	respChan chan error
+}
+
 func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string) error {
+	respChan := make(chan error)
+	f.renameReq <- renameReq{
+		ctx:      ctx,
+		oldName:  oldName,
+		newName:  newName,
+		respChan: respChan,
+	}
+	return <-respChan
+
+}
+
+func (f *FileSystem) rename(req *renameReq) error {
 	oldPathsArry := paths(oldName)
 	oldParentName := strings.Join(oldPathsArry[:len(oldPathsArry)-1], "/")
 	oldParent, err := f.openFile(oldParentName, os.O_RDWR, os.ModeDir)
