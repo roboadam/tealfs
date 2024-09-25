@@ -27,9 +27,10 @@ import (
 )
 
 type FileSystem struct {
-	FilesByPath map[string]File
-	mkdirReq    chan mkdirReq
-	openFileReq chan openFileReq
+	FilesByPath  map[string]File
+	mkdirReq     chan mkdirReq
+	openFileReq  chan openFileReq
+	removeAllReq chan removeAllReq
 }
 
 func (f *FileSystem) run() {
@@ -39,6 +40,8 @@ func (f *FileSystem) run() {
 			req.respChan <- f.mkdir(&req)
 		case req := <-f.openFileReq:
 			req.respChan <- f.openFile(&req)
+		case req := <-f.removeAllReq:
+			req.respChan <- f.removeAll(&req)
 		}
 	}
 }
@@ -207,7 +210,22 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	return openFileResp{file: &file}
 }
 
+type removeAllReq struct {
+	ctx      context.Context
+	name     string
+	respChan chan error
+}
+
+func (f *FileSystem) removeAll(req *removeAllReq) error {
+	fileName := req.name
+	prefix := fileName + "/"
+	for key := range f.FilesByPath {
+		if strings.HasPrefix(key, fileName)
+	}
+}
+
 func (f *FileSystem) RemoveAll(ctx context.Context, name string) error {
+
 	pathsArry := paths(name)
 	parentName := strings.Join(pathsArry[:len(pathsArry)-1], "/")
 
