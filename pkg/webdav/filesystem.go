@@ -260,50 +260,42 @@ func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string)
 
 }
 
+func swapPrefix(oldPrefix string, newPrefix string, value string) string {
+	return newPrefix + value[len(oldPrefix):]
+}
+
+func shortName(path string) string {
+	pathArray := strings.Split(path, "/")
+	if len(pathArray) <= 1 {
+		return ""
+	}
+	return pathArray[len(pathArray)-1]
+}
+
 func (f *FileSystem) rename(req *renameReq) error {
 	oldName := req.oldName
+	newName := req.newName
 	file, exists := f.FilesByPath[oldName]
 	if !exists {
 		return errors.New("file not found")
 	}
+	oldPrefix := oldName + "/"
+	newPrefix := newName + "/"
 
 	if file.IsDir() {
-		prefix := oldName + "/"
 		for key := range f.FilesByPath {
-			if strings.HasPrefix(key, prefix) {
+			if strings.HasPrefix(key, oldPrefix) {
 				childFile := f.FilesByPath[key]
 				delete(f.FilesByPath, key)
-				f.FilesByPath
+				childFile.NameValue = shortName(key)
+				f.FilesByPath[swapPrefix(oldPrefix, newPrefix, key)] = childFile
 			}
 		}
 	}
 
-	delete(f.FilesByPath, fileName)
-//////
-	oldPathsArry := paths(oldName)
-	oldParentName := strings.Join(oldPathsArry[:len(oldPathsArry)-1], "/")
-	oldParent, err := f.openFile(oldParentName, os.O_RDWR, os.ModeDir)
-	if err != nil {
-		return err
-	}
-
-	oldSimpleName := oldPathsArry[len(oldPathsArry)-1]
-	file, exists := oldParent.Chidren[oldSimpleName]
-	if !exists {
-		return errors.New("file does not exist")
-	}
-
-	newPathsArry := paths(newName)
-	newParentName := strings.Join(newPathsArry[:len(newPathsArry)-1], "/")
-
-	newParent, err := f.openFile(newParentName, os.O_RDWR, os.ModeDir)
-	if err != nil {
-		return err
-	}
-
-	file.NameValue = newPathsArry[len(newPathsArry)-1]
-	delete(oldParent.Chidren, oldSimpleName)
-	newParent.Chidren[file.NameValue] = file
+	delete(f.FilesByPath, oldName)
+	file.NameValue = shortName(newName)
+	f.FilesByPath[newName] = file
 
 	return nil
 }
