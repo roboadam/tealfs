@@ -261,6 +261,25 @@ func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string)
 }
 
 func (f *FileSystem) rename(req *renameReq) error {
+	oldName := req.oldName
+	file, exists := f.FilesByPath[oldName]
+	if !exists {
+		return errors.New("file not found")
+	}
+
+	if file.IsDir() {
+		prefix := oldName + "/"
+		for key := range f.FilesByPath {
+			if strings.HasPrefix(key, prefix) {
+				childFile := f.FilesByPath[key]
+				delete(f.FilesByPath, key)
+				f.FilesByPath
+			}
+		}
+	}
+
+	delete(f.FilesByPath, fileName)
+//////
 	oldPathsArry := paths(oldName)
 	oldParentName := strings.Join(oldPathsArry[:len(oldPathsArry)-1], "/")
 	oldParent, err := f.openFile(oldParentName, os.O_RDWR, os.ModeDir)
