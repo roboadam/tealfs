@@ -346,6 +346,7 @@ type File struct {
 	Data         []byte
 	IsOpen       bool
 	BlockId      model.BlockId
+	hasData      bool
 }
 
 func (f *File) Close() error {
@@ -353,6 +354,10 @@ func (f *File) Close() error {
 }
 
 func (f *File) Read(p []byte) (n int, err error) {
+	if !f.hasData {
+		// Todo: fetch data
+	}
+	//return the data
 	panic("not implemented") // TODO: Implement
 }
 
