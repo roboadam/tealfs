@@ -316,13 +316,16 @@ func dirAndFileName(name string) (string, string) {
 }
 
 func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-		// Todo. don't know what right mode is here
-		return f.openFile(name, os.O_RDONLY, os.ModeExclusive)
+	respChan := make(chan openFileResp)
+	f.openFileReq <- openFileReq{
+		ctx:      ctx,
+		name:     name,
+		flag:     os.O_RDONLY,
+		perm:     os.ModeExclusive,
+		respChan: respChan,
 	}
+	resp := <-respChan
+	return resp.file, resp.err
 }
 
 type File struct {
