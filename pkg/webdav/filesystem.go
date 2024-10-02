@@ -17,8 +17,6 @@ package webdav
 import (
 	"context"
 	"errors"
-	"io"
-	"io/fs"
 	"os"
 	"strings"
 	"tealfs/pkg/model"
@@ -339,90 +337,4 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 	}
 	resp := <-respChan
 	return resp.file, resp.err
-}
-
-type File struct {
-	NameValue    string
-	IsDirValue   bool
-	RO           bool
-	RW           bool
-	WO           bool
-	Append       bool
-	Create       bool
-	FailIfExists bool
-	Truncate     bool
-	SizeValue    int64
-	ModeValue    fs.FileMode
-	Modtime      time.Time
-	SysValue     any
-	Position     int64
-	Data         []byte
-	IsOpen       bool
-	BlockId      model.BlockId
-	hasData      bool
-	fileSystem   *FileSystem
-}
-
-func (f *File) Close() error {
-	return nil
-}
-
-func (f *File) Read(p []byte) (n int, err error) {
-	if !f.hasData {
-		f.Data = f.fileSystem.fetchBlock(f.BlockId)
-		f.hasData = true
-	}
-
-	if f.Position >= int64(len(f.Data)) {
-		return 0, io.EOF
-	}
-
-	start := f.Position
-	end := f.Position + int64(len(p))
-	if end > int64(len(f.Data)) {
-		end = int64(len(f.Data))
-	}
-
-	copy(p, f.Data[start:end])
-	return int(end - start), nil
-}
-
-func (f *File) Seek(offset int64, whence int) (int64, error) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (f *File) Stat() (fs.FileInfo, error) {
-	return f, nil
-}
-
-func (f *File) Write(p []byte) (n int, err error) {
-	panic("not implemented") // TODO: Implement
-}
-
-func (f *File) Name() string {
-	return f.NameValue
-}
-
-func (f *File) Size() int64 {
-	return f.SizeValue
-}
-
-func (f *File) Mode() fs.FileMode {
-	return f.ModeValue
-}
-
-func (f *File) ModTime() time.Time {
-	return f.Modtime
-}
-
-func (f *File) IsDir() bool {
-	return f.IsDirValue
-}
-
-func (f *File) Sys() any {
-	return f.SysValue
 }
