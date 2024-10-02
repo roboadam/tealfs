@@ -17,6 +17,7 @@ package webdav
 import (
 	"context"
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"strings"
@@ -27,11 +28,23 @@ import (
 )
 
 type FileSystem struct {
-	FilesByPath  map[string]File
-	mkdirReq     chan mkdirReq
-	openFileReq  chan openFileReq
-	removeAllReq chan removeAllReq
-	renameReq    chan renameReq
+	FilesByPath   map[string]File
+	mkdirReq      chan mkdirReq
+	openFileReq   chan openFileReq
+	removeAllReq  chan removeAllReq
+	renameReq     chan renameReq
+	fetchBlockReq chan fetchBlockReq
+}
+
+type fetchBlockReq struct {
+	id   model.BlockId
+	resp chan []byte
+}
+
+func (f *FileSystem) fetchBlock(id model.BlockId) []byte {
+	resp := make(chan []byte)
+	f.fetchBlockReq <- fetchBlockReq{id, resp}
+	return <-resp
 }
 
 func (f *FileSystem) run() {
@@ -347,6 +360,7 @@ type File struct {
 	IsOpen       bool
 	BlockId      model.BlockId
 	hasData      bool
+	fileSystem   *FileSystem
 }
 
 func (f *File) Close() error {
@@ -355,10 +369,22 @@ func (f *File) Close() error {
 
 func (f *File) Read(p []byte) (n int, err error) {
 	if !f.hasData {
-		// Todo: fetch data
+		f.Data = f.fileSystem.fetchBlock(f.BlockId)
+		f.hasData = true
 	}
-	//return the data
-	panic("not implemented") // TODO: Implement
+
+	if f.Position >= int64(len(f.Data)) {
+		return 0, io.EOF
+	}
+
+	start := f.Position
+	end := f.Position + int64(len(p))
+	if end > int64(len(f.Data)) {
+		end = int64(len(f.Data))
+	}
+
+	copy(p, f.Data[start:end])
+	return int(end - start), nil
 }
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
