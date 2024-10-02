@@ -32,6 +32,19 @@ type FileSystem struct {
 	fetchBlockReq chan fetchBlockReq
 }
 
+func New() FileSystem {
+	fs := FileSystem{
+		FilesByPath:   map[string]File{},
+		mkdirReq:      make(chan mkdirReq),
+		openFileReq:   make(chan openFileReq),
+		removeAllReq:  make(chan removeAllReq),
+		renameReq:     make(chan renameReq),
+		fetchBlockReq: make(chan fetchBlockReq),
+	}
+	go fs.run()
+	return fs
+}
+
 type fetchBlockReq struct {
 	id   model.BlockId
 	resp chan []byte

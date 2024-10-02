@@ -22,13 +22,7 @@ import (
 )
 
 func TestMkdir(t *testing.T) {
-	fs := webdav.FileSystem{
-		Root: webdav.File{
-			NameValue:  "/",
-			IsDirValue: true,
-			Chidren:    map[string]webdav.File{},
-		},
-	}
+	fs := webdav.FileSystem{}
 	c := context.Background()
 	mode := os.FileMode(0700)
 
