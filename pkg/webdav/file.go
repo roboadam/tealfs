@@ -37,7 +37,6 @@ type File struct {
 	SysValue     any
 	Position     int64
 	Data         []byte
-	IsOpen       bool
 	BlockId      model.BlockId
 	hasData      bool
 	fileSystem   *FileSystem

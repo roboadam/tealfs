@@ -117,7 +117,6 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 		SysValue:     nil,
 		Position:     0,
 		Data:         []byte{},
-		IsOpen:       false,
 		BlockId:      "",
 	}
 

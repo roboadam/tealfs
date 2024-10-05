@@ -14,7 +14,18 @@
 
 package webdav_test
 
-import "testing"
+import (
+	"context"
+	"os"
+	"tealfs/pkg/webdav"
+	"testing"
+)
 
 func TestCreateFile(t *testing.T) {
+	fs := webdav.FileSystem{}
+	_, err := fs.OpenFile(context.Background(), "/hello-world.txt", os.O_RDWR|os.O_CREATE, 0666)
+
+	if err != nil {
+		t.Error("Error opening file", err)
+	}
 }

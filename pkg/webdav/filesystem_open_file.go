@@ -119,7 +119,6 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			SysValue:     nil,
 			Position:     0,
 			Data:         []byte{},
-			IsOpen:       false,
 			BlockId:      "",
 		}
 		f.FilesByPath[req.name] = file
