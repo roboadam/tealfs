@@ -32,7 +32,7 @@ type FileSystem struct {
 	fetchBlockReq chan fetchBlockReq
 }
 
-func New() FileSystem {
+func NewFileSystem() FileSystem {
 	fs := FileSystem{
 		FilesByPath:   map[string]File{},
 		mkdirReq:      make(chan mkdirReq),

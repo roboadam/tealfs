@@ -21,11 +21,31 @@ import (
 	"testing"
 )
 
-func TestCreateFile(t *testing.T) {
-	fs := webdav.FileSystem{}
-	_, err := fs.OpenFile(context.Background(), "/hello-world.txt", os.O_RDWR|os.O_CREATE, 0666)
+func TestCreateEmptyFile(t *testing.T) {
+	fs := webdav.NewFileSystem()
+	name := "/hello-world.txt"
 
+	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error("Error opening file", err)
+	}
+
+	err = f.Close()
+	if err != nil {
+		t.Error("Error closing file", err)
+	}
+
+	f, err = fs.OpenFile(context.Background(), name, os.O_RDONLY, 0444)
+	if err != nil {
+		t.Error("Error opening file", err)
+	}
+
+	dataRead := make([]byte, 10)
+	len, err := f.Read(dataRead)
+	if err != nil {
+		t.Error("Error reading from file", err)
+	}
+	if len > 0 {
+		t.Error("File shoud be empty", err)
 	}
 }
