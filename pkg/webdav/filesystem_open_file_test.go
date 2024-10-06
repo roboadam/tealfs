@@ -28,6 +28,7 @@ func TestCreateEmptyFile(t *testing.T) {
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error("Error opening file", err)
+		return
 	}
 
 	err = f.Close()

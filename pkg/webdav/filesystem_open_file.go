@@ -54,19 +54,20 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 }
 
 func (f *FileSystem) openFile(req *openFileReq) openFileResp {
-	ro := os.O_RDONLY&req.flag != 0
-	rw := os.O_RDWR&req.flag != 0
-	wo := os.O_WRONLY&req.flag != 0
+	rw := (os.O_RDWR & req.flag) != 0
+	wo := (os.O_WRONLY & req.flag) != 0
+	ro := false
+	if rw && wo {
+		return openFileResp{err: errors.New("invalid flag")}
+	}
+	if !(rw || wo) {
+		ro = true
+	}
 	append := os.O_APPEND&req.flag != 0
 	create := os.O_CREATE&req.flag != 0
 	failIfExists := os.O_EXCL&req.flag != 0
 	truncate := os.O_TRUNC&req.flag != 0
 	isDir := req.perm.IsDir()
-
-	// only one of ro, rw, wo allowed
-	if (ro && rw) || (ro && wo) || (rw && wo) || !(ro || rw || wo) {
-		return openFileResp{err: errors.New("invalid flag")}
-	}
 
 	if ro && (append || create || failIfExists || truncate) {
 		return openFileResp{err: errors.New("invalid flag")}
