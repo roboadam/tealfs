@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"tealfs/pkg/model"
 	"time"
 
 	"golang.org/x/net/webdav"
@@ -124,7 +125,8 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			SysValue:     nil,
 			Position:     0,
 			Data:         []byte{},
-			BlockId:      "",
+			BlockId:      model.NewBlockId(),
+			fileSystem:   f,
 		}
 		f.FilesByPath[req.name] = file
 	}
