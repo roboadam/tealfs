@@ -52,7 +52,12 @@ func TestCreateEmptyFile(t *testing.T) {
 		t.Error("File shoud be of length 3", err)
 	}
 
-	f, err = fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
+}
+
+func TestFileNotFound(t *testing.T) {
+	fs := webdav.NewFileSystem()
+	go handleFetchBlockReq(fs.FetchBlockReq)
+	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
 		t.Error("Shouldn't be able to open file", err)
 	}
