@@ -29,7 +29,7 @@ type FileSystem struct {
 	openFileReq   chan openFileReq
 	removeAllReq  chan removeAllReq
 	renameReq     chan renameReq
-	fetchBlockReq chan fetchBlockReq
+	FetchBlockReq chan FetchBlockReq
 }
 
 func NewFileSystem() FileSystem {
@@ -39,20 +39,20 @@ func NewFileSystem() FileSystem {
 		openFileReq:   make(chan openFileReq),
 		removeAllReq:  make(chan removeAllReq),
 		renameReq:     make(chan renameReq),
-		fetchBlockReq: make(chan fetchBlockReq),
+		FetchBlockReq: make(chan FetchBlockReq),
 	}
 	go fs.run()
 	return fs
 }
 
-type fetchBlockReq struct {
-	id   model.BlockId
-	resp chan []byte
+type FetchBlockReq struct {
+	Id   model.BlockId
+	Resp chan []byte
 }
 
 func (f *FileSystem) fetchBlock(id model.BlockId) []byte {
 	resp := make(chan []byte)
-	f.fetchBlockReq <- fetchBlockReq{id, resp}
+	f.FetchBlockReq <- FetchBlockReq{id, resp}
 	return <-resp
 }
 

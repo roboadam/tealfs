@@ -15,6 +15,7 @@
 package webdav_test
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"tealfs/pkg/webdav"
@@ -24,6 +25,7 @@ import (
 func TestCreateEmptyFile(t *testing.T) {
 	fs := webdav.NewFileSystem()
 	name := "/hello-world.txt"
+	go handleFetchBlockReq(fs.FetchBlockReq)
 
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -46,7 +48,19 @@ func TestCreateEmptyFile(t *testing.T) {
 	if err != nil {
 		t.Error("Error reading from file", err)
 	}
-	if len > 0 {
-		t.Error("File shoud be empty", err)
+	if len != 3 || !bytes.Equal([]byte{1, 2, 3}, dataRead[:len]) {
+		t.Error("File shoud be of length 3", err)
+	}
+
+	f, err = fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
+	if err == nil {
+		t.Error("Shouldn't be able to open file", err)
+	}
+}
+
+func handleFetchBlockReq(reqs chan webdav.FetchBlockReq) {
+	for {
+		req := <-reqs
+		req.Resp <- []byte{1, 2, 3}
 	}
 }
