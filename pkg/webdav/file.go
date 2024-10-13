@@ -22,7 +22,6 @@ import (
 )
 
 type File struct {
-	NameValue    string
 	IsDirValue   bool
 	RO           bool
 	RW           bool
@@ -39,6 +38,7 @@ type File struct {
 	Data         []byte
 	BlockId      model.BlockId
 	hasData      bool
+	path         path
 	fileSystem   *FileSystem
 }
 
@@ -83,7 +83,11 @@ func (f *File) Write(p []byte) (n int, err error) {
 }
 
 func (f *File) Name() string {
-	return f.NameValue
+	name, err := f.path.head()
+	if err != nil {
+		return ""
+	}
+	return string(name)
 }
 
 func (f *File) Size() int64 {

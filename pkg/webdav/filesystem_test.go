@@ -24,7 +24,7 @@ import (
 func TestMkdir(t *testing.T) {
 	fs := webdav.NewFileSystem()
 	c := context.Background()
-	mode := os.FileMode(0700)
+	mode := os.ModeDir
 
 	err := fs.Mkdir(c, "/test", mode)
 	if err != nil || !dirOpenedOk(fs, "/test") {
@@ -33,7 +33,7 @@ func TestMkdir(t *testing.T) {
 	}
 
 	err = fs.Mkdir(c, "/test/stuff", mode)
-	if err != nil || !dirOpenedOk(fs, "/test") {
+	if err != nil || !dirOpenedOk(fs, "/test/stuff") {
 		t.Error("can't open dir")
 		return
 	}
@@ -46,7 +46,7 @@ func TestMkdir(t *testing.T) {
 }
 
 func dirOpenedOk(fs webdav.FileSystem, name string) bool {
-	f, err := fs.OpenFile(context.Background(), name, os.O_RDONLY, 0600)
+	f, err := fs.OpenFile(context.Background(), name, os.O_RDONLY, os.ModeDir)
 	if err != nil {
 		return false
 	}

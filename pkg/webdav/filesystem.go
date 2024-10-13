@@ -25,7 +25,7 @@ import (
 )
 
 type FileSystem struct {
-	FilesByPath   map[string]File
+	FilesByPath   fileHolder
 	mkdirReq      chan mkdirReq
 	openFileReq   chan openFileReq
 	removeAllReq  chan removeAllReq
@@ -35,7 +35,7 @@ type FileSystem struct {
 
 func NewFileSystem() FileSystem {
 	filesystem := FileSystem{
-		FilesByPath:   map[string]File{},
+		FilesByPath:   fileHolder{data: make(map[pathValue]File)},
 		mkdirReq:      make(chan mkdirReq),
 		openFileReq:   make(chan openFileReq),
 		removeAllReq:  make(chan removeAllReq),
@@ -43,7 +43,6 @@ func NewFileSystem() FileSystem {
 		FetchBlockReq: make(chan FetchBlockReq),
 	}
 	root := File{
-		NameValue:    "",
 		IsDirValue:   true,
 		RO:           false,
 		RW:           false,
@@ -61,8 +60,9 @@ func NewFileSystem() FileSystem {
 		BlockId:      "",
 		hasData:      false,
 		fileSystem:   &filesystem,
+		path:         []pathSeg{},
 	}
-	filesystem.FilesByPath[""] = root
+	filesystem.FilesByPath.add(root)
 	go filesystem.run()
 	return filesystem
 }
@@ -112,19 +112,26 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 }
 
 func (f *FileSystem) mkdir(req *mkdirReq) error {
-	_, exists := f.FilesByPath[req.name]
+	p, err := pathFromName(req.name)
+	if err != nil {
+		return err
+	}
+	exists := f.FilesByPath.exists(p)
 	if exists {
 		return errors.New("path exists")
 	}
 
-	dirName, fileName := dirAndFileName(req.name)
-	_, exists = f.FilesByPath[dirName]
+	base, err := p.base()
+	if err != nil {
+		return err
+	}
+	exists = f.FilesByPath.exists(base)
 	if !exists {
 		return errors.New("invalid path")
 	}
 
 	dir := File{
-		NameValue:    fileName,
+		path:         p,
 		IsDirValue:   true,
 		RO:           false,
 		RW:           false,
@@ -142,7 +149,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 		BlockId:      "",
 	}
 
-	f.FilesByPath[req.name] = dir
+	f.FilesByPath.add(dir)
 
 	return nil
 }
@@ -154,7 +161,10 @@ type removeAllReq struct {
 }
 
 func (f *FileSystem) removeAll(req *removeAllReq) error {
-	fileName := req.name
+	fileName, err := pathFromName(req.name)
+	if err != nil {
+		return err
+	}
 	prefix := fileName + "/"
 	for key := range f.FilesByPath {
 		if strings.HasPrefix(key, prefix) {
@@ -232,21 +242,6 @@ func (f *FileSystem) rename(req *renameReq) error {
 	f.FilesByPath[newName] = file
 
 	return nil
-}
-
-func dirAndFileName(name string) (string, string) {
-	raw := strings.Split(name, "/")
-	result := make([]string, 0)
-	for _, value := range raw {
-		if value != "" {
-			result = append(result, value)
-		}
-	}
-	last := len(result) - 1
-	if last < 0 {
-		return "", ""
-	}
-	return strings.Join(result[:last], "/"), result[last]
 }
 
 func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
