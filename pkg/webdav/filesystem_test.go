@@ -22,23 +22,26 @@ import (
 )
 
 func TestMkdir(t *testing.T) {
-	fs := webdav.FileSystem{}
+	fs := webdav.NewFileSystem()
 	c := context.Background()
 	mode := os.FileMode(0700)
 
 	err := fs.Mkdir(c, "/test", mode)
 	if err != nil || !dirOpenedOk(fs, "/test") {
 		t.Error("can't open dir")
+		return
 	}
 
 	err = fs.Mkdir(c, "/test/stuff", mode)
 	if err != nil || !dirOpenedOk(fs, "/test") {
 		t.Error("can't open dir")
+		return
 	}
 
 	err = fs.Mkdir(c, "/new/stuff", mode)
 	if err == nil {
 		t.Error("shouldn't have been able to open this one")
+		return
 	}
 }
 

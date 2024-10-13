@@ -17,6 +17,7 @@ package webdav
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"strings"
 	"tealfs/pkg/model"
@@ -33,7 +34,7 @@ type FileSystem struct {
 }
 
 func NewFileSystem() FileSystem {
-	fs := FileSystem{
+	filesystem := FileSystem{
 		FilesByPath:   map[string]File{},
 		mkdirReq:      make(chan mkdirReq),
 		openFileReq:   make(chan openFileReq),
@@ -41,8 +42,29 @@ func NewFileSystem() FileSystem {
 		renameReq:     make(chan renameReq),
 		FetchBlockReq: make(chan FetchBlockReq),
 	}
-	go fs.run()
-	return fs
+	root := File{
+		NameValue:    "",
+		IsDirValue:   true,
+		RO:           false,
+		RW:           false,
+		WO:           false,
+		Append:       false,
+		Create:       false,
+		FailIfExists: false,
+		Truncate:     false,
+		SizeValue:    0,
+		ModeValue:    fs.ModeDir,
+		Modtime:      time.Time{},
+		SysValue:     nil,
+		Position:     0,
+		Data:         []byte{},
+		BlockId:      "",
+		hasData:      false,
+		fileSystem:   &filesystem,
+	}
+	filesystem.FilesByPath[""] = root
+	go filesystem.run()
+	return filesystem
 }
 
 type FetchBlockReq struct {
