@@ -78,11 +78,18 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 		return openFileResp{err: errors.New("invalid flag")}
 	}
 
+	path, err := PathFromName(req.name)
+	if err != nil {
+		return openFileResp{err: err}
+	}
+	file, exists := f.FilesByPath.get(path)
+
 	// opening the root directory
-	dirName, fileName := dirAndFileName(req.name)
-	if fileName == "" && dirName == "" {
+	if len(path) == 0 {
 		if isDir {
-			file := f.FilesByPath["/"]
+			if !exists {
+				return openFileResp{err: errors.New("root doesn't exist")}
+			}
 			return openFileResp{file: &file}
 		} else {
 			return openFileResp{err: errors.New("not a directory")}
@@ -90,7 +97,6 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	}
 
 	// handle failIfExists scenario
-	file, exists := f.FilesByPath[req.name]
 	if failIfExists && exists {
 		return openFileResp{err: errors.New("file exists")}
 	}
@@ -110,7 +116,6 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 
 	if !exists {
 		file = File{
-			NameValue:    fileName,
 			IsDirValue:   isDir,
 			RO:           ro,
 			RW:           rw,
@@ -127,8 +132,9 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			Data:         []byte{},
 			BlockId:      model.NewBlockId(),
 			fileSystem:   f,
+			path:         path,
 		}
-		f.FilesByPath[req.name] = file
+		f.FilesByPath.add(file)
 	}
 
 	if append {

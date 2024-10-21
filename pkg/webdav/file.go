@@ -38,7 +38,7 @@ type File struct {
 	Data         []byte
 	BlockId      model.BlockId
 	hasData      bool
-	path         path
+	path         Path
 	fileSystem   *FileSystem
 }
 

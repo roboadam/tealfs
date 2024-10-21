@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"strings"
 	"tealfs/pkg/model"
 	"time"
 )
@@ -112,7 +111,7 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 }
 
 func (f *FileSystem) mkdir(req *mkdirReq) error {
-	p, err := pathFromName(req.name)
+	p, err := PathFromName(req.name)
 	if err != nil {
 		return err
 	}
@@ -161,17 +160,16 @@ type removeAllReq struct {
 }
 
 func (f *FileSystem) removeAll(req *removeAllReq) error {
-	fileName, err := pathFromName(req.name)
+	pathToDelete, err := PathFromName(req.name)
 	if err != nil {
 		return err
 	}
-	prefix := fileName + "/"
-	for key := range f.FilesByPath {
-		if strings.HasPrefix(key, prefix) {
-			delete(f.FilesByPath, key)
+	for _, file := range f.FilesByPath.allFiles() {
+		if file.path.startsWith(pathToDelete) {
+			f.FilesByPath.delete(file.path)
 		}
 	}
-	delete(f.FilesByPath, fileName)
+	f.FilesByPath.delete(pathToDelete)
 	return nil
 }
 
@@ -204,42 +202,34 @@ func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string)
 
 }
 
-func swapPrefix(oldPrefix string, newPrefix string, value string) string {
-	return newPrefix + value[len(oldPrefix):]
-}
-
-func shortName(path string) string {
-	pathArray := strings.Split(path, "/")
-	if len(pathArray) <= 1 {
-		return ""
-	}
-	return pathArray[len(pathArray)-1]
-}
-
 func (f *FileSystem) rename(req *renameReq) error {
-	oldName := req.oldName
-	newName := req.newName
-	file, exists := f.FilesByPath[oldName]
+	oldPath, err := PathFromName(req.oldName)
+	if err != nil {
+		return err
+	}
+	newPath, err := PathFromName(req.newName)
+	if err != nil {
+		return err
+	}
+
+	file, exists := f.FilesByPath.get(oldPath)
 	if !exists {
 		return errors.New("file not found")
 	}
-	oldPrefix := oldName + "/"
-	newPrefix := newName + "/"
 
 	if file.IsDir() {
-		for key := range f.FilesByPath {
-			if strings.HasPrefix(key, oldPrefix) {
-				childFile := f.FilesByPath[key]
-				delete(f.FilesByPath, key)
-				childFile.NameValue = shortName(key)
-				f.FilesByPath[swapPrefix(oldPrefix, newPrefix, key)] = childFile
+		for _, child := range f.FilesByPath.allFiles() {
+			if child.path.startsWith(oldPath) {
+				f.FilesByPath.delete(child.path)
+				child.path = child.path.swapPrefix(oldPath, newPath)
+				f.FilesByPath.add(child)
 			}
 		}
 	}
 
-	delete(f.FilesByPath, oldName)
-	file.NameValue = shortName(newName)
-	f.FilesByPath[newName] = file
+	f.FilesByPath.delete(oldPath)
+	file.path = newPath
+	f.FilesByPath.add(file)
 
 	return nil
 }

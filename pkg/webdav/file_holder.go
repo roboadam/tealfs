@@ -6,19 +6,36 @@ import (
 )
 
 type pathSeg string
-type path []pathSeg
+type Path []pathSeg
 type pathValue string
 type fileHolder struct {
 	data map[pathValue]File
+}
+
+func (f *fileHolder) allFiles() []File {
+	result := []File{}
+	for _, value := range f.data {
+		result = append(result, value)
+	}
+	return result
 }
 
 func (f *fileHolder) add(file File) {
 	f.data[file.path.toName()] = file
 }
 
-func (f *fileHolder) exists(p path) bool {
+func (f *fileHolder) delete(path Path) {
+	delete(f.data, path.toName())
+}
+
+func (f *fileHolder) exists(p Path) bool {
 	_, exists := f.data[p.toName()]
 	return exists
+}
+
+func (f *fileHolder) get(p Path) (File, bool) {
+	file, exists := f.data[p.toName()]
+	return file, exists
 }
 
 func newPathSeg(name string) (pathSeg, error) {
@@ -31,22 +48,22 @@ func newPathSeg(name string) (pathSeg, error) {
 	return pathSeg(name), nil
 }
 
-func pathFromName(name string) (path, error) {
+func PathFromName(name string) (Path, error) {
 	if len(name) == 0 {
 		return []pathSeg{}, errors.New("invalid path name, no leading slash")
 	}
-	return stringsToPath(strings.Split(name, "/")), nil
+	return stringsToPath(strings.Split(name, "/"))
 }
 
-func (p path) toName() pathValue {
+func (p Path) toName() pathValue {
 	name := ""
-	for seg := range p {
+	for _, seg := range p {
 		name += string(seg)
 	}
 	return pathValue(name)
 }
 
-func (p path) base() (path, error) {
+func (p Path) base() (Path, error) {
 	if len(p) == 0 {
 		return nil, errors.New("empty path")
 	}
@@ -56,14 +73,14 @@ func (p path) base() (path, error) {
 	return p[:len(p)-1], nil
 }
 
-func (p path) head() (pathSeg, error) {
+func (p Path) head() (pathSeg, error) {
 	if len(p) == 0 {
 		return "", errors.New("empty path")
 	}
 	return p[len(p)-1], nil
 }
 
-func (p path) startsWith(other path) bool {
+func (p Path) startsWith(other Path) bool {
 	if len(other) > len(p) {
 		return false
 	}
@@ -77,10 +94,22 @@ func (p path) startsWith(other path) bool {
 	return true
 }
 
-func stringsToPath(strings []string) path {
-	p := make(path, len(strings))
-	for i, s := range strings {
-		p[i] = pathSeg(s)
+func (p Path) swapPrefix(oldPrefix Path, newPrefix Path) Path {
+	if !p.startsWith(oldPrefix) {
+		return p
 	}
-	return p
+
+	return append(newPrefix, p[:len(oldPrefix)]...)
+}
+
+func stringsToPath(strings []string) (Path, error) {
+	p := make(Path, 0, len(strings)-1)
+	for i, s := range strings {
+		seg, err := newPathSeg(s)
+		if err != nil {
+			return Path{}, err
+		}
+		p[i] = seg
+	}
+	return p, nil
 }
