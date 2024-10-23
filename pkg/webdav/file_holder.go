@@ -49,10 +49,33 @@ func newPathSeg(name string) (pathSeg, error) {
 }
 
 func PathFromName(name string) (Path, error) {
-	if len(name) == 0 {
+	if len(name) == 0 || name[0] != '/' {
 		return []pathSeg{}, errors.New("invalid path name, no leading slash")
 	}
-	return stringsToPath(strings.Split(name, "/"))
+	return stringsToPath(stripEmptyStringsFromEnds(strings.Split(name, "/")))
+}
+
+func stripEmptyStringsFromEnds(values []string) []string {
+	switch len(values) {
+	case 0:
+		return values
+	case 1:
+		if values[0] == "" {
+			return []string{}
+		}
+		return values
+	default:
+		if values[0] == "" && values[len(values)-1] == "" {
+			return values[1 : len(values)-1]
+		}
+		if values[0] == "" {
+			return values[1:]
+		}
+		if values[len(values)-1] == "" {
+			return values[:len(values)-1]
+		}
+		return values
+	}
 }
 
 func (p Path) toName() pathValue {
@@ -103,13 +126,13 @@ func (p Path) swapPrefix(oldPrefix Path, newPrefix Path) Path {
 }
 
 func stringsToPath(strings []string) (Path, error) {
-	p := make(Path, 0, len(strings)-1)
-	for i, s := range strings {
+	p := make(Path, 0, len(strings))
+	for _, s := range strings {
 		seg, err := newPathSeg(s)
 		if err != nil {
 			return Path{}, err
 		}
-		p[i] = seg
+		p = append(p, seg)
 	}
 	return p, nil
 }
