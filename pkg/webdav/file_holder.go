@@ -122,7 +122,7 @@ func (p Path) swapPrefix(oldPrefix Path, newPrefix Path) Path {
 		return p
 	}
 
-	return append(newPrefix, p[:len(oldPrefix)]...)
+	return append(newPrefix, p[len(oldPrefix):]...)
 }
 
 func stringsToPath(strings []string) (Path, error) {

@@ -228,11 +228,11 @@ func (f *FileSystem) rename(req *renameReq) error {
 				f.FilesByPath.add(child)
 			}
 		}
+	} else {
+		f.FilesByPath.delete(oldPath)
+		file.path = newPath
+		f.FilesByPath.add(file)
 	}
-
-	f.FilesByPath.delete(oldPath)
-	file.path = newPath
-	f.FilesByPath.add(file)
 
 	return nil
 }

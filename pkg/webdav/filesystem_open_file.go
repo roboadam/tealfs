@@ -39,9 +39,7 @@ type openFileResp struct {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	println("OpenFile 1")
 	respChan := make(chan openFileResp)
-	println("OpenFile 2")
 	f.openFileReq <- openFileReq{
 		ctx:      ctx,
 		name:     name,
@@ -50,9 +48,7 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		respChan: respChan,
 		forStat:  false,
 	}
-	println("OpenFile 3")
 	resp := <-respChan
-	println("OpenFile 4")
 	return resp.file, resp.err
 }
 
