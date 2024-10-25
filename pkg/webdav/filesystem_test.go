@@ -66,14 +66,76 @@ func TestRemoveAll(t *testing.T) {
 		t.Error("should have been able to delete this one")
 		return
 	}
+}
 
+func TestRename(t *testing.T) {
+	fs := webdav.NewFileSystem()
+	c := context.Background()
+	mode := os.ModeDir
+
+	createFileAndCheck(t, &fs, "/testfile")
+	err := fs.Rename(c, "/testfile", "/testfilenew")
+	if err != nil {
+		t.Error("error renaming a file")
+		return
+	}
+
+	err = fs.Rename(c, "/testfile", "/testfilenew")
+	if err == nil {
+		t.Error("no error renaming non existent file")
+		return
+	}
+
+	_ = fs.Mkdir(c, "/test", mode)
+	_ = fs.Mkdir(c, "/test/renameme", mode)
+	createFileAndCheck(t, &fs, "/test/renameme/asdf")
+	_ = fs.Mkdir(c, "/test/renameme/test2", mode)
+	createFileAndCheck(t, &fs, "/test/renameme/test2/qwer")
+
+	err = fs.Rename(c, "/test/renameme", "/test/newdirname")
+	if err != nil {
+		t.Error("should have been able to rename the dir")
+		return
+	}
+
+	dirExists(t, &fs, "/test")
+	dirExists(t, &fs, "/test/newdirname")
+	fileExists(t, &fs, "/test/newdirname/asdf")
+	dirExists(t, &fs, "/test/newdirname/test2")
+	fileExists(t, &fs, "/test/newdirname/test2/qwer")
+}
+
+func fileExists(t *testing.T, fs *webdav.FileSystem, name string) {
+	f := fileOrDirExists(t, fs, name)
+	if f.IsDir() {
+		t.Error("Error stat-ing file")
+		return
+	}
+}
+
+func dirExists(t *testing.T, fs *webdav.FileSystem, name string) {
+	f := fileOrDirExists(t, fs, name)
+	if !f.IsDir() {
+		t.Error("file isn't dir")
+		return
+	}
+}
+
+func fileOrDirExists(t *testing.T, fs *webdav.FileSystem, name string) os.FileInfo {
+	ctx := context.Background()
+	info, err := fs.Stat(ctx, name)
+	if err != nil {
+		t.Error("file is dir")
+		return nil
+	}
+	return info
 }
 
 func createFileAndCheck(t *testing.T, fs *webdav.FileSystem, name string) {
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error("error creating", name)
-		
+
 	}
 	err = f.Close()
 	if err != nil {
