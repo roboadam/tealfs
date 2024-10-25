@@ -164,6 +164,9 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 	if err != nil {
 		return err
 	}
+	if !f.FilesByPath.exists(pathToDelete) {
+		return errors.New("file does not exist")
+	}
 	for _, file := range f.FilesByPath.allFiles() {
 		if file.path.startsWith(pathToDelete) {
 			f.FilesByPath.delete(file.path)

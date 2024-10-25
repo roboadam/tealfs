@@ -45,6 +45,50 @@ func TestMkdir(t *testing.T) {
 	}
 }
 
+func TestRemoveAll(t *testing.T) {
+	fs := webdav.NewFileSystem()
+	c := context.Background()
+	mode := os.ModeDir
+
+	_ = fs.Mkdir(c, "/test", mode)
+	_ = fs.Mkdir(c, "/test/deleteme", mode)
+	createFileAndCheck(t, &fs, "/test/deleteme/asdf")
+	_ = fs.Mkdir(c, "/test/deleteme/test2", mode)
+	createFileAndCheck(t, &fs, "/test/deleteme/test2/qwer")
+
+	err := fs.RemoveAll(c, "/test/delete")
+	if err == nil {
+		t.Error("shouldn't have been able to delete this one")
+		return
+	}
+	err = fs.RemoveAll(c, "/test/deleteme")
+	if err != nil {
+		t.Error("should have been able to delete this one")
+		return
+	}
+
+}
+
+func createFileAndCheck(t *testing.T, fs *webdav.FileSystem, name string) {
+	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		t.Error("error creating", name)
+		
+	}
+	err = f.Close()
+	if err != nil {
+		t.Error("error closing created file", name)
+	}
+	f, err = fs.OpenFile(context.Background(), name, os.O_RDONLY, 0666)
+	if err != nil {
+		t.Error("error opening", name)
+	}
+	err = f.Close()
+	if err != nil {
+		t.Error("error closing opened file", name)
+	}
+}
+
 func dirOpenedOk(fs webdav.FileSystem, name string) bool {
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDONLY, os.ModeDir)
 	if err != nil {
