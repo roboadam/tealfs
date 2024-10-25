@@ -242,9 +242,10 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 	f.openFileReq <- openFileReq{
 		ctx:      ctx,
 		name:     name,
-		flag:     os.O_APPEND, // TODO: Need to do this in a way that makes sense
+		flag:     os.O_RDONLY, // TODO: Need to do this in a way that makes sense
 		perm:     os.ModeExclusive,
 		respChan: respChan,
+		forStat:  true,
 	}
 	resp := <-respChan
 	return resp.file, resp.err

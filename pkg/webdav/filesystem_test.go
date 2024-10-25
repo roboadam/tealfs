@@ -125,7 +125,7 @@ func fileOrDirExists(t *testing.T, fs *webdav.FileSystem, name string) os.FileIn
 	ctx := context.Background()
 	info, err := fs.Stat(ctx, name)
 	if err != nil {
-		t.Error("file is dir")
+		t.Error("error stat-ing file", err)
 		return nil
 	}
 	return info

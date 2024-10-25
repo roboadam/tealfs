@@ -30,6 +30,7 @@ type openFileReq struct {
 	flag     int
 	perm     os.FileMode
 	respChan chan openFileResp
+	forStat  bool
 }
 
 type openFileResp struct {
@@ -47,6 +48,7 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		flag:     flag,
 		perm:     perm,
 		respChan: respChan,
+		forStat:  false,
 	}
 	println("OpenFile 3")
 	resp := <-respChan
@@ -106,11 +108,11 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 		return openFileResp{err: errors.New("file not found")}
 	}
 
-	if exists && isDir && !file.IsDir() {
+	if !req.forStat && exists && isDir && !file.IsDir() {
 		return openFileResp{err: errors.New("file isn't directory")}
 	}
 
-	if exists && !isDir && file.IsDir() {
+	if !req.forStat && exists && !isDir && file.IsDir() {
 		return openFileResp{err: errors.New("file is directory")}
 	}
 
