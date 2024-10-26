@@ -51,17 +51,17 @@ func TestRemoveAll(t *testing.T) {
 	mode := os.ModeDir
 
 	_ = fs.Mkdir(c, "/test", mode)
-	_ = fs.Mkdir(c, "/test/deleteme", mode)
-	createFileAndCheck(t, &fs, "/test/deleteme/asdf")
-	_ = fs.Mkdir(c, "/test/deleteme/test2", mode)
-	createFileAndCheck(t, &fs, "/test/deleteme/test2/qwer")
+	_ = fs.Mkdir(c, "/test/deleteMe", mode)
+	createFileAndCheck(t, &fs, "/test/deleteMe/apple")
+	_ = fs.Mkdir(c, "/test/deleteMe/test2", mode)
+	createFileAndCheck(t, &fs, "/test/deleteMe/test2/pear")
 
 	err := fs.RemoveAll(c, "/test/delete")
 	if err == nil {
 		t.Error("shouldn't have been able to delete this one")
 		return
 	}
-	err = fs.RemoveAll(c, "/test/deleteme")
+	err = fs.RemoveAll(c, "/test/deleteMe")
 	if err != nil {
 		t.Error("should have been able to delete this one")
 		return
@@ -73,36 +73,36 @@ func TestRename(t *testing.T) {
 	c := context.Background()
 	mode := os.ModeDir
 
-	createFileAndCheck(t, &fs, "/testfile")
-	err := fs.Rename(c, "/testfile", "/testfilenew")
+	createFileAndCheck(t, &fs, "/testFile")
+	err := fs.Rename(c, "/testFile", "/testFileNew")
 	if err != nil {
 		t.Error("error renaming a file")
 		return
 	}
 
-	err = fs.Rename(c, "/testfile", "/testfilenew")
+	err = fs.Rename(c, "/testFile", "/testFileNew")
 	if err == nil {
 		t.Error("no error renaming non existent file")
 		return
 	}
 
 	_ = fs.Mkdir(c, "/test", mode)
-	_ = fs.Mkdir(c, "/test/renameme", mode)
-	createFileAndCheck(t, &fs, "/test/renameme/asdf")
-	_ = fs.Mkdir(c, "/test/renameme/test2", mode)
-	createFileAndCheck(t, &fs, "/test/renameme/test2/qwer")
+	_ = fs.Mkdir(c, "/test/renameMe", mode)
+	createFileAndCheck(t, &fs, "/test/renameMe/apple")
+	_ = fs.Mkdir(c, "/test/renameMe/test2", mode)
+	createFileAndCheck(t, &fs, "/test/renameMe/test2/pear")
 
-	err = fs.Rename(c, "/test/renameme", "/test/newdirname")
+	err = fs.Rename(c, "/test/renameMe", "/test/newDirName")
 	if err != nil {
 		t.Error("should have been able to rename the dir")
 		return
 	}
 
 	dirExists(t, &fs, "/test")
-	dirExists(t, &fs, "/test/newdirname")
-	fileExists(t, &fs, "/test/newdirname/asdf")
-	dirExists(t, &fs, "/test/newdirname/test2")
-	fileExists(t, &fs, "/test/newdirname/test2/qwer")
+	dirExists(t, &fs, "/test/newDirName")
+	fileExists(t, &fs, "/test/newDirName/apple")
+	dirExists(t, &fs, "/test/newDirName/test2")
+	fileExists(t, &fs, "/test/newDirName/test2/pear")
 }
 
 func fileExists(t *testing.T, fs *webdav.FileSystem, name string) {
