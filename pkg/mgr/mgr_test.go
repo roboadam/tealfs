@@ -289,7 +289,7 @@ func TestWebdavPut(t *testing.T) {
 		case w := <-m.MgrDiskWrites:
 			meCount++
 			if !w.Equal(&block) {
-				t.Error("expected the origial block")
+				t.Error("expected the original block")
 			}
 		case s := <-m.MgrConnsSends:
 			if s.ConnId == expectedConnectionId1 {
@@ -312,12 +312,23 @@ type connectedNode struct {
 	node    model.NodeId
 }
 
-func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) Mgr {
+func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
 	m := NewWithChanSize(0)
 	m.Start()
 	var nodesInCluster []connectedNode
 
 	for _, n := range nodes {
+		// expectedAddress := "asdf:123"
+		// m.UiMgrConnectTos <- model.UiMgrConnectTo{
+		// 	Address: expectedAddress,
+		// }
+
+		// expectedMessage := <-m.MgrConnsConnectTos
+
+		// if expectedMessage.Address != expectedAddress {
+		// 	t.Error("Received address", expectedMessage.Address)
+		// }
+
 		// Send a message to Mgr indicating another
 		// node has connected
 		m.ConnsMgrStatuses <- model.ConnectionStatus{

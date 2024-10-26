@@ -15,6 +15,7 @@
 package mgr
 
 import (
+	"fmt"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -43,7 +44,7 @@ type Mgr struct {
 	distributer dist.Distributer
 }
 
-func NewWithChanSize(chanSize int) Mgr {
+func NewWithChanSize(chanSize int) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.ConnectionStatus, chanSize),
@@ -66,7 +67,7 @@ func NewWithChanSize(chanSize int) Mgr {
 	}
 	mgr.distributer.SetWeight(mgr.nodeId, 1)
 
-	return mgr
+	return &mgr
 }
 
 func (m *Mgr) Start() {
@@ -79,6 +80,7 @@ func (m *Mgr) eventLoop() {
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
 		case r := <-m.ConnsMgrStatuses:
+			fmt.Println("HELLOHELLOHELLO")
 			m.handleConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
