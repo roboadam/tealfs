@@ -37,7 +37,7 @@ func TestConnectTo(t *testing.T) {
 		Method:   http.MethodPost,
 		PostForm: make(url.Values),
 	}
-	request.PostForm.Add("hostandport", "abcdef")
+	request.PostForm.Add("hostAndPort", "abcdef")
 
 	go ops.Handlers["/connect-to"](&mockResponseWriter, &request)
 	reqToMgr := <-connToReq
@@ -53,7 +53,7 @@ func TestStatus(t *testing.T) {
 		Method:   http.MethodGet,
 		PostForm: make(url.Values),
 	}
-	request.PostForm.Add("hostandport", "abcdef")
+	request.PostForm.Add("hostAndPort", "abcdef")
 
 	connToResp <- model.ConnectionStatus{
 		Type:          model.Connected,

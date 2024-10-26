@@ -27,7 +27,7 @@ type Ui struct {
 	connToReq  chan model.UiMgrConnectTo
 	connToResp chan model.ConnectionStatus
 	statuses   map[model.ConnId]model.ConnectionStatus
-	smux       sync.Mutex
+	sMux       sync.Mutex
 	ops        HtmlOps
 }
 
@@ -58,8 +58,8 @@ func (ui *Ui) handleMessages() {
 }
 
 func (ui *Ui) saveStatus(status model.ConnectionStatus) {
-	ui.smux.Lock()
-	defer ui.smux.Unlock()
+	ui.sMux.Lock()
+	defer ui.sMux.Unlock()
 	ui.statuses[status.Id] = status
 }
 
@@ -69,7 +69,7 @@ func (ui *Ui) registerHttpHandlers() {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
-		hostAndPort := r.FormValue("hostandport")
+		hostAndPort := r.FormValue("hostAndPort")
 		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
 	})
 }
@@ -79,14 +79,14 @@ func (ui *Ui) htmlStatus(divId string) string {
 	builder.WriteString(`<div id="`)
 	builder.WriteString(divId)
 	builder.WriteString(`">`)
-	ui.smux.Lock()
+	ui.sMux.Lock()
 	for _, value := range ui.statuses {
 		builder.WriteString(string(value.RemoteAddress))
 		builder.WriteString(" ")
 		builder.WriteString(fmt.Sprint(value.Type))
 		builder.WriteString("<br />")
 	}
-	ui.smux.Unlock()
+	ui.sMux.Unlock()
 	builder.WriteString("</div>")
 	return builder.String()
 }
@@ -107,7 +107,7 @@ func (ui *Ui) handleRoot() {
 					<p>Input the host and port of a node to add</p>
 					<form hx-put="/connect-to">
 						<label for="textbox">Host and port:</label>
-						<input type="text" id="hostandport" name="hostandport">
+						<input type="text" id="hostAndPort" name="hostAndPort">
 						<input type="submit" value="Connect">
 					</form>
 					` + ui.htmlStatus("status") + `
