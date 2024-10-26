@@ -340,6 +340,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
 		// Then Mgr should send an Iam payload to
 		// the appropriate connection id with its
 		// own node id
+		<-m.MgrUiStatuses
 		expectedIam := <-m.MgrConnsSends
 		payload := expectedIam.Payload
 		switch p := payload.(type) {

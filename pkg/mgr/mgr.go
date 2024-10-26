@@ -15,7 +15,6 @@
 package mgr
 
 import (
-	"fmt"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -80,7 +79,6 @@ func (m *Mgr) eventLoop() {
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
 		case r := <-m.ConnsMgrStatuses:
-			fmt.Println("HELLOHELLOHELLO")
 			m.handleConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
