@@ -19,11 +19,19 @@ import (
 )
 
 type Webdav struct {
-	WebdavOps WebdavOps
+	webdavOps WebdavOps
 }
 
-func (w *Webdav) Start() {
-	fileSystem := FileSystem{}
+func New() Webdav {
+	w := Webdav{
+		webdavOps: &HttpWebdavOps{},
+	}
+	w.start()
+	return w
+}
+
+func (w *Webdav) start() {
+	fileSystem := NewFileSystem()
 	lockSystem := LockSystem{}
 
 	handler := &webdav.Handler{
@@ -32,6 +40,6 @@ func (w *Webdav) Start() {
 		LockSystem: &lockSystem,
 	}
 
-	w.WebdavOps.Handle("/", handler)
-	w.WebdavOps.ListenAndServe(":8080")
+	w.webdavOps.Handle("/", handler)
+	w.webdavOps.ListenAndServe(":8080")
 }

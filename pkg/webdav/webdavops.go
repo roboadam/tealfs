@@ -18,7 +18,6 @@ import "net/http"
 
 type WebdavOps interface {
 	ListenAndServe(addr string) error
-	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
 	Handle(pattern string, handler http.Handler)
 }
 

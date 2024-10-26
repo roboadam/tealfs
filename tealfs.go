@@ -1,29 +1,38 @@
 package main
 
 import (
+	"fmt"
 	"os"
-	"strconv"
+	"tealfs/pkg/conns"
+	"tealfs/pkg/disk"
+	"tealfs/pkg/mgr"
+	"tealfs/pkg/model"
+	"tealfs/pkg/ui"
+	"tealfs/pkg/webdav"
 )
 
 func main() {
-	//userCommands := make(chan events.Event)
-	//
-	//tNet := tnet.NewTcpNet("127.0.0.1:" + strconv.Itoa(nodePort()))
-	//
-	//localNode := mgr.New(userCommands, tNet, store.NewPath(os.Args[0]))
-	//localUi := ui.NewUi(&localNode, userCommands)
-	//
-	//localUi.Start()
-	//localNode.Start()
-	select {}
-}
-
-func nodePort() int {
-	if len(os.Args) > 0 {
-		num, err := strconv.Atoi(os.Args[0])
-		if err == nil {
-			return num
-		}
+	if len(os.Args) < 2 {
+		fmt.Fprintln(os.Stderr, "Specify the path to store data")
+		os.Exit(1)
 	}
-	return 0
+	m := mgr.NewWithChanSize(1)
+	_ = conns.NewConns(
+		m.ConnsMgrStatuses,
+		m.ConnsMgrReceives,
+		m.MgrConnsConnectTos,
+		m.MgrConnsSends,
+		&conns.TcpConnectionProvider{},
+	)
+	p := disk.NewPath(os.Args[1], &disk.DiskFileOps{})
+	_ = disk.New(p,
+		model.NewNodeId(),
+		m.MgrDiskWrites,
+		m.MgrDiskReads,
+		m.DiskMgrWrites,
+		m.DiskMgrReads,
+	)
+	_ = ui.NewUi(m.UiMgrConnectTos, m.ConnsMgrStatuses, &ui.HttpHtmlOps{})
+	_ = webdav.New()
+	select {}
 }
