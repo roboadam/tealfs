@@ -38,7 +38,7 @@ type Mgr struct {
 
 	nodes       set.Set[model.NodeId]
 	nodeConnMap set.Bimap[model.NodeId, model.ConnId]
-	nodeId      model.NodeId
+	NodeId      model.NodeId
 	connAddress map[model.ConnId]string
 	distributer dist.Distributer
 }
@@ -59,12 +59,12 @@ func NewWithChanSize(chanSize int) *Mgr {
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
 		nodes:              set.NewSet[model.NodeId](),
-		nodeId:             model.NewNodeId(),
+		NodeId:             model.NewNodeId(),
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		distributer:        dist.New(),
 	}
-	mgr.distributer.SetWeight(mgr.nodeId, 1)
+	mgr.distributer.SetWeight(mgr.NodeId, 1)
 
 	return &mgr
 }
@@ -129,7 +129,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.SyncNodes:
 		remoteNodes := p.GetNodes()
 		localNodes := m.nodes.Clone()
-		localNodes.Add(m.nodeId)
+		localNodes.Add(m.NodeId)
 		missing := remoteNodes.Minus(&m.nodes)
 		for _, n := range missing.GetValues() {
 			address := p.AddressForNode(n)
@@ -137,7 +137,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		}
 	case *model.SaveData:
 		n := m.distributer.NodeIdForStoreId(p.Block.Id)
-		if m.nodeId == n {
+		if m.NodeId == n {
 			m.MgrDiskWrites <- p.Block
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)
@@ -151,7 +151,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 }
 
 func (m *Mgr) handleDiskReads(r model.ReadResult) {
-	if r.Caller == m.nodeId {
+	if r.Caller == m.NodeId {
 		m.MgrWebdavGets <- r
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
@@ -177,7 +177,7 @@ func (m *Mgr) handleConnectedStatus(cs model.ConnectionStatus) {
 		m.MgrUiStatuses <- cs
 		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId:  cs.Id,
-			Payload: &model.IAm{NodeId: m.nodeId},
+			Payload: &model.IAm{NodeId: m.NodeId},
 		}
 	case model.NotConnected:
 		// Todo: reflect this in the ui
@@ -187,7 +187,7 @@ func (m *Mgr) handleConnectedStatus(cs model.ConnectionStatus) {
 
 func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 	n := m.distributer.NodeIdForStoreId(rr.BlockId)
-	if m.nodeId == n {
+	if m.NodeId == n {
 		m.MgrDiskReads <- rr
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
@@ -209,7 +209,7 @@ func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 
 func (m *Mgr) handlePuts(w model.Block) {
 	n := m.distributer.NodeIdForStoreId(w.Id)
-	if n == m.nodeId {
+	if n == m.NodeId {
 		m.MgrDiskWrites <- w
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
@@ -217,7 +217,7 @@ func (m *Mgr) handlePuts(w model.Block) {
 			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId: c,
 				Payload: &model.WriteRequest{
-					Caller: m.nodeId,
+					Caller: m.NodeId,
 					Block:  w,
 				},
 			}

@@ -15,31 +15,65 @@
 package webdav
 
 import (
+	"fmt"
+	"tealfs/pkg/model"
+
 	"golang.org/x/net/webdav"
 )
 
 type Webdav struct {
-	webdavOps WebdavOps
+	webdavOps     WebdavOps
+	webdavMgrGets chan model.ReadRequest
+	webdavMgrPuts chan model.Block
+	mgrWebdavGets chan model.ReadResult
+	mgrWebdavPuts chan model.WriteResult
+	fileSystem    FileSystem
+	nodeId        model.NodeId
+	pendingReads  map[model.BlockId]chan []byte
 }
 
-func New() Webdav {
+func New(nodeId model.NodeId) Webdav {
 	w := Webdav{
-		webdavOps: &HttpWebdavOps{},
+		webdavOps:    &HttpWebdavOps{},
+		fileSystem:   NewFileSystem(),
+		nodeId:       nodeId,
+		pendingReads: make(map[model.BlockId]chan []byte),
 	}
 	w.start()
 	return w
 }
 
 func (w *Webdav) start() {
-	fileSystem := NewFileSystem()
 	lockSystem := LockSystem{}
+	go w.eventLoop()
 
 	handler := &webdav.Handler{
 		Prefix:     "/",
-		FileSystem: &fileSystem,
+		FileSystem: &w.fileSystem,
 		LockSystem: &lockSystem,
 	}
 
 	w.webdavOps.Handle("/", handler)
 	w.webdavOps.ListenAndServe(":8080")
+}
+
+func (w *Webdav) eventLoop() {
+	for {
+		select {
+		case r := <-w.mgrWebdavGets:
+			ch, ok := w.pendingReads[r.Block.Id]
+			if ok {
+				ch <- r.Block.Data
+				delete(w.pendingReads, r.Block.Id)
+			}
+		case <-w.mgrWebdavPuts:
+			fmt.Println("mwp")
+		case r := <-w.fileSystem.FetchBlockReq:
+			w.webdavMgrGets <- model.ReadRequest{
+				Caller:  w.nodeId,
+				BlockId: r.Id,
+			}
+			w.pendingReads[r.Id] = r.Resp
+		}
+	}
 }

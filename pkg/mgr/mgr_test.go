@@ -164,7 +164,7 @@ func TestReceiveDiskRead(t *testing.T) {
 	rr := model.ReadResult{
 		Ok:      true,
 		Message: "",
-		Caller:  m.nodeId,
+		Caller:  m.NodeId,
 		Block: model.Block{
 			Id:   storeId1,
 			Data: data1,
@@ -228,7 +228,7 @@ func TestWebdavGet(t *testing.T) {
 
 	for _, id := range ids {
 		m.WebdavMgrGets <- model.ReadRequest{
-			Caller:  m.nodeId,
+			Caller:  m.NodeId,
 			BlockId: id,
 		}
 
@@ -345,7 +345,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
 		payload := expectedIam.Payload
 		switch p := payload.(type) {
 		case *model.IAm:
-			if p.NodeId != m.nodeId {
+			if p.NodeId != m.NodeId {
 				t.Error("Unexpected nodeId")
 			}
 			if expectedIam.ConnId != n.conn {
