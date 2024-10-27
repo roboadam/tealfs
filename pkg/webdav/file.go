@@ -79,7 +79,19 @@ func (f *File) Stat() (fs.FileInfo, error) {
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
-	panic("not implemented") // TODO: Implement
+	if int(f.Position)+len(p) > len(f.Data) {
+		newData := make([]byte, int(f.Position)+len(p))
+		copy(newData, f.Data)
+		for _, b := range p {
+			newData[f.Position] = b
+			f.Position++
+		}
+	}
+	pushErr := f.fileSystem.pushBlock(f.BlockId, f.Data)
+	if pushErr == nil {
+		return len(p), nil
+	}
+	return 0, pushErr
 }
 
 func (f *File) Name() string {

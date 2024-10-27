@@ -30,6 +30,7 @@ type FileSystem struct {
 	removeAllReq  chan removeAllReq
 	renameReq     chan renameReq
 	FetchBlockReq chan FetchBlockReq
+	PushBlockReq  chan PushBlockReq
 }
 
 func NewFileSystem() FileSystem {
@@ -40,6 +41,7 @@ func NewFileSystem() FileSystem {
 		removeAllReq:  make(chan removeAllReq),
 		renameReq:     make(chan renameReq),
 		FetchBlockReq: make(chan FetchBlockReq),
+		PushBlockReq:  make(chan PushBlockReq),
 	}
 	root := File{
 		IsDirValue:   true,
@@ -71,9 +73,21 @@ type FetchBlockReq struct {
 	Resp chan []byte
 }
 
+type PushBlockReq struct {
+	Id   model.BlockId
+	Data []byte
+	Resp chan error
+}
+
 func (f *FileSystem) fetchBlock(id model.BlockId) []byte {
 	resp := make(chan []byte)
 	f.FetchBlockReq <- FetchBlockReq{id, resp}
+	return <-resp
+}
+
+func (f *FileSystem) pushBlock(id model.BlockId, data []byte) error {
+	resp := make(chan error)
+	f.PushBlockReq <- PushBlockReq{id, data, resp}
 	return <-resp
 }
 
@@ -242,7 +256,7 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 	f.openFileReq <- openFileReq{
 		ctx:      ctx,
 		name:     name,
-		flag:     os.O_RDONLY, // TODO: Need to do this in a way that makes sense
+		flag:     os.O_RDONLY,
 		perm:     os.ModeExclusive,
 		respChan: respChan,
 		forStat:  true,
