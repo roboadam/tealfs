@@ -25,7 +25,10 @@ import (
 func TestCreateEmptyFile(t *testing.T) {
 	fs := webdav.NewFileSystem()
 	name := "/hello-world.txt"
+	bytesInFile := []byte{1, 2, 3}
+	bytesInWrite := []byte{6, 5, 4, 3, 2}
 	go handleFetchBlockReq(fs.FetchBlockReq)
+	go handlePushBlockReq(fs.PushBlockReq, bytesInFile, t)
 
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -36,6 +39,7 @@ func TestCreateEmptyFile(t *testing.T) {
 	err = f.Close()
 	if err != nil {
 		t.Error("Error closing file", err)
+		return
 	}
 
 	f, err = fs.OpenFile(context.Background(), name, os.O_RDONLY, 0444)
@@ -44,14 +48,25 @@ func TestCreateEmptyFile(t *testing.T) {
 	}
 
 	dataRead := make([]byte, 10)
-	len, err := f.Read(dataRead)
+	size, err := f.Read(dataRead)
 	if err != nil {
 		t.Error("Error reading from file", err)
+		return
 	}
-	if len != 3 || !bytes.Equal([]byte{1, 2, 3}, dataRead[:len]) {
-		t.Error("File shoud be of length 3", err)
+	if size != 3 || !bytes.Equal([]byte{1, 2, 3}, dataRead[:size]) {
+		t.Error("File should be of length 3", err)
+		return
 	}
 
+	numWritten, err := f.Write(bytesInWrite)
+	if err != nil {
+		t.Error("error pushing", err)
+		return
+	}
+	if numWritten != len(bytesInWrite) {
+		t.Error("wrong number of blocks written", err)
+		return
+	}
 }
 
 func TestFileNotFound(t *testing.T) {
@@ -67,5 +82,15 @@ func handleFetchBlockReq(reqs chan webdav.FetchBlockReq) {
 	for {
 		req := <-reqs
 		req.Resp <- []byte{1, 2, 3}
+	}
+}
+
+func handlePushBlockReq(reqs chan webdav.PushBlockReq, expected []byte, t *testing.T) {
+	for {
+		req := <-reqs
+		if !bytes.Equal(req.Data, expected) {
+			t.Error("unexpected push")
+		}
+		req.Resp <- nil
 	}
 }
