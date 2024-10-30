@@ -30,6 +30,7 @@ type Webdav struct {
 	fileSystem    FileSystem
 	nodeId        model.NodeId
 	pendingReads  map[model.BlockId]chan []byte
+	pendingPuts   map[model.BlockId]chan error
 }
 
 func New(nodeId model.NodeId) Webdav {
@@ -66,8 +67,12 @@ func (w *Webdav) eventLoop() {
 				ch <- r.Block.Data
 				delete(w.pendingReads, r.Block.Id)
 			}
-		case <-w.mgrWebdavPuts:
-			fmt.Println("mwp")
+		case r:= <-w.mgrWebdavPuts:
+			// ch, ok := w.pendingPuts[r.]
+			// if ok {
+			// 	ch <- r.Block.Data
+			// 	delete(w.pendingReads, r.Block.Id)
+			// }
 		case r := <-w.fileSystem.FetchBlockReq:
 			w.webdavMgrGets <- model.ReadRequest{
 				Caller:  w.nodeId,
@@ -75,10 +80,11 @@ func (w *Webdav) eventLoop() {
 			}
 			w.pendingReads[r.Id] = r.Resp
 		case r := <-w.fileSystem.PushBlockReq:
-			w.webdavMgrPuts<-model.Block{
+			w.webdavMgrPuts <- model.Block{
 				Id:   r.Id,
 				Data: r.Data,
 			}
+			w.pendingPuts[r.Id] = r.Resp
 		}
 	}
 }
