@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"path/filepath"
 	"tealfs/pkg/disk"
-	"tealfs/pkg/hash"
 	"tealfs/pkg/model"
 	"testing"
 )
@@ -27,12 +26,10 @@ func TestWriteData(t *testing.T) {
 	f, path, _, mgrDiskWrites, _, diskMgrWrites, _, _ := newDiskService()
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
-	h := hash.ForData(data)
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	mgrDiskWrites <- model.Block{
 		Id:   blockId,
 		Data: data,
-		Hash: h,
 	}
 	result := <-diskMgrWrites
 	if !result.Ok {

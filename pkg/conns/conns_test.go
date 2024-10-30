@@ -17,7 +17,6 @@ package conns
 import (
 	"bytes"
 	"encoding/binary"
-	"tealfs/pkg/hash"
 	"tealfs/pkg/model"
 	"testing"
 )
@@ -49,14 +48,11 @@ func TestSendData(t *testing.T) {
 			Block: model.Block{
 				Id:   "blockId",
 				Data: []byte{1, 2, 3},
-				Hash: hash.ForData([]byte{1, 2, 3}),
 			},
 		}}
 
-	expectedBytes := []byte{0, 0, 0, 55,
-		3, 0, 0, 0, 7, 98, 108, 111, 99, 107, 73, 100, 0, 0, 0, 3, 1, 2, 3, 0, 0, 0, 32, 3,
-		144, 88, 198, 242, 192, 203, 73, 44, 83, 59, 10, 77, 20, 239, 119, 204, 15, 120, 171,
-		204, 206, 213, 40, 125, 132, 161, 162, 1, 28, 251, 129}
+	expectedBytes := []byte{0, 0, 0, 19, 3, 0, 0, 0, 7, 98, 108, 111,
+		99, 107, 73, 100, 0, 0, 0, 3, 1, 2, 3}
 	if !dataMatched(expectedBytes, provider.Conn.dataWritten) {
 		t.Error("Wrong data written")
 	}

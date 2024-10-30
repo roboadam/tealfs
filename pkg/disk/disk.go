@@ -16,7 +16,6 @@ package disk
 
 import (
 	"path/filepath"
-	h "tealfs/pkg/hash"
 	"tealfs/pkg/model"
 )
 
@@ -70,7 +69,6 @@ func (d *Disk) consumeChannels() {
 					Block: model.Block{
 						Id:   r.BlockId,
 						Data: data,
-						Hash: h.ForData(data),
 					},
 				}
 			} else {

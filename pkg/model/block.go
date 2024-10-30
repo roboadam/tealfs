@@ -16,7 +16,6 @@ package model
 
 import (
 	"bytes"
-	"tealfs/pkg/hash"
 
 	"github.com/google/uuid"
 )
@@ -31,7 +30,6 @@ func NewBlockId() BlockId {
 type Block struct {
 	Id   BlockId
 	Data []byte
-	Hash hash.Hash
 }
 
 func (r *Block) Equal(o *Block) bool {
@@ -39,9 +37,6 @@ func (r *Block) Equal(o *Block) bool {
 		return false
 	}
 	if !bytes.Equal(r.Data, o.Data) {
-		return false
-	}
-	if !bytes.Equal(r.Hash.Value, o.Hash.Value) {
 		return false
 	}
 

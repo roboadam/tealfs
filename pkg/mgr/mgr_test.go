@@ -15,7 +15,6 @@
 package mgr
 
 import (
-	"tealfs/pkg/hash"
 	"tealfs/pkg/model"
 	"testing"
 )
@@ -117,7 +116,6 @@ func TestReceiveSaveData(t *testing.T) {
 				Block: model.Block{
 					Id:   id,
 					Data: value,
-					Hash: hash.ForData(value),
 				},
 			},
 		}
@@ -159,7 +157,6 @@ func TestReceiveDiskRead(t *testing.T) {
 
 	storeId1 := model.NewBlockId()
 	data1 := []byte{0x00, 0x01, 0x02}
-	hash1 := hash.ForData(data1)
 
 	rr := model.ReadResult{
 		Ok:      true,
@@ -168,7 +165,6 @@ func TestReceiveDiskRead(t *testing.T) {
 		Block: model.Block{
 			Id:   storeId1,
 			Data: data1,
-			Hash: hash1,
 		},
 	}
 
@@ -187,7 +183,6 @@ func TestReceiveDiskRead(t *testing.T) {
 		Block: model.Block{
 			Id:   storeId1,
 			Data: data1,
-			Hash: hash1,
 		},
 	}
 
@@ -269,11 +264,9 @@ func TestWebdavPut(t *testing.T) {
 	blocks := []model.Block{}
 	for i := range 100 {
 		data := []byte{byte(i)}
-		hash := hash.ForData(data)
 		block := model.Block{
 			Id:   model.NewBlockId(),
 			Data: data,
-			Hash: hash,
 		}
 		blocks = append(blocks, block)
 	}
