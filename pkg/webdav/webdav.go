@@ -74,6 +74,11 @@ func (w *Webdav) eventLoop() {
 				BlockId: r.Id,
 			}
 			w.pendingReads[r.Id] = r.Resp
+		case r := <-w.fileSystem.PushBlockReq:
+			w.webdavMgrPuts<-model.Block{
+				Id:   r.Id,
+				Data: r.Data,
+			}
 		}
 	}
 }
