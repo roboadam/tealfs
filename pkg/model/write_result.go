@@ -21,6 +21,8 @@ import (
 type WriteResult struct {
 	Ok      bool
 	Message string
+	Caller  NodeId
+	BlockId BlockId
 }
 
 func (r *WriteResult) Equal(p Payload) bool {

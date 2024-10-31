@@ -68,11 +68,11 @@ func (w *Webdav) eventLoop() {
 				delete(w.pendingReads, r.Block.Id)
 			}
 		case r:= <-w.mgrWebdavPuts:
-			// ch, ok := w.pendingPuts[r.]
-			// if ok {
-			// 	ch <- r.Block.Data
-			// 	delete(w.pendingReads, r.Block.Id)
-			// }
+			ch, ok := w.pendingPuts[r.]
+			if ok {
+				ch <- r.Block.Data
+				delete(w.pendingReads, r.Block.Id)
+			}
 		case r := <-w.fileSystem.FetchBlockReq:
 			w.webdavMgrGets <- model.ReadRequest{
 				Caller:  w.nodeId,

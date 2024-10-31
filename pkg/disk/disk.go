@@ -25,7 +25,7 @@ type Path struct {
 }
 
 func New(path Path, id model.NodeId,
-	mgrDiskWrites chan model.Block,
+	mgrDiskWrites chan model.WriteRequest,
 	mgrDiskReads chan model.ReadRequest,
 	diskMgrWrites chan model.WriteResult,
 	diskMgrReads chan model.ReadResult) Disk {
@@ -46,7 +46,7 @@ type Disk struct {
 	id        model.NodeId
 	outReads  chan model.ReadResult
 	outWrites chan model.WriteResult
-	inWrites  chan model.Block
+	inWrites  chan model.WriteRequest
 	inReads   chan model.ReadRequest
 }
 
@@ -54,11 +54,20 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Id, s.Data)
+			err := d.path.Save(s.Block.Id, s.Block.Data)
 			if err == nil {
-				d.outWrites <- model.WriteResult{Ok: true}
+				d.outWrites <- model.WriteResult{
+					Ok:      true,
+					Caller:  s.Caller,
+					BlockId: s.Block.Id,
+				}
 			} else {
-				d.outWrites <- model.WriteResult{Ok: false, Message: err.Error()}
+				d.outWrites <- model.WriteResult{
+					Ok:      false,
+					Message: err.Error(),
+					Caller:  s.Caller,
+					BlockId: s.Block.Id,
+				}
 			}
 		case r := <-d.inReads:
 			data, err := d.path.Read(r.BlockId)

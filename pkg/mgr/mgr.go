@@ -30,7 +30,7 @@ type Mgr struct {
 	WebdavMgrPuts      chan model.Block
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
-	MgrDiskWrites      chan model.Block
+	MgrDiskWrites      chan model.WriteRequest
 	MgrDiskReads       chan model.ReadRequest
 	MgrUiStatuses      chan model.ConnectionStatus
 	MgrWebdavGets      chan model.ReadResult
@@ -48,12 +48,13 @@ func NewWithChanSize(chanSize int) *Mgr {
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.ConnectionStatus, chanSize),
 		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
+		DiskMgrWrites:      make(chan model.WriteResult),
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:      make(chan model.ReadRequest, chanSize),
 		WebdavMgrPuts:      make(chan model.Block, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
-		MgrDiskWrites:      make(chan model.Block, chanSize),
+		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
 		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
 		MgrUiStatuses:      make(chan model.ConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
@@ -84,6 +85,8 @@ func (m *Mgr) eventLoop() {
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
 			m.handleDiskReads(r)
+		case r := <-m.DiskMgrWrites:
+			m.handleDiskWrites(r)
 		case r := <-m.WebdavMgrGets:
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
@@ -137,8 +140,15 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		}
 	case *model.SaveData:
 		n := m.distributer.NodeIdForStoreId(p.Block.Id)
+		caller, ok := m.nodeConnMap.Get2(i.ConnId)
+		if !ok {
+			return
+		}
 		if m.NodeId == n {
-			m.MgrDiskWrites <- p.Block
+			m.MgrDiskWrites <- model.WriteRequest{
+				Caller: caller,
+				Block:  p.Block,
+			}
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)
 			if ok {
@@ -148,6 +158,9 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			}
 		}
 	}
+}
+func (m *Mgr) handleDiskWrites(r model.WriteResult) {
+	// m.
 }
 
 func (m *Mgr) handleDiskReads(r model.ReadResult) {
