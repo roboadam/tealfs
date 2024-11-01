@@ -31,9 +31,10 @@ type FileSystem struct {
 	renameReq     chan renameReq
 	FetchBlockReq chan FetchBlockReq
 	PushBlockReq  chan PushBlockReq
+	nodeId        model.NodeId
 }
 
-func NewFileSystem() FileSystem {
+func NewFileSystem(nodeId model.NodeId) FileSystem {
 	filesystem := FileSystem{
 		FilesByPath:   fileHolder{data: make(map[pathValue]File)},
 		mkdirReq:      make(chan mkdirReq),
@@ -42,6 +43,7 @@ func NewFileSystem() FileSystem {
 		renameReq:     make(chan renameReq),
 		FetchBlockReq: make(chan FetchBlockReq),
 		PushBlockReq:  make(chan PushBlockReq),
+		nodeId:        nodeId,
 	}
 	root := File{
 		IsDirValue:   true,
@@ -75,7 +77,7 @@ type FetchBlockReq struct {
 
 type PushBlockReq struct {
 	req  model.WriteRequest
-	Resp chan model.WriteResult
+	resp chan model.WriteResult
 }
 
 func (f *FileSystem) fetchBlock(id model.BlockId) []byte {
@@ -84,9 +86,10 @@ func (f *FileSystem) fetchBlock(id model.BlockId) []byte {
 	return <-resp
 }
 
-func (f *FileSystem) pushBlock(id model.BlockId, data []byte) error {
-	resp := make(chan error)
-	f.PushBlockReq <- PushBlockReq{id, data, resp}
+func (f *FileSystem) pushBlock(block model.Block) model.WriteResult {
+	req := model.WriteRequest{Caller: f.nodeId, Block: block}
+	resp := make(chan model.WriteResult)
+	f.PushBlockReq <- PushBlockReq{req, resp}
 	return <-resp
 }
 

@@ -15,6 +15,7 @@
 package webdav
 
 import (
+	"errors"
 	"io"
 	"io/fs"
 	"tealfs/pkg/model"
@@ -35,8 +36,7 @@ type File struct {
 	Modtime      time.Time
 	SysValue     any
 	Position     int64
-	Data         []byte
-	BlockId      model.BlockId
+	Block        model.Block
 	hasData      bool
 	path         Path
 	fileSystem   *FileSystem
@@ -79,19 +79,19 @@ func (f *File) Stat() (fs.FileInfo, error) {
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
-	if int(f.Position)+len(p) > len(f.Data) {
+	if int(f.Position)+len(p) > len(f.Block.Data) {
 		newData := make([]byte, int(f.Position)+len(p))
-		copy(newData, f.Data)
+		copy(newData, f.Block.Data)
 		for _, b := range p {
 			newData[f.Position] = b
 			f.Position++
 		}
 	}
-	pushErr := f.fileSystem.pushBlock(f.BlockId, f.Data)
-	if pushErr == nil {
+	result := f.fileSystem.pushBlock(f.Block)
+	if result.Ok {
 		return len(p), nil
 	}
-	return 0, pushErr
+	return 0, errors.New(result.Message)
 }
 
 func (f *File) Name() string {
