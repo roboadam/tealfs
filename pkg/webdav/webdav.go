@@ -15,7 +15,6 @@
 package webdav
 
 import (
-	"fmt"
 	"tealfs/pkg/model"
 
 	"golang.org/x/net/webdav"
@@ -24,7 +23,7 @@ import (
 type Webdav struct {
 	webdavOps     WebdavOps
 	webdavMgrGets chan model.ReadRequest
-	webdavMgrPuts chan model.Block
+	webdavMgrPuts chan model.WriteRequest
 	mgrWebdavGets chan model.ReadResult
 	mgrWebdavPuts chan model.WriteResult
 	fileSystem    FileSystem
@@ -67,8 +66,8 @@ func (w *Webdav) eventLoop() {
 				ch <- r.Block.Data
 				delete(w.pendingReads, r.Block.Id)
 			}
-		case r:= <-w.mgrWebdavPuts:
-			ch, ok := w.pendingPuts[r.]
+		case r := <-w.mgrWebdavPuts:
+			ch, ok := w.pendingPuts[r.BlockId]
 			if ok {
 				ch <- r.Block.Data
 				delete(w.pendingReads, r.Block.Id)
@@ -80,10 +79,14 @@ func (w *Webdav) eventLoop() {
 			}
 			w.pendingReads[r.Id] = r.Resp
 		case r := <-w.fileSystem.PushBlockReq:
-			w.webdavMgrPuts <- model.Block{
-				Id:   r.Id,
-				Data: r.Data,
+			w.webdavMgrPuts <- model.WriteRequest{
+				Caller: "",
+				Block:  model.Block{},
 			}
+			// w.webdavMgrPuts <- model.Block{
+			// 	Id:   r.Id,
+			// 	Data: r.Data,
+			// }
 			w.pendingPuts[r.Id] = r.Resp
 		}
 	}

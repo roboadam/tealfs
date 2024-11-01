@@ -112,11 +112,9 @@ func TestReceiveSaveData(t *testing.T) {
 	for _, id := range ids {
 		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId: expectedConnectionId1,
-			Payload: &model.SaveData{
-				Block: model.Block{
-					Id:   id,
-					Data: value,
-				},
+			Payload: &model.WriteRequest{
+				Caller: expectedNodeId1,
+				Block:  model.Block{Id: id, Data: value},
 			},
 		}
 

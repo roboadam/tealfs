@@ -74,9 +74,8 @@ type FetchBlockReq struct {
 }
 
 type PushBlockReq struct {
-	Id   model.BlockId
-	Data []byte
-	Resp chan error
+	req  model.WriteRequest
+	Resp chan model.WriteResult
 }
 
 func (f *FileSystem) fetchBlock(id model.BlockId) []byte {

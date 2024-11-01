@@ -27,7 +27,7 @@ type Mgr struct {
 	DiskMgrReads       chan model.ReadResult
 	DiskMgrWrites      chan model.WriteResult
 	WebdavMgrGets      chan model.ReadRequest
-	WebdavMgrPuts      chan model.Block
+	WebdavMgrPuts      chan model.WriteRequest
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
@@ -51,7 +51,7 @@ func NewWithChanSize(chanSize int) *Mgr {
 		DiskMgrWrites:      make(chan model.WriteResult),
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:      make(chan model.ReadRequest, chanSize),
-		WebdavMgrPuts:      make(chan model.Block, chanSize),
+		WebdavMgrPuts:      make(chan model.WriteRequest, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
@@ -90,7 +90,7 @@ func (m *Mgr) eventLoop() {
 		case r := <-m.WebdavMgrGets:
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
-			m.handlePuts(r)
+			m.handleWebdavWriteRequest(r)
 		}
 	}
 }
@@ -138,23 +138,20 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			address := p.AddressForNode(n)
 			m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: address}
 		}
-	case *model.SaveData:
+	case *model.WriteRequest:
 		n := m.distributer.NodeIdForStoreId(p.Block.Id)
 		caller, ok := m.nodeConnMap.Get2(i.ConnId)
-		if !ok {
+		if !ok || caller != p.Caller {
 			return
 		}
 		if m.NodeId == n {
-			m.MgrDiskWrites <- model.WriteRequest{
-				Caller: caller,
-				Block:  p.Block,
-			}
+			m.MgrDiskWrites <- *p
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)
 			if ok {
 				m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: p}
 			} else {
-				m.MgrDiskWrites <- p.Block
+				m.MgrDiskWrites <- *p
 			}
 		}
 	}
@@ -220,23 +217,19 @@ func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 	}
 }
 
-func (m *Mgr) handlePuts(w model.Block) {
-	n := m.distributer.NodeIdForStoreId(w.Id)
+func (m *Mgr) handleWebdavWriteRequest(w model.WriteRequest) {
+	n := m.distributer.NodeIdForStoreId(w.Block.Id)
 	if n == m.NodeId {
 		m.MgrDiskWrites <- w
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
 		if ok {
 			m.MgrConnsSends <- model.MgrConnsSend{
-				ConnId: c,
-				Payload: &model.WriteRequest{
-					Caller: m.NodeId,
-					Block:  w,
-				},
+				ConnId:  c,
+				Payload: &w,
 			}
 		} else {
-			panic("no connection!")
-			// Todo handle no connections here
+			m.MgrDiskWrites <- w
 		}
 	}
 }

@@ -15,12 +15,12 @@
 package model
 
 const (
-	NoOpType       = uint8(0)
-	IAmType        = uint8(1)
-	SyncType       = uint8(2)
-	SaveDataType   = uint8(3)
-	ReadDataType   = uint8(4)
-	ReadResultType = uint8(5)
+	NoOpType         = uint8(0)
+	IAmType          = uint8(1)
+	SyncType         = uint8(2)
+	WriteRequestType = uint8(3)
+	ReadDataType     = uint8(4)
+	ReadResultType   = uint8(5)
 )
 
 type Payload interface {
@@ -34,8 +34,8 @@ func ToPayload(data []byte) Payload {
 		return ToHello(payloadData(data))
 	case SyncType:
 		return ToSyncNodes(payloadData(data))
-	case SaveDataType:
-		return ToSaveData(payloadData(data))
+	case WriteRequestType:
+		return ToWriteRequest(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}
