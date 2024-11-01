@@ -123,8 +123,8 @@ func TestReceiveSaveData(t *testing.T) {
 		select {
 		case w := <-m.MgrDiskWrites:
 			meCount++
-			if w.Id != id {
-				t.Error("expected to write to 1, got", w.Id)
+			if w.Block.Id != id {
+				t.Error("expected to write to 1, got", w.Block.Id)
 			}
 		case s := <-m.MgrConnsSends:
 			//Todo: s.Payload should be checked for the correct value
@@ -281,7 +281,7 @@ func TestWebdavPut(t *testing.T) {
 		select {
 		case w := <-m.MgrDiskWrites:
 			meCount++
-			if !w.Equal(&block) {
+			if !w.Block.Equal(&block) {
 				t.Error("expected the original block")
 			}
 		case s := <-m.MgrConnsSends:

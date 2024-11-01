@@ -23,13 +23,17 @@ import (
 )
 
 func TestWriteData(t *testing.T) {
-	f, path, _, mgrDiskWrites, _, diskMgrWrites, _, _ := newDiskService()
+	f, path, nodeId, mgrDiskWrites, _, diskMgrWrites, _, _ := newDiskService()
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
-	mgrDiskWrites <- model.Block{
+	block := model.Block{
 		Id:   blockId,
 		Data: data,
+	}
+	mgrDiskWrites <- model.WriteRequest{
+		Caller: nodeId,
+		Block:  block,
 	}
 	result := <-diskMgrWrites
 	if !result.Ok {
@@ -66,11 +70,11 @@ func TestReadData(t *testing.T) {
 	}
 }
 
-func newDiskService() (*disk.MockFileOps, disk.Path, model.NodeId, chan model.Block, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
+func newDiskService() (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
 	f := disk.MockFileOps{}
 	path := disk.NewPath("/some/fake/path", &f)
 	id := model.NewNodeId()
-	mgrDiskWrites := make(chan model.Block)
+	mgrDiskWrites := make(chan model.WriteRequest)
 	mgrDiskReads := make(chan model.ReadRequest)
 	diskMgrWrites := make(chan model.WriteResult)
 	diskMgrReads := make(chan model.ReadResult)
