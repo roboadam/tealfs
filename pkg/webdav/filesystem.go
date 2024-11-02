@@ -24,16 +24,13 @@ import (
 )
 
 type FileSystem struct {
-	FilesByPath   fileHolder
-	mkdirReq      chan mkdirReq
-	openFileReq   chan openFileReq
-	removeAllReq  chan removeAllReq
-	renameReq     chan renameReq
-	FetchBlockReq chan struct {
-		req  model.ReadRequest
-		resp chan model.ReadResult
-	}
-	PushBlockReq chan PushBlockReq
+	FilesByPath  fileHolder
+	mkdirReq     chan mkdirReq
+	openFileReq  chan openFileReq
+	removeAllReq chan removeAllReq
+	renameReq    chan renameReq
+	ReadReqResp  chan ReadReqResp
+	WriteReqResp chan WriteReqResp
 	nodeId       model.NodeId
 }
 
@@ -44,13 +41,11 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		openFileReq:  make(chan openFileReq),
 		removeAllReq: make(chan removeAllReq),
 		renameReq:    make(chan renameReq),
-		FetchBlockReq: make(chan struct {
-			req  model.ReadRequest
-			resp chan model.ReadResult
-		}),
-		PushBlockReq: make(chan PushBlockReq),
+		ReadReqResp:  make(chan ReadReqResp),
+		WriteReqResp: make(chan WriteReqResp),
 		nodeId:       nodeId,
 	}
+	block := model.Block{Id: "", Data: []byte{}}
 	root := File{
 		IsDirValue:   true,
 		RO:           false,
@@ -65,20 +60,24 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		Modtime:      time.Time{},
 		SysValue:     nil,
 		Position:     0,
-		Data:         []byte{},
-		BlockId:      "",
+		Block:        block,
 		hasData:      false,
-		fileSystem:   &filesystem,
 		path:         []pathSeg{},
+		fileSystem:   &filesystem,
 	}
 	filesystem.FilesByPath.add(root)
 	go filesystem.run()
 	return filesystem
 }
 
-type PushBlockReq struct {
-	req  model.WriteRequest
-	resp chan model.WriteResult
+type WriteReqResp struct {
+	Req  model.WriteRequest
+	Resp chan model.WriteResult
+}
+
+type ReadReqResp struct {
+	Req  model.ReadRequest
+	Resp chan model.ReadResult
 }
 
 func (f *FileSystem) fetchBlock(id model.BlockId) model.ReadResult {
@@ -87,17 +86,14 @@ func (f *FileSystem) fetchBlock(id model.BlockId) model.ReadResult {
 		BlockId: id,
 	}
 	resp := make(chan model.ReadResult)
-	f.FetchBlockReq <- struct {
-		req  model.ReadRequest
-		resp chan model.ReadResult
-	}{req, resp}
+	f.ReadReqResp <- ReadReqResp{req, resp}
 	return <-resp
 }
 
 func (f *FileSystem) pushBlock(block model.Block) model.WriteResult {
 	req := model.WriteRequest{Caller: f.nodeId, Block: block}
 	resp := make(chan model.WriteResult)
-	f.PushBlockReq <- PushBlockReq{req, resp}
+	f.WriteReqResp <- WriteReqResp{req, resp}
 	return <-resp
 }
 
@@ -153,8 +149,11 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 		return errors.New("invalid path")
 	}
 
+	block := model.Block{
+		Id:   "",
+		Data: []byte{},
+	}
 	dir := File{
-		path:         p,
 		IsDirValue:   true,
 		RO:           false,
 		RW:           false,
@@ -168,8 +167,10 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 		Modtime:      time.Now(),
 		SysValue:     nil,
 		Position:     0,
-		Data:         []byte{},
-		BlockId:      "",
+		Block:        block,
+		hasData:      false,
+		path:         p,
+		fileSystem:   f,
 	}
 
 	f.FilesByPath.add(dir)

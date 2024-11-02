@@ -44,11 +44,9 @@ func TestSendData(t *testing.T) {
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{
 		ConnId: status.Id,
-		Payload: &model.SaveData{
-			Block: model.Block{
-				Id:   "blockId",
-				Data: []byte{1, 2, 3},
-			},
+		Payload: &model.WriteRequest{
+			Caller: model.NewNodeId(),
+			Block:  model.Block{Id: "blockId", Data: []byte{1, 2, 3}},
 		}}
 
 	expectedBytes := []byte{0, 0, 0, 19, 3, 0, 0, 0, 7, 98, 108, 111,

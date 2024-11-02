@@ -113,6 +113,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	}
 
 	if !exists {
+		block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
 		file = File{
 			IsDirValue:   isDir,
 			RO:           ro,
@@ -127,10 +128,10 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			Modtime:      time.Now(),
 			SysValue:     nil,
 			Position:     0,
-			Data:         []byte{},
-			BlockId:      model.NewBlockId(),
-			fileSystem:   f,
+			Block:        block,
+			hasData:      false,
 			path:         path,
+			fileSystem:   f,
 		}
 		f.FilesByPath.add(file)
 	}

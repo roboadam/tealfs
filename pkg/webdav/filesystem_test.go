@@ -17,12 +17,13 @@ package webdav_test
 import (
 	"context"
 	"os"
+	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
 )
 
 func TestMkdir(t *testing.T) {
-	fs := webdav.NewFileSystem()
+	fs := webdav.NewFileSystem(model.NewNodeId())
 	c := context.Background()
 	mode := os.ModeDir
 
@@ -46,7 +47,7 @@ func TestMkdir(t *testing.T) {
 }
 
 func TestRemoveAll(t *testing.T) {
-	fs := webdav.NewFileSystem()
+	fs := webdav.NewFileSystem(model.NewNodeId())
 	c := context.Background()
 	mode := os.ModeDir
 
@@ -69,7 +70,7 @@ func TestRemoveAll(t *testing.T) {
 }
 
 func TestRename(t *testing.T) {
-	fs := webdav.NewFileSystem()
+	fs := webdav.NewFileSystem(model.NewNodeId())
 	c := context.Background()
 	mode := os.ModeDir
 

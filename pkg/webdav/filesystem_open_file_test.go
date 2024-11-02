@@ -18,17 +18,19 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
 )
 
 func TestCreateEmptyFile(t *testing.T) {
-	fs := webdav.NewFileSystem()
+	nodeId := model.NewNodeId()
+	fs := webdav.NewFileSystem(nodeId)
 	name := "/hello-world.txt"
 	bytesInFile := []byte{1, 2, 3}
 	bytesInWrite := []byte{6, 5, 4, 3, 2}
-	go handleFetchBlockReq(fs.FetchBlockReq)
-	go handlePushBlockReq(fs.PushBlockReq, bytesInFile, t)
+	go handleFetchBlockReq(fs.ReadReqResp, model.NewNodeId())
+	go handlePushBlockReq(fs.WriteReqResp, model.NewNodeId(), bytesInFile, t)
 
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -70,27 +72,38 @@ func TestCreateEmptyFile(t *testing.T) {
 }
 
 func TestFileNotFound(t *testing.T) {
-	fs := webdav.NewFileSystem()
-	go handleFetchBlockReq(fs.FetchBlockReq)
+	fs := webdav.NewFileSystem(model.NewNodeId())
+	go handleFetchBlockReq(fs.ReadReqResp, model.NewNodeId())
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
 		t.Error("Shouldn't be able to open file", err)
 	}
 }
 
-func handleFetchBlockReq(reqs chan webdav.FetchBlockReq) {
+func handleFetchBlockReq(reqs chan webdav.ReadReqResp, caller model.NodeId) {
 	for {
 		req := <-reqs
-		req.Resp <- []byte{1, 2, 3}
+		req.Resp <- model.ReadResult{
+			Ok:     true,
+			Caller: caller,
+			Block: model.Block{
+				Id:   req.Req.BlockId,
+				Data: []byte{1, 2, 3},
+			},
+		}
 	}
 }
 
-func handlePushBlockReq(reqs chan webdav.PushBlockReq, expected []byte, t *testing.T) {
+func handlePushBlockReq(reqs chan webdav.WriteReqResp, caller model.NodeId, expected []byte, t *testing.T) {
 	for {
 		req := <-reqs
-		if !bytes.Equal(req.Data, expected) {
+		if !bytes.Equal(req.Req.Block.Data, expected) {
 			t.Error("unexpected push")
 		}
-		req.Resp <- nil
+		req.Resp <- model.WriteResult{
+			Ok:      true,
+			Caller:  caller,
+			BlockId: req.Req.Block.Id,
+		}
 	}
 }

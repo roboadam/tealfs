@@ -48,21 +48,26 @@ func (f *File) Close() error {
 
 func (f *File) Read(p []byte) (n int, err error) {
 	if !f.hasData {
-		f.Block = f.fileSystem.fetchBlock(f.Block.Id)
-		f.hasData = true
+		resp := f.fileSystem.fetchBlock(f.Block.Id)
+		if resp.Ok {
+			f.Block = resp.Block
+			f.hasData = true
+		} else {
+			return 0, errors.New(resp.Message)
+		}
 	}
 
-	if f.Position >= int64(len(f.Data)) {
+	if f.Position >= int64(len(f.Block.Data)) {
 		return 0, io.EOF
 	}
 
 	start := f.Position
 	end := f.Position + int64(len(p))
-	if end > int64(len(f.Data)) {
-		end = int64(len(f.Data))
+	if end > int64(len(f.Block.Data)) {
+		end = int64(len(f.Block.Data))
 	}
 
-	copy(p, f.Data[start:end])
+	copy(p, f.Block.Data[start:end])
 	return int(end - start), nil
 }
 

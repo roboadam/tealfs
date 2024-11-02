@@ -28,16 +28,21 @@ type Webdav struct {
 	mgrWebdavPuts chan model.WriteResult
 	fileSystem    FileSystem
 	nodeId        model.NodeId
-	pendingReads  map[model.BlockId]chan []byte
-	pendingPuts   map[model.BlockId]chan error
+	pendingReads  map[model.BlockId]chan model.ReadResult
+	pendingPuts   map[model.BlockId]chan model.WriteResult
 }
 
-func New(nodeId model.NodeId) Webdav {
+func New(nodeId model.NodeId, webdavOps WebdavOps) Webdav {
 	w := Webdav{
-		webdavOps:    &HttpWebdavOps{},
-		fileSystem:   NewFileSystem(),
-		nodeId:       nodeId,
-		pendingReads: make(map[model.BlockId]chan []byte),
+		webdavOps:     webdavOps,
+		webdavMgrGets: make(chan model.ReadRequest),
+		webdavMgrPuts: make(chan model.WriteRequest),
+		mgrWebdavGets: make(chan model.ReadResult),
+		mgrWebdavPuts: make(chan model.WriteResult),
+		fileSystem:    NewFileSystem(nodeId),
+		nodeId:        nodeId,
+		pendingReads:  make(map[model.BlockId]chan model.ReadResult),
+		pendingPuts:   make(map[model.BlockId]chan model.WriteResult),
 	}
 	w.start()
 	return w
@@ -63,31 +68,21 @@ func (w *Webdav) eventLoop() {
 		case r := <-w.mgrWebdavGets:
 			ch, ok := w.pendingReads[r.Block.Id]
 			if ok {
-				ch <- r.Block.Data
+				ch <- r
 				delete(w.pendingReads, r.Block.Id)
 			}
 		case r := <-w.mgrWebdavPuts:
 			ch, ok := w.pendingPuts[r.BlockId]
 			if ok {
-				ch <- r.Block.Data
-				delete(w.pendingReads, r.Block.Id)
+				ch <- r
+				delete(w.pendingPuts, r.BlockId)
 			}
-		case r := <-w.fileSystem.FetchBlockReq:
-			w.webdavMgrGets <- model.ReadRequest{
-				Caller:  w.nodeId,
-				BlockId: r.Id,
-			}
-			w.pendingReads[r.Id] = r.Resp
-		case r := <-w.fileSystem.PushBlockReq:
-			w.webdavMgrPuts <- model.WriteRequest{
-				Caller: "",
-				Block:  model.Block{},
-			}
-			// w.webdavMgrPuts <- model.Block{
-			// 	Id:   r.Id,
-			// 	Data: r.Data,
-			// }
-			w.pendingPuts[r.Id] = r.Resp
+		case r := <-w.fileSystem.ReadReqResp:
+			w.webdavMgrGets <- r.Req
+			w.pendingReads[r.Req.BlockId] = r.Resp
+		case r := <-w.fileSystem.WriteReqResp:
+			w.webdavMgrPuts <- r.Req
+			w.pendingPuts[r.Req.Block.Id] = r.Resp
 		}
 	}
 }

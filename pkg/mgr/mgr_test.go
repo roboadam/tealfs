@@ -274,7 +274,10 @@ func TestWebdavPut(t *testing.T) {
 	twoCount := 0
 
 	for _, block := range blocks {
-		m.WebdavMgrPuts <- block
+		m.WebdavMgrPuts <- model.WriteRequest{
+			Caller: m.NodeId,
+			Block:  block,
+		}
 
 		select {
 		case w := <-m.MgrDiskWrites:
