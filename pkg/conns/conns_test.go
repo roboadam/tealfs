@@ -15,7 +15,6 @@
 package conns
 
 import (
-	"bytes"
 	"encoding/binary"
 	"tealfs/pkg/model"
 	"testing"
@@ -41,30 +40,33 @@ func TestConnectToConns(t *testing.T) {
 
 func TestSendData(t *testing.T) {
 	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest()
+	expected := model.WriteRequest{
+		Caller: model.NewNodeId(),
+		Block:  model.Block{Id: "blockId", Data: []byte{1, 2, 3}},
+	}
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{
-		ConnId: status.Id,
-		Payload: &model.WriteRequest{
-			Caller: model.NewNodeId(),
-			Block:  model.Block{Id: "blockId", Data: []byte{1, 2, 3}},
-		}}
+		ConnId:  status.Id,
+		Payload: &expected,
+	}
 
-	expectedBytes := []byte{0, 0, 0, 19, 3, 0, 0, 0, 7, 98, 108, 111,
-		99, 107, 73, 100, 0, 0, 0, 3, 1, 2, 3}
+	// expectedBytes := []byte{0, 0, 0, 19, 3, 0, 0, 0, 7, 98, 108, 111,
+	// 	99, 107, 73, 100, 0, 0, 0, 3, 1, 2, 3}
+
 	if !dataMatched(expectedBytes, provider.Conn.dataWritten) {
 		t.Error("Wrong data written")
 	}
 }
 
-func dataMatched(expected []byte, incoming chan []byte) bool {
+func collectIncoming(incoming chan []byte, size int) []byte {
 	buffer := make([]byte, 0)
 	for readBytes := range incoming {
 		buffer = append(buffer, readBytes...)
-		if len(buffer) >= len(expected) {
-			return bytes.Equal(expected, buffer[:len(expected)])
+		if len(buffer) >= size {
+			return buffer[:size]
 		}
 	}
-	return false
+	return buffer
 }
 
 func TestGetData(t *testing.T) {
