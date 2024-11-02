@@ -312,17 +312,6 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
 	var nodesInCluster []connectedNode
 
 	for _, n := range nodes {
-		// expectedAddress := "asdf:123"
-		// m.UiMgrConnectTos <- model.UiMgrConnectTo{
-		// 	Address: expectedAddress,
-		// }
-
-		// expectedMessage := <-m.MgrConnsConnectTos
-
-		// if expectedMessage.Address != expectedAddress {
-		// 	t.Error("Received address", expectedMessage.Address)
-		// }
-
 		// Send a message to Mgr indicating another
 		// node has connected
 		m.ConnsMgrStatuses <- model.ConnectionStatus{
