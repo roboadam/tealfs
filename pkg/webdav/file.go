@@ -48,7 +48,7 @@ func (f *File) Close() error {
 
 func (f *File) Read(p []byte) (n int, err error) {
 	if !f.hasData {
-		f.Data = f.fileSystem.fetchBlock(f.BlockId)
+		f.Block = f.fileSystem.fetchBlock(f.Block.Id)
 		f.hasData = true
 	}
 

@@ -29,21 +29,27 @@ type FileSystem struct {
 	openFileReq   chan openFileReq
 	removeAllReq  chan removeAllReq
 	renameReq     chan renameReq
-	FetchBlockReq chan FetchBlockReq
-	PushBlockReq  chan PushBlockReq
-	nodeId        model.NodeId
+	FetchBlockReq chan struct {
+		req  model.ReadRequest
+		resp chan model.ReadResult
+	}
+	PushBlockReq chan PushBlockReq
+	nodeId       model.NodeId
 }
 
 func NewFileSystem(nodeId model.NodeId) FileSystem {
 	filesystem := FileSystem{
-		FilesByPath:   fileHolder{data: make(map[pathValue]File)},
-		mkdirReq:      make(chan mkdirReq),
-		openFileReq:   make(chan openFileReq),
-		removeAllReq:  make(chan removeAllReq),
-		renameReq:     make(chan renameReq),
-		FetchBlockReq: make(chan FetchBlockReq),
-		PushBlockReq:  make(chan PushBlockReq),
-		nodeId:        nodeId,
+		FilesByPath:  fileHolder{data: make(map[pathValue]File)},
+		mkdirReq:     make(chan mkdirReq),
+		openFileReq:  make(chan openFileReq),
+		removeAllReq: make(chan removeAllReq),
+		renameReq:    make(chan renameReq),
+		FetchBlockReq: make(chan struct {
+			req  model.ReadRequest
+			resp chan model.ReadResult
+		}),
+		PushBlockReq: make(chan PushBlockReq),
+		nodeId:       nodeId,
 	}
 	root := File{
 		IsDirValue:   true,
@@ -70,19 +76,21 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 	return filesystem
 }
 
-type FetchBlockReq struct {
-	Id   model.BlockId
-	Resp chan []byte
-}
-
 type PushBlockReq struct {
 	req  model.WriteRequest
 	resp chan model.WriteResult
 }
 
-func (f *FileSystem) fetchBlock(id model.BlockId) []byte {
-	resp := make(chan []byte)
-	f.FetchBlockReq <- FetchBlockReq{id, resp}
+func (f *FileSystem) fetchBlock(id model.BlockId) model.ReadResult {
+	req := model.ReadRequest{
+		Caller:  f.nodeId,
+		BlockId: id,
+	}
+	resp := make(chan model.ReadResult)
+	f.FetchBlockReq <- struct {
+		req  model.ReadRequest
+		resp chan model.ReadResult
+	}{req, resp}
 	return <-resp
 }
 
