@@ -51,7 +51,8 @@ func (r *ReadResult) ToBytes() []byte {
 	message := StringToBytes(r.Message)
 	caller := StringToBytes(string(r.Caller))
 	block := BlockToBytes(r.Block)
-	return bytes.Join([][]byte{ok, message, caller, block}, []byte{})
+	payload := bytes.Join([][]byte{ok, message, caller, block}, []byte{})
+	return AddType(ReadResultType, payload)
 }
 
 func ToReadResult(data []byte) *ReadResult {

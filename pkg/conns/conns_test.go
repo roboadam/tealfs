@@ -50,23 +50,29 @@ func TestSendData(t *testing.T) {
 		Payload: &expected,
 	}
 
-	// expectedBytes := []byte{0, 0, 0, 19, 3, 0, 0, 0, 7, 98, 108, 111,
-	// 	99, 107, 73, 100, 0, 0, 0, 3, 1, 2, 3}
+	payload := collectPayload(provider.Conn.dataWritten)
 
-	if !dataMatched(expectedBytes, provider.Conn.dataWritten) {
-		t.Error("Wrong data written")
+	switch p := model.ToPayload(payload).(type) {
+	case *model.WriteRequest:
+		if !p.Equal(&expected) {
+			t.Error("WriteRequest not equal to expected value")
+		}
+	default:
+		t.Error("Unexpected payload", p)
 	}
 }
 
-func collectIncoming(incoming chan []byte, size int) []byte {
-	buffer := make([]byte, 0)
-	for readBytes := range incoming {
-		buffer = append(buffer, readBytes...)
-		if len(buffer) >= size {
-			return buffer[:size]
+func collectPayload(channel chan []byte) []byte {
+	data := <-channel
+	size := binary.BigEndian.Uint32(data[:4])
+	data = data[4:]
+	for {
+		if len(data) >= int(size) {
+			return data
 		}
+		data = append(data, <-channel...)
+
 	}
-	return buffer
 }
 
 func TestGetData(t *testing.T) {

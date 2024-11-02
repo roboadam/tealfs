@@ -19,8 +19,9 @@ const (
 	IAmType          = uint8(1)
 	SyncType         = uint8(2)
 	WriteRequestType = uint8(3)
-	ReadDataType     = uint8(4)
-	ReadResultType   = uint8(5)
+	WriteResultType  = uint8(4)
+	ReadRequestType  = uint8(5)
+	ReadResultType   = uint8(6)
 )
 
 type Payload interface {

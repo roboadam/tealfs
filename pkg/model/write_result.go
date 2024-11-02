@@ -41,7 +41,10 @@ func (r *WriteResult) Equal(p Payload) bool {
 func (r *WriteResult) ToBytes() []byte {
 	ok := BoolToBytes(r.Ok)
 	message := StringToBytes(r.Message)
-	return bytes.Join([][]byte{ok, message}, []byte{})
+	caller := StringToBytes(string(r.Caller))
+	blockId := StringToBytes(string(r.BlockId))
+	payload := bytes.Join([][]byte{ok, message, caller, blockId}, []byte{})
+	return AddType(WriteResultType, payload)
 }
 
 func ToWriteResult(data []byte) *WriteResult {

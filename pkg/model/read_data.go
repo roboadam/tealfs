@@ -26,7 +26,7 @@ type ReadRequest struct {
 func (r *ReadRequest) ToBytes() []byte {
 	callerId := StringToBytes(string(r.Caller))
 	blockId := StringToBytes(string(r.BlockId))
-	return AddType(ReadDataType, bytes.Join([][]byte{callerId, blockId}, []byte{}))
+	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, blockId}, []byte{}))
 }
 
 func (r *ReadRequest) Equal(p Payload) bool {

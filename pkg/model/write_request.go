@@ -28,10 +28,7 @@ func (r *WriteRequest) Equal(p Payload) bool {
 		if r.Caller != o.Caller {
 			return false
 		}
-		if r.Block.Equal(&o.Block) {
-			return false
-		}
-		return true
+		return r.Block.Equal(&o.Block)
 	}
 	return false
 }
@@ -39,7 +36,8 @@ func (r *WriteRequest) Equal(p Payload) bool {
 func (r *WriteRequest) ToBytes() []byte {
 	caller := StringToBytes(string(r.Caller))
 	block := BlockToBytes(r.Block)
-	return bytes.Join([][]byte{caller, block}, []byte{})
+	payload := bytes.Join([][]byte{caller, block}, []byte{})
+	return AddType(WriteRequestType, payload)
 }
 
 func ToWriteRequest(data []byte) *WriteRequest {
