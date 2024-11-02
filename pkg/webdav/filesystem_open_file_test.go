@@ -17,6 +17,7 @@ package webdav_test
 import (
 	"bytes"
 	"context"
+	"io/fs"
 	"os"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
@@ -77,6 +78,29 @@ func TestFileNotFound(t *testing.T) {
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
 		t.Error("Shouldn't be able to open file", err)
+	}
+}
+
+func TestOpenRoot(t *testing.T) {
+	filesystem := webdav.NewFileSystem(model.NewNodeId())
+	root, err := filesystem.OpenFile(context.Background(), "/", os.O_RDONLY, fs.ModeDir)
+	if err != nil {
+		t.Error("Should be able to open root dir", err)
+		return
+	}
+	err = root.Close()
+	if err != nil {
+		t.Error("Should be able to close root dir", err)
+		return
+	}
+	rootFileInfo, err := filesystem.Stat(context.Background(), "/")
+	if err != nil {
+		t.Error("Should be able to stat root dir", err)
+		return
+	}
+	if !rootFileInfo.IsDir() {
+		t.Error("Root should be a dir", err)
+		return
 	}
 }
 

@@ -84,7 +84,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 
 	// opening the root directory
 	if len(path) == 0 {
-		if isDir {
+		if req.forStat || isDir {
 			if !exists {
 				return openFileResp{err: errors.New("root doesn't exist")}
 			}
