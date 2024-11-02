@@ -72,11 +72,32 @@ func (f *File) Read(p []byte) (n int, err error) {
 }
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
-	panic("not implemented") // TODO: Implement
+	newPosition := 0
+	switch whence {
+	case io.SeekStart:
+		newPosition = int(offset)
+	case io.SeekCurrent:
+		newPosition = int(f.Position) + int(offset)
+	case io.SeekEnd:
+		newPosition = len(f.Block.Data) + int(offset)
+	}
+	if newPosition < 0 {
+		return f.Position, errors.New("negative seek")
+	}
+	f.Position = int64(newPosition)
+	return f.Position, nil
 }
 
 func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
-	panic("not implemented") // TODO: Implement
+	if count < 0 {
+		return nil, errors.New("negative dir count requested")
+	}
+	children := f.fileSystem.immediateChildren(f.path)[count:]
+	result := make([]fs.FileInfo, 0, len(children))
+	for _, child := range children {
+		result = append(result, &child)
+	}
+	return result, nil
 }
 
 func (f *File) Stat() (fs.FileInfo, error) {

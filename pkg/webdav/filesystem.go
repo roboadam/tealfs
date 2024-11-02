@@ -90,6 +90,17 @@ func (f *FileSystem) fetchBlock(id model.BlockId) model.ReadResult {
 	return <-resp
 }
 
+func (f *FileSystem) immediateChildren(path Path) []File {
+	children := make([]File, 0)
+	neededPathLen := len(path) + 1
+	for _, file := range f.FilesByPath.allFiles() {
+		if len(file.path) == neededPathLen && file.path.startsWith(path) {
+			children = append(children, file)
+		}
+	}
+	return children
+}
+
 func (f *FileSystem) pushBlock(block model.Block) model.WriteResult {
 	req := model.WriteRequest{Caller: f.nodeId, Block: block}
 	resp := make(chan model.WriteResult)
