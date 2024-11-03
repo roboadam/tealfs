@@ -127,6 +127,5 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	if append {
 		file.Position = file.SizeValue
 	}
-
 	return openFileResp{file: &file}
 }

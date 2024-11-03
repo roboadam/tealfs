@@ -43,18 +43,16 @@ type File struct {
 }
 
 func (f *File) Close() error {
+	f.Position = 0
+	f.Block.Data = []byte{}
+	f.hasData = false
 	return nil
 }
 
 func (f *File) Read(p []byte) (n int, err error) {
-	if !f.hasData {
-		resp := f.fileSystem.fetchBlock(f.Block.Id)
-		if resp.Ok {
-			f.Block = resp.Block
-			f.hasData = true
-		} else {
-			return 0, errors.New(resp.Message)
-		}
+	error := f.ensureData()
+	if error != nil {
+		return 0, error
 	}
 
 	if f.Position >= int64(len(f.Block.Data)) {
@@ -105,11 +103,18 @@ func (f *File) Stat() (fs.FileInfo, error) {
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
+	error := f.ensureData()
+	if error != nil {
+		return 0, error
+	}
+
 	if int(f.Position)+len(p) > len(f.Block.Data) {
-		newData := make([]byte, int(f.Position)+len(p))
-		copy(newData, f.Block.Data)
+		needToGrow := int(f.Position) + len(p) - len(f.Block.Data)
+		newData := make([]byte, needToGrow)
+		f.Block.Data = append(f.Block.Data, newData...)
+		f.SizeValue = int64(len(f.Block.Data))
 		for _, b := range p {
-			newData[f.Position] = b
+			f.Block.Data[f.Position] = b
 			f.Position++
 		}
 	}
@@ -118,6 +123,19 @@ func (f *File) Write(p []byte) (n int, err error) {
 		return len(p), nil
 	}
 	return 0, errors.New(result.Message)
+}
+
+func (f *File) ensureData() error {
+	if !f.hasData {
+		resp := f.fileSystem.fetchBlock(f.Block.Id)
+		if resp.Ok {
+			f.Block = resp.Block
+			f.hasData = true
+		} else {
+			return errors.New(resp.Message)
+		}
+	}
+	return nil
 }
 
 func (f *File) Name() string {
