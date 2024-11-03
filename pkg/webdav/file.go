@@ -16,6 +16,7 @@ package webdav
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"tealfs/pkg/model"
@@ -103,6 +104,7 @@ func (f *File) Stat() (fs.FileInfo, error) {
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
+	fmt.Println("File.Write called!")
 	error := f.ensureData()
 	if error != nil {
 		return 0, error
@@ -118,8 +120,11 @@ func (f *File) Write(p []byte) (n int, err error) {
 			f.Position++
 		}
 	}
+	fmt.Println("File.Write pushBlock start")
 	result := f.fileSystem.pushBlock(f.Block)
+	fmt.Println("File.Write pushBlock end")
 	if result.Ok {
+		fmt.Println("File.Write success!")
 		return len(p), nil
 	}
 	return 0, errors.New(result.Message)

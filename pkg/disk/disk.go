@@ -15,6 +15,9 @@
 package disk
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"path/filepath"
 	"tealfs/pkg/model"
 )
@@ -54,14 +57,17 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
+			fmt.Println("Disk In Write")
 			err := d.path.Save(s.Block.Id, s.Block.Data)
 			if err == nil {
+				fmt.Println("Disk Out Write Success")
 				d.outWrites <- model.WriteResult{
 					Ok:      true,
 					Caller:  s.Caller,
 					BlockId: s.Block.Id,
 				}
 			} else {
+				fmt.Println("Disk Out Write Failure")
 				d.outWrites <- model.WriteResult{
 					Ok:      false,
 					Message: err.Error(),
@@ -70,8 +76,10 @@ func (d *Disk) consumeChannels() {
 				}
 			}
 		case r := <-d.inReads:
+			fmt.Println("Disk In Read")
 			data, err := d.path.Read(r.BlockId)
 			if err == nil {
+				fmt.Println("Disk Out Read Success")
 				d.outReads <- model.ReadResult{
 					Ok:     true,
 					Caller: r.Caller,
@@ -81,6 +89,7 @@ func (d *Disk) consumeChannels() {
 					},
 				}
 			} else {
+				fmt.Println("Disk Out Read Failure")
 				d.outReads <- model.ReadResult{
 					Ok:      false,
 					Message: err.Error(),
@@ -98,7 +107,11 @@ func (p *Path) Save(id model.BlockId, data []byte) error {
 
 func (p *Path) Read(id model.BlockId) ([]byte, error) {
 	filePath := filepath.Join(p.raw, string(id))
-	return p.ops.ReadFile(filePath)
+	result, err := p.ops.ReadFile(filePath)
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		return []byte{}, nil
+	}
+	return result, err
 }
 
 func NewPath(rawPath string, ops FileOps) Path {

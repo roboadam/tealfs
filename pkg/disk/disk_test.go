@@ -16,6 +16,7 @@ package disk_test
 
 import (
 	"bytes"
+	"io/fs"
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -63,6 +64,30 @@ func TestReadData(t *testing.T) {
 		t.Error("Bad write result")
 	}
 	if !bytes.Equal(result.Block.Data, data) {
+		t.Error("Read data is wrong")
+	}
+	if f.ReadPath != expectedPath {
+		t.Error("Read path is wrong")
+	}
+}
+
+func TestReadNewFile(t *testing.T) {
+	f, path, _, _, mgrDiskReads, _, diskMgrReads, _ := newDiskService()
+	blockId := model.NewBlockId()
+	caller := model.NewNodeId()
+	data := []byte{0, 1, 2, 3, 4, 5}
+	f.ReadError = fs.ErrNotExist
+	f.ReadData = data
+	expectedPath := filepath.Join(path.String(), string(blockId))
+	mgrDiskReads <- model.ReadRequest{
+		Caller:  caller,
+		BlockId: blockId,
+	}
+	result := <-diskMgrReads
+	if !result.Ok {
+		t.Error("Bad write result")
+	}
+	if !bytes.Equal(result.Block.Data, []byte{}) {
 		t.Error("Written data is wrong")
 	}
 	if f.ReadPath != expectedPath {

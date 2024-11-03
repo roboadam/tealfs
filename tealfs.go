@@ -41,5 +41,6 @@ func main() {
 		m.MgrWebdavPuts,
 		":8080",
 	)
+	m.Start()
 	select {}
 }

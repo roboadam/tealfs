@@ -49,6 +49,11 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		respChan: respChan,
 	}
 	resp := <-respChan
+	if resp.err == nil {
+		fmt.Println("================= OPEN FILE SUCCESS ==================")
+	} else {
+		fmt.Println("================= OPEN FILE ERROR ==================")
+	}
 	return resp.file, resp.err
 }
 
@@ -121,6 +126,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			path:         path,
 			fileSystem:   f,
 		}
+		fmt.Println("webdav added new file")
 		f.FilesByPath.add(file)
 	}
 
