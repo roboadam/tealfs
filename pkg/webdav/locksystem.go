@@ -41,5 +41,6 @@ func (l *LockSystem) Refresh(now time.Time, token string, duration time.Duration
 }
 
 func (l *LockSystem) Unlock(now time.Time, token string) error {
+	delete(l.locks, token)
 	return nil
 }

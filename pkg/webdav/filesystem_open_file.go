@@ -30,7 +30,6 @@ type openFileReq struct {
 	flag     int
 	perm     os.FileMode
 	respChan chan openFileResp
-	forStat  bool
 }
 
 type openFileResp struct {
@@ -46,7 +45,6 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		flag:     flag,
 		perm:     perm,
 		respChan: respChan,
-		forStat:  false,
 	}
 	resp := <-respChan
 	return resp.file, resp.err
@@ -66,7 +64,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	create := os.O_CREATE&req.flag != 0
 	failIfExists := os.O_EXCL&req.flag != 0
 	truncate := os.O_TRUNC&req.flag != 0
-	isDir := req.perm.IsDir()
+	isDirForCreate := req.perm.IsDir()
 
 	if ro && (append || create || failIfExists || truncate) {
 		return openFileResp{err: errors.New("invalid flag")}
@@ -84,14 +82,10 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 
 	// opening the root directory
 	if len(path) == 0 {
-		if req.forStat || isDir {
-			if !exists {
-				return openFileResp{err: errors.New("root doesn't exist")}
-			}
-			return openFileResp{file: &file}
-		} else {
-			return openFileResp{err: errors.New("not a directory")}
+		if !exists {
+			return openFileResp{err: errors.New("root doesn't exist")}
 		}
+		return openFileResp{file: &file}
 	}
 
 	// handle failIfExists scenario
@@ -104,18 +98,10 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 		return openFileResp{err: errors.New("file not found")}
 	}
 
-	if !req.forStat && exists && isDir && !file.IsDir() {
-		return openFileResp{err: errors.New("file isn't directory")}
-	}
-
-	if !req.forStat && exists && !isDir && file.IsDir() {
-		return openFileResp{err: errors.New("file is directory")}
-	}
-
 	if !exists {
 		block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
 		file = File{
-			IsDirValue:   isDir,
+			IsDirValue:   isDirForCreate,
 			RO:           ro,
 			RW:           rw,
 			WO:           wo,

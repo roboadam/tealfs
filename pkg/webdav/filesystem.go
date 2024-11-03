@@ -281,7 +281,6 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 		flag:     os.O_RDONLY,
 		perm:     os.ModeExclusive,
 		respChan: respChan,
-		forStat:  true,
 	}
 	resp := <-respChan
 	return resp.file, resp.err

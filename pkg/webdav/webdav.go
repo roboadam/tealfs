@@ -57,7 +57,9 @@ func New(
 }
 
 func (w *Webdav) start() {
-	lockSystem := LockSystem{}
+	lockSystem := LockSystem{
+		locks: make(map[string]webdav.LockDetails),
+	}
 	go w.eventLoop()
 
 	handler := &webdav.Handler{

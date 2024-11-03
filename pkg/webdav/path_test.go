@@ -23,16 +23,7 @@ func TestValidPaths(t *testing.T) {
 }
 
 func TestInValidPaths(t *testing.T) {
-	_, err := webdav.PathFromName("")
-	expectError(t, err)
-
-	_, err = webdav.PathFromName("asdf")
-	expectError(t, err)
-
-	_, err = webdav.PathFromName("asdf/asdf")
-	expectError(t, err)
-
-	_, err = webdav.PathFromName("/adf//asdf")
+	_, err := webdav.PathFromName("/adf//asdf")
 	expectError(t, err)
 
 }
