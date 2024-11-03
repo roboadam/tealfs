@@ -25,20 +25,6 @@ import (
 	"testing"
 )
 
-func TestWebdav(t *testing.T) {
-	nodeId := model.NewNodeId()
-	webdavMgrGets := make(chan model.ReadRequest)
-	webdavMgrPuts := make(chan model.WriteRequest)
-	mgrWebdavGets := make(chan model.ReadResult)
-	mgrWebdavPuts := make(chan model.WriteResult)
-	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654")
-	_, err := propFind("http://localhost:7654/")
-	if err != nil {
-		t.Error("error getting root", err)
-		return
-	}
-}
-
 func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
 	webdavMgrGets := make(chan model.ReadRequest)
@@ -49,6 +35,13 @@ func TestCreateFile(t *testing.T) {
 	go handleWebdavMgrGets(webdavMgrGets, mgrWebdavGets, "hello world!", otherNode)
 	go handleWebdavMgrPuts(t, webdavMgrPuts, mgrWebdavPuts, "hello world!", otherNode)
 	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654")
+
+	_, err := propFind("http://localhost:7654/")
+	if err != nil {
+		t.Error("error getting root", err)
+		return
+	}
+
 	url := "http://localhost:7654/hello_world.txt"
 	content := []byte("hello world!")
 
