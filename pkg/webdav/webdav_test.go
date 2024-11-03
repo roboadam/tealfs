@@ -109,7 +109,7 @@ func handleWebdavMgrGets(channel chan model.ReadRequest, respChan chan model.Rea
 
 func handleWebdavMgrPuts(t *testing.T, channel chan model.WriteRequest, result chan model.WriteResult, expectedData string, caller model.NodeId) {
 	for req := range channel {
-		fmt.Println("get", req.Block.Id, req.Caller)
+		fmt.Println("put", req.Block.Id, req.Caller)
 		if string(req.Block.Data) != expectedData {
 			t.Error("did not receive expected data")
 			return
