@@ -30,8 +30,8 @@ func TestCreateEmptyFile(t *testing.T) {
 	name := "/hello-world.txt"
 	bytesInFile := []byte{1, 2, 3}
 	bytesInWrite := []byte{6, 5, 4, 3, 2}
-	go handleFetchBlockReq(fs.ReadReqResp, model.NewNodeId())
-	go handlePushBlockReq(fs.WriteReqResp, model.NewNodeId(), bytesInFile, t)
+	go handleFetchBlockReq(fs.ReadReqResp, model.NewNodeId(), bytesInFile)
+	go handlePushBlockReq(fs.WriteReqResp, model.NewNodeId(), bytesInWrite, t)
 
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestCreateEmptyFile(t *testing.T) {
 
 func TestFileNotFound(t *testing.T) {
 	fs := webdav.NewFileSystem(model.NewNodeId())
-	go handleFetchBlockReq(fs.ReadReqResp, model.NewNodeId())
+	go handleFetchBlockReq(fs.ReadReqResp, model.NewNodeId(), []byte{})
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
 		t.Error("Shouldn't be able to open file", err)
@@ -104,7 +104,7 @@ func TestOpenRoot(t *testing.T) {
 	}
 }
 
-func handleFetchBlockReq(reqs chan webdav.ReadReqResp, caller model.NodeId) {
+func handleFetchBlockReq(reqs chan webdav.ReadReqResp, caller model.NodeId, bytesStored []byte) {
 	for {
 		req := <-reqs
 		req.Resp <- model.ReadResult{
@@ -112,7 +112,7 @@ func handleFetchBlockReq(reqs chan webdav.ReadReqResp, caller model.NodeId) {
 			Caller: caller,
 			Block: model.Block{
 				Id:   req.Req.BlockId,
-				Data: []byte{1, 2, 3},
+				Data: bytesStored,
 			},
 		}
 	}

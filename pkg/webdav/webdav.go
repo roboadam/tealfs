@@ -56,6 +56,9 @@ func New(
 	return w
 }
 
+func (w *Webdav) StopWebdavServer() {
+}
+
 func (w *Webdav) start() {
 	lockSystem := LockSystem{
 		locks: make(map[string]webdav.LockDetails),
@@ -68,8 +71,13 @@ func (w *Webdav) start() {
 		LockSystem: &lockSystem,
 	}
 
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handler)
+	srv := &http.Server{Addr: w.bindAddress}
+	srv.ListenAndServe()
+
 	http.Handle("/", handler)
-	go http.ListenAndServe(w.bindAddress, nil)
+	// go http.ListenAndServe(w.bindAddress, nil)
 }
 
 func (w *Webdav) eventLoop() {
