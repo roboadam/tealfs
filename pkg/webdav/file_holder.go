@@ -49,9 +49,6 @@ func newPathSeg(name string) (pathSeg, error) {
 }
 
 func PathFromName(name string) (Path, error) {
-	if len(name) == 0 || name[0] != '/' {
-		return []pathSeg{}, errors.New("invalid path name, no leading slash")
-	}
 	return stringsToPath(stripEmptyStringsFromEnds(strings.Split(name, "/")))
 }
 

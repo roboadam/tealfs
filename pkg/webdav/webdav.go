@@ -15,13 +15,13 @@
 package webdav
 
 import (
+	"net/http"
 	"tealfs/pkg/model"
 
 	"golang.org/x/net/webdav"
 )
 
 type Webdav struct {
-	webdavOps     WebdavOps
 	webdavMgrGets chan model.ReadRequest
 	webdavMgrPuts chan model.WriteRequest
 	mgrWebdavGets chan model.ReadResult
@@ -30,19 +30,27 @@ type Webdav struct {
 	nodeId        model.NodeId
 	pendingReads  map[model.BlockId]chan model.ReadResult
 	pendingPuts   map[model.BlockId]chan model.WriteResult
+	bindAddress   string
 }
 
-func New(nodeId model.NodeId, webdavOps WebdavOps) Webdav {
+func New(
+	nodeId model.NodeId,
+	webdavMgrGets chan model.ReadRequest,
+	webdavMgrPuts chan model.WriteRequest,
+	mgrWebdavGets chan model.ReadResult,
+	mgrWebdavPuts chan model.WriteResult,
+	bindAddress string,
+) Webdav {
 	w := Webdav{
-		webdavOps:     webdavOps,
-		webdavMgrGets: make(chan model.ReadRequest),
-		webdavMgrPuts: make(chan model.WriteRequest),
-		mgrWebdavGets: make(chan model.ReadResult),
-		mgrWebdavPuts: make(chan model.WriteResult),
+		webdavMgrGets: webdavMgrGets,
+		webdavMgrPuts: webdavMgrPuts,
+		mgrWebdavGets: mgrWebdavGets,
+		mgrWebdavPuts: mgrWebdavPuts,
 		fileSystem:    NewFileSystem(nodeId),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.BlockId]chan model.ReadResult),
 		pendingPuts:   make(map[model.BlockId]chan model.WriteResult),
+		bindAddress:   bindAddress,
 	}
 	w.start()
 	return w
@@ -58,8 +66,8 @@ func (w *Webdav) start() {
 		LockSystem: &lockSystem,
 	}
 
-	w.webdavOps.Handle("/", handler)
-	w.webdavOps.ListenAndServe(":8080")
+	http.Handle("/", handler)
+	go http.ListenAndServe(w.bindAddress, nil)
 }
 
 func (w *Webdav) eventLoop() {

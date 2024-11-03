@@ -33,6 +33,13 @@ func main() {
 		m.DiskMgrReads,
 	)
 	_ = ui.NewUi(m.UiMgrConnectTos, m.ConnsMgrStatuses, &ui.HttpHtmlOps{})
-	_ = webdav.New(m.NodeId, &webdav.HttpWebdavOps{})
+	_ = webdav.New(
+		m.NodeId,
+		m.WebdavMgrGets,
+		m.WebdavMgrPuts,
+		m.MgrWebdavGets,
+		m.MgrWebdavPuts,
+		":8080",
+	)
 	select {}
 }
