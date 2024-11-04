@@ -39,7 +39,7 @@ type openFileResp struct {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	fmt.Println("================= OPEN FILE ==================")
+	fmt.Println("=== FileSystem.OpenFile ===")
 	respChan := make(chan openFileResp)
 	f.openFileReq <- openFileReq{
 		ctx:      ctx,
@@ -49,11 +49,7 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		respChan: respChan,
 	}
 	resp := <-respChan
-	if resp.err == nil {
-		fmt.Println("================= OPEN FILE SUCCESS ==================")
-	} else {
-		fmt.Println("================= OPEN FILE ERROR ==================")
-	}
+	fmt.Println("*** FileSystem.OpenFile ***")
 	return resp.file, resp.err
 }
 

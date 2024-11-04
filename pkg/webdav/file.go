@@ -44,19 +44,24 @@ type File struct {
 }
 
 func (f *File) Close() error {
+	fmt.Println("=== File.Close ===")
 	f.Position = 0
 	f.Block.Data = []byte{}
 	f.hasData = false
+	fmt.Println("*** File.Close ***")
 	return nil
 }
 
 func (f *File) Read(p []byte) (n int, err error) {
+	fmt.Println("=== File.Read ===")
 	error := f.ensureData()
 	if error != nil {
+		fmt.Println("*** File.Read 1 ***")
 		return 0, error
 	}
 
 	if f.Position >= int64(len(f.Block.Data)) {
+		fmt.Println("*** File.Read 2 ***")
 		return 0, io.EOF
 	}
 
@@ -67,10 +72,12 @@ func (f *File) Read(p []byte) (n int, err error) {
 	}
 
 	copy(p, f.Block.Data[start:end])
+	fmt.Println("*** File.Read 3 ***")
 	return int(end - start), nil
 }
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	fmt.Println("=== File.Seek ===")
 	newPosition := 0
 	switch whence {
 	case io.SeekStart:
@@ -81,14 +88,18 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		newPosition = len(f.Block.Data) + int(offset)
 	}
 	if newPosition < 0 {
+		fmt.Println("*** File.Seek 1 ***")
 		return f.Position, errors.New("negative seek")
 	}
 	f.Position = int64(newPosition)
+	fmt.Println("*** File.Seek 2 ***")
 	return f.Position, nil
 }
 
 func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
+	fmt.Println("=== File.Readdir ===")
 	if count < 0 {
+		fmt.Println("*** File.Readdir 1 ***")
 		return nil, errors.New("negative dir count requested")
 	}
 	children := f.fileSystem.immediateChildren(f.path)[count:]
@@ -96,17 +107,21 @@ func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
 	for _, child := range children {
 		result = append(result, &child)
 	}
+	fmt.Println("*** File.Readdir 2 ***")
 	return result, nil
 }
 
 func (f *File) Stat() (fs.FileInfo, error) {
+	fmt.Println("=== File.Stat ===")
+	fmt.Println("*** File.Stat 1 ***")
 	return f, nil
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
-	fmt.Println("File.Write called!")
+	fmt.Println("=== File.Write ===")
 	error := f.ensureData()
 	if error != nil {
+		fmt.Println("*** File.Write 1 ***")
 		return 0, error
 	}
 
@@ -120,13 +135,12 @@ func (f *File) Write(p []byte) (n int, err error) {
 			f.Position++
 		}
 	}
-	fmt.Println("File.Write pushBlock start")
 	result := f.fileSystem.pushBlock(f.Block)
-	fmt.Println("File.Write pushBlock end")
 	if result.Ok {
-		fmt.Println("File.Write success!")
+		fmt.Println("*** File.Write 2 ***")
 		return len(p), nil
 	}
+	fmt.Println("*** File.Write 3 ***")
 	return 0, errors.New(result.Message)
 }
 
