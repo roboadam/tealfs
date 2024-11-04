@@ -15,6 +15,7 @@
 package mgr
 
 import (
+	"fmt"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -157,7 +158,16 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	}
 }
 func (m *Mgr) handleDiskWrites(r model.WriteResult) {
-	// m.
+	if r.Caller == m.NodeId {
+		m.MgrWebdavPuts <- r
+	} else {
+		c, ok := m.nodeConnMap.Get1(r.Caller)
+		if ok {
+			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
+		} else {
+			fmt.Println("Need to add to queue when reconnected")
+		}
+	}
 }
 
 func (m *Mgr) handleDiskReads(r model.ReadResult) {
@@ -168,8 +178,7 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 		if ok {
 			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
 		} else {
-			panic("Oh no")
-			// Todo: need a ticket to create queuing for offline nodes
+			fmt.Println("Need to add to queue when reconnected")
 		}
 	}
 }

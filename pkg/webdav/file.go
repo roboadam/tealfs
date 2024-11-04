@@ -135,7 +135,10 @@ func (f *File) Write(p []byte) (n int, err error) {
 			f.Position++
 		}
 	}
+
+	fmt.Println("=== File.Write 1 ===")
 	result := f.fileSystem.pushBlock(f.Block)
+	fmt.Println("=== File.Write 2 ===")
 	if result.Ok {
 		fmt.Println("*** File.Write 2 ***")
 		return len(p), nil

@@ -112,44 +112,62 @@ func TestWriteAndRead(t *testing.T) {
 	fs := webdav.NewFileSystem(model.NewNodeId())
 	otherNode := model.NewNodeId()
 	go expectWrites(t, expectedData, fs.WriteReqResp, otherNode)
+	// expected data here is empty, after write it is "expectedData"
 	go expectReads(expectedData, fs.ReadReqResp, otherNode)
 
 	f, err := fs.OpenFile(context.Background(), "newFile.txt", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error("error creating newFile.txt")
+		return
 	}
 
 	n, err := f.Write(expectedData)
 	if err != nil {
 		t.Error("error writing bytes")
+		return
 	}
 	if n != 5 {
 		t.Error("should have written 5 bytes")
+		return
+	}
+	stat, err := f.Stat()
+	if err != nil {
+		t.Error("error stat-ing file")
+		return
+	}
+	if stat.Size() != 5 {
+		t.Error("wrong file size")
 	}
 
 	err = f.Close()
 	if err != nil {
 		t.Error("error closing created file")
+		return
 	}
 	f, err = fs.OpenFile(context.Background(), "newFile.txt", os.O_RDONLY, 0666)
 	if err != nil {
 		t.Error("error opening file we just wrote")
+		return
 	}
 	resultData := [5]byte{}
 	n, err = f.Read(resultData[:])
 	if err != nil {
 		t.Error("error reading the data")
+		return
 	}
 	if !bytes.Equal(expectedData, resultData[:]) {
 		t.Error("got the wrong data")
+		return
 	}
 	if n != 5 {
 		t.Error("got the wrong data size")
+		return
 	}
 
 	err = f.Close()
 	if err != nil {
 		t.Error("error closing opened file")
+		return
 	}
 }
 
