@@ -85,7 +85,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 		if !exists {
 			return openFileResp{err: errors.New("root doesn't exist")}
 		}
-		return openFileResp{file: &file}
+		return openFileResp{file: file}
 	}
 
 	// handle failIfExists scenario
@@ -100,7 +100,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 
 	if !exists {
 		block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
-		file = File{
+		file = &File{
 			IsDirValue:   isDirForCreate,
 			RO:           ro,
 			RW:           rw,
@@ -125,5 +125,5 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	if append {
 		file.Position = file.SizeValue
 	}
-	return openFileResp{file: &file}
+	return openFileResp{file: file}
 }

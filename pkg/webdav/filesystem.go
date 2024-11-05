@@ -36,7 +36,7 @@ type FileSystem struct {
 
 func NewFileSystem(nodeId model.NodeId) FileSystem {
 	filesystem := FileSystem{
-		FilesByPath:  fileHolder{data: make(map[pathValue]File)},
+		FilesByPath:  fileHolder{data: make(map[pathValue]*File)},
 		mkdirReq:     make(chan mkdirReq),
 		openFileReq:  make(chan openFileReq),
 		removeAllReq: make(chan removeAllReq),
@@ -65,7 +65,7 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		path:         []pathSeg{},
 		fileSystem:   &filesystem,
 	}
-	filesystem.FilesByPath.add(root)
+	filesystem.FilesByPath.add(&root)
 	go filesystem.run()
 	return filesystem
 }
@@ -90,8 +90,8 @@ func (f *FileSystem) fetchBlock(id model.BlockId) model.ReadResult {
 	return <-resp
 }
 
-func (f *FileSystem) immediateChildren(path Path) []File {
-	children := make([]File, 0)
+func (f *FileSystem) immediateChildren(path Path) []*File {
+	children := make([]*File, 0)
 	neededPathLen := len(path) + 1
 	for _, file := range f.FilesByPath.allFiles() {
 		if len(file.path) == neededPathLen && file.path.startsWith(path) {
@@ -185,7 +185,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 		fileSystem:   f,
 	}
 
-	f.FilesByPath.add(dir)
+	f.FilesByPath.add(&dir)
 
 	return nil
 }

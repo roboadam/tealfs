@@ -9,18 +9,18 @@ type pathSeg string
 type Path []pathSeg
 type pathValue string
 type fileHolder struct {
-	data map[pathValue]File
+	data map[pathValue]*File
 }
 
-func (f *fileHolder) allFiles() []File {
-	result := []File{}
+func (f *fileHolder) allFiles() []*File {
+	result := []*File{}
 	for _, value := range f.data {
 		result = append(result, value)
 	}
 	return result
 }
 
-func (f *fileHolder) add(file File) {
+func (f *fileHolder) add(file *File) {
 	f.data[file.path.toName()] = file
 }
 
@@ -33,7 +33,7 @@ func (f *fileHolder) exists(p Path) bool {
 	return exists
 }
 
-func (f *fileHolder) get(p Path) (File, bool) {
+func (f *fileHolder) get(p Path) (*File, bool) {
 	file, exists := f.data[p.toName()]
 	return file, exists
 }
