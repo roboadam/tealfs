@@ -16,6 +16,7 @@ package webdav_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -31,13 +32,15 @@ func TestCreateFile(t *testing.T) {
 	mgrWebdavGets := make(chan model.ReadResult)
 	mgrWebdavPuts := make(chan model.WriteResult)
 	otherNode := model.NewNodeId()
-	go handleWebdavMgrGets(webdavMgrGets, mgrWebdavGets, "hello world!", otherNode)
+	ctx, cancel := context.WithCancel(context.Background())
+	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, "", otherNode)
 	go handleWebdavMgrPuts(t, webdavMgrPuts, mgrWebdavPuts, "hello world!", otherNode)
 	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654")
 
 	_, err := propFind("http://localhost:7654/")
 	if err != nil {
 		t.Error("error getting root", err)
+		cancel()
 		return
 	}
 
@@ -48,14 +51,35 @@ func TestCreateFile(t *testing.T) {
 	req.Header.Set("Content-Type", "text/plain")
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	cancel()
+	go handleWebdavMgrGets(context.Background(), webdavMgrGets, mgrWebdavGets, "hello world!", otherNode)
 	if err != nil {
 		t.Error("error putting hello world", err)
 		return
 	}
-	defer resp.Body.Close()
+	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		t.Error("status code error putting hello world", err)
+		return
+	}
+
+	resp, err = http.Get(url)
+	if err != nil {
+		t.Error("error getting hello world", err)
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Error("status code error getting hello world", err)
+		return
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Error("error reading body", err)
+		return
+	}
+	if string(body) != "hello world!" {
+		t.Error("body not expected", string(body))
 		return
 	}
 }
@@ -85,15 +109,20 @@ func propFind(url string) (string, error) {
 	return string(body), nil
 }
 
-func handleWebdavMgrGets(channel chan model.ReadRequest, respChan chan model.ReadResult, response string, caller model.NodeId) {
-	for req := range channel {
-		respChan <- model.ReadResult{
-			Ok:     true,
-			Caller: caller,
-			Block: model.Block{
-				Id:   req.BlockId,
-				Data: []byte(response),
-			},
+func handleWebdavMgrGets(ctx context.Context, channel chan model.ReadRequest, respChan chan model.ReadResult, response string, caller model.NodeId) {
+	for {
+		select {
+		case req := <-channel:
+			respChan <- model.ReadResult{
+				Ok:     true,
+				Caller: caller,
+				Block: model.Block{
+					Id:   req.BlockId,
+					Data: []byte(response),
+				},
+			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }

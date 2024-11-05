@@ -78,7 +78,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekCurrent:
 		newPosition = int(f.Position) + int(offset)
 	case io.SeekEnd:
-		newPosition = len(f.Block.Data) + int(offset)
+		newPosition = int(f.SizeValue + offset)
 	}
 	if newPosition < 0 {
 		return f.Position, errors.New("negative seek")

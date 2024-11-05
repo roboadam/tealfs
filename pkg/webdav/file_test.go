@@ -32,7 +32,7 @@ func TestSeek(t *testing.T) {
 		Create:       false,
 		FailIfExists: false,
 		Truncate:     false,
-		SizeValue:    0,
+		SizeValue:    5,
 		ModeValue:    0,
 		Modtime:      time.Now(),
 		SysValue:     nil,
