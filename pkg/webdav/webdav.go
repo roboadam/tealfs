@@ -15,7 +15,6 @@
 package webdav
 
 import (
-	"fmt"
 	"net/http"
 	"tealfs/pkg/model"
 
@@ -92,11 +91,9 @@ func (w *Webdav) eventLoop() {
 				delete(w.pendingPuts, r.BlockId)
 			}
 		case r := <-w.fileSystem.ReadReqResp:
-			fmt.Println("Webdav Out Read")
 			w.webdavMgrGets <- r.Req
 			w.pendingReads[r.Req.BlockId] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
-			fmt.Println("Webdav Out Write")
 			w.webdavMgrPuts <- r.Req
 			w.pendingPuts[r.Req.Block.Id] = r.Resp
 		}

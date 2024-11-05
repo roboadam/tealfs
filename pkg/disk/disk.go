@@ -16,7 +16,6 @@ package disk
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"path/filepath"
 	"tealfs/pkg/model"
@@ -57,17 +56,14 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
-			fmt.Println("Disk In Write")
 			err := d.path.Save(s.Block.Id, s.Block.Data)
 			if err == nil {
-				fmt.Println("Disk Out Write Success")
 				d.outWrites <- model.WriteResult{
 					Ok:      true,
 					Caller:  s.Caller,
 					BlockId: s.Block.Id,
 				}
 			} else {
-				fmt.Println("Disk Out Write Failure")
 				d.outWrites <- model.WriteResult{
 					Ok:      false,
 					Message: err.Error(),
@@ -76,10 +72,8 @@ func (d *Disk) consumeChannels() {
 				}
 			}
 		case r := <-d.inReads:
-			fmt.Println("Disk In Read")
 			data, err := d.path.Read(r.BlockId)
 			if err == nil {
-				fmt.Println("Disk Out Read Success")
 				d.outReads <- model.ReadResult{
 					Ok:     true,
 					Caller: r.Caller,
@@ -89,7 +83,6 @@ func (d *Disk) consumeChannels() {
 					},
 				}
 			} else {
-				fmt.Println("Disk Out Read Failure")
 				d.outReads <- model.ReadResult{
 					Ok:      false,
 					Message: err.Error(),

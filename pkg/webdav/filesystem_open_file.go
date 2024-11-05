@@ -17,7 +17,6 @@ package webdav
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"tealfs/pkg/model"
 	"time"
@@ -39,7 +38,6 @@ type openFileResp struct {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	fmt.Println("=== FileSystem.OpenFile ===")
 	respChan := make(chan openFileResp)
 	f.openFileReq <- openFileReq{
 		ctx:      ctx,
@@ -49,7 +47,6 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		respChan: respChan,
 	}
 	resp := <-respChan
-	fmt.Println("*** FileSystem.OpenFile ***")
 	return resp.file, resp.err
 }
 
@@ -122,7 +119,6 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			path:         path,
 			fileSystem:   f,
 		}
-		fmt.Println("webdav added new file")
 		f.FilesByPath.add(file)
 	}
 

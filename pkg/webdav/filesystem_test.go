@@ -112,16 +112,20 @@ func TestWriteAndRead(t *testing.T) {
 	fs := webdav.NewFileSystem(model.NewNodeId())
 	otherNode := model.NewNodeId()
 	go expectWrites(t, expectedData, fs.WriteReqResp, otherNode)
-	// expected data here is empty, after write it is "expectedData"
-	go expectReads(expectedData, fs.ReadReqResp, otherNode)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	go expectReads(ctx, []byte{}, fs.ReadReqResp, otherNode)
 	f, err := fs.OpenFile(context.Background(), "newFile.txt", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error("error creating newFile.txt")
+		cancel()
 		return
 	}
 
 	n, err := f.Write(expectedData)
+	cancel()
+	go expectReads(context.Background(), expectedData, fs.ReadReqResp, otherNode)
+
 	if err != nil {
 		t.Error("error writing bytes")
 		return
@@ -185,15 +189,20 @@ func expectWrites(t *testing.T, expected []byte, channel chan webdav.WriteReqRes
 	}
 }
 
-func expectReads(expected []byte, channel chan webdav.ReadReqResp, nodeReadFrom model.NodeId) {
-	for reqResp := range channel {
-		reqResp.Resp <- model.ReadResult{
-			Ok:     true,
-			Caller: nodeReadFrom,
-			Block: model.Block{
-				Id:   reqResp.Req.BlockId,
-				Data: expected,
-			},
+func expectReads(ctx context.Context, expected []byte, channel chan webdav.ReadReqResp, nodeReadFrom model.NodeId) {
+	for {
+		select {
+		case reqResp := <-channel:
+			reqResp.Resp <- model.ReadResult{
+				Ok:     true,
+				Caller: nodeReadFrom,
+				Block: model.Block{
+					Id:   reqResp.Req.BlockId,
+					Data: expected,
+				},
+			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }

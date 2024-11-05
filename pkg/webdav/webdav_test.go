@@ -17,7 +17,6 @@ package webdav_test
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"tealfs/pkg/model"
@@ -88,7 +87,6 @@ func propFind(url string) (string, error) {
 
 func handleWebdavMgrGets(channel chan model.ReadRequest, respChan chan model.ReadResult, response string, caller model.NodeId) {
 	for req := range channel {
-		fmt.Println("get", req.BlockId, req.Caller)
 		respChan <- model.ReadResult{
 			Ok:     true,
 			Caller: caller,
@@ -102,7 +100,6 @@ func handleWebdavMgrGets(channel chan model.ReadRequest, respChan chan model.Rea
 
 func handleWebdavMgrPuts(t *testing.T, channel chan model.WriteRequest, result chan model.WriteResult, expectedData string, caller model.NodeId) {
 	for req := range channel {
-		fmt.Println("put", req.Block.Id, req.Caller)
 		if string(req.Block.Data) != expectedData {
 			t.Error("did not receive expected data")
 			return
