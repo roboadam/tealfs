@@ -31,21 +31,23 @@ type Ui struct {
 	ops        HtmlOps
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.ConnectionStatus, ops HtmlOps) Ui {
+func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.ConnectionStatus, ops HtmlOps) *Ui {
 	statuses := make(map[model.ConnId]model.ConnectionStatus)
-	return Ui{
+	ui := Ui{
 		connToReq:  connToReq,
 		connToResp: connToResp,
 		statuses:   statuses,
 		ops:        ops,
 	}
+	go ui.start()
+	return &ui
 }
 
-func (ui *Ui) Start() {
+func (ui *Ui) start() {
 	ui.registerHttpHandlers()
 	ui.handleRoot()
 	go ui.handleMessages()
-	err := ui.ops.ListenAndServe(":0")
+	err := ui.ops.ListenAndServe("localhost:8081")
 	if err != nil {
 		os.Exit(1)
 	}

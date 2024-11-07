@@ -96,6 +96,5 @@ func NewUi() (*ui.Ui, chan model.UiMgrConnectTo, chan model.ConnectionStatus, *u
 		Handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
 	}
 	u := ui.NewUi(connToReq, connToResp, &ops)
-	u.Start()
-	return &u, connToReq, connToResp, &ops
+	return u, connToReq, connToResp, &ops
 }

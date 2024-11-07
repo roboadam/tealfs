@@ -14,7 +14,9 @@
 
 package ui
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type HtmlOps interface {
 	ListenAndServe(addr string) error
