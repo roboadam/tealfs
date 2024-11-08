@@ -71,8 +71,13 @@ func (w *Webdav) start() {
 		LockSystem: &lockSystem,
 	}
 
-	http.Handle("/", handler)
-	go http.ListenAndServe(w.bindAddress, nil)
+	mux := http.NewServeMux()
+	mux.Handle("/", handler)
+	srv := http.Server{
+		Addr:    w.bindAddress,
+		Handler: mux,
+	}
+	go srv.ListenAndServe()
 }
 
 func (w *Webdav) eventLoop() {

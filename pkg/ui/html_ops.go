@@ -23,14 +23,25 @@ type HtmlOps interface {
 	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
 }
 
-type HttpHtmlOps struct{}
+type HttpHtmlOps struct {
+	mux http.ServeMux
+	srv http.Server
+}
+
+func NewHttpHtmlOps() *HttpHtmlOps {
+	return &HttpHtmlOps{mux: *http.NewServeMux()}
+}
 
 func (h *HttpHtmlOps) ListenAndServe(addr string) error {
-	return http.ListenAndServe(addr, nil)
+	h.srv = http.Server{
+		Addr:    addr,
+		Handler: &h.mux,
+	}
+	return h.srv.ListenAndServe()
 }
 
 func (h *HttpHtmlOps) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
-	http.HandleFunc(pattern, handler)
+	h.mux.HandleFunc(pattern, handler)
 }
 
 type MockHtmlOps struct {

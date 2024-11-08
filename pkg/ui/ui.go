@@ -39,13 +39,13 @@ func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.Connection
 		statuses:   statuses,
 		ops:        ops,
 	}
+	ui.registerHttpHandlers()
+	ui.handleRoot()
 	go ui.start()
 	return &ui
 }
 
 func (ui *Ui) start() {
-	ui.registerHttpHandlers()
-	ui.handleRoot()
 	go ui.handleMessages()
 	err := ui.ops.ListenAndServe("localhost:8081")
 	if err != nil {

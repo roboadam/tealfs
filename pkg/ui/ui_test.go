@@ -25,8 +25,8 @@ import (
 
 func TestListenAddress(t *testing.T) {
 	_, _, _, ops := NewUi()
-	if ops.BindAddr != ":0" {
-		t.Error("Didn't bind to :0")
+	if ops.BindAddr != "mockBindAddr:123" {
+		t.Error("Didn't bind to mockBindAddr:123")
 	}
 }
 
@@ -92,7 +92,7 @@ func NewUi() (*ui.Ui, chan model.UiMgrConnectTo, chan model.ConnectionStatus, *u
 	connToReq := make(chan model.UiMgrConnectTo)
 	connToResp := make(chan model.ConnectionStatus)
 	ops := ui.MockHtmlOps{
-		BindAddr: "",
+		BindAddr: "mockBindAddr:123",
 		Handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
 	}
 	u := ui.NewUi(connToReq, connToResp, &ops)
