@@ -31,7 +31,7 @@ type Ui struct {
 	ops        HtmlOps
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.ConnectionStatus, ops HtmlOps) *Ui {
+func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.ConnectionStatus, ops HtmlOps, bindAddr string) *Ui {
 	statuses := make(map[model.ConnId]model.ConnectionStatus)
 	ui := Ui{
 		connToReq:  connToReq,
@@ -41,13 +41,13 @@ func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.Connection
 	}
 	ui.registerHttpHandlers()
 	ui.handleRoot()
-	go ui.start()
+	go ui.start(bindAddr)
 	return &ui
 }
 
-func (ui *Ui) start() {
+func (ui *Ui) start(bindAddr string) {
 	go ui.handleMessages()
-	err := ui.ops.ListenAndServe("localhost:8081")
+	err := ui.ops.ListenAndServe(bindAddr)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -67,11 +67,12 @@ func (ui *Ui) saveStatus(status model.ConnectionStatus) {
 
 func (ui *Ui) registerHttpHandlers() {
 	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
+		if r.Method != http.MethodPut {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
 		hostAndPort := r.FormValue("hostAndPort")
+		fmt.Println("UiMgrConnectTo", hostAndPort)
 		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
 	})
 }

@@ -97,6 +97,7 @@ func (m *Mgr) eventLoop() {
 }
 
 func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
+	fmt.Println("mgr: MgrConsConnectTo", i.Address)
 	m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: string(i.Address)}
 }
 
@@ -190,17 +191,19 @@ func (m *Mgr) addNodeToCluster(n model.NodeId, c model.ConnId) {
 }
 
 func (m *Mgr) handleConnectedStatus(cs model.ConnectionStatus) {
+	fmt.Println("mgr incoming conn status")
 	switch cs.Type {
 	case model.Connected:
 		m.connAddress[cs.Id] = cs.RemoteAddress
 		m.MgrUiStatuses <- cs
+		fmt.Println("mgr sending iam")
 		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &model.IAm{NodeId: m.NodeId},
 		}
 	case model.NotConnected:
 		// Todo: reflect this in the ui
-		println("Not Connected")
+		fmt.Println("Not Connected")
 	}
 }
 

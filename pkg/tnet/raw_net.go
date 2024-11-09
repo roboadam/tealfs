@@ -16,6 +16,7 @@ package tnet
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
 )
 
@@ -24,8 +25,10 @@ func ReadPayload(conn net.Conn) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("rawnet read rawlen:", rawLen)
 	size := binary.BigEndian.Uint32(rawLen)
 	a, b := ReadBytes(conn, size)
+	fmt.Println("rawnet read rawbytes:", a)
 	return a, b
 }
 
@@ -37,10 +40,12 @@ func SendPayload(conn net.Conn, data []byte) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("rawnet send rawlen:", buf)
 	err = SendBytes(conn, data)
 	if err != nil {
 		return err
 	}
+	fmt.Println("rawnet send rawbytes:", data)
 	return nil
 }
 

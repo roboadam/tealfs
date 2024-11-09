@@ -95,6 +95,6 @@ func NewUi() (*ui.Ui, chan model.UiMgrConnectTo, chan model.ConnectionStatus, *u
 		BindAddr: "mockBindAddr:123",
 		Handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
 	}
-	u := ui.NewUi(connToReq, connToResp, &ops)
+	u := ui.NewUi(connToReq, connToResp, &ops, "address")
 	return u, connToReq, connToResp, &ops
 }

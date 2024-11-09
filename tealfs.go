@@ -12,8 +12,8 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Specify the path to store data")
+	if len(os.Args) < 4 {
+		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address>")
 		os.Exit(1)
 	}
 	m := mgr.NewWithChanSize(1)
@@ -32,14 +32,14 @@ func main() {
 		m.DiskMgrWrites,
 		m.DiskMgrReads,
 	)
-	_ = ui.NewUi(m.UiMgrConnectTos, m.ConnsMgrStatuses, &ui.HttpHtmlOps{})
+	_ = ui.NewUi(m.UiMgrConnectTos, m.ConnsMgrStatuses, &ui.HttpHtmlOps{}, os.Args[3])
 	_ = webdav.New(
 		m.NodeId,
 		m.WebdavMgrGets,
 		m.WebdavMgrPuts,
 		m.MgrWebdavGets,
 		m.MgrWebdavPuts,
-		":8080",
+		os.Args[2],
 	)
 	m.Start()
 	select {}

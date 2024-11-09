@@ -15,6 +15,7 @@
 package conns
 
 import (
+	"fmt"
 	"net"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
@@ -34,6 +35,7 @@ type Conns struct {
 
 func NewConns(outStatuses chan<- model.ConnectionStatus, outReceives chan<- model.ConnsMgrReceive, inConnectTo <-chan model.MgrConnsConnectTo, inSends <-chan model.MgrConnsSend, provider ConnectionProvider) Conns {
 	listener, err := provider.GetListener("localhost:0")
+	fmt.Println("LISTENING ON", listener.Addr().String())
 	if err != nil {
 		panic(err)
 	}
@@ -59,7 +61,9 @@ func (c *Conns) consumeChannels() {
 	for {
 		select {
 		case acceptedConn := <-c.acceptedConns:
+			fmt.Println("conns.consumeChannels accepted con")
 			id := c.saveNetConn(acceptedConn.netConn)
+			fmt.Println("conns saved incoming")
 			c.outStatuses <- model.ConnectionStatus{
 				Type:          model.Connected,
 				Msg:           "Success",
@@ -69,6 +73,7 @@ func (c *Conns) consumeChannels() {
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
+			fmt.Println("Cons: Connecting to", connectTo.Address)
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
 				c.outStatuses <- model.ConnectionStatus{
@@ -97,8 +102,11 @@ func (c *Conns) listen(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err == nil {
+			fmt.Println("Got connection from", c.Address)
 			incomingConnReq := AcceptedConns{netConn: conn}
 			c.acceptedConns <- incomingConnReq
+		} else {
+			fmt.Println("Error accepting", err)
 		}
 	}
 }
@@ -114,6 +122,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		if err != nil {
 			return
 		}
+		fmt.Println("raw payload", bytes)
 		payload := model.ToPayload(bytes)
 		c.outReceives <- model.ConnsMgrReceive{
 			ConnId:  conn,
@@ -123,11 +132,16 @@ func (c *Conns) consumeData(conn model.ConnId) {
 }
 
 func (c *Conns) connectTo(address string) (model.ConnId, error) {
+	fmt.Println("c1")
 	netConn, err := c.provider.GetConnection(address)
+	fmt.Println("c2")
 	if err != nil {
+		fmt.Println("c3")
 		return 0, err
 	}
+	fmt.Println("c4")
 	id := c.saveNetConn(netConn)
+	fmt.Println("c5", id)
 	return id, nil
 }
 

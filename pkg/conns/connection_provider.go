@@ -75,7 +75,7 @@ func (m *MockConn) Write(b []byte) (n int, err error) {
 }
 
 func (m *MockConn) Close() error {
-	panic("not implemented3") // TODO: Implement
+	return nil
 }
 
 func (m *MockConn) LocalAddr() net.Addr {
