@@ -32,7 +32,7 @@ func main() {
 		m.DiskMgrWrites,
 		m.DiskMgrReads,
 	)
-	_ = ui.NewUi(m.UiMgrConnectTos, m.ConnsMgrStatuses, &ui.HttpHtmlOps{}, os.Args[3])
+	_ = ui.NewUi(m.UiMgrConnectTos, m.MgrUiStatuses, &ui.HttpHtmlOps{}, os.Args[3])
 	_ = webdav.New(
 		m.NodeId,
 		m.WebdavMgrGets,
