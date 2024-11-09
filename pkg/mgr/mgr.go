@@ -23,7 +23,7 @@ import (
 
 type Mgr struct {
 	UiMgrConnectTos    chan model.UiMgrConnectTo
-	ConnsMgrStatuses   chan model.ConnectionStatus
+	ConnsMgrStatuses   chan model.NetConnectionStatus
 	ConnsMgrReceives   chan model.ConnsMgrReceive
 	DiskMgrReads       chan model.ReadResult
 	DiskMgrWrites      chan model.WriteResult
@@ -33,7 +33,7 @@ type Mgr struct {
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
 	MgrDiskReads       chan model.ReadRequest
-	MgrUiStatuses      chan model.ConnectionStatus
+	MgrUiStatuses      chan model.UiConnectionStatus
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
 
@@ -48,7 +48,7 @@ type Mgr struct {
 func NewWithChanSize(chanSize int, nodeAddress string) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
-		ConnsMgrStatuses:   make(chan model.ConnectionStatus, chanSize),
+		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrWrites:      make(chan model.WriteResult),
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
@@ -58,7 +58,7 @@ func NewWithChanSize(chanSize int, nodeAddress string) *Mgr {
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
 		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
-		MgrUiStatuses:      make(chan model.ConnectionStatus, chanSize),
+		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
 		nodes:              set.NewSet[model.NodeId](),
@@ -83,7 +83,7 @@ func (m *Mgr) eventLoop() {
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
 		case r := <-m.ConnsMgrStatuses:
-			m.handleConnectedStatus(r)
+			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
@@ -122,6 +122,12 @@ func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
+		m.connAddress[i.ConnId] = p.Address
+		m.MgrUiStatuses <- model.UiConnectionStatus{
+			Type:          model.Connected,
+			RemoteAddress: p.Address,
+			Id:            i.ConnId,
+		}
 		m.addNodeToCluster(p.NodeId, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
 		for _, n := range m.nodes.GetValues() {
@@ -193,11 +199,11 @@ func (m *Mgr) addNodeToCluster(n model.NodeId, c model.ConnId) {
 	m.distributer.SetWeight(n, 1)
 }
 
-func (m *Mgr) handleConnectedStatus(cs model.ConnectionStatus) {
+func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
-		m.connAddress[cs.Id] = cs.RemoteAddress
-		m.MgrUiStatuses <- cs
+		// m.connAddress[cs.Id] = cs.RemoteAddress
+		// m.MgrUiStatuses <- cs
 		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId: cs.Id,
 			Payload: &model.IAm{

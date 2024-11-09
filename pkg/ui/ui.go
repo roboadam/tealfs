@@ -25,14 +25,14 @@ import (
 
 type Ui struct {
 	connToReq  chan model.UiMgrConnectTo
-	connToResp chan model.ConnectionStatus
-	statuses   map[model.ConnId]model.ConnectionStatus
+	connToResp chan model.UiConnectionStatus
+	statuses   map[model.ConnId]model.UiConnectionStatus
 	sMux       sync.Mutex
 	ops        HtmlOps
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.ConnectionStatus, ops HtmlOps, bindAddr string) *Ui {
-	statuses := make(map[model.ConnId]model.ConnectionStatus)
+func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string) *Ui {
+	statuses := make(map[model.ConnId]model.UiConnectionStatus)
 	ui := Ui{
 		connToReq:  connToReq,
 		connToResp: connToResp,
@@ -59,7 +59,7 @@ func (ui *Ui) handleMessages() {
 	}
 }
 
-func (ui *Ui) saveStatus(status model.ConnectionStatus) {
+func (ui *Ui) saveStatus(status model.UiConnectionStatus) {
 	ui.sMux.Lock()
 	defer ui.sMux.Unlock()
 	ui.statuses[status.Id] = status

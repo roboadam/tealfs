@@ -20,11 +20,17 @@ import (
 	"github.com/google/uuid"
 )
 
-type ConnectionStatus struct {
+type UiConnectionStatus struct {
 	Type          ConnectedStatus
 	RemoteAddress string
 	Msg           string
 	Id            ConnId
+}
+
+type NetConnectionStatus struct {
+	Type ConnectedStatus
+	Msg  string
+	Id   ConnId
 }
 type ConnectedStatus int
 

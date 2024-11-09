@@ -103,7 +103,7 @@ func (m MockAddr) Network() string {
 }
 
 func (m MockAddr) String() string {
-	return "mockaddress:123"
+	return "mockAddress:123"
 }
 
 type MockListener struct {
