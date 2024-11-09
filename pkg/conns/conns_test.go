@@ -33,7 +33,7 @@ func TestConnectToConns(t *testing.T) {
 	_, outStatus, _, inConnectTo, _, _ := newConnsTest()
 	const expectedAddress = "expectedAddress:1234"
 	status := connectTo(expectedAddress, outStatus, inConnectTo)
-	if status.Type != model.Connected || status.RemoteAddress != expectedAddress {
+	if status.Type != model.Connected {
 		t.Error("Connection didn't work")
 	}
 }
@@ -101,13 +101,13 @@ func lenAsBytes(data []byte) []byte {
 	return buf
 }
 
-func connectTo(address string, outStatus chan model.ConnectionStatus, inConnectTo chan model.MgrConnsConnectTo) model.ConnectionStatus {
+func connectTo(address string, outStatus chan model.NetConnectionStatus, inConnectTo chan model.MgrConnsConnectTo) model.NetConnectionStatus {
 	inConnectTo <- model.MgrConnsConnectTo{Address: address}
 	return <-outStatus
 }
 
-func newConnsTest() (Conns, chan model.ConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, MockConnectionProvider) {
-	outStatuses := make(chan model.ConnectionStatus)
+func newConnsTest() (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, MockConnectionProvider) {
+	outStatuses := make(chan model.NetConnectionStatus)
 	outReceives := make(chan model.ConnsMgrReceive)
 	inConnectTo := make(chan model.MgrConnsConnectTo)
 	inSends := make(chan model.MgrConnsSend)
