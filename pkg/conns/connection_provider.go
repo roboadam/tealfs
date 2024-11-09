@@ -83,7 +83,7 @@ func (m *MockConn) LocalAddr() net.Addr {
 }
 
 func (m *MockConn) RemoteAddr() net.Addr {
-	panic("not implemented5") // TODO: Implement
+	return MockAddr{}
 }
 
 func (m *MockConn) SetDeadline(t time.Time) error {

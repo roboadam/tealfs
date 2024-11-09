@@ -72,7 +72,6 @@ func (ui *Ui) registerHttpHandlers() {
 			return
 		}
 		hostAndPort := r.FormValue("hostAndPort")
-		fmt.Println("UiMgrConnectTo", hostAndPort)
 		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
 	})
 }

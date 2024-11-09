@@ -34,7 +34,7 @@ func TestConnectTo(t *testing.T) {
 	_, connToReq, _, ops := NewUi()
 	mockResponseWriter := ui.MockResponseWriter{}
 	request := http.Request{
-		Method:   http.MethodPost,
+		Method:   http.MethodPut,
 		PostForm: make(url.Values),
 	}
 	request.PostForm.Add("hostAndPort", "abcdef")
