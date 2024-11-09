@@ -42,9 +42,10 @@ type Mgr struct {
 	NodeId      model.NodeId
 	connAddress map[model.ConnId]string
 	distributer dist.Distributer
+	nodeAddress string
 }
 
-func NewWithChanSize(chanSize int) *Mgr {
+func NewWithChanSize(chanSize int, nodeAddress string) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.ConnectionStatus, chanSize),
@@ -65,6 +66,7 @@ func NewWithChanSize(chanSize int) *Mgr {
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		distributer:        dist.New(),
+		nodeAddress:        nodeAddress,
 	}
 	mgr.distributer.SetWeight(mgr.NodeId, 1)
 
@@ -97,6 +99,7 @@ func (m *Mgr) eventLoop() {
 }
 
 func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
+	fmt.Println("mgr got ui connect to request")
 	m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: string(i.Address)}
 }
 
@@ -134,9 +137,10 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		remoteNodes := p.GetNodes()
 		localNodes := m.nodes.Clone()
 		localNodes.Add(m.NodeId)
-		missing := remoteNodes.Minus(&m.nodes)
+		missing := remoteNodes.Minus(&localNodes)
 		for _, n := range missing.GetValues() {
 			address := p.AddressForNode(n)
+			fmt.Println("mgr connecting to because of syncNodes", address)
 			m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: address}
 		}
 	case *model.WriteRequest:
@@ -195,8 +199,11 @@ func (m *Mgr) handleConnectedStatus(cs model.ConnectionStatus) {
 		m.connAddress[cs.Id] = cs.RemoteAddress
 		m.MgrUiStatuses <- cs
 		m.MgrConnsSends <- model.MgrConnsSend{
-			ConnId:  cs.Id,
-			Payload: &model.IAm{NodeId: m.NodeId},
+			ConnId: cs.Id,
+			Payload: &model.IAm{
+				NodeId:  m.NodeId,
+				Address: m.nodeAddress,
+			},
 		}
 	case model.NotConnected:
 		// Todo: reflect this in the ui

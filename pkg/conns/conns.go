@@ -33,9 +33,15 @@ type Conns struct {
 	provider      ConnectionProvider
 }
 
-func NewConns(outStatuses chan<- model.ConnectionStatus, outReceives chan<- model.ConnsMgrReceive, inConnectTo <-chan model.MgrConnsConnectTo, inSends <-chan model.MgrConnsSend, provider ConnectionProvider) Conns {
-	listener, err := provider.GetListener("localhost:0")
-	fmt.Println("LISTENING ON", listener.Addr().String())
+func NewConns(
+	outStatuses chan<- model.ConnectionStatus,
+	outReceives chan<- model.ConnsMgrReceive,
+	inConnectTo <-chan model.MgrConnsConnectTo,
+	inSends <-chan model.MgrConnsSend,
+	provider ConnectionProvider,
+	address string) Conns {
+
+	listener, err := provider.GetListener(address)
 	if err != nil {
 		panic(err)
 	}
@@ -65,12 +71,13 @@ func (c *Conns) consumeChannels() {
 			c.outStatuses <- model.ConnectionStatus{
 				Type:          model.Connected,
 				Msg:           "Success",
-				RemoteAddress: acceptedConn.netConn.LocalAddr().String(),
+				RemoteAddress: acceptedConn.netConn.RemoteAddr().String(),
 				Id:            id,
 			}
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
+			println("conns go connect to request")
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
 				c.outStatuses <- model.ConnectionStatus{

@@ -14,13 +14,17 @@
 
 package model
 
+import "bytes"
+
 type IAm struct {
-	NodeId NodeId
+	NodeId  NodeId
+	Address string
 }
 
 func (h *IAm) ToBytes() []byte {
 	nodeId := StringToBytes(string(h.NodeId))
-	return AddType(IAmType, nodeId)
+	address := StringToBytes(h.Address)
+	return AddType(IAmType, bytes.Join([][]byte{nodeId, address}, []byte{}))
 }
 
 func (h *IAm) Equal(p Payload) bool {
@@ -31,8 +35,10 @@ func (h *IAm) Equal(p Payload) bool {
 }
 
 func ToHello(data []byte) *IAm {
-	rawId, _ := StringFromBytes(data)
+	rawId, remainder := StringFromBytes(data)
+	rawAddress, _ := StringFromBytes(remainder)
 	return &IAm{
-		NodeId: NodeId(rawId),
+		NodeId:  NodeId(rawId),
+		Address: rawAddress,
 	}
 }

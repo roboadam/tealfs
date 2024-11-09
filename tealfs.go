@@ -12,17 +12,18 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 4 {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address>")
+	if len(os.Args) < 5 {
+		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address> <node address>")
 		os.Exit(1)
 	}
-	m := mgr.NewWithChanSize(1)
+	m := mgr.NewWithChanSize(1, os.Args[4])
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
 		m.MgrConnsConnectTos,
 		m.MgrConnsSends,
 		&conns.TcpConnectionProvider{},
+		os.Args[4],
 	)
 	p := disk.NewPath(os.Args[1], &disk.DiskFileOps{})
 	_ = disk.New(p,

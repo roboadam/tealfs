@@ -77,9 +77,10 @@ func collectPayload(channel chan []byte) []byte {
 
 func TestGetData(t *testing.T) {
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest()
-	status := connectTo("address:123", outStatus, inConnectTo)
+	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
 	payload := &model.IAm{
-		NodeId: "nodeId",
+		NodeId:  "nodeId",
+		Address: "localAddress:123",
 	}
 	dataReceived := payload.ToBytes()
 	length := lenAsBytes(dataReceived)
@@ -111,6 +112,6 @@ func newConnsTest() (Conns, chan model.ConnectionStatus, chan model.ConnsMgrRece
 	inConnectTo := make(chan model.MgrConnsConnectTo)
 	inSends := make(chan model.MgrConnsSend)
 	provider := NewMockConnectionProvider()
-	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider)
+	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123")
 	return c, outStatuses, outReceives, inConnectTo, inSends, provider
 }

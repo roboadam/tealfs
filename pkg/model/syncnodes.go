@@ -15,7 +15,6 @@
 package model
 
 import (
-	"fmt"
 	"tealfs/pkg/set"
 )
 
@@ -73,7 +72,6 @@ func (s *SyncNodes) AddressForNode(id NodeId) string {
 }
 
 func ToSyncNodes(data []byte) *SyncNodes {
-	fmt.Println(data)
 	remainder := data
 	result := set.NewSet[struct {
 		Node    NodeId
