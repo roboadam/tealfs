@@ -15,7 +15,6 @@
 package conns
 
 import (
-	"fmt"
 	"net"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
@@ -107,8 +106,6 @@ func (c *Conns) listen(listener net.Listener) {
 		if err == nil {
 			incomingConnReq := AcceptedConns{netConn: conn}
 			c.acceptedConns <- incomingConnReq
-		} else {
-			fmt.Println("Error accepting", err)
 		}
 	}
 }
