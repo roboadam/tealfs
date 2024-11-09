@@ -77,7 +77,6 @@ func (c *Conns) consumeChannels() {
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
-			println("conns go connect to request")
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
 				c.outStatuses <- model.ConnectionStatus{
