@@ -23,6 +23,7 @@ import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
+	"time"
 )
 
 func TestCreateFile(t *testing.T) {
@@ -36,6 +37,7 @@ func TestCreateFile(t *testing.T) {
 	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, "", otherNode)
 	go handleWebdavMgrPuts(t, webdavMgrPuts, mgrWebdavPuts, "hello world!", otherNode)
 	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654")
+	time.Sleep(1 * time.Second) //FIXME, need a better way to wait for listener to start
 
 	_, err := propFind("http://localhost:7654/")
 	if err != nil {
