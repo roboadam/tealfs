@@ -17,6 +17,7 @@ package webdav
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"tealfs/pkg/model"
 	"time"
@@ -38,6 +39,7 @@ type openFileResp struct {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
+	fmt.Println("OPEN")
 	respChan := make(chan openFileResp)
 	f.openFileReq <- openFileReq{
 		ctx:      ctx,
@@ -51,10 +53,12 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 }
 
 func (f *FileSystem) openFile(req *openFileReq) openFileResp {
+	fmt.Println("openfile start")
 	rw := (os.O_RDWR & req.flag) != 0
 	wo := (os.O_WRONLY & req.flag) != 0
 	ro := false
 	if rw && wo {
+		fmt.Println("openfile end 1")
 		return openFileResp{err: errors.New("invalid flag")}
 	}
 	if !(rw || wo) {
@@ -67,15 +71,18 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	isDirForCreate := req.perm.IsDir()
 
 	if ro && (append || create || failIfExists || truncate) {
+		fmt.Println("openfile end 2")
 		return openFileResp{err: errors.New("invalid flag")}
 	}
 
 	if !create && failIfExists {
+		fmt.Println("openfile end 3")
 		return openFileResp{err: errors.New("invalid flag")}
 	}
 
 	path, err := PathFromName(req.name)
 	if err != nil {
+		fmt.Println("openfile end 4")
 		return openFileResp{err: err}
 	}
 	file, exists := f.FilesByPath.get(path)
@@ -83,20 +90,24 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	// opening the root directory
 	if len(path) == 0 {
 		if !exists {
+			fmt.Println("openfile end 5")
 			return openFileResp{err: errors.New("root doesn't exist")}
 		}
+		fmt.Println("openfile end 6")
 		return openFileResp{file: file}
 	}
 
 	// handle failIfExists scenario
 	if failIfExists && exists {
+		fmt.Println("openfile end 7")
 		return openFileResp{err: errors.New("file exists")}
 	}
 
 	// can't open a file that doesn't exist in read-only mode
-	if !exists && ro {
-		return openFileResp{err: errors.New("file not found")}
-	}
+	// if !exists && ro {
+	// 	fmt.Println("openfile end 8")
+	// 	return openFileResp{err: errors.New("file not found")}
+	// }
 
 	if !exists {
 		block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
@@ -125,5 +136,6 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	if append {
 		file.Position = file.SizeValue
 	}
+	fmt.Println("openfile end 9")
 	return openFileResp{file: file}
 }
