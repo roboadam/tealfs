@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"tealfs/pkg/model"
 	"time"
@@ -91,7 +92,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	if len(path) == 0 {
 		if !exists {
 			fmt.Println("openfile end 5")
-			return openFileResp{err: errors.New("root doesn't exist")}
+			return openFileResp{err: fs.ErrNotExist}
 		}
 		fmt.Println("openfile end 6")
 		return openFileResp{file: file}
@@ -100,14 +101,14 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	// handle failIfExists scenario
 	if failIfExists && exists {
 		fmt.Println("openfile end 7")
-		return openFileResp{err: errors.New("file exists")}
+		return openFileResp{err: fs.ErrExist}
 	}
 
 	// can't open a file that doesn't exist in read-only mode
-	// if !exists && ro {
-	// 	fmt.Println("openfile end 8")
-	// 	return openFileResp{err: errors.New("file not found")}
-	// }
+	if !exists && ro {
+		fmt.Println("openfile end 8")
+		return openFileResp{err: fs.ErrNotExist}
+	}
 
 	if !exists {
 		block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
