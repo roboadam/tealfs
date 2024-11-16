@@ -180,6 +180,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 }
 func (m *Mgr) handleDiskWrites(r model.WriteResult) {
 	if r.Caller == m.NodeId {
+		fmt.Println(m.NodeId, "Sending MgrWebdavPuts WriteResult")
 		m.MgrWebdavPuts <- r
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
