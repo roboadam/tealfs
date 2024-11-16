@@ -81,25 +81,32 @@ func (m *Mgr) eventLoop() {
 	for {
 		select {
 		case r := <-m.UiMgrConnectTos:
+			fmt.Println(m.NodeId, "Received UiMgrConnectTo")
 			m.handleConnectToReq(r)
 		case r := <-m.ConnsMgrStatuses:
+			fmt.Println(m.NodeId, "Received ConnsMgrStatuses")
 			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
+			fmt.Println(m.NodeId, "Received ConnsMgrReceives")
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
+			fmt.Println(m.NodeId, "Received DiskMgrReads")
 			m.handleDiskReads(r)
 		case r := <-m.DiskMgrWrites:
+			fmt.Println(m.NodeId, "Received DiskMgrWrites")
 			m.handleDiskWrites(r)
 		case r := <-m.WebdavMgrGets:
+			fmt.Println(m.NodeId, "Received WebdavMgrGets")
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
+			fmt.Println(m.NodeId, "Received WebdavMgrPuts")
 			m.handleWebdavWriteRequest(r)
 		}
 	}
 }
 
 func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
-	fmt.Println("mgr got ui connect to request")
+	fmt.Println(m.NodeId, "Sending MgrConnsConnectTo")
 	m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: string(i.Address)}
 }
 
@@ -123,6 +130,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
 		m.connAddress[i.ConnId] = p.Address
+		fmt.Println(m.NodeId, "Sending MgrUiStatuses")
 		m.MgrUiStatuses <- model.UiConnectionStatus{
 			Type:          model.Connected,
 			RemoteAddress: p.Address,
@@ -133,6 +141,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		for _, n := range m.nodes.GetValues() {
 			connId, ok := m.nodeConnMap.Get1(n)
 			if ok {
+				fmt.Println(m.NodeId, "Sending MgrConnsSend SyncNodes Payload")
 				m.MgrConnsSends <- model.MgrConnsSend{
 					ConnId:  connId,
 					Payload: &syncNodes,
@@ -146,7 +155,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		missing := remoteNodes.Minus(&localNodes)
 		for _, n := range missing.GetValues() {
 			address := p.AddressForNode(n)
-			fmt.Println("mgr connecting to because of syncNodes", address)
+			fmt.Println(m.NodeId, "Sending MgrConnsConnectTo in response to SyncNodes")
 			m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: address}
 		}
 	case *model.WriteRequest:
@@ -156,10 +165,12 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			return
 		}
 		if m.NodeId == n {
+			fmt.Println(m.NodeId, "Sending MgrDiskWrites")
 			m.MgrDiskWrites <- *p
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)
 			if ok {
+				fmt.Println(m.NodeId, "Sending MgrConnsSend in response to WriteRequest")
 				m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: p}
 			} else {
 				m.MgrDiskWrites <- *p
@@ -173,6 +184,7 @@ func (m *Mgr) handleDiskWrites(r model.WriteResult) {
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
 		if ok {
+			fmt.Println(m.NodeId, "Sending MgrConnsSend WriteResult")
 			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
 		} else {
 			fmt.Println("Need to add to queue when reconnected")
@@ -186,6 +198,7 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
 		if ok {
+			fmt.Println(m.NodeId, "Sending MgrConnsSend ReadResult")
 			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
 		} else {
 			fmt.Println("Need to add to queue when reconnected")
@@ -202,8 +215,7 @@ func (m *Mgr) addNodeToCluster(n model.NodeId, c model.ConnId) {
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
-		// m.connAddress[cs.Id] = cs.RemoteAddress
-		// m.MgrUiStatuses <- cs
+		fmt.Println(m.NodeId, "Sending MgrConnsSend Iam in response to successful connection")
 		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId: cs.Id,
 			Payload: &model.IAm{
@@ -220,15 +232,18 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 	n := m.distributer.NodeIdForStoreId(rr.BlockId)
 	if m.NodeId == n {
+		fmt.Println(m.NodeId, "Sending MgrDiskReads in response to WebdavGet ReadRequest")
 		m.MgrDiskReads <- rr
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
 		if ok {
+			fmt.Println(m.NodeId, "Sending MgrConnsSend in response to WebdavGet ReadRequest")
 			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId:  c,
 				Payload: &rr,
 			}
 		} else {
+			fmt.Println(m.NodeId, "Sending MgrWebdavGets unsucessful read because not connected")
 			m.MgrWebdavGets <- model.ReadResult{
 				Ok:      false,
 				Message: "Not connected",
@@ -242,15 +257,18 @@ func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 func (m *Mgr) handleWebdavWriteRequest(w model.WriteRequest) {
 	n := m.distributer.NodeIdForStoreId(w.Block.Id)
 	if n == m.NodeId {
+		fmt.Println(m.NodeId, "Sending MgrDiskWrites in response to webdav write request")
 		m.MgrDiskWrites <- w
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
 		if ok {
+			fmt.Println(m.NodeId, "Sending MgrConnsSend in response to webdav write request")
 			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId:  c,
 				Payload: &w,
 			}
 		} else {
+			fmt.Println(m.NodeId, "Sending MgrDiskWrites because node is offline")
 			m.MgrDiskWrites <- w
 		}
 	}

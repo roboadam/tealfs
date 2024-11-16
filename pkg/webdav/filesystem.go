@@ -17,7 +17,6 @@ package webdav
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"tealfs/pkg/model"
@@ -132,7 +131,6 @@ type mkdirReq struct {
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	fmt.Println("MKDIR")
 	respChan := make(chan error)
 	f.mkdirReq <- mkdirReq{
 		ctx:      ctx,
@@ -216,7 +214,6 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 }
 
 func (f *FileSystem) RemoveAll(ctx context.Context, name string) error {
-	fmt.Println("REMOVEALL")
 	respChan := make(chan error)
 	f.removeAllReq <- removeAllReq{
 		ctx:      ctx,
@@ -235,7 +232,6 @@ type renameReq struct {
 }
 
 func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string) error {
-	fmt.Println("RENAME")
 	respChan := make(chan error)
 	f.renameReq <- renameReq{
 		ctx:      ctx,
@@ -281,7 +277,6 @@ func (f *FileSystem) rename(req *renameReq) error {
 }
 
 func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
-	fmt.Println("STAT")
 	respChan := make(chan openFileResp)
 	f.openFileReq <- openFileReq{
 		ctx:      ctx,
