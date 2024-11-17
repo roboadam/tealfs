@@ -176,8 +176,15 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 				m.MgrDiskWrites <- *p
 			}
 		}
+	case *model.WriteResult:
+		fmt.Println(m.NodeId, "Sending MgrWebDavPuts in response data from other node")
+		m.MgrWebdavPuts <- *p
 	case *model.ReadRequest:
+		fmt.Println(m.NodeId, "Sending MgDiskReads in response data from other node")
 		m.MgrDiskReads <- *p
+	case *model.ReadResult:
+		fmt.Println(m.NodeId, "Sending MgrWebDavGets in response data from other node")
+		m.MgrWebdavGets <- *p
 	default:
 		fmt.Println(m.NodeId, "Received unknown payload", p)
 	}
