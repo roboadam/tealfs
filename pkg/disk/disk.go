@@ -15,8 +15,8 @@
 package disk
 
 import (
-	"errors"
-	"io/fs"
+	// "errors"
+	// "io/fs"
 	"path/filepath"
 	"tealfs/pkg/model"
 )
@@ -101,9 +101,9 @@ func (p *Path) Save(id model.BlockId, data []byte) error {
 func (p *Path) Read(id model.BlockId) ([]byte, error) {
 	filePath := filepath.Join(p.raw, string(id))
 	result, err := p.ops.ReadFile(filePath)
-	if err != nil && errors.Is(err, fs.ErrNotExist) {
-		return []byte{}, nil
-	}
+	// if err != nil && errors.Is(err, fs.ErrNotExist) {
+	// 	return []byte{}, nil
+	// }
 	return result, err
 }
 
