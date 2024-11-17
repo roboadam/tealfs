@@ -26,9 +26,9 @@ import (
 )
 
 func TestOneNodeCluster(t *testing.T) {
-	webdavAddress := "localhost:8080"
-	uiAddress := "localhost:8081"
-	nodeAddress := "localhost:8082"
+	webdavAddress := "localhost:7080"
+	uiAddress := "localhost:7081"
+	nodeAddress := "localhost:7082"
 	storagePath := "tmp"
 	webdavUrl := "http://" + webdavAddress + "/test.txt"
 	fileContents := "test content"

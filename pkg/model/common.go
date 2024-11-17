@@ -58,9 +58,9 @@ func IntToBytes(value uint32) []byte {
 func BoolToBytes(value bool) []byte {
 	result := []byte{1}
 	if value {
-		result[0] = 0
-	} else {
 		result[0] = 1
+	} else {
+		result[0] = 0
 	}
 	return result
 }

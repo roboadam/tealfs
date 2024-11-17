@@ -15,7 +15,6 @@
 package conns
 
 import (
-	"fmt"
 	"net"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
@@ -122,7 +121,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		if err != nil {
 			return
 		}
-		fmt.Println(c.nodeId, "CONN Received bytes", bytes)
 		payload := model.ToPayload(bytes)
 		c.outReceives <- model.ConnsMgrReceive{
 			ConnId:  conn,

@@ -33,6 +33,12 @@ func (r *WriteResult) Equal(p Payload) bool {
 		if r.Message != o.Message {
 			return false
 		}
+		if r.Caller != o.Caller {
+			return false
+		}
+		if r.BlockId != o.BlockId {
+			return false
+		}
 		return true
 	}
 	return false
@@ -43,15 +49,20 @@ func (r *WriteResult) ToBytes() []byte {
 	message := StringToBytes(r.Message)
 	caller := StringToBytes(string(r.Caller))
 	blockId := StringToBytes(string(r.BlockId))
+
 	payload := bytes.Join([][]byte{ok, message, caller, blockId}, []byte{})
 	return AddType(WriteResultType, payload)
 }
 
 func ToWriteResult(data []byte) *WriteResult {
 	ok, remainder := BoolFromBytes(data)
-	message, _ := StringFromBytes(remainder)
+	message, remainder := StringFromBytes(remainder)
+	caller, remainder := StringFromBytes(remainder)
+	blockId, _ := StringFromBytes(remainder)
 	return &WriteResult{
 		Ok:      ok,
 		Message: message,
+		Caller:  NodeId(caller),
+		BlockId: BlockId(blockId),
 	}
 }

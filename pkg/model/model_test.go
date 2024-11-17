@@ -52,3 +52,72 @@ func TestSyncNodes(t *testing.T) {
 		t.Error("should be equal")
 	}
 }
+
+func TestReadResult(t *testing.T) {
+	rr1 := model.ReadResult{
+		Ok:      true,
+		Message: "some message",
+		Caller:  "some caller",
+		Block: model.Block{
+			Id:   "some block id",
+			Data: []byte{1, 2, 3},
+		},
+	}
+	rr2 := model.ReadResult{
+		Ok:      false,
+		Message: "some message",
+		Caller:  "some caller",
+		Block: model.Block{
+			Id:   "some block id",
+			Data: []byte{1, 2, 3},
+		},
+	}
+	if rr1.Equal(&rr2) {
+		t.Error("should not be equal")
+	}
+
+	rr2.Ok = true
+
+	if !rr1.Equal(&rr2) {
+		t.Error("should be equal")
+	}
+
+	bytes1 := rr1.ToBytes()
+	rr3 := model.ToReadResult(bytes1[1:])
+
+	if !rr1.Equal(rr3) {
+		t.Error("should be equal")
+	}
+}
+
+func TestWriteResult(t *testing.T) {
+	wr1 := model.WriteResult{
+		Ok:      true,
+		Message: "some message",
+		Caller:  "some caller",
+		BlockId: "some block id",
+	}
+	wr2 := model.WriteResult{
+		Ok:      true,
+		Message: "some message",
+		Caller:  "some caller 2",
+		BlockId: "some block id",
+	}
+
+	if wr1.Equal(&wr2) {
+		t.Error("should not be equal")
+	}
+
+	wr2.Caller = "some caller"
+
+	if !wr1.Equal(&wr2) {
+		t.Error("should be equal")
+	}
+
+	bytes1 := wr1.ToBytes()
+	rr3 := model.ToWriteResult(bytes1[1:])
+
+	if !wr1.Equal(rr3) {
+		t.Error("should be equal")
+	}
+}
