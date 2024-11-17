@@ -34,7 +34,7 @@ func TestConnectTo(t *testing.T) {
 	_, connToReq, _, ops := NewUi()
 	mockResponseWriter := ui.MockResponseWriter{}
 	request := http.Request{
-		Method:   http.MethodPost,
+		Method:   http.MethodPut,
 		PostForm: make(url.Values),
 	}
 	request.PostForm.Add("hostAndPort", "abcdef")
@@ -55,12 +55,12 @@ func TestStatus(t *testing.T) {
 	}
 	request.PostForm.Add("hostAndPort", "abcdef")
 
-	connToResp <- model.ConnectionStatus{
+	connToResp <- model.UiConnectionStatus{
 		Type:          model.Connected,
 		RemoteAddress: "1234",
 		Id:            model.ConnId(1),
 	}
-	connToResp <- model.ConnectionStatus{
+	connToResp <- model.UiConnectionStatus{
 		Type:          model.NotConnected,
 		RemoteAddress: "5678",
 		Id:            model.ConnId(2),
@@ -88,13 +88,13 @@ func waitForWrittenData(handler func() string, values []string) {
 	}
 }
 
-func NewUi() (*ui.Ui, chan model.UiMgrConnectTo, chan model.ConnectionStatus, *ui.MockHtmlOps) {
+func NewUi() (*ui.Ui, chan model.UiMgrConnectTo, chan model.UiConnectionStatus, *ui.MockHtmlOps) {
 	connToReq := make(chan model.UiMgrConnectTo)
-	connToResp := make(chan model.ConnectionStatus)
+	connToResp := make(chan model.UiConnectionStatus)
 	ops := ui.MockHtmlOps{
 		BindAddr: "mockBindAddr:123",
 		Handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
 	}
-	u := ui.NewUi(connToReq, connToResp, &ops)
+	u := ui.NewUi(connToReq, connToResp, &ops, "address")
 	return u, connToReq, connToResp, &ops
 }

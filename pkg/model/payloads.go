@@ -37,6 +37,12 @@ func ToPayload(data []byte) Payload {
 		return ToSyncNodes(payloadData(data))
 	case WriteRequestType:
 		return ToWriteRequest(payloadData(data))
+	case WriteResultType:
+		return ToWriteResult(payloadData(data))
+	case ReadRequestType:
+		return ToReadRequest(payloadData(data))
+	case ReadResultType:
+		return ToReadResult(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}

@@ -17,6 +17,7 @@ package webdav
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"tealfs/pkg/model"
 	"time"
@@ -83,19 +84,19 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	// opening the root directory
 	if len(path) == 0 {
 		if !exists {
-			return openFileResp{err: errors.New("root doesn't exist")}
+			return openFileResp{err: fs.ErrNotExist}
 		}
 		return openFileResp{file: file}
 	}
 
 	// handle failIfExists scenario
 	if failIfExists && exists {
-		return openFileResp{err: errors.New("file exists")}
+		return openFileResp{err: fs.ErrExist}
 	}
 
 	// can't open a file that doesn't exist in read-only mode
 	if !exists && ro {
-		return openFileResp{err: errors.New("file not found")}
+		return openFileResp{err: fs.ErrNotExist}
 	}
 
 	if !exists {

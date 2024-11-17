@@ -75,7 +75,7 @@ func (m *MockConn) Write(b []byte) (n int, err error) {
 }
 
 func (m *MockConn) Close() error {
-	panic("not implemented3") // TODO: Implement
+	return nil
 }
 
 func (m *MockConn) LocalAddr() net.Addr {
@@ -83,7 +83,7 @@ func (m *MockConn) LocalAddr() net.Addr {
 }
 
 func (m *MockConn) RemoteAddr() net.Addr {
-	panic("not implemented5") // TODO: Implement
+	return MockAddr{}
 }
 
 func (m *MockConn) SetDeadline(t time.Time) error {
@@ -103,7 +103,7 @@ func (m MockAddr) Network() string {
 }
 
 func (m MockAddr) String() string {
-	return "mockaddress:123"
+	return "mockAddress:123"
 }
 
 type MockListener struct {

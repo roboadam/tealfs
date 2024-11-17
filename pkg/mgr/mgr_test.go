@@ -22,7 +22,7 @@ import (
 func TestConnectToMgr(t *testing.T) {
 	const expectedAddress = "some-address:123"
 
-	m := NewWithChanSize(0)
+	m := NewWithChanSize(0, "dummyAddress")
 	m.Start()
 
 	m.UiMgrConnectTos <- model.UiMgrConnectTo{
@@ -353,23 +353,21 @@ type connectedNode struct {
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
-	m := NewWithChanSize(0)
+	m := NewWithChanSize(0, "dummyAddress")
 	m.Start()
 	var nodesInCluster []connectedNode
 
 	for _, n := range nodes {
 		// Send a message to Mgr indicating another
 		// node has connected
-		m.ConnsMgrStatuses <- model.ConnectionStatus{
-			Type:          model.Connected,
-			RemoteAddress: n.address,
-			Id:            n.conn,
+		m.ConnsMgrStatuses <- model.NetConnectionStatus{
+			Type: model.Connected,
+			Id:   n.conn,
 		}
 
 		// Then Mgr should send an Iam payload to
 		// the appropriate connection id with its
 		// own node id
-		<-m.MgrUiStatuses
 		expectedIam := <-m.MgrConnsSends
 		payload := expectedIam.Payload
 		switch p := payload.(type) {
@@ -387,12 +385,15 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
 		// Send a message to Mgr indicating the newly
 		// connected node has sent us an Iam payload
 		iamPayload := model.IAm{
-			NodeId: n.node,
+			NodeId:  n.node,
+			Address: n.address,
 		}
 		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId:  n.conn,
 			Payload: &iamPayload,
 		}
+
+		<-m.MgrUiStatuses
 
 		nodesInCluster = append(nodesInCluster, n)
 		var payloadsFromMgr []model.MgrConnsSend

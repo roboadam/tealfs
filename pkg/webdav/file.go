@@ -16,7 +16,6 @@ package webdav
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"tealfs/pkg/model"
@@ -114,7 +113,6 @@ func (f *File) Write(p []byte) (n int, err error) {
 		newData := make([]byte, needToGrow)
 		f.Block.Data = append(f.Block.Data, newData...)
 		f.SizeValue = int64(len(f.Block.Data))
-		fmt.Println("Set size value to", f.SizeValue, "in Write() for", f.Name())
 		for _, b := range p {
 			f.Block.Data[f.Position] = b
 			f.Position++
@@ -150,7 +148,6 @@ func (f *File) Name() string {
 }
 
 func (f *File) Size() int64 {
-	fmt.Println("Name:", f.Name(), "SIZE:", f.SizeValue)
 	return f.SizeValue
 }
 

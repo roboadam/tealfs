@@ -25,14 +25,14 @@ import (
 
 type Ui struct {
 	connToReq  chan model.UiMgrConnectTo
-	connToResp chan model.ConnectionStatus
-	statuses   map[model.ConnId]model.ConnectionStatus
+	connToResp chan model.UiConnectionStatus
+	statuses   map[model.ConnId]model.UiConnectionStatus
 	sMux       sync.Mutex
 	ops        HtmlOps
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.ConnectionStatus, ops HtmlOps) *Ui {
-	statuses := make(map[model.ConnId]model.ConnectionStatus)
+func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string) *Ui {
+	statuses := make(map[model.ConnId]model.UiConnectionStatus)
 	ui := Ui{
 		connToReq:  connToReq,
 		connToResp: connToResp,
@@ -41,13 +41,13 @@ func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.Connection
 	}
 	ui.registerHttpHandlers()
 	ui.handleRoot()
-	go ui.start()
+	go ui.start(bindAddr)
 	return &ui
 }
 
-func (ui *Ui) start() {
+func (ui *Ui) start(bindAddr string) {
 	go ui.handleMessages()
-	err := ui.ops.ListenAndServe("localhost:8081")
+	err := ui.ops.ListenAndServe(bindAddr)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -59,7 +59,7 @@ func (ui *Ui) handleMessages() {
 	}
 }
 
-func (ui *Ui) saveStatus(status model.ConnectionStatus) {
+func (ui *Ui) saveStatus(status model.UiConnectionStatus) {
 	ui.sMux.Lock()
 	defer ui.sMux.Unlock()
 	ui.statuses[status.Id] = status
@@ -67,7 +67,7 @@ func (ui *Ui) saveStatus(status model.ConnectionStatus) {
 
 func (ui *Ui) registerHttpHandlers() {
 	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
+		if r.Method != http.MethodPut {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}

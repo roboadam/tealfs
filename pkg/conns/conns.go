@@ -24,16 +24,25 @@ type Conns struct {
 	netConns      map[model.ConnId]net.Conn
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
-	outStatuses   chan<- model.ConnectionStatus
+	outStatuses   chan<- model.NetConnectionStatus
 	outReceives   chan<- model.ConnsMgrReceive
 	inConnectTo   <-chan model.MgrConnsConnectTo
 	inSends       <-chan model.MgrConnsSend
 	Address       string
 	provider      ConnectionProvider
+	nodeId        model.NodeId
 }
 
-func NewConns(outStatuses chan<- model.ConnectionStatus, outReceives chan<- model.ConnsMgrReceive, inConnectTo <-chan model.MgrConnsConnectTo, inSends <-chan model.MgrConnsSend, provider ConnectionProvider) Conns {
-	listener, err := provider.GetListener("localhost:0")
+func NewConns(
+	outStatuses chan<- model.NetConnectionStatus,
+	outReceives chan<- model.ConnsMgrReceive,
+	inConnectTo <-chan model.MgrConnsConnectTo,
+	inSends <-chan model.MgrConnsSend,
+	provider ConnectionProvider,
+	address string,
+	nodeId model.NodeId) Conns {
+
+	listener, err := provider.GetListener(address)
 	if err != nil {
 		panic(err)
 	}
@@ -47,6 +56,7 @@ func NewConns(outStatuses chan<- model.ConnectionStatus, outReceives chan<- mode
 		inSends:       inSends,
 		Address:       listener.Addr().String(),
 		provider:      provider,
+		nodeId:        nodeId,
 	}
 
 	go c.consumeChannels()
@@ -60,30 +70,27 @@ func (c *Conns) consumeChannels() {
 		select {
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
-			c.outStatuses <- model.ConnectionStatus{
-				Type:          model.Connected,
-				Msg:           "Success",
-				RemoteAddress: acceptedConn.netConn.LocalAddr().String(),
-				Id:            id,
+			c.outStatuses <- model.NetConnectionStatus{
+				Type: model.Connected,
+				Msg:  "Success",
+				Id:   id,
 			}
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
-				c.outStatuses <- model.ConnectionStatus{
-					Type:          model.Connected,
-					Msg:           "Success",
-					RemoteAddress: connectTo.Address,
-					Id:            id,
+				c.outStatuses <- model.NetConnectionStatus{
+					Type: model.Connected,
+					Msg:  "Success",
+					Id:   id,
 				}
 				go c.consumeData(id)
 			} else {
-				c.outStatuses <- model.ConnectionStatus{
-					Type:          model.NotConnected,
-					Msg:           "Failure connecting",
-					RemoteAddress: connectTo.Address,
-					Id:            id,
+				c.outStatuses <- model.NetConnectionStatus{
+					Type: model.NotConnected,
+					Msg:  "Failure connecting",
+					Id:   id,
 				}
 			}
 		case sendReq := <-c.inSends:
