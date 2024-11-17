@@ -15,8 +15,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 )
@@ -27,11 +29,31 @@ func TestOneNodeCluster(t *testing.T) {
 	nodeAddress := "localhost:8082"
 	storagePath := "tmp"
 	webdavUrl := "http://" + webdavAddress
+	client := http.Client{}
+	os.Mkdir(storagePath, 0755)
+	defer os.RemoveAll(storagePath)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	startTealFs(storagePath, webdavAddress, uiAddress, nodeAddress, ctx)
+	go startTealFs(storagePath, webdavAddress, uiAddress, nodeAddress, ctx)
 	time.Sleep(time.Second) // TODO have this wait on a message if possible
 
-	http.NewRequestWithContext(ctx, http.MethodPut, webdavAddress + "/text.txt", )
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, webdavUrl+"/text.txt", bytes.NewBufferString("test content"))
+	if err != nil {
+		t.Error("error creating request", err)
+		return
+	}
+	req.Header.Set("Content-Type", "text/plain")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Error("error executing request", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		t.Error("error response", resp.Status)
+		return
+	}
 }
