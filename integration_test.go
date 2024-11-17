@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -28,7 +29,8 @@ func TestOneNodeCluster(t *testing.T) {
 	uiAddress := "localhost:8081"
 	nodeAddress := "localhost:8082"
 	storagePath := "tmp"
-	webdavUrl := "http://" + webdavAddress
+	webdavUrl := "http://" + webdavAddress + "/test.txt"
+	fileContents := "test content"
 	os.Mkdir(storagePath, 0755)
 	defer os.RemoveAll(storagePath)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -37,7 +39,7 @@ func TestOneNodeCluster(t *testing.T) {
 	go startTealFs(storagePath, webdavAddress, uiAddress, nodeAddress, ctx)
 	time.Sleep(time.Second)
 
-	resp, ok := putFile(ctx, webdavUrl+"/test.txt", "test content", t)
+	resp, ok := putFile(ctx, webdavUrl, fileContents, t)
 	if !ok {
 		return
 	}
@@ -47,6 +49,36 @@ func TestOneNodeCluster(t *testing.T) {
 		t.Error("error response", resp.Status)
 		return
 	}
+
+	fetchedContent, ok := getFile(ctx, webdavUrl, t)
+	if !ok {
+		return
+	}
+	if fetchedContent != fileContents {
+		t.Error("unexpected contents", resp.Status)
+		return
+	}
+}
+
+func getFile(ctx context.Context, url string, t *testing.T) (string, bool) {
+	client := http.Client{}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		t.Error("error creating request", err)
+		return "", false
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Error("error executing request", err)
+		return "", false
+	}
+	body, err := readAllToString(resp.Body)
+	if err != nil {
+		t.Error("error reading body", err)
+		return "", false
+	}
+	return body, true
 }
 
 func putFile(ctx context.Context, url string, contents string, t *testing.T) (*http.Response, bool) {
@@ -64,4 +96,13 @@ func putFile(ctx context.Context, url string, contents string, t *testing.T) (*h
 		return nil, false
 	}
 	return resp, true
+}
+
+func readAllToString(rc io.ReadCloser) (string, error) {
+	defer rc.Close()
+	bytes, err := io.ReadAll(rc)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }
