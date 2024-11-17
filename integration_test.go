@@ -90,6 +90,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 	defer resp.Body.Close()
+	time.Sleep(time.Second)
 
 	if resp.StatusCode >= 400 {
 		t.Error("error response", resp.Status)

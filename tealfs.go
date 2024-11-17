@@ -43,6 +43,7 @@ func startTealFs(storagePath string, webdavAddress string, uiAddress string, nod
 		m.MgrConnsSends,
 		&conns.TcpConnectionProvider{},
 		nodeAddress,
+		m.NodeId,
 	)
 	p := disk.NewPath(storagePath, &disk.DiskFileOps{})
 	_ = disk.New(p,

@@ -176,6 +176,10 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 				m.MgrDiskWrites <- *p
 			}
 		}
+	case *model.ReadRequest:
+		m.MgrDiskReads <- *p
+	default:
+		fmt.Println(m.NodeId, "Received unknown payload", p)
 	}
 }
 func (m *Mgr) handleDiskWrites(r model.WriteResult) {
@@ -244,7 +248,7 @@ func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 				Payload: &rr,
 			}
 		} else {
-			fmt.Println(m.NodeId, "Sending MgrWebdavGets unsucessful read because not connected")
+			fmt.Println(m.NodeId, "Sending MgrWebdavGets unsuccessful read because not connected")
 			m.MgrWebdavGets <- model.ReadResult{
 				Ok:      false,
 				Message: "Not connected",

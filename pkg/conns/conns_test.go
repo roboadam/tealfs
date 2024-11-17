@@ -112,6 +112,6 @@ func newConnsTest() (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrR
 	inConnectTo := make(chan model.MgrConnsConnectTo)
 	inSends := make(chan model.MgrConnsSend)
 	provider := NewMockConnectionProvider()
-	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123")
+	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId())
 	return c, outStatuses, outReceives, inConnectTo, inSends, provider
 }
