@@ -103,9 +103,6 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 		block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
 		file = &File{
 			IsDirValue:   isDirForCreate,
-			Append:       append,
-			Create:       create,
-			Truncate:     truncate,
 			SizeValue:    0,
 			ModeValue:    0,
 			Modtime:      time.Now(),

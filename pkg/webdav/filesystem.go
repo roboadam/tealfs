@@ -48,9 +48,6 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 	block := model.Block{Id: "", Data: []byte{}}
 	root := File{
 		IsDirValue: true,
-		Append:     false,
-		Create:     false,
-		Truncate:   false,
 		SizeValue:  0,
 		ModeValue:  fs.ModeDir,
 		Modtime:    time.Time{},
@@ -163,9 +160,6 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	}
 	dir := File{
 		IsDirValue: true,
-		Append:     false,
-		Create:     false,
-		Truncate:   false,
 		SizeValue:  0,
 		ModeValue:  0,
 		Modtime:    time.Now(),

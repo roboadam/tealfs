@@ -24,9 +24,6 @@ import (
 
 type File struct {
 	IsDirValue   bool
-	Append       bool
-	Create       bool
-	Truncate     bool
 	SizeValue    int64
 	ModeValue    fs.FileMode
 	Modtime      time.Time

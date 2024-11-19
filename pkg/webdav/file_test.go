@@ -25,9 +25,6 @@ import (
 func TestSeek(t *testing.T) {
 	file := webdav.File{
 		IsDirValue:   false,
-		Append:       false,
-		Create:       false,
-		Truncate:     false,
 		SizeValue:    5,
 		ModeValue:    0,
 		Modtime:      time.Now(),
