@@ -24,12 +24,8 @@ import (
 
 type File struct {
 	IsDirValue   bool
-	RO           bool
-	RW           bool
-	WO           bool
 	Append       bool
 	Create       bool
-	FailIfExists bool
 	Truncate     bool
 	SizeValue    int64
 	ModeValue    fs.FileMode
@@ -40,6 +36,11 @@ type File struct {
 	hasData      bool
 	path         Path
 	fileSystem   *FileSystem
+}
+
+func (f *File) Serialize() []byte {
+	value := model.BoolToBytes(f.IsDirValue)
+	return value
 }
 
 func (f *File) Close() error {
