@@ -65,7 +65,6 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	create := os.O_CREATE&req.flag != 0
 	failIfExists := os.O_EXCL&req.flag != 0
 	truncate := os.O_TRUNC&req.flag != 0
-	isDirForCreate := req.perm.IsDir()
 
 	if ro && (append || create || failIfExists || truncate) {
 		return openFileResp{err: errors.New("invalid flag")}
@@ -102,16 +101,15 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	if !exists {
 		block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
 		file = &File{
-			IsDirValue:   isDirForCreate,
-			SizeValue:    0,
-			ModeValue:    0,
-			Modtime:      time.Now(),
-			SysValue:     nil,
-			Position:     0,
-			Block:        block,
-			hasData:      false,
-			path:         path,
-			fileSystem:   f,
+			SizeValue:  0,
+			ModeValue:  req.perm,
+			Modtime:    time.Now(),
+			SysValue:   nil,
+			Position:   0,
+			Block:      block,
+			hasData:    false,
+			path:       path,
+			fileSystem: f,
 		}
 		f.FilesByPath.add(file)
 	}

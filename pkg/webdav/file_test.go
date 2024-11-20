@@ -24,12 +24,11 @@ import (
 
 func TestSeek(t *testing.T) {
 	file := webdav.File{
-		IsDirValue:   false,
-		SizeValue:    5,
-		ModeValue:    0,
-		Modtime:      time.Now(),
-		SysValue:     nil,
-		Position:     0,
+		SizeValue: 5,
+		ModeValue: 0,
+		Modtime:   time.Now(),
+		SysValue:  nil,
+		Position:  0,
 		Block: model.Block{
 			Id:   "",
 			Data: []byte{1, 2, 3, 4, 5},

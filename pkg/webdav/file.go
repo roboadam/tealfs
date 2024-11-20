@@ -23,20 +23,23 @@ import (
 )
 
 type File struct {
-	IsDirValue   bool
-	SizeValue    int64
-	ModeValue    fs.FileMode
-	Modtime      time.Time
-	SysValue     any
-	Position     int64
-	Block        model.Block
-	hasData      bool
-	path         Path
-	fileSystem   *FileSystem
+	SizeValue  int64
+	ModeValue  fs.FileMode
+	Modtime    time.Time
+	SysValue   any
+	Position   int64
+	Block      model.Block
+	hasData    bool
+	path       Path
+	fileSystem *FileSystem
 }
 
 func (f *File) Serialize() []byte {
-	value := model.BoolToBytes(f.IsDirValue)
+	value := model.IntToBytes(uint32(f.SizeValue))
+	value = append(value, model.IntToBytes(uint32(f.ModeValue))...)
+	value = append(value, model.IntToBytes(uint32(f.Modtime.Unix()))...)
+	value = append(value, model.StringToBytes(string(f.Block.Id))...)
+	// value = append(value, model.StringToBytes(string(f.path[]))...)
 	return value
 }
 
@@ -158,7 +161,7 @@ func (f *File) ModTime() time.Time {
 }
 
 func (f *File) IsDir() bool {
-	return f.IsDirValue
+	return f.ModeValue.IsDir()
 }
 
 func (f *File) Sys() any {

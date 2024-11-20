@@ -76,11 +76,15 @@ func stripEmptyStringsFromEnds(values []string) []string {
 }
 
 func (p Path) toName() pathValue {
-	name := ""
-	for _, seg := range p {
-		name += string(seg)
+	return pathValue(strings.Join(pathToStrings(p), "/"))
+}
+
+func pathToStrings(input Path) []string {
+	output := make([]string, len(input))
+	for i, v := range input {
+		output[i] = string(v) // Convert each element
 	}
-	return pathValue(name)
+	return output
 }
 
 func (p Path) base() (Path, error) {
