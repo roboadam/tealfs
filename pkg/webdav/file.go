@@ -42,16 +42,16 @@ func (f *File) ToBytes() []byte {
 	return value
 }
 
-func FileFromBytes(raw []byte, fileSystem *FileSystem) (File, error) {
+func FileFromBytes(raw []byte, fileSystem *FileSystem) (File, []byte, error) {
 	size, remainder := model.IntFromBytes(raw)
 	mode, remainder := model.IntFromBytes(remainder)
 	modtimeRaw, remainder := model.IntFromBytes(remainder)
 	blockId, remainder := model.StringFromBytes(remainder)
-	rawPath, _ := model.StringFromBytes(remainder)
+	rawPath, remainder := model.StringFromBytes(remainder)
 
 	path, err := PathFromName(rawPath)
 	if err != nil {
-		return File{}, err
+		return File{}, nil, err
 	}
 	modTime := time.Unix(int64(modtimeRaw), 0)
 	return File{
@@ -66,7 +66,7 @@ func FileFromBytes(raw []byte, fileSystem *FileSystem) (File, error) {
 		HasData:    false,
 		Path:       path,
 		FileSystem: fileSystem,
-	}, nil
+	}, remainder, nil
 }
 
 func (f *File) Close() error {

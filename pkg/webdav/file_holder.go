@@ -38,6 +38,30 @@ func (f *fileHolder) get(p Path) (*File, bool) {
 	return file, exists
 }
 
+func (f *fileHolder) ToBytes() []byte {
+	result := []byte{}
+	for _, file := range f.data {
+		result = append(result, file.ToBytes()...)
+	}
+	return result
+}
+
+func FileHolderFromBytes(data []byte, fileSystem *FileSystem) (fileHolder, error) {
+	fh := fileHolder{
+		data: map[pathValue]*File{},
+	}
+	var file File
+	remainder := data
+	var err error
+	for {
+		file, remainder, err = FileFromBytes(remainder, fileSystem)
+		if err != nil {
+			return fileHolder{}, err
+		}
+		fh.data[f.]
+	}
+}
+
 func newPathSeg(name string) (pathSeg, error) {
 	if name == "" {
 		return "", errors.New("invalid path segment")
