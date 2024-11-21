@@ -104,12 +104,11 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			SizeValue:  0,
 			ModeValue:  req.perm,
 			Modtime:    time.Now(),
-			SysValue:   nil,
 			Position:   0,
 			Block:      block,
-			hasData:    false,
-			path:       path,
-			fileSystem: f,
+			HasData:    false,
+			Path:       path,
+			FileSystem: f,
 		}
 		f.FilesByPath.add(file)
 	}

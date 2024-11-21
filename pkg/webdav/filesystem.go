@@ -50,12 +50,11 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		SizeValue:  0,
 		ModeValue:  fs.ModeDir,
 		Modtime:    time.Time{},
-		SysValue:   nil,
 		Position:   0,
 		Block:      block,
-		hasData:    false,
-		path:       []pathSeg{},
-		fileSystem: &filesystem,
+		HasData:    false,
+		Path:       []pathSeg{},
+		FileSystem: &filesystem,
 	}
 	filesystem.FilesByPath.add(&root)
 	go filesystem.run()
@@ -86,7 +85,7 @@ func (f *FileSystem) immediateChildren(path Path) []*File {
 	children := make([]*File, 0)
 	neededPathLen := len(path) + 1
 	for _, file := range f.FilesByPath.allFiles() {
-		if len(file.path) == neededPathLen && file.path.startsWith(path) {
+		if len(file.Path) == neededPathLen && file.Path.startsWith(path) {
 			children = append(children, file)
 		}
 	}
@@ -161,12 +160,11 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 		SizeValue:  0,
 		ModeValue:  fs.ModeDir,
 		Modtime:    time.Now(),
-		SysValue:   nil,
 		Position:   0,
 		Block:      block,
-		hasData:    false,
-		path:       p,
-		fileSystem: f,
+		HasData:    false,
+		Path:       p,
+		FileSystem: f,
 	}
 
 	f.FilesByPath.add(&dir)
@@ -189,8 +187,8 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 		return errors.New("file does not exist")
 	}
 	for _, file := range f.FilesByPath.allFiles() {
-		if file.path.startsWith(pathToDelete) {
-			f.FilesByPath.delete(file.path)
+		if file.Path.startsWith(pathToDelete) {
+			f.FilesByPath.delete(file.Path)
 		}
 	}
 	f.FilesByPath.delete(pathToDelete)
@@ -245,15 +243,15 @@ func (f *FileSystem) rename(req *renameReq) error {
 
 	if file.IsDir() {
 		for _, child := range f.FilesByPath.allFiles() {
-			if child.path.startsWith(oldPath) {
-				f.FilesByPath.delete(child.path)
-				child.path = child.path.swapPrefix(oldPath, newPath)
+			if child.Path.startsWith(oldPath) {
+				f.FilesByPath.delete(child.Path)
+				child.Path = child.Path.swapPrefix(oldPath, newPath)
 				f.FilesByPath.add(child)
 			}
 		}
 	} else {
 		f.FilesByPath.delete(oldPath)
-		file.path = newPath
+		file.Path = newPath
 		f.FilesByPath.add(file)
 	}
 

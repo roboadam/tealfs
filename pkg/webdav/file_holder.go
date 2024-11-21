@@ -21,7 +21,7 @@ func (f *fileHolder) allFiles() []*File {
 }
 
 func (f *fileHolder) add(file *File) {
-	f.data[file.path.toName()] = file
+	f.data[file.Path.toName()] = file
 }
 
 func (f *fileHolder) delete(path Path) {

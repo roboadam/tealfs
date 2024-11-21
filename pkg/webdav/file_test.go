@@ -27,7 +27,6 @@ func TestSeek(t *testing.T) {
 		SizeValue: 5,
 		ModeValue: 0,
 		Modtime:   time.Now(),
-		SysValue:  nil,
 		Position:  0,
 		Block: model.Block{
 			Id:   "",
@@ -69,5 +68,47 @@ func TestSeek(t *testing.T) {
 	_, err = file.Seek(-4, io.SeekCurrent)
 	if err == nil {
 		t.Error("position shouldn't be allowed to be negative")
+	}
+}
+
+func TestSerialize(t *testing.T) {
+	nodeId := model.NewNodeId()
+	fileSystem := webdav.NewFileSystem(nodeId)
+	path, _ := webdav.PathFromName("/hello/world")
+	file := webdav.File{
+		SizeValue: 123,
+		ModeValue: 234,
+		Modtime:   time.Unix(123456, 0),
+		Position:  345,
+		Block: model.Block{
+			Id:   model.NewBlockId(),
+			Data: []byte{4, 5, 6},
+		},
+		HasData:    true,
+		Path:       path,
+		FileSystem: &fileSystem,
+	}
+
+	fileBytes := file.ToBytes()
+	fileClone, err := webdav.FileFromBytes(fileBytes, &fileSystem)
+	if err != nil {
+		t.Error("error serializing file", err)
+		return
+	}
+
+	if file.Block.Id != fileClone.Block.Id {
+		t.Error("block id is different", file.Block.Id, fileClone.Block.Id)
+	}
+	if file.Name() != fileClone.Name() {
+		t.Error("name is different", file.Name(), fileClone.Name())
+	}
+	if file.Size() != fileClone.Size() {
+		t.Error("size is different", file.Size(), fileClone.Size())
+	}
+	if file.Mode() != fileClone.Mode() {
+		t.Error("mode is different", file.Mode(), fileClone.Mode())
+	}
+	if file.ModTime() != fileClone.ModTime() {
+		t.Error("modtime is different", file.ModTime(), fileClone.ModTime())
 	}
 }
