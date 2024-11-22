@@ -58,7 +58,7 @@ func FileHolderFromBytes(data []byte, fileSystem *FileSystem) (fileHolder, error
 		if err != nil {
 			return fileHolder{}, err
 		}
-		fh.data[f.]
+		fh.data[file.Path.toName()] = &file
 	}
 }
 

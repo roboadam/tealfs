@@ -90,7 +90,7 @@ func TestSerialize(t *testing.T) {
 	}
 
 	fileBytes := file.ToBytes()
-	fileClone, err := webdav.FileFromBytes(fileBytes, &fileSystem)
+	fileClone, _, err := webdav.FileFromBytes(fileBytes, &fileSystem)
 	if err != nil {
 		t.Error("error serializing file", err)
 		return
