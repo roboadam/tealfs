@@ -9,12 +9,19 @@ import (
 type pathSeg string
 type Path []pathSeg
 type pathValue string
-type fileHolder struct {
+type FileHolder struct {
 	byPath    map[pathValue]*File
 	byBlockId map[model.BlockId]*File
 }
 
-func (f *fileHolder) allFiles() []*File {
+func NewFileHolder() FileHolder {
+	return FileHolder{
+		byPath:    make(map[pathValue]*File),
+		byBlockId: make(map[model.BlockId]*File),
+	}
+}
+
+func (f *FileHolder) allFiles() []*File {
 	result := []*File{}
 	for _, value := range f.byPath {
 		result = append(result, value)
@@ -22,27 +29,27 @@ func (f *fileHolder) allFiles() []*File {
 	return result
 }
 
-func (f *fileHolder) add(file *File) {
+func (f *FileHolder) add(file *File) {
 	f.byPath[file.Path.toName()] = file
 	f.byBlockId[file.Block.Id] = file
 }
 
-func (f *fileHolder) delete(file *File) {
+func (f *FileHolder) delete(file *File) {
 	delete(f.byPath, file.Path.toName())
 	delete(f.byBlockId, file.Block.Id)
 }
 
-func (f *fileHolder) exists(p Path) bool {
+func (f *FileHolder) exists(p Path) bool {
 	_, exists := f.byPath[p.toName()]
 	return exists
 }
 
-func (f *fileHolder) get(p Path) (*File, bool) {
+func (f *FileHolder) get(p Path) (*File, bool) {
 	file, exists := f.byPath[p.toName()]
 	return file, exists
 }
 
-func (f *fileHolder) ToBytes() []byte {
+func (f *FileHolder) ToBytes() []byte {
 	result := []byte{}
 	for _, file := range f.byPath {
 		result = append(result, file.ToBytes()...)
@@ -50,7 +57,7 @@ func (f *fileHolder) ToBytes() []byte {
 	return result
 }
 
-func (f *fileHolder) UpdateFile(update *File) {
+func (f *FileHolder) UpdateFile(update *File) {
 	toUpdate, exists := f.byBlockId[update.Block.Id]
 	if exists {
 		toUpdate.SizeValue = update.SizeValue
@@ -66,8 +73,8 @@ func (f *fileHolder) UpdateFile(update *File) {
 	}
 }
 
-func FileHolderFromBytes(data []byte, fileSystem *FileSystem) (fileHolder, error) {
-	fh := fileHolder{
+func FileHolderFromBytes(data []byte, fileSystem *FileSystem) (FileHolder, error) {
+	fh := FileHolder{
 		byPath: map[pathValue]*File{},
 	}
 	var file File
@@ -76,7 +83,7 @@ func FileHolderFromBytes(data []byte, fileSystem *FileSystem) (fileHolder, error
 	for {
 		file, remainder, err = FileFromBytes(remainder, fileSystem)
 		if err != nil {
-			return fileHolder{}, err
+			return FileHolder{}, err
 		}
 		fh.byPath[file.Path.toName()] = &file
 	}

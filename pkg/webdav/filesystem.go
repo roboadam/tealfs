@@ -24,7 +24,7 @@ import (
 )
 
 type FileSystem struct {
-	FilesByPath  fileHolder
+	FilesByPath  FileHolder
 	mkdirReq     chan mkdirReq
 	openFileReq  chan openFileReq
 	removeAllReq chan removeAllReq
@@ -36,7 +36,7 @@ type FileSystem struct {
 
 func NewFileSystem(nodeId model.NodeId) FileSystem {
 	filesystem := FileSystem{
-		FilesByPath:  fileHolder{byPath: make(map[pathValue]*File)},
+		FilesByPath:  NewFileHolder(),
 		mkdirReq:     make(chan mkdirReq),
 		openFileReq:  make(chan openFileReq),
 		removeAllReq: make(chan removeAllReq),
@@ -183,15 +183,17 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 	if err != nil {
 		return err
 	}
-	if !f.FilesByPath.exists(pathToDelete) {
+
+	baseFile, exists := f.FilesByPath.get(pathToDelete)
+	if !exists {
 		return errors.New("file does not exist")
 	}
 	for _, file := range f.FilesByPath.allFiles() {
 		if file.Path.startsWith(pathToDelete) {
-			f.FilesByPath.delete(file.Path)
+			f.FilesByPath.delete(file)
 		}
 	}
-	f.FilesByPath.delete(pathToDelete)
+	f.FilesByPath.delete(baseFile)
 	return nil
 }
 
@@ -244,13 +246,13 @@ func (f *FileSystem) rename(req *renameReq) error {
 	if file.IsDir() {
 		for _, child := range f.FilesByPath.allFiles() {
 			if child.Path.startsWith(oldPath) {
-				f.FilesByPath.delete(child.Path)
+				f.FilesByPath.delete(child)
 				child.Path = child.Path.swapPrefix(oldPath, newPath)
 				f.FilesByPath.add(child)
 			}
 		}
 	} else {
-		f.FilesByPath.delete(oldPath)
+		f.FilesByPath.delete(file)
 		file.Path = newPath
 		f.FilesByPath.add(file)
 	}
