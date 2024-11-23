@@ -21,7 +21,7 @@ func NewFileHolder() FileHolder {
 	}
 }
 
-func (f *FileHolder) allFiles() []*File {
+func (f *FileHolder) AllFiles() []*File {
 	result := []*File{}
 	for _, value := range f.byPath {
 		result = append(result, value)
@@ -29,22 +29,22 @@ func (f *FileHolder) allFiles() []*File {
 	return result
 }
 
-func (f *FileHolder) add(file *File) {
+func (f *FileHolder) Add(file *File) {
 	f.byPath[file.Path.toName()] = file
 	f.byBlockId[file.Block.Id] = file
 }
 
-func (f *FileHolder) delete(file *File) {
+func (f *FileHolder) Delete(file *File) {
 	delete(f.byPath, file.Path.toName())
 	delete(f.byBlockId, file.Block.Id)
 }
 
-func (f *FileHolder) exists(p Path) bool {
+func (f *FileHolder) Exists(p Path) bool {
 	_, exists := f.byPath[p.toName()]
 	return exists
 }
 
-func (f *FileHolder) get(p Path) (*File, bool) {
+func (f *FileHolder) Get(p Path) (*File, bool) {
 	file, exists := f.byPath[p.toName()]
 	return file, exists
 }
@@ -74,19 +74,17 @@ func (f *FileHolder) UpdateFile(update *File) {
 }
 
 func FileHolderFromBytes(data []byte, fileSystem *FileSystem) (FileHolder, error) {
-	fh := FileHolder{
-		byPath: map[pathValue]*File{},
-	}
-	var file File
-	remainder := data
-	var err error
-	for {
-		file, remainder, err = FileFromBytes(remainder, fileSystem)
+	fh := NewFileHolder()
+	remainderOverall := data
+	for len(remainderOverall) > 0 {
+		file, remainderFromFile, err := FileFromBytes(remainderOverall, fileSystem)
+		remainderOverall = remainderFromFile
 		if err != nil {
 			return FileHolder{}, err
 		}
-		fh.byPath[file.Path.toName()] = &file
+		fh.Add(&file)
 	}
+	return fh, nil
 }
 
 func newPathSeg(name string) (pathSeg, error) {
@@ -128,6 +126,18 @@ func stripEmptyStringsFromEnds(values []string) []string {
 
 func (p Path) toName() pathValue {
 	return pathValue(strings.Join(pathToStrings(p), "/"))
+}
+
+func (p Path) Equals(p2 Path) bool {
+	if len(p) != len(p2) {
+		return false
+	}
+	for i := range p {
+		if p[i] != p2[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func pathToStrings(input Path) []string {

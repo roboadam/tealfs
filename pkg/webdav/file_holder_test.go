@@ -15,11 +15,85 @@
 package webdav_test
 
 import (
+	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
+	"time"
 )
 
 func TestSerializeFileHolder(t *testing.T) {
+	path1, _ := webdav.PathFromName("/hello/world")
+	path2, _ := webdav.PathFromName("/hello/planet")
+	file1 := webdav.File{
+		SizeValue: 1,
+		ModeValue: 2,
+		Modtime:   time.Unix(12345, 0),
+		Block:     model.Block{Id: model.NewBlockId()},
+		Path:      path1,
+	}
+	file2 := webdav.File{
+		SizeValue: 3,
+		ModeValue: 4,
+		Modtime:   time.Unix(67890, 0),
+		Block:     model.Block{Id: model.NewBlockId()},
+		Path:      path2,
+	}
+
 	fh := webdav.NewFileHolder()
-	fh.
+	fh.Add(&file1)
+	fh.Add(&file2)
+
+	fhAsBytes := fh.ToBytes()
+	fh2, err := webdav.FileHolderFromBytes(fhAsBytes, &webdav.FileSystem{})
+
+	if err != nil {
+		t.Error("error deserializing fileHolder")
+		return
+	}
+
+	if len(fh2.AllFiles()) != 2 {
+		t.Error("wrong number of files")
+		return
+	}
+
+	file1Copy, exists := fh2.Get(path1)
+	if !exists {
+		t.Error("file1 doesn't exist")
+		return
+	}
+
+	file2Copy, exists := fh2.Get(path2)
+	if !exists {
+		t.Error("file2 doesn't exist")
+		return
+	}
+
+	if !FileEquality(&file1, file1Copy) {
+		t.Error("file1 didn't deserialize properly")
+		return
+	}
+
+	if !FileEquality(&file2, file2Copy) {
+		t.Error("file2 didn't deserialize properly")
+		return
+	}
+}
+
+func FileEquality(f1 *webdav.File, f2 *webdav.File) bool {
+	if f1.Block.Id != f2.Block.Id {
+		return false
+	}
+	if f1.Size() != f2.Size() {
+		return false
+	}
+	if f1.Mode() != f2.Mode() {
+		return false
+	}
+	if f1.ModTime() != f2.ModTime() {
+		return false
+	}
+	if !f1.Path.Equals(f2.Path) {
+		return false
+	}
+	return true
 }

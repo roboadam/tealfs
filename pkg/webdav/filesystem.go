@@ -56,7 +56,7 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		Path:       []pathSeg{},
 		FileSystem: &filesystem,
 	}
-	filesystem.FilesByPath.add(&root)
+	filesystem.FilesByPath.Add(&root)
 	go filesystem.run()
 	return filesystem
 }
@@ -84,7 +84,7 @@ func (f *FileSystem) fetchBlock(id model.BlockId) model.ReadResult {
 func (f *FileSystem) immediateChildren(path Path) []*File {
 	children := make([]*File, 0)
 	neededPathLen := len(path) + 1
-	for _, file := range f.FilesByPath.allFiles() {
+	for _, file := range f.FilesByPath.AllFiles() {
 		if len(file.Path) == neededPathLen && file.Path.startsWith(path) {
 			children = append(children, file)
 		}
@@ -138,7 +138,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	if err != nil {
 		return err
 	}
-	exists := f.FilesByPath.exists(p)
+	exists := f.FilesByPath.Exists(p)
 	if exists {
 		return errors.New("path exists")
 	}
@@ -147,7 +147,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	if err != nil {
 		return err
 	}
-	exists = f.FilesByPath.exists(base)
+	exists = f.FilesByPath.Exists(base)
 	if !exists {
 		return errors.New("invalid path")
 	}
@@ -167,7 +167,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 		FileSystem: f,
 	}
 
-	f.FilesByPath.add(&dir)
+	f.FilesByPath.Add(&dir)
 
 	return nil
 }
@@ -184,16 +184,16 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 		return err
 	}
 
-	baseFile, exists := f.FilesByPath.get(pathToDelete)
+	baseFile, exists := f.FilesByPath.Get(pathToDelete)
 	if !exists {
 		return errors.New("file does not exist")
 	}
-	for _, file := range f.FilesByPath.allFiles() {
+	for _, file := range f.FilesByPath.AllFiles() {
 		if file.Path.startsWith(pathToDelete) {
-			f.FilesByPath.delete(file)
+			f.FilesByPath.Delete(file)
 		}
 	}
-	f.FilesByPath.delete(baseFile)
+	f.FilesByPath.Delete(baseFile)
 	return nil
 }
 
@@ -238,23 +238,23 @@ func (f *FileSystem) rename(req *renameReq) error {
 		return err
 	}
 
-	file, exists := f.FilesByPath.get(oldPath)
+	file, exists := f.FilesByPath.Get(oldPath)
 	if !exists {
 		return errors.New("file not found")
 	}
 
 	if file.IsDir() {
-		for _, child := range f.FilesByPath.allFiles() {
+		for _, child := range f.FilesByPath.AllFiles() {
 			if child.Path.startsWith(oldPath) {
-				f.FilesByPath.delete(child)
+				f.FilesByPath.Delete(child)
 				child.Path = child.Path.swapPrefix(oldPath, newPath)
-				f.FilesByPath.add(child)
+				f.FilesByPath.Add(child)
 			}
 		}
 	} else {
-		f.FilesByPath.delete(file)
+		f.FilesByPath.Delete(file)
 		file.Path = newPath
-		f.FilesByPath.add(file)
+		f.FilesByPath.Add(file)
 	}
 
 	return nil
