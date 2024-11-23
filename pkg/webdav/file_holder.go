@@ -3,52 +3,72 @@ package webdav
 import (
 	"errors"
 	"strings"
+	"tealfs/pkg/model"
 )
 
 type pathSeg string
 type Path []pathSeg
 type pathValue string
 type fileHolder struct {
-	data map[pathValue]*File
+	byPath    map[pathValue]*File
+	byBlockId map[model.BlockId]*File
 }
 
 func (f *fileHolder) allFiles() []*File {
 	result := []*File{}
-	for _, value := range f.data {
+	for _, value := range f.byPath {
 		result = append(result, value)
 	}
 	return result
 }
 
 func (f *fileHolder) add(file *File) {
-	f.data[file.Path.toName()] = file
+	f.byPath[file.Path.toName()] = file
+	f.byBlockId[file.Block.Id] = file
 }
 
-func (f *fileHolder) delete(path Path) {
-	delete(f.data, path.toName())
+func (f *fileHolder) delete(file *File) {
+	delete(f.byPath, file.Path.toName())
+	delete(f.byBlockId, file.Block.Id)
 }
 
 func (f *fileHolder) exists(p Path) bool {
-	_, exists := f.data[p.toName()]
+	_, exists := f.byPath[p.toName()]
 	return exists
 }
 
 func (f *fileHolder) get(p Path) (*File, bool) {
-	file, exists := f.data[p.toName()]
+	file, exists := f.byPath[p.toName()]
 	return file, exists
 }
 
 func (f *fileHolder) ToBytes() []byte {
 	result := []byte{}
-	for _, file := range f.data {
+	for _, file := range f.byPath {
 		result = append(result, file.ToBytes()...)
 	}
 	return result
 }
 
+func (f *fileHolder) UpdateFile(update *File) {
+	toUpdate, exists := f.byBlockId[update.Block.Id]
+	if exists {
+		toUpdate.SizeValue = update.SizeValue
+		toUpdate.ModeValue = update.ModeValue
+		toUpdate.Modtime = update.Modtime
+		oldPath := toUpdate.Path
+		toUpdate.Path = update.Path
+		delete(f.byPath, oldPath.toName())
+		f.byPath[toUpdate.Path.toName()] = toUpdate
+	} else {
+		f.byBlockId[toUpdate.Block.Id] = toUpdate
+		f.byPath[toUpdate.Path.toName()] = toUpdate
+	}
+}
+
 func FileHolderFromBytes(data []byte, fileSystem *FileSystem) (fileHolder, error) {
 	fh := fileHolder{
-		data: map[pathValue]*File{},
+		byPath: map[pathValue]*File{},
 	}
 	var file File
 	remainder := data
@@ -58,7 +78,7 @@ func FileHolderFromBytes(data []byte, fileSystem *FileSystem) (fileHolder, error
 		if err != nil {
 			return fileHolder{}, err
 		}
-		fh.data[file.Path.toName()] = &file
+		fh.byPath[file.Path.toName()] = &file
 	}
 }
 

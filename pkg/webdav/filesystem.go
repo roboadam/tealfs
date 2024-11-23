@@ -36,7 +36,7 @@ type FileSystem struct {
 
 func NewFileSystem(nodeId model.NodeId) FileSystem {
 	filesystem := FileSystem{
-		FilesByPath:  fileHolder{data: make(map[pathValue]*File)},
+		FilesByPath:  fileHolder{byPath: make(map[pathValue]*File)},
 		mkdirReq:     make(chan mkdirReq),
 		openFileReq:  make(chan openFileReq),
 		removeAllReq: make(chan removeAllReq),
@@ -45,7 +45,7 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		WriteReqResp: make(chan WriteReqResp),
 		nodeId:       nodeId,
 	}
-	block := model.Block{Id: "", Data: []byte{}}
+	block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
 	root := File{
 		SizeValue:  0,
 		ModeValue:  fs.ModeDir,
@@ -153,7 +153,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	}
 
 	block := model.Block{
-		Id:   "",
+		Id:   model.NewBlockId(),
 		Data: []byte{},
 	}
 	dir := File{
