@@ -168,6 +168,10 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	}
 
 	f.fileHolder.Add(&dir)
+	err = f.persistFileIndex()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -194,6 +198,24 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 		}
 	}
 	f.fileHolder.Delete(baseFile)
+
+	err = f.persistFileIndex()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *FileSystem) persistFileIndex() error {
+	result := f.pushBlock(model.Block{
+		Id:   "fileIndex",
+		Data: f.fileHolder.ToBytes(),
+	})
+
+	if !result.Ok {
+		return errors.New(result.Message)
+	}
 	return nil
 }
 
@@ -255,6 +277,11 @@ func (f *FileSystem) rename(req *renameReq) error {
 		f.fileHolder.Delete(file)
 		file.Path = newPath
 		f.fileHolder.Add(file)
+	}
+
+	err = f.persistFileIndex()
+	if err != nil {
+		return err
 	}
 
 	return nil
