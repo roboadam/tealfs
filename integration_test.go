@@ -56,7 +56,7 @@ func TestOneNodeCluster(t *testing.T) {
 		return
 	}
 	if fetchedContent != fileContents {
-		t.Error("unexpected contents", resp.Status)
+		t.Error("unexpected contents got:", fetchedContent, "expected:", fileContents)
 		return
 	}
 }
