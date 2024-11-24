@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type pathSeg string
@@ -57,7 +58,7 @@ func (f *FileHolder) ToBytes() []byte {
 	return result
 }
 
-func (f *FileHolder) UpdateFile(update *File) {
+func (f *FileHolder) updateFile(update *File) {
 	toUpdate, exists := f.byBlockId[update.Block.Id]
 	if exists {
 		toUpdate.SizeValue = update.SizeValue
@@ -68,23 +69,28 @@ func (f *FileHolder) UpdateFile(update *File) {
 		delete(f.byPath, oldPath.toName())
 		f.byPath[toUpdate.Path.toName()] = toUpdate
 	} else {
-		f.byBlockId[toUpdate.Block.Id] = toUpdate
-		f.byPath[toUpdate.Path.toName()] = toUpdate
+		f.Add(update)
 	}
 }
 
-func FileHolderFromBytes(data []byte, fileSystem *FileSystem) (FileHolder, error) {
-	fh := NewFileHolder()
+func (f *FileHolder) UpdateFileHolderFromBytes(data []byte, fileSystem *FileSystem) error {
+	allBlockIds := set.NewSet[model.BlockId]()
 	remainderOverall := data
 	for len(remainderOverall) > 0 {
 		file, remainderFromFile, err := FileFromBytes(remainderOverall, fileSystem)
 		remainderOverall = remainderFromFile
 		if err != nil {
-			return FileHolder{}, err
+			return err
 		}
-		fh.Add(&file)
+		allBlockIds.Add(file.Block.Id)
+		f.updateFile(&file)
 	}
-	return fh, nil
+	for _, file := range f.AllFiles() {
+		if !allBlockIds.Exists(file.Block.Id) {
+			f.Delete(file)
+		}
+	}
+	return nil
 }
 
 func newPathSeg(name string) (pathSeg, error) {

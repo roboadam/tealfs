@@ -44,7 +44,8 @@ func TestSerializeFileHolder(t *testing.T) {
 	fh.Add(&file2)
 
 	fhAsBytes := fh.ToBytes()
-	fh2, err := webdav.FileHolderFromBytes(fhAsBytes, &webdav.FileSystem{})
+	fh2 := webdav.NewFileHolder()
+	err := fh2.UpdateFileHolderFromBytes(fhAsBytes, &webdav.FileSystem{})
 
 	if err != nil {
 		t.Error("error deserializing fileHolder")

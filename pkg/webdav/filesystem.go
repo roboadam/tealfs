@@ -24,7 +24,7 @@ import (
 )
 
 type FileSystem struct {
-	FilesByPath  FileHolder
+	fileHolder   FileHolder
 	mkdirReq     chan mkdirReq
 	openFileReq  chan openFileReq
 	removeAllReq chan removeAllReq
@@ -36,7 +36,7 @@ type FileSystem struct {
 
 func NewFileSystem(nodeId model.NodeId) FileSystem {
 	filesystem := FileSystem{
-		FilesByPath:  NewFileHolder(),
+		fileHolder:   NewFileHolder(),
 		mkdirReq:     make(chan mkdirReq),
 		openFileReq:  make(chan openFileReq),
 		removeAllReq: make(chan removeAllReq),
@@ -56,7 +56,7 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		Path:       []pathSeg{},
 		FileSystem: &filesystem,
 	}
-	filesystem.FilesByPath.Add(&root)
+	filesystem.fileHolder.Add(&root)
 	go filesystem.run()
 	return filesystem
 }
@@ -84,7 +84,7 @@ func (f *FileSystem) fetchBlock(id model.BlockId) model.ReadResult {
 func (f *FileSystem) immediateChildren(path Path) []*File {
 	children := make([]*File, 0)
 	neededPathLen := len(path) + 1
-	for _, file := range f.FilesByPath.AllFiles() {
+	for _, file := range f.fileHolder.AllFiles() {
 		if len(file.Path) == neededPathLen && file.Path.startsWith(path) {
 			children = append(children, file)
 		}
@@ -138,7 +138,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	if err != nil {
 		return err
 	}
-	exists := f.FilesByPath.Exists(p)
+	exists := f.fileHolder.Exists(p)
 	if exists {
 		return errors.New("path exists")
 	}
@@ -147,7 +147,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	if err != nil {
 		return err
 	}
-	exists = f.FilesByPath.Exists(base)
+	exists = f.fileHolder.Exists(base)
 	if !exists {
 		return errors.New("invalid path")
 	}
@@ -167,7 +167,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 		FileSystem: f,
 	}
 
-	f.FilesByPath.Add(&dir)
+	f.fileHolder.Add(&dir)
 
 	return nil
 }
@@ -184,16 +184,16 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 		return err
 	}
 
-	baseFile, exists := f.FilesByPath.Get(pathToDelete)
+	baseFile, exists := f.fileHolder.Get(pathToDelete)
 	if !exists {
 		return errors.New("file does not exist")
 	}
-	for _, file := range f.FilesByPath.AllFiles() {
+	for _, file := range f.fileHolder.AllFiles() {
 		if file.Path.startsWith(pathToDelete) {
-			f.FilesByPath.Delete(file)
+			f.fileHolder.Delete(file)
 		}
 	}
-	f.FilesByPath.Delete(baseFile)
+	f.fileHolder.Delete(baseFile)
 	return nil
 }
 
@@ -238,23 +238,23 @@ func (f *FileSystem) rename(req *renameReq) error {
 		return err
 	}
 
-	file, exists := f.FilesByPath.Get(oldPath)
+	file, exists := f.fileHolder.Get(oldPath)
 	if !exists {
 		return errors.New("file not found")
 	}
 
 	if file.IsDir() {
-		for _, child := range f.FilesByPath.AllFiles() {
+		for _, child := range f.fileHolder.AllFiles() {
 			if child.Path.startsWith(oldPath) {
-				f.FilesByPath.Delete(child)
+				f.fileHolder.Delete(child)
 				child.Path = child.Path.swapPrefix(oldPath, newPath)
-				f.FilesByPath.Add(child)
+				f.fileHolder.Add(child)
 			}
 		}
 	} else {
-		f.FilesByPath.Delete(file)
+		f.fileHolder.Delete(file)
 		file.Path = newPath
-		f.FilesByPath.Add(file)
+		f.fileHolder.Add(file)
 	}
 
 	return nil

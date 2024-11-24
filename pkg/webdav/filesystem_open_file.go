@@ -78,7 +78,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	if err != nil {
 		return openFileResp{err: err}
 	}
-	file, exists := f.FilesByPath.Get(path)
+	file, exists := f.fileHolder.Get(path)
 
 	// opening the root directory
 	if len(path) == 0 {
@@ -110,7 +110,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			Path:       path,
 			FileSystem: f,
 		}
-		f.FilesByPath.Add(file)
+		f.fileHolder.Add(file)
 	}
 
 	if append {
