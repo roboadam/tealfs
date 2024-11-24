@@ -25,6 +25,7 @@ import (
 
 func TestMkdir(t *testing.T) {
 	fs := webdav.NewFileSystem(model.NewNodeId())
+	mockPushesAndPulls(&fs)
 	c := context.Background()
 	mode := os.ModeDir
 
