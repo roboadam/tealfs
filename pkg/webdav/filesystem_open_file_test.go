@@ -70,7 +70,9 @@ func TestCreateEmptyFile(t *testing.T) {
 
 func TestFileNotFound(t *testing.T) {
 	fs := webdav.NewFileSystem(model.NewNodeId())
-	mockPushesAndPulls(&fs)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mockPushesAndPulls(ctx, &fs)
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
 		t.Error("Shouldn't be able to open file", err)
@@ -79,7 +81,9 @@ func TestFileNotFound(t *testing.T) {
 
 func TestOpenRoot(t *testing.T) {
 	filesystem := webdav.NewFileSystem(model.NewNodeId())
-	mockPushesAndPulls(&filesystem)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mockPushesAndPulls(ctx, &filesystem)
 	root, err := filesystem.OpenFile(context.Background(), "/", os.O_RDONLY, fs.ModeDir)
 	if err != nil {
 		t.Error("Should be able to open root dir", err)
