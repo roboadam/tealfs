@@ -138,6 +138,12 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	if err != nil {
 		return err
 	}
+
+	err = f.fetchFileIndex()
+	if err != nil {
+		return err
+	}
+
 	exists := f.fileHolder.Exists(p)
 	if exists {
 		return errors.New("path exists")
@@ -188,6 +194,11 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 		return err
 	}
 
+	err = f.fetchFileIndex()
+	if err != nil {
+		return err
+	}
+
 	baseFile, exists := f.fileHolder.Get(pathToDelete)
 	if !exists {
 		return errors.New("file does not exist")
@@ -205,6 +216,16 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 	}
 
 	return nil
+}
+
+func (f *FileSystem) fetchFileIndex() error {
+	result := f.fetchBlock("fileIndex")
+
+	if !result.Ok {
+		return errors.New(result.Message)
+	}
+
+	return f.fileHolder.UpdateFileHolderFromBytes(result.Block.Data, f)
 }
 
 func (f *FileSystem) persistFileIndex() error {
@@ -256,6 +277,11 @@ func (f *FileSystem) rename(req *renameReq) error {
 		return err
 	}
 	newPath, err := PathFromName(req.newName)
+	if err != nil {
+		return err
+	}
+
+	err = f.fetchFileIndex()
 	if err != nil {
 		return err
 	}
