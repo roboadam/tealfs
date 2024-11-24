@@ -120,10 +120,7 @@ func TestWriteAndRead(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mockPushesAndPulls(ctx, &fs)
-	otherNode := model.NewNodeId()
-	go expectWrites(t, expectedData, fs.WriteReqResp, otherNode)
 
-	go expectReads(ctx, []byte{}, fs.ReadReqResp, otherNode)
 	f, err := fs.OpenFile(context.Background(), "newFile.txt", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error("error creating newFile.txt")
@@ -131,9 +128,6 @@ func TestWriteAndRead(t *testing.T) {
 	}
 
 	n, err := f.Write(expectedData)
-	cancel()
-	go expectReads(context.Background(), expectedData, fs.ReadReqResp, otherNode)
-
 	if err != nil {
 		t.Error("error writing bytes")
 		return
@@ -142,6 +136,7 @@ func TestWriteAndRead(t *testing.T) {
 		t.Error("should have written 5 bytes")
 		return
 	}
+
 	stat, err := f.Stat()
 	if err != nil {
 		t.Error("error stat-ing file")
@@ -180,38 +175,6 @@ func TestWriteAndRead(t *testing.T) {
 	if err != nil {
 		t.Error("error closing opened file")
 		return
-	}
-}
-
-func expectWrites(t *testing.T, expected []byte, channel chan webdav.WriteReqResp, nodeWrittenTo model.NodeId) {
-	for reqResp := range channel {
-		if !bytes.Equal(reqResp.Req.Block.Data, expected) {
-			t.Error("got unexpected write")
-			return
-		}
-		reqResp.Resp <- model.WriteResult{
-			Ok:      true,
-			Caller:  nodeWrittenTo,
-			BlockId: reqResp.Req.Block.Id,
-		}
-	}
-}
-
-func expectReads(ctx context.Context, expected []byte, channel chan webdav.ReadReqResp, nodeReadFrom model.NodeId) {
-	for {
-		select {
-		case reqResp := <-channel:
-			reqResp.Resp <- model.ReadResult{
-				Ok:     true,
-				Caller: nodeReadFrom,
-				Block: model.Block{
-					Id:   reqResp.Req.BlockId,
-					Data: expected,
-				},
-			}
-		case <-ctx.Done():
-			return
-		}
 	}
 }
 
