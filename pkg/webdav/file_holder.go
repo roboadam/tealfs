@@ -74,6 +74,9 @@ func (f *FileHolder) updateFile(update *File) {
 }
 
 func (f *FileHolder) UpdateFileHolderFromBytes(data []byte, fileSystem *FileSystem) error {
+	if len(data) == 0 {
+		return nil
+	}
 	allBlockIds := set.NewSet[model.BlockId]()
 	remainderOverall := data
 	for len(remainderOverall) > 0 {

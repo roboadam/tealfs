@@ -148,8 +148,13 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 	result := f.FileSystem.pushBlock(f.Block)
 	if result.Ok {
+		err = f.FileSystem.persistFileIndex()
+		if err != nil {
+			return 0, err
+		}
 		return len(p), nil
 	}
+
 	return 0, errors.New(result.Message)
 }
 
