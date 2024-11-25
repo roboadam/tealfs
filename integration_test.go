@@ -65,7 +65,7 @@ func TestTwoNodeCluster(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
 	webdavAddress2 := "localhost:9080"
 	path1 := "/test1.txt"
-	// path2 := "/test2.txt"
+	path2 := "/test2.txt"
 	uiAddress1 := "localhost:8081"
 	uiAddress2 := "localhost:9081"
 	nodeAddress1 := "localhost:8082"
@@ -73,7 +73,8 @@ func TestTwoNodeCluster(t *testing.T) {
 	storagePath1 := "tmp1"
 	storagePath2 := "tmp2"
 	connectToUrl := "http://" + uiAddress1 + "/connect-to"
-	fileContents := "test content"
+	fileContents1 := "test content 1"
+	fileContents2 := "test content 2"
 	connectToContents := "hostAndPort=" + url.QueryEscape(nodeAddress2)
 	os.Mkdir(storagePath1, 0755)
 	defer os.RemoveAll(storagePath1)
@@ -98,7 +99,18 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	resp, ok = putFile(ctx, urlFor(webdavAddress1, path1), "text/plain", fileContents, t)
+	resp, ok = putFile(ctx, urlFor(webdavAddress1, path1), "text/plain", fileContents1, t)
+	if !ok {
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		t.Error("error response", resp.Status)
+		return
+	}
+
+	resp, ok = putFile(ctx, urlFor(webdavAddress2, path2), "text/plain", fileContents2, t)
 	if !ok {
 		return
 	}
@@ -113,7 +125,16 @@ func TestTwoNodeCluster(t *testing.T) {
 	if !ok {
 		return
 	}
-	if fetchedContent != fileContents {
+	if fetchedContent != fileContents1 {
+		t.Error("unexpected contents", resp.Status)
+		return
+	}
+
+	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path2), t)
+	if !ok {
+		return
+	}
+	if fetchedContent != fileContents2 {
 		t.Error("unexpected contents", resp.Status)
 		return
 	}
