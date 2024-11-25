@@ -55,7 +55,7 @@ func startTealFs(id model.NodeId, storagePath string, webdavAddress string, uiAd
 		m.DiskMgrWrites,
 		m.DiskMgrReads,
 	)
-	_ = ui.NewUi(m.UiMgrConnectTos, m.MgrUiStatuses, &ui.HttpHtmlOps{}, uiAddress)
+	_ = ui.NewUi(m.UiMgrConnectTos, m.MgrUiStatuses, &ui.HttpHtmlOps{}, uiAddress, ctx)
 	_ = webdav.New(
 		m.NodeId,
 		m.WebdavMgrGets,

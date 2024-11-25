@@ -87,7 +87,7 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			w.server.Shutdown(ctx)
+			w.server.Shutdown(context.Background())
 		case r := <-w.mgrWebdavGets:
 			ch, ok := w.pendingReads[r.Block.Id]
 			if ok {

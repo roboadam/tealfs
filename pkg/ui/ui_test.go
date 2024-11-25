@@ -15,6 +15,7 @@
 package ui_test
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -24,14 +25,18 @@ import (
 )
 
 func TestListenAddress(t *testing.T) {
-	_, _, _, ops := NewUi()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, _, _, ops := NewUi(ctx)
 	if ops.BindAddr != "mockBindAddr:123" {
 		t.Error("Didn't bind to mockBindAddr:123")
 	}
 }
 
 func TestConnectTo(t *testing.T) {
-	_, connToReq, _, ops := NewUi()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, connToReq, _, ops := NewUi(ctx)
 	mockResponseWriter := ui.MockResponseWriter{}
 	request := http.Request{
 		Method:   http.MethodPut,
@@ -47,7 +52,9 @@ func TestConnectTo(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
-	_, _, connToResp, ops := NewUi()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, _, connToResp, ops := NewUi(ctx)
 	mockResponseWriter := ui.MockResponseWriter{}
 	request := http.Request{
 		Method:   http.MethodGet,
@@ -88,13 +95,13 @@ func waitForWrittenData(handler func() string, values []string) {
 	}
 }
 
-func NewUi() (*ui.Ui, chan model.UiMgrConnectTo, chan model.UiConnectionStatus, *ui.MockHtmlOps) {
+func NewUi(ctx context.Context) (*ui.Ui, chan model.UiMgrConnectTo, chan model.UiConnectionStatus, *ui.MockHtmlOps) {
 	connToReq := make(chan model.UiMgrConnectTo)
 	connToResp := make(chan model.UiConnectionStatus)
 	ops := ui.MockHtmlOps{
 		BindAddr: "mockBindAddr:123",
 		Handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
 	}
-	u := ui.NewUi(connToReq, connToResp, &ops, "address")
+	u := ui.NewUi(connToReq, connToResp, &ops, "address", ctx)
 	return u, connToReq, connToResp, &ops
 }

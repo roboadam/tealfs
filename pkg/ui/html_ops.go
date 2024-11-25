@@ -15,12 +15,14 @@
 package ui
 
 import (
+	"context"
 	"net/http"
 )
 
 type HtmlOps interface {
 	ListenAndServe(addr string) error
 	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
+	Shutdown() error
 }
 
 type HttpHtmlOps struct {
@@ -30,6 +32,10 @@ type HttpHtmlOps struct {
 
 func NewHttpHtmlOps() *HttpHtmlOps {
 	return &HttpHtmlOps{mux: *http.NewServeMux()}
+}
+
+func (h *HttpHtmlOps) Shutdown() error {
+	return h.srv.Shutdown(context.Background())
 }
 
 func (h *HttpHtmlOps) ListenAndServe(addr string) error {
@@ -56,6 +62,10 @@ func (m *MockHtmlOps) ListenAndServe(addr string) error {
 
 func (m *MockHtmlOps) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	m.Handlers[pattern] = handler
+}
+
+func (h *MockHtmlOps) Shutdown() error {
+	return nil
 }
 
 type MockResponseWriter struct {
