@@ -32,7 +32,7 @@ type Webdav struct {
 	pendingReads  map[model.BlockId]chan model.ReadResult
 	pendingPuts   map[model.BlockId]chan model.WriteResult
 	bindAddress   string
-	server        http.Server
+	server        *http.Server
 }
 
 func New(
@@ -76,16 +76,11 @@ func (w *Webdav) start(ctx context.Context) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)
-	w.server = http.Server{
+	w.server = &http.Server{
 		Addr:    w.bindAddress,
 		Handler: mux,
 	}
-	go func() {
-		err := w.server.ListenAndServe()
-		if err != nil {
-			
-		}
-	}()
+	go w.server.ListenAndServe()
 }
 
 func (w *Webdav) eventLoop(ctx context.Context) {

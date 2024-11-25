@@ -42,7 +42,7 @@ func TestCreateFile(t *testing.T) {
 	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, otherNode, &mux, mockStorage)
 	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, otherNode, &mux, mockStorage)
 
-	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654")
+	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654", ctx)
 	time.Sleep(1 * time.Second) //FIXME, need a better way to wait for listener to start
 
 	_, err := propFind("http://localhost:7654/")

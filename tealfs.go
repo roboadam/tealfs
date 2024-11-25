@@ -61,6 +61,7 @@ func startTealFs(storagePath string, webdavAddress string, uiAddress string, nod
 		m.MgrWebdavGets,
 		m.MgrWebdavPuts,
 		webdavAddress,
+		ctx,
 	)
 	m.Start()
 	<-ctx.Done()
