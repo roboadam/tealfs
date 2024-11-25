@@ -64,6 +64,8 @@ func TestOneNodeCluster(t *testing.T) {
 func TestTwoNodeCluster(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
 	webdavAddress2 := "localhost:9080"
+	path1 := "/test1.txt"
+	// path2 := "/test2.txt"
 	uiAddress1 := "localhost:8081"
 	uiAddress2 := "localhost:9081"
 	nodeAddress1 := "localhost:8082"
@@ -71,7 +73,6 @@ func TestTwoNodeCluster(t *testing.T) {
 	storagePath1 := "tmp1"
 	storagePath2 := "tmp2"
 	connectToUrl := "http://" + uiAddress1 + "/connect-to"
-	webdavUrl := "http://" + webdavAddress1 + "/test.txt"
 	fileContents := "test content"
 	connectToContents := "hostAndPort=" + url.QueryEscape(nodeAddress2)
 	os.Mkdir(storagePath1, 0755)
@@ -97,7 +98,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	resp, ok = putFile(ctx, webdavUrl, "text/plain", fileContents, t)
+	resp, ok = putFile(ctx, urlFor(webdavAddress1, path1), "text/plain", fileContents, t)
 	if !ok {
 		return
 	}
@@ -108,7 +109,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	fetchedContent, ok := getFile(ctx, webdavUrl, t)
+	fetchedContent, ok := getFile(ctx, urlFor(webdavAddress2, path1), t)
 	if !ok {
 		return
 	}
@@ -163,4 +164,8 @@ func readAllToString(rc io.ReadCloser) (string, error) {
 		return "", err
 	}
 	return string(bytes), nil
+}
+
+func urlFor(host string, path string) string {
+	return "http://" + host + path
 }
