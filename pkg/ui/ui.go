@@ -15,6 +15,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -31,7 +32,7 @@ type Ui struct {
 	ops        HtmlOps
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string) *Ui {
+func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string, ctx context.Context) *Ui {
 	statuses := make(map[model.ConnId]model.UiConnectionStatus)
 	ui := Ui{
 		connToReq:  connToReq,

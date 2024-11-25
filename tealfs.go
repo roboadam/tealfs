@@ -35,6 +35,7 @@ func main() {
 }
 
 func startTealFs(id model.NodeId, storagePath string, webdavAddress string, uiAddress string, nodeAddress string, ctx context.Context) {
+	fmt.Println("STARTING", id)
 	m := mgr.NewWithChanSize(id, 1, nodeAddress)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
@@ -65,5 +66,7 @@ func startTealFs(id model.NodeId, storagePath string, webdavAddress string, uiAd
 		ctx,
 	)
 	m.Start()
+	fmt.Println("DONE STARTING", id)
 	<-ctx.Done()
+	fmt.Println("EXITING", id)
 }

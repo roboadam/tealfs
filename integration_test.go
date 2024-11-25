@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -148,12 +149,16 @@ func TestTwoNodeCluster(t *testing.T) {
 	}
 
 	cancel()
+	time.Sleep(time.Second)
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
 
 	go startTealFs(nodeId1, storagePath1, webdavAddress1, uiAddress1, nodeAddress1, ctx)
 	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, ctx)
+	
+	fmt.Println("BEFORE SLEEP")
 	time.Sleep(time.Second)
+	fmt.Println("AFTER SLEEP")
 
 	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path1), t)
 	if !ok {
