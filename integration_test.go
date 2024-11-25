@@ -89,6 +89,7 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
 	if !ok {
+		t.Error("error response", resp.Status)
 		return
 	}
 	defer resp.Body.Close()
@@ -101,6 +102,7 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	resp, ok = putFile(ctx, urlFor(webdavAddress1, path1), "text/plain", fileContents1, t)
 	if !ok {
+		t.Error("error response", resp.Status)
 		return
 	}
 	defer resp.Body.Close()
@@ -112,6 +114,7 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	resp, ok = putFile(ctx, urlFor(webdavAddress2, path2), "text/plain", fileContents2, t)
 	if !ok {
+		t.Error("error putting file")
 		return
 	}
 	defer resp.Body.Close()
@@ -123,19 +126,21 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	fetchedContent, ok := getFile(ctx, urlFor(webdavAddress2, path1), t)
 	if !ok {
+		t.Error("error getting file")
 		return
 	}
 	if fetchedContent != fileContents1 {
-		t.Error("unexpected contents", resp.Status)
+		t.Error("unexpected contents", fetchedContent)
 		return
 	}
 
 	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path2), t)
 	if !ok {
+		t.Error("error getting file")
 		return
 	}
 	if fetchedContent != fileContents2 {
-		t.Error("unexpected contents", resp.Status)
+		t.Error("unexpected contents", fetchedContent)
 		return
 	}
 
@@ -149,19 +154,21 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path1), t)
 	if !ok {
+		t.Error("error getting file")
 		return
 	}
 	if fetchedContent != fileContents1 {
-		t.Error("unexpected contents", resp.Status)
+		t.Error("unexpected contents", fetchedContent)
 		return
 	}
 
 	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress2, path2), t)
 	if !ok {
+		t.Error("error getting file")
 		return
 	}
 	if fetchedContent != fileContents2 {
-		t.Error("unexpected contents", resp.Status)
+		t.Error("unexpected contents", fetchedContent)
 		return
 	}
 }
