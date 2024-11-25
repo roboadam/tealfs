@@ -138,6 +138,32 @@ func TestTwoNodeCluster(t *testing.T) {
 		t.Error("unexpected contents", resp.Status)
 		return
 	}
+
+	cancel()
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, ctx)
+	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, ctx)
+	time.Sleep(time.Second)
+
+	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path1), t)
+	if !ok {
+		return
+	}
+	if fetchedContent != fileContents1 {
+		t.Error("unexpected contents", resp.Status)
+		return
+	}
+
+	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress2, path2), t)
+	if !ok {
+		return
+	}
+	if fetchedContent != fileContents2 {
+		t.Error("unexpected contents", resp.Status)
+		return
+	}
 }
 
 func getFile(ctx context.Context, url string, t *testing.T) (string, bool) {
