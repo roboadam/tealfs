@@ -31,11 +31,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address> <node address>")
 		os.Exit(1)
 	}
-	startTealFs(os.Args[1], os.Args[2], os.Args[3], os.Args[4], context.Background())
+	startTealFs(model.NewNodeId(), os.Args[1], os.Args[2], os.Args[3], os.Args[4], context.Background())
 }
 
-func startTealFs(storagePath string, webdavAddress string, uiAddress string, nodeAddress string, ctx context.Context) {
-	m := mgr.NewWithChanSize(1, nodeAddress)
+func startTealFs(id model.NodeId, storagePath string, webdavAddress string, uiAddress string, nodeAddress string, ctx context.Context) {
+	m := mgr.NewWithChanSize(id, 1, nodeAddress)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
