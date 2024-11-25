@@ -15,6 +15,7 @@
 package webdav
 
 import (
+	"context"
 	"net/http"
 	"tealfs/pkg/model"
 
@@ -31,6 +32,7 @@ type Webdav struct {
 	pendingReads  map[model.BlockId]chan model.ReadResult
 	pendingPuts   map[model.BlockId]chan model.WriteResult
 	bindAddress   string
+	server        http.Server
 }
 
 func New(
@@ -40,6 +42,7 @@ func New(
 	mgrWebdavGets chan model.ReadResult,
 	mgrWebdavPuts chan model.WriteResult,
 	bindAddress string,
+	ctx context.Context,
 ) Webdav {
 	w := Webdav{
 		webdavMgrGets: webdavMgrGets,
@@ -52,18 +55,18 @@ func New(
 		pendingPuts:   make(map[model.BlockId]chan model.WriteResult),
 		bindAddress:   bindAddress,
 	}
-	w.start()
+	w.start(ctx)
 	return w
 }
 
 func (w *Webdav) StopWebdavServer() {
 }
 
-func (w *Webdav) start() {
+func (w *Webdav) start(ctx context.Context) {
 	lockSystem := LockSystem{
 		locks: make(map[string]webdav.LockDetails),
 	}
-	go w.eventLoop()
+	go w.eventLoop(ctx)
 
 	handler := &webdav.Handler{
 		Prefix:     "/",
@@ -73,16 +76,23 @@ func (w *Webdav) start() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)
-	srv := http.Server{
+	w.server = http.Server{
 		Addr:    w.bindAddress,
 		Handler: mux,
 	}
-	go srv.ListenAndServe()
+	go func() {
+		err := w.server.ListenAndServe()
+		if err != nil {
+			
+		}
+	}()
 }
 
-func (w *Webdav) eventLoop() {
+func (w *Webdav) eventLoop(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			w.server.Shutdown(ctx)
 		case r := <-w.mgrWebdavGets:
 			ch, ok := w.pendingReads[r.Block.Id]
 			if ok {
