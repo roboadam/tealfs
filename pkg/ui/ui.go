@@ -15,9 +15,9 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"tealfs/pkg/model"
@@ -31,7 +31,7 @@ type Ui struct {
 	ops        HtmlOps
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string) *Ui {
+func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string, ctx context.Context) *Ui {
 	statuses := make(map[model.ConnId]model.UiConnectionStatus)
 	ui := Ui{
 		connToReq:  connToReq,
@@ -41,21 +41,24 @@ func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnecti
 	}
 	ui.registerHttpHandlers()
 	ui.handleRoot()
-	go ui.start(bindAddr)
+	ui.start(bindAddr, ctx)
 	return &ui
 }
 
-func (ui *Ui) start(bindAddr string) {
-	go ui.handleMessages()
-	err := ui.ops.ListenAndServe(bindAddr)
-	if err != nil {
-		os.Exit(1)
-	}
+func (ui *Ui) start(bindAddr string, ctx context.Context) {
+	go ui.handleMessages(ctx)
+	go ui.ops.ListenAndServe(bindAddr)
 }
 
-func (ui *Ui) handleMessages() {
-	for status := range ui.connToResp {
-		ui.saveStatus(status)
+func (ui *Ui) handleMessages(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			ui.ops.Shutdown()
+			return
+		case status := <-ui.connToResp:
+			ui.saveStatus(status)
+		}
 	}
 }
 

@@ -25,6 +25,9 @@ import (
 
 func TestMkdir(t *testing.T) {
 	fs := webdav.NewFileSystem(model.NewNodeId())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mockPushesAndPulls(ctx, &fs)
 	c := context.Background()
 	mode := os.ModeDir
 
@@ -49,21 +52,23 @@ func TestMkdir(t *testing.T) {
 
 func TestRemoveAll(t *testing.T) {
 	fs := webdav.NewFileSystem(model.NewNodeId())
-	c := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mockPushesAndPulls(ctx, &fs)
 	mode := os.ModeDir
 
-	_ = fs.Mkdir(c, "/test", mode)
-	_ = fs.Mkdir(c, "/test/deleteMe", mode)
+	_ = fs.Mkdir(ctx, "/test", mode)
+	_ = fs.Mkdir(ctx, "/test/deleteMe", mode)
 	createFileAndCheck(t, &fs, "/test/deleteMe/apple")
-	_ = fs.Mkdir(c, "/test/deleteMe/test2", mode)
+	_ = fs.Mkdir(ctx, "/test/deleteMe/test2", mode)
 	createFileAndCheck(t, &fs, "/test/deleteMe/test2/pear")
 
-	err := fs.RemoveAll(c, "/test/delete")
+	err := fs.RemoveAll(ctx, "/test/delete")
 	if err == nil {
 		t.Error("shouldn't have been able to delete this one")
 		return
 	}
-	err = fs.RemoveAll(c, "/test/deleteMe")
+	err = fs.RemoveAll(ctx, "/test/deleteMe")
 	if err != nil {
 		t.Error("should have been able to delete this one")
 		return
@@ -72,29 +77,31 @@ func TestRemoveAll(t *testing.T) {
 
 func TestRename(t *testing.T) {
 	fs := webdav.NewFileSystem(model.NewNodeId())
-	c := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mockPushesAndPulls(ctx, &fs)
 	modeDir := os.ModeDir
 
 	createFileAndCheck(t, &fs, "/testFile")
-	err := fs.Rename(c, "/testFile", "/testFileNew")
+	err := fs.Rename(ctx, "/testFile", "/testFileNew")
 	if err != nil {
 		t.Error("error renaming a file")
 		return
 	}
 
-	err = fs.Rename(c, "/testFile", "/testFileNew")
+	err = fs.Rename(ctx, "/testFile", "/testFileNew")
 	if err == nil {
 		t.Error("no error renaming non existent file")
 		return
 	}
 
-	_ = fs.Mkdir(c, "/test", modeDir)
-	_ = fs.Mkdir(c, "/test/renameMe", modeDir)
+	_ = fs.Mkdir(ctx, "/test", modeDir)
+	_ = fs.Mkdir(ctx, "/test/renameMe", modeDir)
 	createFileAndCheck(t, &fs, "/test/renameMe/apple")
-	_ = fs.Mkdir(c, "/test/renameMe/test2", modeDir)
+	_ = fs.Mkdir(ctx, "/test/renameMe/test2", modeDir)
 	createFileAndCheck(t, &fs, "/test/renameMe/test2/pear")
 
-	err = fs.Rename(c, "/test/renameMe", "/test/newDirName")
+	err = fs.Rename(ctx, "/test/renameMe", "/test/newDirName")
 	if err != nil {
 		t.Error("should have been able to rename the dir")
 		return
@@ -110,22 +117,17 @@ func TestRename(t *testing.T) {
 func TestWriteAndRead(t *testing.T) {
 	expectedData := []byte{1, 2, 3, 4, 5}
 	fs := webdav.NewFileSystem(model.NewNodeId())
-	otherNode := model.NewNodeId()
-	go expectWrites(t, expectedData, fs.WriteReqResp, otherNode)
-
 	ctx, cancel := context.WithCancel(context.Background())
-	go expectReads(ctx, []byte{}, fs.ReadReqResp, otherNode)
+	defer cancel()
+	mockPushesAndPulls(ctx, &fs)
+
 	f, err := fs.OpenFile(context.Background(), "newFile.txt", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error("error creating newFile.txt")
-		cancel()
 		return
 	}
 
 	n, err := f.Write(expectedData)
-	cancel()
-	go expectReads(context.Background(), expectedData, fs.ReadReqResp, otherNode)
-
 	if err != nil {
 		t.Error("error writing bytes")
 		return
@@ -134,6 +136,7 @@ func TestWriteAndRead(t *testing.T) {
 		t.Error("should have written 5 bytes")
 		return
 	}
+
 	stat, err := f.Stat()
 	if err != nil {
 		t.Error("error stat-ing file")
@@ -172,38 +175,6 @@ func TestWriteAndRead(t *testing.T) {
 	if err != nil {
 		t.Error("error closing opened file")
 		return
-	}
-}
-
-func expectWrites(t *testing.T, expected []byte, channel chan webdav.WriteReqResp, nodeWrittenTo model.NodeId) {
-	for reqResp := range channel {
-		if !bytes.Equal(reqResp.Req.Block.Data, expected) {
-			t.Error("got unexpected write")
-			return
-		}
-		reqResp.Resp <- model.WriteResult{
-			Ok:      true,
-			Caller:  nodeWrittenTo,
-			BlockId: reqResp.Req.Block.Id,
-		}
-	}
-}
-
-func expectReads(ctx context.Context, expected []byte, channel chan webdav.ReadReqResp, nodeReadFrom model.NodeId) {
-	for {
-		select {
-		case reqResp := <-channel:
-			reqResp.Resp <- model.ReadResult{
-				Ok:     true,
-				Caller: nodeReadFrom,
-				Block: model.Block{
-					Id:   reqResp.Req.BlockId,
-					Data: expected,
-				},
-			}
-		case <-ctx.Done():
-			return
-		}
 	}
 }
 

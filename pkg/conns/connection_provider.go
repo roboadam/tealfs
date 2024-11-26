@@ -125,7 +125,7 @@ func (m *MockListener) Accept() (net.Conn, error) {
 }
 
 func (m *MockListener) Close() error {
-	panic("not implemented9") // TODO: Implement
+	return nil
 }
 
 func (m *MockListener) Addr() net.Addr {

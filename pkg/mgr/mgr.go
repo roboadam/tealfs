@@ -45,7 +45,7 @@ type Mgr struct {
 	nodeAddress string
 }
 
-func NewWithChanSize(chanSize int, nodeAddress string) *Mgr {
+func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
@@ -62,7 +62,7 @@ func NewWithChanSize(chanSize int, nodeAddress string) *Mgr {
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
 		nodes:              set.NewSet[model.NodeId](),
-		NodeId:             model.NewNodeId(),
+		NodeId:             nodeId,
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		distributer:        dist.New(),

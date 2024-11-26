@@ -23,29 +23,56 @@ import (
 )
 
 type File struct {
-	IsDirValue   bool
-	RO           bool
-	RW           bool
-	WO           bool
-	Append       bool
-	Create       bool
-	FailIfExists bool
-	Truncate     bool
-	SizeValue    int64
-	ModeValue    fs.FileMode
-	Modtime      time.Time
-	SysValue     any
-	Position     int64
-	Block        model.Block
-	hasData      bool
-	path         Path
-	fileSystem   *FileSystem
+	SizeValue  int64
+	ModeValue  fs.FileMode
+	Modtime    time.Time
+	Position   int64
+	Block      model.Block
+	HasData    bool
+	Path       Path
+	FileSystem *FileSystem
+}
+
+func (f *File) ToBytes() []byte {
+	value := model.IntToBytes(uint32(f.SizeValue))
+	value = append(value, model.IntToBytes(uint32(f.ModeValue))...)
+	value = append(value, model.IntToBytes(uint32(f.Modtime.Unix()))...)
+	value = append(value, model.StringToBytes(string(f.Block.Id))...)
+	value = append(value, model.StringToBytes(string(f.Path.toName()))...)
+	return value
+}
+
+func FileFromBytes(raw []byte, fileSystem *FileSystem) (File, []byte, error) {
+	size, remainder := model.IntFromBytes(raw)
+	mode, remainder := model.IntFromBytes(remainder)
+	modtimeRaw, remainder := model.IntFromBytes(remainder)
+	blockId, remainder := model.StringFromBytes(remainder)
+	rawPath, remainder := model.StringFromBytes(remainder)
+
+	path, err := PathFromName(rawPath)
+	if err != nil {
+		return File{}, nil, err
+	}
+	modTime := time.Unix(int64(modtimeRaw), 0)
+	return File{
+		SizeValue: int64(size),
+		ModeValue: fs.FileMode(mode),
+		Modtime:   modTime,
+		Position:  0,
+		Block: model.Block{
+			Id:   model.BlockId(blockId),
+			Data: []byte{},
+		},
+		HasData:    false,
+		Path:       path,
+		FileSystem: fileSystem,
+	}, remainder, nil
 }
 
 func (f *File) Close() error {
 	f.Position = 0
 	f.Block.Data = []byte{}
-	f.hasData = false
+	f.HasData = false
 	return nil
 }
 
@@ -90,7 +117,7 @@ func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
 	if count < 0 {
 		return nil, errors.New("negative dir count requested")
 	}
-	children := f.fileSystem.immediateChildren(f.path)[count:]
+	children := f.FileSystem.immediateChildren(f.Path)[count:]
 	result := make([]fs.FileInfo, 0, len(children))
 	for _, child := range children {
 		result = append(result, child)
@@ -119,19 +146,24 @@ func (f *File) Write(p []byte) (n int, err error) {
 		}
 	}
 
-	result := f.fileSystem.pushBlock(f.Block)
+	result := f.FileSystem.pushBlock(f.Block)
 	if result.Ok {
+		err = f.FileSystem.persistFileIndex()
+		if err != nil {
+			return 0, err
+		}
 		return len(p), nil
 	}
+
 	return 0, errors.New(result.Message)
 }
 
 func (f *File) ensureData() error {
-	if !f.hasData {
-		resp := f.fileSystem.fetchBlock(f.Block.Id)
+	if !f.HasData {
+		resp := f.FileSystem.fetchBlock(f.Block.Id)
 		if resp.Ok {
 			f.Block = resp.Block
-			f.hasData = true
+			f.HasData = true
 		} else {
 			return errors.New(resp.Message)
 		}
@@ -140,7 +172,7 @@ func (f *File) ensureData() error {
 }
 
 func (f *File) Name() string {
-	name, err := f.path.head()
+	name, err := f.Path.head()
 	if err != nil {
 		return ""
 	}
@@ -160,9 +192,9 @@ func (f *File) ModTime() time.Time {
 }
 
 func (f *File) IsDir() bool {
-	return f.IsDirValue
+	return f.ModeValue.IsDir()
 }
 
 func (f *File) Sys() any {
-	return f.SysValue
+	return nil
 }

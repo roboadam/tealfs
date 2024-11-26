@@ -15,6 +15,7 @@
 package conns
 
 import (
+	"context"
 	"net"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
@@ -31,6 +32,7 @@ type Conns struct {
 	Address       string
 	provider      ConnectionProvider
 	nodeId        model.NodeId
+	listener      net.Listener
 }
 
 func NewConns(
@@ -40,7 +42,8 @@ func NewConns(
 	inSends <-chan model.MgrConnsSend,
 	provider ConnectionProvider,
 	address string,
-	nodeId model.NodeId) Conns {
+	nodeId model.NodeId,
+	ctx context.Context) Conns {
 
 	listener, err := provider.GetListener(address)
 	if err != nil {
@@ -54,20 +57,23 @@ func NewConns(
 		outReceives:   outReceives,
 		inConnectTo:   inConnectTo,
 		inSends:       inSends,
-		Address:       listener.Addr().String(),
 		provider:      provider,
 		nodeId:        nodeId,
+		listener:      listener,
 	}
 
-	go c.consumeChannels()
-	go c.listen(listener)
+	go c.consumeChannels(ctx)
+	go c.listen()
 
 	return c
 }
 
-func (c *Conns) consumeChannels() {
+func (c *Conns) consumeChannels(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			c.listener.Close()
+			return
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
 			c.outStatuses <- model.NetConnectionStatus{
@@ -100,12 +106,14 @@ func (c *Conns) consumeChannels() {
 	}
 }
 
-func (c *Conns) listen(listener net.Listener) {
+func (c *Conns) listen() {
 	for {
-		conn, err := listener.Accept()
+		conn, err := c.listener.Accept()
 		if err == nil {
 			incomingConnReq := AcceptedConns{netConn: conn}
 			c.acceptedConns <- incomingConnReq
+		} else {
+			return
 		}
 	}
 }

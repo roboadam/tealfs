@@ -15,13 +15,16 @@
 package conns
 
 import (
+	"context"
 	"encoding/binary"
 	"tealfs/pkg/model"
 	"testing"
 )
 
 func TestAcceptConn(t *testing.T) {
-	_, status, _, _, _, provider := newConnsTest()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, status, _, _, _, provider := newConnsTest(ctx)
 	provider.Listener.accept <- true
 	s := <-status
 	if s.Type != model.Connected {
@@ -30,7 +33,9 @@ func TestAcceptConn(t *testing.T) {
 }
 
 func TestConnectToConns(t *testing.T) {
-	_, outStatus, _, inConnectTo, _, _ := newConnsTest()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, outStatus, _, inConnectTo, _, _ := newConnsTest(ctx)
 	const expectedAddress = "expectedAddress:1234"
 	status := connectTo(expectedAddress, outStatus, inConnectTo)
 	if status.Type != model.Connected {
@@ -39,7 +44,9 @@ func TestConnectToConns(t *testing.T) {
 }
 
 func TestSendData(t *testing.T) {
-	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest(ctx)
 	expected := model.WriteRequest{
 		Caller: model.NewNodeId(),
 		Block:  model.Block{Id: "blockId", Data: []byte{1, 2, 3}},
@@ -76,7 +83,9 @@ func collectPayload(channel chan []byte) []byte {
 }
 
 func TestGetData(t *testing.T) {
-	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest(ctx)
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
 	payload := &model.IAm{
 		NodeId:  "nodeId",
@@ -106,12 +115,12 @@ func connectTo(address string, outStatus chan model.NetConnectionStatus, inConne
 	return <-outStatus
 }
 
-func newConnsTest() (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, MockConnectionProvider) {
+func newConnsTest(ctx context.Context) (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, MockConnectionProvider) {
 	outStatuses := make(chan model.NetConnectionStatus)
 	outReceives := make(chan model.ConnsMgrReceive)
 	inConnectTo := make(chan model.MgrConnsConnectTo)
 	inSends := make(chan model.MgrConnsSend)
 	provider := NewMockConnectionProvider()
-	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId())
+	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)
 	return c, outStatuses, outReceives, inConnectTo, inSends, provider
 }

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
@@ -34,9 +35,14 @@ func TestCreateFile(t *testing.T) {
 	mgrWebdavPuts := make(chan model.WriteResult)
 	otherNode := model.NewNodeId()
 	ctx, cancel := context.WithCancel(context.Background())
-	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, "", otherNode)
-	go handleWebdavMgrPuts(t, webdavMgrPuts, mgrWebdavPuts, "hello world!", otherNode)
-	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654")
+	defer cancel()
+
+	mux := sync.Mutex{}
+	mockStorage := make(map[model.BlockId][]byte)
+	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, otherNode, &mux, mockStorage)
+	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, otherNode, &mux, mockStorage)
+
+	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654", ctx)
 	time.Sleep(1 * time.Second) //FIXME, need a better way to wait for listener to start
 
 	_, err := propFind("http://localhost:7654/")
@@ -53,8 +59,7 @@ func TestCreateFile(t *testing.T) {
 	req.Header.Set("Content-Type", "text/plain")
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	cancel()
-	go handleWebdavMgrGets(context.Background(), webdavMgrGets, mgrWebdavGets, "hello world!", otherNode)
+
 	if err != nil {
 		t.Error("error putting hello world", err)
 		return
@@ -111,34 +116,52 @@ func propFind(url string) (string, error) {
 	return string(body), nil
 }
 
-func handleWebdavMgrGets(ctx context.Context, channel chan model.ReadRequest, respChan chan model.ReadResult, response string, caller model.NodeId) {
+func handleWebdavMgrGets(ctx context.Context, channel chan model.ReadRequest, respChan chan model.ReadResult, caller model.NodeId, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case req := <-channel:
-			respChan <- model.ReadResult{
-				Ok:     true,
-				Caller: caller,
-				Block: model.Block{
-					Id:   req.BlockId,
-					Data: []byte(response),
-				},
+			mux.Lock()
+			blockData, exists := data[req.BlockId]
+			if exists {
+				respChan <- model.ReadResult{
+					Ok:     true,
+					Caller: caller,
+					Block: model.Block{
+						Id:   req.BlockId,
+						Data: blockData,
+					},
+				}
+			} else {
+				respChan <- model.ReadResult{
+					Ok:     true,
+					Caller: caller,
+					Block: model.Block{
+						Id:   req.BlockId,
+						Data: []byte{},
+					},
+				}
 			}
+			mux.Unlock()
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func handleWebdavMgrPuts(t *testing.T, channel chan model.WriteRequest, result chan model.WriteResult, expectedData string, caller model.NodeId) {
-	for req := range channel {
-		if string(req.Block.Data) != expectedData {
-			t.Error("did not receive expected data")
+func handleWebdavMgrPuts(ctx context.Context, channel chan model.WriteRequest, result chan model.WriteResult, caller model.NodeId, mux *sync.Mutex, data map[model.BlockId][]byte) {
+	for {
+		select {
+		case <-ctx.Done():
 			return
-		}
-		result <- model.WriteResult{
-			Ok:      true,
-			Caller:  caller,
-			BlockId: req.Block.Id,
+		case req := <-channel:
+			mux.Lock()
+			data[req.Block.Id] = req.Block.Data
+			result <- model.WriteResult{
+				Ok:      true,
+				Caller:  caller,
+				BlockId: req.Block.Id,
+			}
+			mux.Unlock()
 		}
 	}
 }

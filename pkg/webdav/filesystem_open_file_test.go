@@ -15,10 +15,11 @@
 package webdav_test
 
 import (
-	"bytes"
 	"context"
+	"io"
 	"io/fs"
 	"os"
+	"sync"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
@@ -28,10 +29,10 @@ func TestCreateEmptyFile(t *testing.T) {
 	nodeId := model.NewNodeId()
 	fs := webdav.NewFileSystem(nodeId)
 	name := "/hello-world.txt"
-	bytesInFile := []byte{1, 2, 3}
 	bytesInWrite := []byte{6, 5, 4, 3, 2}
-	go handleFetchBlockReq(fs.ReadReqResp, model.NewNodeId(), bytesInFile)
-	go handlePushBlockReq(fs.WriteReqResp, model.NewNodeId(), bytesInWrite, t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mockPushesAndPulls(ctx, &fs)
 
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -51,16 +52,11 @@ func TestCreateEmptyFile(t *testing.T) {
 	}
 
 	dataRead := make([]byte, 10)
-	size, err := f.Read(dataRead)
-	if err != nil {
-		t.Error("Error reading from file", err)
+	_, err = f.Read(dataRead)
+	if err == nil || err != io.EOF {
+		t.Error("expected EOF", err)
 		return
 	}
-	if size != 3 || !bytes.Equal([]byte{1, 2, 3}, dataRead[:size]) {
-		t.Error("File should be of length 3", err)
-		return
-	}
-
 	numWritten, err := f.Write(bytesInWrite)
 	if err != nil {
 		t.Error("error pushing", err)
@@ -74,7 +70,9 @@ func TestCreateEmptyFile(t *testing.T) {
 
 func TestFileNotFound(t *testing.T) {
 	fs := webdav.NewFileSystem(model.NewNodeId())
-	go handleFetchBlockReq(fs.ReadReqResp, model.NewNodeId(), []byte{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mockPushesAndPulls(ctx, &fs)
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
 		t.Error("Shouldn't be able to open file", err)
@@ -83,6 +81,9 @@ func TestFileNotFound(t *testing.T) {
 
 func TestOpenRoot(t *testing.T) {
 	filesystem := webdav.NewFileSystem(model.NewNodeId())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mockPushesAndPulls(ctx, &filesystem)
 	root, err := filesystem.OpenFile(context.Background(), "/", os.O_RDONLY, fs.ModeDir)
 	if err != nil {
 		t.Error("Should be able to open root dir", err)
@@ -104,30 +105,59 @@ func TestOpenRoot(t *testing.T) {
 	}
 }
 
-func handleFetchBlockReq(reqs chan webdav.ReadReqResp, caller model.NodeId, bytesStored []byte) {
+func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, caller model.NodeId, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
-		req := <-reqs
-		req.Resp <- model.ReadResult{
-			Ok:     true,
-			Caller: caller,
-			Block: model.Block{
-				Id:   req.Req.BlockId,
-				Data: bytesStored,
-			},
+		select {
+		case <-ctx.Done():
+			return
+		case req := <-reqs:
+			mux.Lock()
+			blockData, exists := data[req.Req.BlockId]
+			if exists {
+				req.Resp <- model.ReadResult{
+					Ok:     true,
+					Caller: caller,
+					Block: model.Block{
+						Id:   req.Req.BlockId,
+						Data: blockData,
+					},
+				}
+			} else {
+				req.Resp <- model.ReadResult{
+					Ok:     true,
+					Caller: caller,
+					Block: model.Block{
+						Id:   req.Req.BlockId,
+						Data: []byte{},
+					},
+				}
+			}
+			mux.Unlock()
 		}
 	}
 }
 
-func handlePushBlockReq(reqs chan webdav.WriteReqResp, caller model.NodeId, expected []byte, t *testing.T) {
+func handlePushBlockReq(ctx context.Context, reqs chan webdav.WriteReqResp, caller model.NodeId, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
-		req := <-reqs
-		if !bytes.Equal(req.Req.Block.Data, expected) {
-			t.Error("unexpected push")
-		}
-		req.Resp <- model.WriteResult{
-			Ok:      true,
-			Caller:  caller,
-			BlockId: req.Req.Block.Id,
+		select {
+		case <-ctx.Done():
+			return
+		case req := <-reqs:
+			mux.Lock()
+			data[req.Req.Block.Id] = req.Req.Block.Data
+			req.Resp <- model.WriteResult{
+				Ok:      true,
+				Caller:  caller,
+				BlockId: req.Req.Block.Id,
+			}
+			mux.Unlock()
 		}
 	}
+}
+
+func mockPushesAndPulls(ctx context.Context, fs *webdav.FileSystem) {
+	mux := sync.Mutex{}
+	mockStorage := make(map[model.BlockId][]byte)
+	go handleFetchBlockReq(ctx, fs.ReadReqResp, model.NewNodeId(), &mux, mockStorage)
+	go handlePushBlockReq(ctx, fs.WriteReqResp, model.NewNodeId(), &mux, mockStorage)
 }

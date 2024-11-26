@@ -65,7 +65,6 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	create := os.O_CREATE&req.flag != 0
 	failIfExists := os.O_EXCL&req.flag != 0
 	truncate := os.O_TRUNC&req.flag != 0
-	isDirForCreate := req.perm.IsDir()
 
 	if ro && (append || create || failIfExists || truncate) {
 		return openFileResp{err: errors.New("invalid flag")}
@@ -79,7 +78,13 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	if err != nil {
 		return openFileResp{err: err}
 	}
-	file, exists := f.FilesByPath.get(path)
+
+	err = f.fetchFileIndex()
+	if err != nil {
+		return openFileResp{err: err}
+	}
+
+	file, exists := f.fileHolder.Get(path)
 
 	// opening the root directory
 	if len(path) == 0 {
@@ -102,25 +107,20 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 	if !exists {
 		block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
 		file = &File{
-			IsDirValue:   isDirForCreate,
-			RO:           ro,
-			RW:           rw,
-			WO:           wo,
-			Append:       append,
-			Create:       create,
-			FailIfExists: failIfExists,
-			Truncate:     truncate,
-			SizeValue:    0,
-			ModeValue:    0,
-			Modtime:      time.Now(),
-			SysValue:     nil,
-			Position:     0,
-			Block:        block,
-			hasData:      false,
-			path:         path,
-			fileSystem:   f,
+			SizeValue:  0,
+			ModeValue:  req.perm,
+			Modtime:    time.Now(),
+			Position:   0,
+			Block:      block,
+			HasData:    false,
+			Path:       path,
+			FileSystem: f,
 		}
-		f.FilesByPath.add(file)
+		f.fileHolder.Add(file)
+		err = f.persistFileIndex()
+		if err != nil {
+			return openFileResp{err: err}
+		}
 	}
 
 	if append {
