@@ -95,7 +95,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		t.Error("error response", resp.Status)
 		return
 	}
-	defer resp.Body.Close()
+	resp.Body.Close()
 	time.Sleep(time.Second)
 
 	if resp.StatusCode >= 400 {
@@ -108,7 +108,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		t.Error("error response", resp.Status)
 		return
 	}
-	defer resp.Body.Close()
+	resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		t.Error("error response", resp.Status)
@@ -120,7 +120,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		t.Error("error putting file")
 		return
 	}
-	defer resp.Body.Close()
+	resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		t.Error("error response", resp.Status)
@@ -156,6 +156,18 @@ func TestTwoNodeCluster(t *testing.T) {
 	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, ctx)
 
 	time.Sleep(time.Second)
+	resp, ok = putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
+	if !ok {
+		t.Error("error response", resp.Status)
+		return
+	}
+	resp.Body.Close()
+	time.Sleep(time.Second)
+
+	if resp.StatusCode >= 400 {
+		t.Error("error response", resp.Status)
+		return
+	}
 
 	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path1), t)
 	if !ok {
@@ -191,6 +203,12 @@ func getFile(ctx context.Context, url string, t *testing.T) (string, bool) {
 		t.Error("error executing request", err)
 		return "", false
 	}
+
+	if resp.StatusCode >= 300 {
+		t.Error("error response with status", resp.Status)
+		return "", false
+	}
+
 	body, err := readAllToString(resp.Body)
 	if err != nil {
 		t.Error("error reading body", err)
