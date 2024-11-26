@@ -24,6 +24,16 @@ func NewSet[K comparable]() Set[K] {
 	return Set[K]{data: make(map[K]bool)}
 }
 
+func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
+	result := Set[K]{data: make(map[K]bool)}
+
+	for k := range input {
+		result.Add(k)
+	}
+
+	return result
+}
+
 func (s *Set[K]) Add(item K) {
 	s.data[item] = true
 }

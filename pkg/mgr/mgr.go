@@ -37,12 +37,12 @@ type Mgr struct {
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
 
-	nodes       set.Set[model.NodeId]
-	nodeConnMap set.Bimap[model.NodeId, model.ConnId]
-	NodeId      model.NodeId
-	connAddress map[model.ConnId]string
-	distributer dist.Distributer
-	nodeAddress string
+	nodesAddressMap map[model.NodeId]string
+	nodeConnMap     set.Bimap[model.NodeId, model.ConnId]
+	NodeId          model.NodeId
+	connAddress     map[model.ConnId]string
+	distributer     dist.Distributer
+	nodeAddress     string
 }
 
 func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string) *Mgr {
@@ -61,7 +61,7 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string) *Mgr
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
-		nodes:              set.NewSet[model.NodeId](),
+		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
@@ -112,7 +112,7 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 
 func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 	result := model.NewSyncNodes()
-	for _, node := range m.nodes.GetValues() {
+	for node := range m.nodesAddressMap {
 		connId, success := m.nodeConnMap.Get1(node)
 		if success {
 			if address, ok := m.connAddress[connId]; ok {
@@ -136,9 +136,9 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			RemoteAddress: p.Address,
 			Id:            i.ConnId,
 		}
-		m.addNodeToCluster(p.NodeId, i.ConnId)
+		m.addNodeToCluster(p.NodeId, p.Address, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
-		for _, n := range m.nodes.GetValues() {
+		for n := range m.nodesAddressMap {
 			connId, ok := m.nodeConnMap.Get1(n)
 			if ok {
 				fmt.Println(m.NodeId, "Sending MgrConnsSend SyncNodes Payload")
@@ -150,7 +150,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		}
 	case *model.SyncNodes:
 		remoteNodes := p.GetNodes()
-		localNodes := m.nodes.Clone()
+		localNodes := set.NewSetFromMapKeys(m.nodesAddressMap)
 		localNodes.Add(m.NodeId)
 		missing := remoteNodes.Minus(&localNodes)
 		for _, n := range missing.GetValues() {
@@ -218,8 +218,8 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	}
 }
 
-func (m *Mgr) addNodeToCluster(n model.NodeId, c model.ConnId) {
-	m.nodes.Add(n)
+func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) {
+	m.nodesAddressMap[n] = address
 	m.nodeConnMap.Add(n, c)
 	m.distributer.SetWeight(n, 1)
 }
