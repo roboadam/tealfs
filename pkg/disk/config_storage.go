@@ -17,3 +17,7 @@ package disk
 type ConfigStorage struct {
 	
 }
+
+func (c *ConfigStorage)  FetchConfig() {
+    
+}
