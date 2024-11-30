@@ -22,7 +22,7 @@ import (
 func TestConnectToMgr(t *testing.T) {
 	const expectedAddress = "some-address:123"
 
-	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress")
+	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath")
 	m.Start()
 
 	m.UiMgrConnectTos <- model.UiMgrConnectTo{
@@ -353,7 +353,7 @@ type connectedNode struct {
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
-	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress")
+	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath")
 	m.Start()
 	var nodesInCluster []connectedNode
 

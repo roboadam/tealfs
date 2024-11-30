@@ -15,7 +15,10 @@
 package mgr
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -43,9 +46,10 @@ type Mgr struct {
 	connAddress     map[model.ConnId]string
 	distributer     dist.Distributer
 	nodeAddress     string
+	savePath        string
 }
 
-func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string) *Mgr {
+func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
@@ -67,6 +71,7 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string) *Mgr
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		distributer:        dist.New(),
 		nodeAddress:        nodeAddress,
+		savePath:           savePath,
 	}
 	mgr.distributer.SetWeight(mgr.NodeId, 1)
 
@@ -75,6 +80,22 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string) *Mgr
 
 func (m *Mgr) Start() {
 	go m.eventLoop()
+}
+
+func (m *Mgr) saveNodeAddressMap() {
+	file, err := os.Create(filepath.Join(m.savePath, "cluster.json"))
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(m.nodesAddressMap)
+	if err != nil {
+		fmt.Println("Error encoding JSON:", err)
+		return
+	}
 }
 
 func (m *Mgr) eventLoop() {
@@ -220,6 +241,7 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 
 func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) {
 	m.nodesAddressMap[n] = address
+	m.saveNodeAddressMap()
 	m.nodeConnMap.Add(n, c)
 	m.distributer.SetWeight(n, 1)
 }
