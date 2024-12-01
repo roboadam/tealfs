@@ -15,6 +15,7 @@
 package mgr
 
 import (
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
 )
@@ -22,8 +23,12 @@ import (
 func TestConnectToMgr(t *testing.T) {
 	const expectedAddress = "some-address:123"
 
-	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath")
-	m.Start()
+	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{})
+	err := m.Start()
+	if err != nil {
+		t.Error("Error starting", err)
+		return
+	}
 
 	m.UiMgrConnectTos <- model.UiMgrConnectTo{
 		Address: expectedAddress,
@@ -353,8 +358,11 @@ type connectedNode struct {
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
-	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath")
-	m.Start()
+	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{})
+	err := m.Start()
+	if err != nil {
+		t.Error("Error starting", err)
+	}
 	var nodesInCluster []connectedNode
 
 	for _, n := range nodes {

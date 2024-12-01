@@ -17,8 +17,8 @@ package mgr
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -47,9 +47,10 @@ type Mgr struct {
 	distributer     dist.Distributer
 	nodeAddress     string
 	savePath        string
+	fileOps         disk.FileOps
 }
 
-func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string) *Mgr {
+func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
@@ -72,6 +73,7 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		distributer:        dist.New(),
 		nodeAddress:        nodeAddress,
 		savePath:           savePath,
+		fileOps:            fileOps,
 	}
 	mgr.distributer.SetWeight(mgr.NodeId, 1)
 
@@ -83,21 +85,25 @@ func (m *Mgr) Start() error {
 	if err != nil {
 		return err
 	}
-	for key, value := range m.nodesAddressMap {
-		
-	}
 	go m.eventLoop()
+	for _, address := range m.nodesAddressMap {
+		m.UiMgrConnectTos <- model.UiMgrConnectTo{
+			Address: address,
+		}
+	}
+	return nil
 }
 
 func (m *Mgr) loadNodeAddressMap() error {
-	file, err := os.Open(filepath.Join(m.savePath, "cluster.json"))
+	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
 	if err != nil {
-		return err
+		return nil // TODO, this should only be for file not found, not other errors
 	}
-	defer file.Close()
+	if len(data) == 0 {
+		return nil
+	}
 
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&m.nodesAddressMap)
+	err = json.Unmarshal(data, &m.nodesAddressMap)
 	if err != nil {
 		return err
 	}
@@ -106,14 +112,12 @@ func (m *Mgr) loadNodeAddressMap() error {
 }
 
 func (m *Mgr) saveNodeAddressMap() error {
-	file, err := os.Create(filepath.Join(m.savePath, "cluster.json"))
+	data, err := json.Marshal(m.nodesAddressMap)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	encoder := json.NewEncoder(file)
-	err = encoder.Encode(m.nodesAddressMap)
+	err = m.fileOps.WriteFile(filepath.Join(m.savePath, "cluster.json"), data)
 	if err != nil {
 		return err
 	}
@@ -180,7 +184,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			RemoteAddress: p.Address,
 			Id:            i.ConnId,
 		}
-		m.addNodeToCluster(p.NodeId, p.Address, i.ConnId)
+		_ = m.addNodeToCluster(p.NodeId, p.Address, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
 		for n := range m.nodesAddressMap {
 			connId, ok := m.nodeConnMap.Get1(n)
@@ -262,11 +266,15 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	}
 }
 
-func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) {
+func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) error {
 	m.nodesAddressMap[n] = address
-	m.saveNodeAddressMap()
+	err := m.saveNodeAddressMap()
+	if err != nil {
+		return err
+	}
 	m.nodeConnMap.Add(n, c)
 	m.distributer.SetWeight(n, 1)
+	return nil
 }
 
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
