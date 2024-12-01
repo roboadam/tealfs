@@ -78,24 +78,47 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 	return &mgr
 }
 
-func (m *Mgr) Start() {
+func (m *Mgr) Start() error {
+	err := m.loadNodeAddressMap()
+	if err != nil {
+		return err
+	}
+	for key, value := range m.nodesAddressMap {
+		
+	}
 	go m.eventLoop()
 }
 
-func (m *Mgr) saveNodeAddressMap() {
+func (m *Mgr) loadNodeAddressMap() error {
+	file, err := os.Open(filepath.Join(m.savePath, "cluster.json"))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&m.nodesAddressMap)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Mgr) saveNodeAddressMap() error {
 	file, err := os.Create(filepath.Join(m.savePath, "cluster.json"))
 	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
+		return err
 	}
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
 	err = encoder.Encode(m.nodesAddressMap)
 	if err != nil {
-		fmt.Println("Error encoding JSON:", err)
-		return
+		return err
 	}
+
+	return nil
 }
 
 func (m *Mgr) eventLoop() {
