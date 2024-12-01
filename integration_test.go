@@ -156,13 +156,6 @@ func TestTwoNodeCluster(t *testing.T) {
 	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, ctx)
 
 	time.Sleep(time.Second)
-	resp, ok = putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
-	if !ok {
-		t.Error("error response", resp.Status)
-		return
-	}
-	resp.Body.Close()
-	time.Sleep(time.Second)
 
 	if resp.StatusCode >= 400 {
 		t.Error("error response", resp.Status)

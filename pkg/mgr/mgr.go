@@ -15,7 +15,10 @@
 package mgr
 
 import (
+	"encoding/json"
 	"fmt"
+	"path/filepath"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -37,15 +40,17 @@ type Mgr struct {
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
 
-	nodes       set.Set[model.NodeId]
-	nodeConnMap set.Bimap[model.NodeId, model.ConnId]
-	NodeId      model.NodeId
-	connAddress map[model.ConnId]string
-	distributer dist.Distributer
-	nodeAddress string
+	nodesAddressMap map[model.NodeId]string
+	nodeConnMap     set.Bimap[model.NodeId, model.ConnId]
+	NodeId          model.NodeId
+	connAddress     map[model.ConnId]string
+	distributer     dist.Distributer
+	nodeAddress     string
+	savePath        string
+	fileOps         disk.FileOps
 }
 
-func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string) *Mgr {
+func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
@@ -61,20 +66,63 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string) *Mgr
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
-		nodes:              set.NewSet[model.NodeId](),
+		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		distributer:        dist.New(),
 		nodeAddress:        nodeAddress,
+		savePath:           savePath,
+		fileOps:            fileOps,
 	}
 	mgr.distributer.SetWeight(mgr.NodeId, 1)
 
 	return &mgr
 }
 
-func (m *Mgr) Start() {
+func (m *Mgr) Start() error {
+	err := m.loadNodeAddressMap()
+	if err != nil {
+		return err
+	}
 	go m.eventLoop()
+	for _, address := range m.nodesAddressMap {
+		m.UiMgrConnectTos <- model.UiMgrConnectTo{
+			Address: address,
+		}
+	}
+	return nil
+}
+
+func (m *Mgr) loadNodeAddressMap() error {
+	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
+	if err != nil {
+		return nil // TODO, this should only be for file not found, not other errors
+	}
+	if len(data) == 0 {
+		return nil
+	}
+
+	err = json.Unmarshal(data, &m.nodesAddressMap)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Mgr) saveNodeAddressMap() error {
+	data, err := json.Marshal(m.nodesAddressMap)
+	if err != nil {
+		return err
+	}
+
+	err = m.fileOps.WriteFile(filepath.Join(m.savePath, "cluster.json"), data)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *Mgr) eventLoop() {
@@ -112,7 +160,7 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 
 func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 	result := model.NewSyncNodes()
-	for _, node := range m.nodes.GetValues() {
+	for node := range m.nodesAddressMap {
 		connId, success := m.nodeConnMap.Get1(node)
 		if success {
 			if address, ok := m.connAddress[connId]; ok {
@@ -136,9 +184,9 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			RemoteAddress: p.Address,
 			Id:            i.ConnId,
 		}
-		m.addNodeToCluster(p.NodeId, i.ConnId)
+		_ = m.addNodeToCluster(p.NodeId, p.Address, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
-		for _, n := range m.nodes.GetValues() {
+		for n := range m.nodesAddressMap {
 			connId, ok := m.nodeConnMap.Get1(n)
 			if ok {
 				fmt.Println(m.NodeId, "Sending MgrConnsSend SyncNodes Payload")
@@ -150,7 +198,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		}
 	case *model.SyncNodes:
 		remoteNodes := p.GetNodes()
-		localNodes := m.nodes.Clone()
+		localNodes := set.NewSetFromMapKeys(m.nodesAddressMap)
 		localNodes.Add(m.NodeId)
 		missing := remoteNodes.Minus(&localNodes)
 		for _, n := range missing.GetValues() {
@@ -218,10 +266,15 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	}
 }
 
-func (m *Mgr) addNodeToCluster(n model.NodeId, c model.ConnId) {
-	m.nodes.Add(n)
+func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) error {
+	m.nodesAddressMap[n] = address
+	err := m.saveNodeAddressMap()
+	if err != nil {
+		return err
+	}
 	m.nodeConnMap.Add(n, c)
 	m.distributer.SetWeight(n, 1)
+	return nil
 }
 
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
