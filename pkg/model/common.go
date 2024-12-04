@@ -55,6 +55,33 @@ func IntToBytes(value uint32) []byte {
 	return buf
 }
 
+func Int64FromBytes(data []byte) (int64, []byte) {
+	var result int64
+	if len(data) < 8 {
+		return 0, data
+	}
+
+	toRead := data[:8]
+	remainder := data[8:]
+
+	err := binary.Read(bytes.NewReader(toRead), binary.BigEndian, &result)
+	if err != nil {
+		return 0, data
+	}
+
+	return result, remainder
+}
+
+func Int64ToBytes(value int64) []byte {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.BigEndian, value)
+	if err != nil {
+		// TODO: not sure what to do here, log I guess when I am able to do that
+		return []byte{}
+	}
+	return buf.Bytes()
+}
+
 func BoolToBytes(value bool) []byte {
 	result := []byte{1}
 	if value {

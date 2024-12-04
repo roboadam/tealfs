@@ -59,9 +59,6 @@ func New(
 	return w
 }
 
-func (w *Webdav) StopWebdavServer() {
-}
-
 func (w *Webdav) start(ctx context.Context) {
 	lockSystem := LockSystem{
 		locks: make(map[string]webdav.LockDetails),
