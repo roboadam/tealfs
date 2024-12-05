@@ -96,8 +96,9 @@ func (l *LockConfirmRequest) Equal(p Payload) bool {
 				return false
 			}
 		}
+		return true
 	}
-	return true
+	return false
 }
 
 func ToLockConfirmRequest(data []byte) *LockConfirmRequest {
@@ -120,20 +121,43 @@ func ToLockConfirmRequest(data []byte) *LockConfirmRequest {
 }
 
 type LockConfirmResponse struct {
-	Err       error
+	Success   bool
+	Message   string
 	ReleaseId LockReleaseId
 }
 
 func (l *LockConfirmResponse) ToBytes() []byte {
-	panic("not implemented") // TODO: Implement
+	success := BoolToBytes(l.Success)
+	message := StringToBytes(l.Message)
+	releaseId := StringToBytes(string(l.ReleaseId))
+	return bytes.Join([][]byte{success, message, releaseId}, []byte{})
 }
 
-func (l *LockConfirmResponse) Equal(_ Payload) bool {
-	panic("not implemented") // TODO: Implement
+func (l *LockConfirmResponse) Equal(p Payload) bool {
+	if o, ok := p.(*LockConfirmResponse); ok {
+		if l.Message != o.Message {
+			return false
+		}
+		if l.Success != o.Success {
+			return false
+		}
+		if l.ReleaseId != o.ReleaseId {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func ToLockConfirmResponse(data []byte) *LockConfirmResponse {
-	panic("not implemented") // TODO: Implement
+	success, remainder := BoolFromBytes(data)
+	message, remainder := StringFromBytes(remainder)
+	releaseId, _ := StringFromBytes(remainder)
+	return &LockConfirmResponse{
+		Success:   success,
+		Message:   message,
+		ReleaseId: LockReleaseId(releaseId),
+	}
 }
 
 type LockCreateRequest struct {

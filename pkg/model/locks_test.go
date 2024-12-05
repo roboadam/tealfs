@@ -47,3 +47,17 @@ func TestConfirmRequest(t *testing.T) {
 		t.Error("Expected values to be equal")
 	}
 }
+
+func TestConfirmResponse(t *testing.T) {
+	cr := model.LockConfirmResponse{
+		Success:   false,
+		Message:   "message1",
+		ReleaseId: "releaseId1",
+	}
+	serialized := cr.ToBytes()
+	crDeserialized := model.ToLockConfirmResponse(serialized)
+
+	if !cr.Equal(crDeserialized) {
+		t.Error("Expected values to be equal")
+	}
+}
