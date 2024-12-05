@@ -42,7 +42,7 @@ type LockConfirmRequest struct {
 }
 
 func (l *LockConfirmRequest) ToBytes() []byte {
-	now := Int64ToBytes(l.Now.UnixNano())
+	now := Int64ToBytes(l.Now.UnixMicro())
 	name0 := StringToBytes(l.Name0)
 	name1 := StringToBytes(l.Name1)
 	numConditions := IntToBytes(uint32(len(l.Conditions)))
@@ -60,6 +60,13 @@ func ConditionToBytes(condition *webdav.Condition) []byte {
 	return bytes.Join([][]byte{not, token, etag}, []byte{})
 }
 
+func ToCondition(data []byte) (webdav.Condition, []byte) {
+	not, remainder := BoolFromBytes(data)
+	token, remainder := StringFromBytes(remainder)
+	etag, remainder := StringFromBytes(remainder)
+	return webdav.Condition{Not: not, Token: token, ETag: etag}, remainder
+}
+
 func ConditionEquals(condition1 *webdav.Condition, condition2 *webdav.Condition) bool {
 	if condition1.Not != condition2.Not {
 		return false
@@ -75,7 +82,7 @@ func ConditionEquals(condition1 *webdav.Condition, condition2 *webdav.Condition)
 
 func (l *LockConfirmRequest) Equal(p Payload) bool {
 	if o, ok := p.(*LockConfirmRequest); ok {
-		if l.Now != o.Now {
+		if l.Now.UnixMicro() != o.Now.UnixMicro() {
 			return false
 		}
 		if l.Name0 != o.Name0 {
@@ -94,7 +101,22 @@ func (l *LockConfirmRequest) Equal(p Payload) bool {
 }
 
 func ToLockConfirmRequest(data []byte) *LockConfirmRequest {
-	panic("not implemented") // TODO: Implement
+	now, remainder := Int64FromBytes(data)
+	name0, remainder := StringFromBytes(remainder)
+	name1, remainder := StringFromBytes(remainder)
+	numConditions, remainder := IntFromBytes(remainder)
+	conditions := []webdav.Condition{}
+	for _ = range numConditions {
+		var condition webdav.Condition
+		condition, remainder = ToCondition(remainder)
+		conditions = append(conditions, condition)
+	}
+	return &LockConfirmRequest{
+		Now:        time.UnixMicro(now),
+		Name0:      name0,
+		Name1:      name1,
+		Conditions: conditions,
+	}
 }
 
 type LockConfirmResponse struct {
