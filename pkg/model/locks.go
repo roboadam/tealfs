@@ -165,8 +165,18 @@ type LockCreateRequest struct {
 	Details webdav.LockDetails
 }
 
+func LockDetailsToBytes(l *webdav.LockDetails) []byte {
+	zeroDepth := BoolToBytes(l.ZeroDepth)
+	ownerXml := StringToBytes(l.OwnerXML)
+	root := StringToBytes(l.Root)
+	duration := Int64ToBytes(l.Duration.Microseconds())
+	return bytes.Join([][]byte{zeroDepth, ownerXml, root, duration}, []byte{})
+}
+
 func (l *LockCreateRequest) ToBytes() []byte {
-	panic("not implemented") // TODO: Implement
+	now := Int64ToBytes(l.Now.UnixMicro())
+	details := LockDetailsToBytes(&l.Details)
+	return bytes.Join([][]byte{now, details}, []byte{})
 }
 
 func (l *LockCreateRequest) Equal(_ Payload) bool {
