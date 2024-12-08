@@ -265,7 +265,14 @@ func (l *LockCreateResponse) Equal(p Payload) bool {
 }
 
 func ToLockCreateResponse(data []byte) *LockCreateResponse {
-	panic("not implemented") // TODO: Implement
+	token, remainder := StringFromBytes(data)
+	ok, remainder := BoolFromBytes(remainder)
+	message, _ := StringFromBytes(remainder)
+	return &LockCreateResponse{
+		Token:   LockToken(token),
+		Ok:      ok,
+		Message: message,
+	}
 }
 
 type LockRefreshRequest struct {
@@ -298,7 +305,14 @@ func (l *LockRefreshRequest) Equal(p Payload) bool {
 }
 
 func ToLockRefreshRequest(data []byte) *LockRefreshRequest {
-	panic("not implemented") // TODO: Implement
+	now, remainder := Int64FromBytes(data)
+	token, remainder := StringFromBytes(remainder)
+	duration, _ := Int64FromBytes(remainder)
+	return &LockRefreshRequest{
+		Now:      time.UnixMicro(now),
+		Token:    LockToken(token),
+		Duration: time.Duration(duration),
+	}
 }
 
 type LockRefreshResponse struct {
@@ -331,7 +345,14 @@ func (l *LockRefreshResponse) Equal(p Payload) bool {
 }
 
 func ToLockRefreshResponse(data []byte) *LockRefreshResponse {
-	panic("not implemented") // TODO: Implement
+	details, remainder := ToLockDetails(data)
+	ok, remainder := BoolFromBytes(remainder)
+	message, _ := StringFromBytes(data)
+	return &LockRefreshResponse{
+		Details: details,
+		Ok:      ok,
+		Message: message,
+	}
 }
 
 type LockUnlockRequest struct {
@@ -359,7 +380,12 @@ func (l *LockUnlockRequest) Equal(p Payload) bool {
 }
 
 func ToLockUnlockRequest(data []byte) *LockUnlockRequest {
-	panic("not implemented") // TODO: Implement
+	now, remainder := Int64FromBytes(data)
+	token, _ := StringFromBytes(remainder)
+	return &LockUnlockRequest{
+		Now:   time.UnixMicro(now),
+		Token: LockToken(token),
+	}
 }
 
 type LockUnlockResponse struct {
@@ -387,5 +413,10 @@ func (l *LockUnlockResponse) Equal(p Payload) bool {
 }
 
 func ToLockUnlockResponse(data []byte) *LockUnlockResponse {
-	panic("not implemented") // TODO: Implement
+	ok, remainder := BoolFromBytes(data)
+	message, _ := StringFromBytes(remainder)
+	return &LockUnlockResponse{
+		Ok:      ok,
+		Message: message,
+	}
 }
