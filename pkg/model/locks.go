@@ -169,7 +169,7 @@ func LockDetailsToBytes(l *webdav.LockDetails) []byte {
 	zeroDepth := BoolToBytes(l.ZeroDepth)
 	ownerXml := StringToBytes(l.OwnerXML)
 	root := StringToBytes(l.Root)
-	duration := Int64ToBytes(l.Duration.Microseconds())
+	duration := Int64ToBytes(int64(l.Duration))
 	return bytes.Join([][]byte{zeroDepth, ownerXml, root, duration}, []byte{})
 }
 
@@ -179,12 +179,63 @@ func (l *LockCreateRequest) ToBytes() []byte {
 	return bytes.Join([][]byte{now, details}, []byte{})
 }
 
-func (l *LockCreateRequest) Equal(_ Payload) bool {
-	panic("not implemented") // TODO: Implement
+func LockDetailsEquals(l1 *webdav.LockDetails, l2 *webdav.LockDetails) bool {
+	if l1 == nil && l2 == nil {
+		return true
+	}
+
+	if l1.Duration.Milliseconds() != l2.Duration.Milliseconds() {
+		return false
+	}
+
+	if l1.OwnerXML != l2.OwnerXML {
+		return false
+	}
+
+	if l1.Root != l2.Root {
+		return false
+	}
+
+	if l1.ZeroDepth != l2.ZeroDepth {
+		return false
+	}
+
+	return true
+}
+
+func ToLockDetails(data []byte) (webdav.LockDetails, []byte) {
+	zeroDepth, remainder := BoolFromBytes(data)
+	ownerXml, remainder := StringFromBytes(remainder)
+	root, remainder := StringFromBytes(remainder)
+	duration, remainder := Int64FromBytes(remainder)
+	return webdav.LockDetails{
+		Root:      root,
+		Duration:  time.Duration(duration),
+		OwnerXML:  ownerXml,
+		ZeroDepth: zeroDepth,
+	}, remainder
+}
+
+func (l *LockCreateRequest) Equal(p Payload) bool {
+	if o, ok := p.(*LockCreateRequest); ok {
+		if l.Now.UnixMilli() != o.Now.UnixMilli() {
+			return false
+		}
+		if !LockDetailsEquals(&l.Details, &o.Details) {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func ToLockCreateRequest(data []byte) *LockCreateRequest {
-	panic("not implemented") // TODO: Implement
+	now, remainder := Int64FromBytes(data)
+	details, _ := ToLockDetails(remainder)
+	return &LockCreateRequest{
+		Now:     time.UnixMicro(now),
+		Details: details,
+	}
 }
 
 type LockCreateResponse struct {

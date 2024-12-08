@@ -61,3 +61,21 @@ func TestConfirmResponse(t *testing.T) {
 		t.Error("Expected values to be equal")
 	}
 }
+
+func TestCreateRequest(t *testing.T) {
+	cr := model.LockCreateRequest{
+		Now: time.Now(),
+		Details: webdav.LockDetails{
+			Root:      "root1",
+			Duration:  time.Duration(1234),
+			OwnerXML:  "<a href=\"https://example.com\">example</a>",
+			ZeroDepth: false,
+		},
+	}
+	serialized := cr.ToBytes()
+	crDeserialized := model.ToLockCreateRequest(serialized)
+
+	if !cr.Equal(crDeserialized) {
+		t.Error("Expected values to be equal")
+	}
+}
