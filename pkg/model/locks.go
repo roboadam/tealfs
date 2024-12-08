@@ -121,13 +121,13 @@ func ToLockConfirmRequest(data []byte) *LockConfirmRequest {
 }
 
 type LockConfirmResponse struct {
-	Success   bool
+	Ok        bool
 	Message   string
 	ReleaseId LockReleaseId
 }
 
 func (l *LockConfirmResponse) ToBytes() []byte {
-	success := BoolToBytes(l.Success)
+	success := BoolToBytes(l.Ok)
 	message := StringToBytes(l.Message)
 	releaseId := StringToBytes(string(l.ReleaseId))
 	return AddType(LockConfirmResponseType, bytes.Join([][]byte{success, message, releaseId}, []byte{}))
@@ -138,7 +138,7 @@ func (l *LockConfirmResponse) Equal(p Payload) bool {
 		if l.Message != o.Message {
 			return false
 		}
-		if l.Success != o.Success {
+		if l.Ok != o.Ok {
 			return false
 		}
 		if l.ReleaseId != o.ReleaseId {
@@ -154,7 +154,7 @@ func ToLockConfirmResponse(data []byte) *LockConfirmResponse {
 	message, remainder := StringFromBytes(remainder)
 	releaseId, _ := StringFromBytes(remainder)
 	return &LockConfirmResponse{
-		Success:   success,
+		Ok:        success,
 		Message:   message,
 		ReleaseId: LockReleaseId(releaseId),
 	}
@@ -239,12 +239,16 @@ func ToLockCreateRequest(data []byte) *LockCreateRequest {
 }
 
 type LockCreateResponse struct {
-	Token LockToken
-	Err   error
+	Token   LockToken
+	Ok      bool
+	Message string
 }
 
 func (l *LockCreateResponse) ToBytes() []byte {
-	panic("not implemented") // TODO: Implement
+	token := StringToBytes(string(l.Token))
+	ok := BoolToBytes(l.Ok)
+	message := StringToBytes(l.Message)
+	return AddType(LockCreateResponseType, bytes.Join([][]byte{token, ok, message}, []byte{}))
 }
 
 func (l *LockCreateResponse) Equal(_ Payload) bool {
@@ -262,7 +266,10 @@ type LockRefreshRequest struct {
 }
 
 func (l *LockRefreshRequest) ToBytes() []byte {
-	panic("not implemented") // TODO: Implement
+	now := Int64ToBytes(l.Now.UnixMicro())
+	token := StringToBytes(string(l.Token))
+	duration := Int64ToBytes(int64(l.Duration))
+	return AddType(LockRefreshRequestType, bytes.Join([][]byte{now, token, duration}, []byte{}))
 }
 
 func (l *LockRefreshRequest) Equal(_ Payload) bool {
@@ -275,11 +282,15 @@ func ToLockRefreshRequest(data []byte) *LockRefreshRequest {
 
 type LockRefreshResponse struct {
 	Details webdav.LockDetails
-	Err     error
+	Ok      bool
+	Message string
 }
 
 func (l *LockRefreshResponse) ToBytes() []byte {
-	panic("not implemented") // TODO: Implement
+	details := LockDetailsToBytes(&l.Details)
+	ok := BoolToBytes(l.Ok)
+	message := StringToBytes(l.Message)
+	return AddType(LockRefreshResponseType, bytes.Join([][]byte{details, ok, message}, []byte{}))
 }
 
 func (l *LockRefreshResponse) Equal(_ Payload) bool {
@@ -296,7 +307,9 @@ type LockUnlockRequest struct {
 }
 
 func (l *LockUnlockRequest) ToBytes() []byte {
-	panic("not implemented") // TODO: Implement
+	now := Int64ToBytes(l.Now.UnixMicro())
+	token := StringToBytes(string(l.Token))
+	return AddType(LockUnlockRequestType, bytes.Join([][]byte{now, token}, []byte{}))
 }
 
 func (l *LockUnlockRequest) Equal(_ Payload) bool {
@@ -308,11 +321,14 @@ func ToLockUnlockRequest(data []byte) *LockUnlockRequest {
 }
 
 type LockUnlockResponse struct {
-	Err error
+	Ok      bool
+	Message string
 }
 
 func (l *LockUnlockResponse) ToBytes() []byte {
-	panic("not implemented") // TODO: Implement
+	ok := BoolToBytes(l.Ok)
+	message := StringToBytes(l.Message)
+	return AddType(LockUnlockResponseType, bytes.Join([][]byte{ok, message}, []byte{}))
 }
 
 func (l *LockUnlockResponse) Equal(_ Payload) bool {

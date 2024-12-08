@@ -57,7 +57,7 @@ func TestConfirmRequest(t *testing.T) {
 
 func TestConfirmResponse(t *testing.T) {
 	cr := model.LockConfirmResponse{
-		Success:   false,
+		Ok:        false,
 		Message:   "message1",
 		ReleaseId: "releaseId1",
 	}

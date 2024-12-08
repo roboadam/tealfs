@@ -25,6 +25,11 @@ const (
 	LockConfirmRequestType  = uint8(7)
 	LockConfirmResponseType = uint8(8)
 	LockCreateRequestType   = uint8(9)
+	LockCreateResponseType  = uint8(9)
+	LockRefreshRequestType  = uint8(9)
+	LockRefreshResponseType = uint8(9)
+	LockUnlockRequestType   = uint8(9)
+	LockUnlockResponseType  = uint8(9)
 )
 
 type Payload interface {
