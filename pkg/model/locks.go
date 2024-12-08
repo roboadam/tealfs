@@ -251,8 +251,17 @@ func (l *LockCreateResponse) ToBytes() []byte {
 	return AddType(LockCreateResponseType, bytes.Join([][]byte{token, ok, message}, []byte{}))
 }
 
-func (l *LockCreateResponse) Equal(_ Payload) bool {
-	panic("not implemented") // TODO: Implement
+func (l *LockCreateResponse) Equal(p Payload) bool {
+	if o, ok := p.(*LockCreateResponse); ok {
+		if l.Token != o.Token {
+			return false
+		}
+		if l.Ok != o.Ok {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func ToLockCreateResponse(data []byte) *LockCreateResponse {
@@ -272,8 +281,20 @@ func (l *LockRefreshRequest) ToBytes() []byte {
 	return AddType(LockRefreshRequestType, bytes.Join([][]byte{now, token, duration}, []byte{}))
 }
 
-func (l *LockRefreshRequest) Equal(_ Payload) bool {
-	panic("not implemented") // TODO: Implement
+func (l *LockRefreshRequest) Equal(p Payload) bool {
+	if o, ok := p.(*LockRefreshRequest); ok {
+		if l.Now.UnixMilli() != o.Now.UnixMilli() {
+			return false
+		}
+		if l.Token != o.Token {
+			return false
+		}
+		if l.Duration != o.Duration {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func ToLockRefreshRequest(data []byte) *LockRefreshRequest {
@@ -293,8 +314,20 @@ func (l *LockRefreshResponse) ToBytes() []byte {
 	return AddType(LockRefreshResponseType, bytes.Join([][]byte{details, ok, message}, []byte{}))
 }
 
-func (l *LockRefreshResponse) Equal(_ Payload) bool {
-	panic("not implemented") // TODO: Implement
+func (l *LockRefreshResponse) Equal(p Payload) bool {
+	if o, ok := p.(*LockRefreshResponse); ok {
+		if !LockDetailsEquals(&l.Details, &o.Details) {
+			return false
+		}
+		if l.Ok != o.Ok {
+			return false
+		}
+		if l.Message != o.Message {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func ToLockRefreshResponse(data []byte) *LockRefreshResponse {
@@ -312,8 +345,17 @@ func (l *LockUnlockRequest) ToBytes() []byte {
 	return AddType(LockUnlockRequestType, bytes.Join([][]byte{now, token}, []byte{}))
 }
 
-func (l *LockUnlockRequest) Equal(_ Payload) bool {
-	panic("not implemented") // TODO: Implement
+func (l *LockUnlockRequest) Equal(p Payload) bool {
+	if o, ok := p.(*LockUnlockRequest); ok {
+		if l.Now.UnixMilli() != o.Now.UnixMilli() {
+			return false
+		}
+		if l.Token != o.Token {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func ToLockUnlockRequest(data []byte) *LockUnlockRequest {
@@ -331,8 +373,17 @@ func (l *LockUnlockResponse) ToBytes() []byte {
 	return AddType(LockUnlockResponseType, bytes.Join([][]byte{ok, message}, []byte{}))
 }
 
-func (l *LockUnlockResponse) Equal(_ Payload) bool {
-	panic("not implemented") // TODO: Implement
+func (l *LockUnlockResponse) Equal(p Payload) bool {
+	if o, ok := p.(*LockUnlockResponse); ok {
+		if l.Ok != o.Ok {
+			return false
+		}
+		if l.Message != o.Message {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func ToLockUnlockResponse(data []byte) *LockUnlockResponse {
