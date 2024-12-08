@@ -15,13 +15,16 @@
 package model
 
 const (
-	NoOpType         = uint8(0)
-	IAmType          = uint8(1)
-	SyncType         = uint8(2)
-	WriteRequestType = uint8(3)
-	WriteResultType  = uint8(4)
-	ReadRequestType  = uint8(5)
-	ReadResultType   = uint8(6)
+	NoOpType                = uint8(0)
+	IAmType                 = uint8(1)
+	SyncType                = uint8(2)
+	WriteRequestType        = uint8(3)
+	WriteResultType         = uint8(4)
+	ReadRequestType         = uint8(5)
+	ReadResultType          = uint8(6)
+	LockConfirmRequestType  = uint8(7)
+	LockConfirmResponseType = uint8(8)
+	LockCreateRequestType   = uint8(9)
 )
 
 type Payload interface {
@@ -43,6 +46,12 @@ func ToPayload(data []byte) Payload {
 		return ToReadRequest(payloadData(data))
 	case ReadResultType:
 		return ToReadResult(payloadData(data))
+	case LockConfirmRequestType:
+		return ToLockConfirmRequest(payloadData(data))
+	case LockConfirmResponseType:
+		return ToLockConfirmResponse(payloadData(data))
+	case LockCreateRequestType:
+		return ToLockCreateRequest(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}

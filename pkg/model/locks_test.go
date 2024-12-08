@@ -40,12 +40,19 @@ func TestConfirmRequest(t *testing.T) {
 			},
 		},
 	}
-	serialized := cr.ToBytes()
-	crDeserialized := model.ToLockConfirmRequest(serialized)
 
-	if !cr.Equal(crDeserialized) {
-		t.Error("Expected values to be equal")
+	serialized := cr.ToBytes()
+	switch p := model.ToPayload(serialized).(type) {
+	case *model.LockConfirmRequest:
+		if !cr.Equal(p) {
+			t.Error("Expected values to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
 	}
+
 }
 
 func TestConfirmResponse(t *testing.T) {
@@ -55,10 +62,15 @@ func TestConfirmResponse(t *testing.T) {
 		ReleaseId: "releaseId1",
 	}
 	serialized := cr.ToBytes()
-	crDeserialized := model.ToLockConfirmResponse(serialized)
-
-	if !cr.Equal(crDeserialized) {
-		t.Error("Expected values to be equal")
+	switch p := model.ToPayload(serialized).(type) {
+	case *model.LockConfirmResponse:
+		if !cr.Equal(p) {
+			t.Error("Expected values to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
 	}
 }
 
@@ -73,9 +85,14 @@ func TestCreateRequest(t *testing.T) {
 		},
 	}
 	serialized := cr.ToBytes()
-	crDeserialized := model.ToLockCreateRequest(serialized)
-
-	if !cr.Equal(crDeserialized) {
-		t.Error("Expected values to be equal")
+	switch p := model.ToPayload(serialized).(type) {
+	case *model.LockCreateRequest:
+		if !cr.Equal(p) {
+			t.Error("Expected values to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
 	}
 }

@@ -50,7 +50,7 @@ func (l *LockConfirmRequest) ToBytes() []byte {
 	for _, condition := range l.Conditions {
 		conditionBytes = append(conditionBytes, ConditionToBytes(&condition)...)
 	}
-	return bytes.Join([][]byte{now, name0, name1, numConditions, conditionBytes}, []byte{})
+	return AddType(LockConfirmRequestType, bytes.Join([][]byte{now, name0, name1, numConditions, conditionBytes}, []byte{}))
 }
 
 func ConditionToBytes(condition *webdav.Condition) []byte {
@@ -107,7 +107,7 @@ func ToLockConfirmRequest(data []byte) *LockConfirmRequest {
 	name1, remainder := StringFromBytes(remainder)
 	numConditions, remainder := IntFromBytes(remainder)
 	conditions := []webdav.Condition{}
-	for _ = range numConditions {
+	for range numConditions {
 		var condition webdav.Condition
 		condition, remainder = ToCondition(remainder)
 		conditions = append(conditions, condition)
@@ -130,7 +130,7 @@ func (l *LockConfirmResponse) ToBytes() []byte {
 	success := BoolToBytes(l.Success)
 	message := StringToBytes(l.Message)
 	releaseId := StringToBytes(string(l.ReleaseId))
-	return bytes.Join([][]byte{success, message, releaseId}, []byte{})
+	return AddType(LockConfirmResponseType, bytes.Join([][]byte{success, message, releaseId}, []byte{}))
 }
 
 func (l *LockConfirmResponse) Equal(p Payload) bool {
@@ -176,7 +176,7 @@ func LockDetailsToBytes(l *webdav.LockDetails) []byte {
 func (l *LockCreateRequest) ToBytes() []byte {
 	now := Int64ToBytes(l.Now.UnixMicro())
 	details := LockDetailsToBytes(&l.Details)
-	return bytes.Join([][]byte{now, details}, []byte{})
+	return AddType(LockCreateRequestType, bytes.Join([][]byte{now, details}, []byte{}))
 }
 
 func LockDetailsEquals(l1 *webdav.LockDetails, l2 *webdav.LockDetails) bool {
