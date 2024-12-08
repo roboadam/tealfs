@@ -96,3 +96,101 @@ func TestCreateRequest(t *testing.T) {
 		return
 	}
 }
+
+func TestCreateResponse(t *testing.T) {
+	cr := model.LockCreateResponse{
+		Token:   "token1",
+		Ok:      true,
+		Message: "message1",
+	}
+	serialized := cr.ToBytes()
+	switch p := model.ToPayload(serialized).(type) {
+	case *model.LockCreateResponse:
+		if !cr.Equal(p) {
+			t.Error("Expected values to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
+	}
+}
+
+func TestRefreshRequest(t *testing.T) {
+	rr := model.LockRefreshRequest{
+		Now:      time.Now(),
+		Token:    "token1",
+		Duration: time.Duration(1234),
+	}
+	serialized := rr.ToBytes()
+	switch p := model.ToPayload(serialized).(type) {
+	case *model.LockRefreshRequest:
+		if !rr.Equal(p) {
+			t.Error("Expected values to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
+	}
+}
+
+func TestRefreshResponse(t *testing.T) {
+	rr := model.LockRefreshResponse{
+		Details: webdav.LockDetails{
+			Root:      "root1",
+			Duration:  time.Duration(1234),
+			OwnerXML:  "<a href=\"https://example.com\">example</a>",
+			ZeroDepth: true,
+		},
+		Ok:      true,
+		Message: "message1",
+	}
+	serialized := rr.ToBytes()
+	switch p := model.ToPayload(serialized).(type) {
+	case *model.LockRefreshResponse:
+		if !rr.Equal(p) {
+			t.Error("Expected values to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
+	}
+}
+
+func TestUnlockRequest(t *testing.T) {
+	ur := model.LockUnlockRequest{
+		Now:   time.Now(),
+		Token: "token1",
+	}
+	serialized := ur.ToBytes()
+	switch p := model.ToPayload(serialized).(type) {
+	case *model.LockUnlockRequest:
+		if !ur.Equal(p) {
+			t.Error("Expected values to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
+	}
+}
+
+func TestUnlockResponse(t *testing.T) {
+	ur := model.LockUnlockResponse{
+		Ok:      true,
+		Message: "message1",
+	}
+	serialized := ur.ToBytes()
+	switch p := model.ToPayload(serialized).(type) {
+	case *model.LockUnlockResponse:
+		if !ur.Equal(p) {
+			t.Error("Expected values to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
+	}
+}

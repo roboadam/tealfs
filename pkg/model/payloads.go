@@ -25,11 +25,11 @@ const (
 	LockConfirmRequestType  = uint8(7)
 	LockConfirmResponseType = uint8(8)
 	LockCreateRequestType   = uint8(9)
-	LockCreateResponseType  = uint8(9)
-	LockRefreshRequestType  = uint8(9)
-	LockRefreshResponseType = uint8(9)
-	LockUnlockRequestType   = uint8(9)
-	LockUnlockResponseType  = uint8(9)
+	LockCreateResponseType  = uint8(10)
+	LockRefreshRequestType  = uint8(11)
+	LockRefreshResponseType = uint8(12)
+	LockUnlockRequestType   = uint8(13)
+	LockUnlockResponseType  = uint8(14)
 )
 
 type Payload interface {
@@ -57,6 +57,16 @@ func ToPayload(data []byte) Payload {
 		return ToLockConfirmResponse(payloadData(data))
 	case LockCreateRequestType:
 		return ToLockCreateRequest(payloadData(data))
+	case LockCreateResponseType:
+		return ToLockCreateResponse(payloadData(data))
+	case LockRefreshRequestType:
+		return ToLockRefreshRequest(payloadData(data))
+	case LockRefreshResponseType:
+		return ToLockRefreshResponse(payloadData(data))
+	case LockUnlockRequestType:
+		return ToLockUnlockRequest(payloadData(data))
+	case LockUnlockResponseType:
+		return ToLockUnlockResponse(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}

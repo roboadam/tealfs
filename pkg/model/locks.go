@@ -347,7 +347,7 @@ func (l *LockRefreshResponse) Equal(p Payload) bool {
 func ToLockRefreshResponse(data []byte) *LockRefreshResponse {
 	details, remainder := ToLockDetails(data)
 	ok, remainder := BoolFromBytes(remainder)
-	message, _ := StringFromBytes(data)
+	message, _ := StringFromBytes(remainder)
 	return &LockRefreshResponse{
 		Details: details,
 		Ok:      ok,
