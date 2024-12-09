@@ -23,6 +23,15 @@ import (
 )
 
 type LockReleaseId string
+
+func (l *LockReleaseId) ToBytes() []byte {
+	panic("not implemented") // TODO: Implement
+}
+
+func (l *LockReleaseId) Equal(_ Payload) bool {
+	panic("not implemented") // TODO: Implement
+}
+
 type LockToken string
 
 func NewLockReleaseId() LockReleaseId {
