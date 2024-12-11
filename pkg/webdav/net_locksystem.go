@@ -22,11 +22,13 @@ import (
 	"golang.org/x/net/webdav"
 )
 
+type LockConfirmReqResp struct {
+	Req  model.LockConfirmRequest
+	Resp chan model.LockConfirmResponse
+}
+
 type NetLockSystem struct {
-	ConfirmChan chan struct {
-		Req  model.LockConfirmRequest
-		Resp chan model.LockConfirmResponse
-	}
+	ConfirmChan chan LockConfirmReqResp
 	ReleaseChan chan model.LockReleaseId
 	CreateChan  chan struct {
 		Req  model.LockCreateRequest
@@ -44,10 +46,7 @@ type NetLockSystem struct {
 
 func NewNetLockSystem() *NetLockSystem {
 	return &NetLockSystem{
-		ConfirmChan: make(chan struct {
-			Req  model.LockConfirmRequest
-			Resp chan model.LockConfirmResponse
-		}),
+		ConfirmChan: make(chan LockConfirmReqResp),
 		ReleaseChan: make(chan model.LockReleaseId),
 		CreateChan: make(chan struct {
 			Req  model.LockCreateRequest

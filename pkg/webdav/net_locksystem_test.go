@@ -16,13 +16,42 @@ package webdav_test
 
 import (
 	"context"
+	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestConfirmLock(t *testing.T) {
-	_ = webdav.NewNetLockSystem()
+	ls := webdav.NewNetLockSystem()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go consumeConfirm(ctx, ls.ConfirmChan)
+	go consumeRelease(ctx, ls.ReleaseChan)
 	t.Error("")
 }
 
-func consumeConfirm(ctx context.Context) {}
+func consumeConfirm(ctx context.Context, confirms chan webdav.LockConfirmReqResp) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case confirm := <-confirms:
+			confirm.Resp <- model.LockConfirmResponse{
+				Ok:        true,
+				ReleaseId: model.LockReleaseId(uuid.New().String()),
+			}
+		}
+	}
+}
+
+func consumeRelease(ctx context.Context, releases chan model.LockReleaseId) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-releases:
+		}
+	}
+}
