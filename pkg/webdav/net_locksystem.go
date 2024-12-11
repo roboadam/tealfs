@@ -26,40 +26,34 @@ type LockConfirmReqResp struct {
 	Req  model.LockConfirmRequest
 	Resp chan model.LockConfirmResponse
 }
+type LockCreateReqResp struct {
+	Req  model.LockCreateRequest
+	Resp chan model.LockCreateResponse
+}
+type LockRefreshReqResp struct {
+	Req  model.LockRefreshRequest
+	Resp chan model.LockRefreshResponse
+}
+type LockUnlockReqResp struct {
+	Req  model.LockUnlockRequest
+	Resp chan model.LockUnlockResponse
+}
 
 type NetLockSystem struct {
 	ConfirmChan chan LockConfirmReqResp
 	ReleaseChan chan model.LockReleaseId
-	CreateChan  chan struct {
-		Req  model.LockCreateRequest
-		Resp chan model.LockCreateResponse
-	}
-	RefreshChan chan struct {
-		Req  model.LockRefreshRequest
-		Resp chan model.LockRefreshResponse
-	}
-	UnlockChan chan struct {
-		Req  model.LockUnlockRequest
-		Resp chan model.LockUnlockResponse
-	}
+	CreateChan  chan LockCreateReqResp
+	RefreshChan chan LockRefreshReqResp
+	UnlockChan  chan LockUnlockReqResp
 }
 
 func NewNetLockSystem() *NetLockSystem {
 	return &NetLockSystem{
 		ConfirmChan: make(chan LockConfirmReqResp),
 		ReleaseChan: make(chan model.LockReleaseId),
-		CreateChan: make(chan struct {
-			Req  model.LockCreateRequest
-			Resp chan model.LockCreateResponse
-		}),
-		RefreshChan: make(chan struct {
-			Req  model.LockRefreshRequest
-			Resp chan model.LockRefreshResponse
-		}),
-		UnlockChan: make(chan struct {
-			Req  model.LockUnlockRequest
-			Resp chan model.LockUnlockResponse
-		}),
+		CreateChan:  make(chan LockCreateReqResp),
+		RefreshChan: make(chan LockRefreshReqResp),
+		UnlockChan:  make(chan LockUnlockReqResp),
 	}
 }
 
