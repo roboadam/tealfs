@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/net/webdav"
 )
 
@@ -43,16 +42,6 @@ func ToLockReleaseId(data []byte) *LockReleaseId {
 }
 
 type LockToken string
-
-func NewLockReleaseId() LockReleaseId {
-	idValue := uuid.New()
-	return LockReleaseId(idValue.String())
-}
-
-func NewLockToken() LockToken {
-	idValue := uuid.New()
-	return LockToken(idValue.String())
-}
 
 type LockConfirmRequest struct {
 	Now          time.Time

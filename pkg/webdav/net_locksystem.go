@@ -15,11 +15,10 @@
 package webdav
 
 import (
-	"fmt"
+	"errors"
 	"tealfs/pkg/model"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/net/webdav"
 )
 
@@ -28,7 +27,19 @@ type NetLockSystem struct {
 		req  model.LockConfirmRequest
 		resp chan model.LockConfirmResponse
 	}
-	confirmReleases map[model.LockReleaseId]bool
+	release chan model.LockReleaseId
+	create  chan struct {
+		req  model.LockCreateRequest
+		resp chan model.LockCreateResponse
+	}
+	refresh chan struct {
+		req  model.LockRefreshRequest
+		resp chan model.LockRefreshResponse
+	}
+	unlock chan struct {
+		req  model.LockUnlockRequest
+		resp chan model.LockUnlockResponse
+	}
 }
 
 func (l *NetLockSystem) Confirm(now time.Time, name0 string, name1 string, conditions ...webdav.Condition) (release func(), err error) {
@@ -38,27 +49,78 @@ func (l *NetLockSystem) Confirm(now time.Time, name0 string, name1 string, condi
 		Name1:      name1,
 		Conditions: conditions,
 	}
+
 	respChan := make(chan model.LockConfirmResponse)
+
 	l.confirm <- struct {
 		req  model.LockConfirmRequest
 		resp chan model.LockConfirmResponse
 	}{req: req, resp: respChan}
-	resp := <- respChan
-	resp.
-	return func() {}, nil
+
+	resp := <-respChan
+
+	if resp.Ok {
+		return func() {
+			l.release <- resp.ReleaseId
+		}, nil
+	}
+	return nil, errors.New(resp.Message)
 }
 
 func (l *NetLockSystem) Create(now time.Time, details webdav.LockDetails) (token string, err error) {
-	token = fmt.Sprintf("urn:%s", uuid.New().String())
-	l.locks[token] = details
-	return
+	req := model.LockCreateRequest{
+		Now:     now,
+		Details: details,
+	}
+	respChan := make(chan model.LockCreateResponse)
+
+	l.create <- struct {
+		req  model.LockCreateRequest
+		resp chan model.LockCreateResponse
+	}{req: req, resp: respChan}
+
+	resp := <-respChan
+	if resp.Ok {
+		return string(resp.Token), nil
+	}
+	return "", errors.New(resp.Message)
 }
 
 func (l *NetLockSystem) Refresh(now time.Time, token string, duration time.Duration) (webdav.LockDetails, error) {
-	return l.locks[token], nil
+	req := model.LockRefreshRequest{
+		Now:      now,
+		Token:    model.LockToken(token),
+		Duration: duration,
+	}
+	respChan := make(chan model.LockRefreshResponse)
+
+	l.refresh <- struct {
+		req  model.LockRefreshRequest
+		resp chan model.LockRefreshResponse
+	}{req: req, resp: respChan}
+
+	resp := <-respChan
+	if resp.Ok {
+		return resp.Details, nil
+	}
+	return webdav.LockDetails{}, errors.New(resp.Message)
 }
 
 func (l *NetLockSystem) Unlock(now time.Time, token string) error {
-	delete(l.locks, token)
-	return nil
+	req := model.LockUnlockRequest{
+		Now:   now,
+		Token: model.LockToken(token),
+	}
+	respChan := make(chan model.LockUnlockResponse)
+
+	l.unlock <- struct {
+		req  model.LockUnlockRequest
+		resp chan model.LockUnlockResponse
+	}{req: req, resp: respChan}
+
+	resp := <-respChan
+	if resp.Ok {
+		return nil
+	}
+	return errors.New(resp.Message)
 }
