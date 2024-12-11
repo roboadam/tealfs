@@ -25,11 +25,21 @@ import (
 type LockReleaseId string
 
 func (l *LockReleaseId) ToBytes() []byte {
-	panic("not implemented") // TODO: Implement
+	id := StringToBytes(string(*l))
+	return AddType(LockReleaseIdType, id)
 }
 
-func (l *LockReleaseId) Equal(_ Payload) bool {
-	panic("not implemented") // TODO: Implement
+func (l *LockReleaseId) Equal(p Payload) bool {
+	if o, ok := p.(*LockReleaseId); ok {
+		return l != o
+	}
+	return false
+}
+
+func ToLockReleaseId(data []byte) *LockReleaseId {
+	id, _ := StringFromBytes(data)
+	lId := LockReleaseId(id)
+	return &lId
 }
 
 type LockToken string

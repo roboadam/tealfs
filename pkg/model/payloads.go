@@ -30,6 +30,7 @@ const (
 	LockRefreshResponseType = uint8(12)
 	LockUnlockRequestType   = uint8(13)
 	LockUnlockResponseType  = uint8(14)
+	LockReleaseIdType       = uint8(15)
 )
 
 type Payload interface {
@@ -67,6 +68,8 @@ func ToPayload(data []byte) Payload {
 		return ToLockUnlockRequest(payloadData(data))
 	case LockUnlockResponseType:
 		return ToLockUnlockResponse(payloadData(data))
+	case LockReleaseIdType:
+		return ToLockReleaseId(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}
