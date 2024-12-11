@@ -23,22 +23,44 @@ import (
 )
 
 type NetLockSystem struct {
-	confirm chan struct {
-		req  model.LockConfirmRequest
-		resp chan model.LockConfirmResponse
+	ConfirmChan chan struct {
+		Req  model.LockConfirmRequest
+		Resp chan model.LockConfirmResponse
 	}
-	release chan model.LockReleaseId
-	create  chan struct {
-		req  model.LockCreateRequest
-		resp chan model.LockCreateResponse
+	ReleaseChan chan model.LockReleaseId
+	CreateChan  chan struct {
+		Req  model.LockCreateRequest
+		Resp chan model.LockCreateResponse
 	}
-	refresh chan struct {
-		req  model.LockRefreshRequest
-		resp chan model.LockRefreshResponse
+	RefreshChan chan struct {
+		Req  model.LockRefreshRequest
+		Resp chan model.LockRefreshResponse
 	}
-	unlock chan struct {
-		req  model.LockUnlockRequest
-		resp chan model.LockUnlockResponse
+	UnlockChan chan struct {
+		Req  model.LockUnlockRequest
+		Resp chan model.LockUnlockResponse
+	}
+}
+
+func NewNetLockSystem() *NetLockSystem {
+	return &NetLockSystem{
+		ConfirmChan: make(chan struct {
+			Req  model.LockConfirmRequest
+			Resp chan model.LockConfirmResponse
+		}),
+		ReleaseChan: make(chan model.LockReleaseId),
+		CreateChan: make(chan struct {
+			Req  model.LockCreateRequest
+			Resp chan model.LockCreateResponse
+		}),
+		RefreshChan: make(chan struct {
+			Req  model.LockRefreshRequest
+			Resp chan model.LockRefreshResponse
+		}),
+		UnlockChan: make(chan struct {
+			Req  model.LockUnlockRequest
+			Resp chan model.LockUnlockResponse
+		}),
 	}
 }
 
@@ -52,16 +74,16 @@ func (l *NetLockSystem) Confirm(now time.Time, name0 string, name1 string, condi
 
 	respChan := make(chan model.LockConfirmResponse)
 
-	l.confirm <- struct {
-		req  model.LockConfirmRequest
-		resp chan model.LockConfirmResponse
-	}{req: req, resp: respChan}
+	l.ConfirmChan <- struct {
+		Req  model.LockConfirmRequest
+		Resp chan model.LockConfirmResponse
+	}{Req: req, Resp: respChan}
 
 	resp := <-respChan
 
 	if resp.Ok {
 		return func() {
-			l.release <- resp.ReleaseId
+			l.ReleaseChan <- resp.ReleaseId
 		}, nil
 	}
 	return nil, errors.New(resp.Message)
@@ -74,10 +96,10 @@ func (l *NetLockSystem) Create(now time.Time, details webdav.LockDetails) (token
 	}
 	respChan := make(chan model.LockCreateResponse)
 
-	l.create <- struct {
-		req  model.LockCreateRequest
-		resp chan model.LockCreateResponse
-	}{req: req, resp: respChan}
+	l.CreateChan <- struct {
+		Req  model.LockCreateRequest
+		Resp chan model.LockCreateResponse
+	}{Req: req, Resp: respChan}
 
 	resp := <-respChan
 	if resp.Ok {
@@ -94,10 +116,10 @@ func (l *NetLockSystem) Refresh(now time.Time, token string, duration time.Durat
 	}
 	respChan := make(chan model.LockRefreshResponse)
 
-	l.refresh <- struct {
-		req  model.LockRefreshRequest
-		resp chan model.LockRefreshResponse
-	}{req: req, resp: respChan}
+	l.RefreshChan <- struct {
+		Req  model.LockRefreshRequest
+		Resp chan model.LockRefreshResponse
+	}{Req: req, Resp: respChan}
 
 	resp := <-respChan
 	if resp.Ok {
@@ -113,10 +135,10 @@ func (l *NetLockSystem) Unlock(now time.Time, token string) error {
 	}
 	respChan := make(chan model.LockUnlockResponse)
 
-	l.unlock <- struct {
-		req  model.LockUnlockRequest
-		resp chan model.LockUnlockResponse
-	}{req: req, resp: respChan}
+	l.UnlockChan <- struct {
+		Req  model.LockUnlockRequest
+		Resp chan model.LockUnlockResponse
+	}{Req: req, Resp: respChan}
 
 	resp := <-respChan
 	if resp.Ok {
