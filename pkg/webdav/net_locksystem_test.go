@@ -32,7 +32,6 @@ func TestConfirmLock(t *testing.T) {
 	defer cancel()
 	go consumeConfirm(ctx, ls.ConfirmChan, releaseId)
 	go consumeRelease(ctx, ls.ReleaseChan, t, releaseId)
-	go consumeRefresh(ctx, ls.RefreshChan)
 	go consumeCreate(ctx, ls.CreateChan)
 	go consumeUnlock(ctx, ls.UnlockChan)
 
@@ -63,6 +62,29 @@ func TestConfirmLock(t *testing.T) {
 	}
 	if len(token) == 0 {
 		t.Error("Empty token")
+	}
+}
+
+func TestRefreshLock(t *testing.T) {
+	ls := webdav.NewNetLockSystem()
+	ctx, cancel := context.WithCancel(context.Background())
+	expected := gwebdav.LockDetails{
+		Root:      "root1",
+		Duration:  time.Hour,
+		OwnerXML:  "<a></a>",
+		ZeroDepth: true,
+	}
+	defer cancel()
+	go consumeRefresh(ctx, ls.RefreshChan, expected)
+
+	received, err := ls.Refresh(time.Now(), "token1", time.Hour)
+	if err != nil {
+		t.Error("Error Refreshing", err)
+		return
+	}
+	if received != expected {
+		t.Error("Unexpected result")
+		return
 	}
 }
 
@@ -120,20 +142,15 @@ func consumeCreate(ctx context.Context, creates chan webdav.LockCreateReqResp) {
 	}
 }
 
-func consumeRefresh(ctx context.Context, refreshes chan webdav.LockRefreshReqResp) {
+func consumeRefresh(ctx context.Context, refreshes chan webdav.LockRefreshReqResp, details gwebdav.LockDetails) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case refresh := <-refreshes:
 			refresh.Resp <- model.LockRefreshResponse{
-				Details: gwebdav.LockDetails{
-					Root:      "root1",
-					Duration:  time.Hour,
-					OwnerXML:  "<a></a>",
-					ZeroDepth: true,
-				},
-				Ok: true,
+				Details: details,
+				Ok:      true,
 			}
 		}
 	}
