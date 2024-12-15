@@ -23,11 +23,19 @@ import (
 )
 
 type LockSystem struct {
-	locks map[string]webdav.LockDetails
+	value webdav.LockSystem
+}
+
+func (l *LockSystem) UseNetLockSystem() {
+	l.value = NewNetLockSystem()
+}
+
+func (l *LockSystem) UseLocalLockSystem() {
+	l.value = webdav.NewMemLS()
 }
 
 func (l *LockSystem) Confirm(now time.Time, name0 string, name1 string, conditions ...webdav.Condition) (release func(), err error) {
-	return func() {}, nil
+	return l.Confirm(now, name0, name1, conditions...)
 }
 
 func (l *LockSystem) Create(now time.Time, details webdav.LockDetails) (token string, err error) {

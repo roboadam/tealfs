@@ -33,6 +33,7 @@ type Webdav struct {
 	pendingPuts   map[model.BlockId]chan model.WriteResult
 	bindAddress   string
 	server        *http.Server
+	lockSystem    webdav.LockSystem
 }
 
 func New(
@@ -54,6 +55,7 @@ func New(
 		pendingReads:  make(map[model.BlockId]chan model.ReadResult),
 		pendingPuts:   make(map[model.BlockId]chan model.WriteResult),
 		bindAddress:   bindAddress,
+		lockSystem:    webdav.NewMemLS(),
 	}
 	w.start(ctx)
 	return w
