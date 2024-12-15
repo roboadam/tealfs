@@ -15,40 +15,95 @@
 package webdav
 
 import (
-	"fmt"
+	"errors"
+	"tealfs/pkg/model"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/net/webdav"
 )
 
+type LockSystemMode int8
+
+const (
+	LockSystemModeNet LockSystemMode = iota
+	LockSystemModeLocal
+)
+
 type LockSystem struct {
-	value webdav.LockSystem
+	mode        LockSystemMode
+	netLs       *NetLockSystem
+	localLs     webdav.LockSystem
+	ConfirmChan chan LockConfirmReqResp
+	ReleaseChan chan model.LockReleaseId
+	CreateChan  chan LockCreateReqResp
+	RefreshChan chan LockRefreshReqResp
+	UnlockChan  chan LockUnlockReqResp
+}
+
+func NewLockSystem() *LockSystem {
+	mode := LockSystemModeLocal
+	netLs := NewNetLockSystem()
+	localLs := webdav.NewMemLS()
+	return &LockSystem{
+		mode:        mode,
+		netLs:       netLs,
+		localLs:     localLs,
+		ConfirmChan: netLs.ConfirmChan,
+		ReleaseChan: netLs.ReleaseChan,
+		CreateChan:  netLs.CreateChan,
+		RefreshChan: netLs.RefreshChan,
+		UnlockChan:  netLs.UnlockChan,
+	}
 }
 
 func (l *LockSystem) UseNetLockSystem() {
-	l.value = NewNetLockSystem()
+	l.mode = LockSystemModeNet
 }
 
 func (l *LockSystem) UseLocalLockSystem() {
-	l.value = webdav.NewMemLS()
+	l.mode = LockSystemModeLocal
 }
 
 func (l *LockSystem) Confirm(now time.Time, name0 string, name1 string, conditions ...webdav.Condition) (release func(), err error) {
-	return l.Confirm(now, name0, name1, conditions...)
+	switch l.mode {
+	case LockSystemModeLocal:
+		return l.localLs.Confirm(now, name0, name1, conditions...)
+	case LockSystemModeNet:
+		return l.netLs.Confirm(now, name0, name1, conditions...)
+	default:
+		return nil, errors.New("Invalid lock mode")
+	}
 }
 
 func (l *LockSystem) Create(now time.Time, details webdav.LockDetails) (token string, err error) {
-	token = fmt.Sprintf("urn:%s", uuid.New().String())
-	l.locks[token] = details
-	return
+	switch l.mode {
+	case LockSystemModeLocal:
+		return l.localLs.Create(now, details)
+	case LockSystemModeNet:
+		return l.netLs.Create(now, details)
+	default:
+		return "", errors.New("Invalid lock mode")
+	}
 }
 
 func (l *LockSystem) Refresh(now time.Time, token string, duration time.Duration) (webdav.LockDetails, error) {
-	return l.locks[token], nil
+	switch l.mode {
+	case LockSystemModeLocal:
+		return l.localLs.Refresh(now, token, duration)
+	case LockSystemModeNet:
+		return l.netLs.Refresh(now, token, duration)
+	default:
+		return webdav.LockDetails{}, errors.New("Invalid lock mode")
+	}
 }
 
 func (l *LockSystem) Unlock(now time.Time, token string) error {
-	delete(l.locks, token)
-	return nil
+	switch l.mode {
+	case LockSystemModeLocal:
+		return l.localLs.Unlock(now, token)
+	case LockSystemModeNet:
+		return l.netLs.Unlock(now, token)
+	default:
+		return errors.New("Invalid lock mode")
+	}
 }
