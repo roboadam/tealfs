@@ -28,9 +28,10 @@ import (
 func TestConfirmLock(t *testing.T) {
 	ls := webdav.NewNetLockSystem()
 	ctx, cancel := context.WithCancel(context.Background())
+	releaseId := model.LockReleaseId(uuid.New().String())
 	defer cancel()
-	go consumeConfirm(ctx, ls.ConfirmChan)
-	go consumeRelease(ctx, ls.ReleaseChan)
+	go consumeConfirm(ctx, ls.ConfirmChan, releaseId)
+	go consumeRelease(ctx, ls.ReleaseChan, t, releaseId)
 	go consumeRefresh(ctx, ls.RefreshChan)
 	go consumeCreate(ctx, ls.CreateChan)
 	go consumeUnlock(ctx, ls.UnlockChan)
@@ -65,26 +66,42 @@ func TestConfirmLock(t *testing.T) {
 	}
 }
 
-func consumeConfirm(ctx context.Context, confirms chan webdav.LockConfirmReqResp) {
+func consumeConfirm(ctx context.Context, confirms chan webdav.LockConfirmReqResp, releaseIds ...model.LockReleaseId) {
+	remainder := releaseIds
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case confirm := <-confirms:
-			confirm.Resp <- model.LockConfirmResponse{
-				Ok:        true,
-				ReleaseId: model.LockReleaseId(uuid.New().String()),
+			if len(remainder) > 0 {
+				confirm.Resp <- model.LockConfirmResponse{
+					Ok:        true,
+					ReleaseId: remainder[0],
+				}
+				remainder = remainder[1:]
+			} else {
+				confirm.Resp <- model.LockConfirmResponse{
+					Ok:        false,
+					ReleaseId: "",
+				}
 			}
 		}
 	}
 }
 
-func consumeRelease(ctx context.Context, releases chan model.LockReleaseId) {
+func consumeRelease(ctx context.Context, releases chan model.LockReleaseId, t *testing.T, expected ...model.LockReleaseId) {
+	remainder := expected
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-releases:
+		case received := <-releases:
+			if len(remainder) > 0 {
+				if remainder[0] != received {
+					t.Error("Unexpected release id")
+				}
+				remainder = remainder[1:]
+			}
 		}
 	}
 }
