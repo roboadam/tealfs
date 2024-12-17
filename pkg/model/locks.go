@@ -22,6 +22,7 @@ import (
 )
 
 type LockReleaseId string
+type LockConfirmId string
 
 func (l *LockReleaseId) ToBytes() []byte {
 	id := StringToBytes(string(*l))
@@ -47,6 +48,7 @@ type LockConfirmRequest struct {
 	Now          time.Time
 	Name0, Name1 string
 	Conditions   []webdav.Condition
+	Id           LockConfirmId
 }
 
 func (l *LockConfirmRequest) ToBytes() []byte {
@@ -58,7 +60,8 @@ func (l *LockConfirmRequest) ToBytes() []byte {
 	for _, condition := range l.Conditions {
 		conditionBytes = append(conditionBytes, ConditionToBytes(&condition)...)
 	}
-	return AddType(LockConfirmRequestType, bytes.Join([][]byte{now, name0, name1, numConditions, conditionBytes}, []byte{}))
+	id := StringToBytes(string(l.Id))
+	return AddType(LockConfirmRequestType, bytes.Join([][]byte{now, name0, name1, numConditions, conditionBytes, id}, []byte{}))
 }
 
 func ConditionToBytes(condition *webdav.Condition) []byte {
@@ -104,7 +107,7 @@ func (l *LockConfirmRequest) Equal(p Payload) bool {
 				return false
 			}
 		}
-		return true
+		return l.Id == o.Id
 	}
 	return false
 }
@@ -120,11 +123,13 @@ func ToLockConfirmRequest(data []byte) *LockConfirmRequest {
 		condition, remainder = ToCondition(remainder)
 		conditions = append(conditions, condition)
 	}
+	id, _ := StringFromBytes(remainder)
 	return &LockConfirmRequest{
 		Now:        time.UnixMicro(now),
 		Name0:      name0,
 		Name1:      name1,
 		Conditions: conditions,
+		Id:         LockConfirmId(id),
 	}
 }
 
@@ -132,13 +137,15 @@ type LockConfirmResponse struct {
 	Ok        bool
 	Message   string
 	ReleaseId LockReleaseId
+	Id        LockConfirmId
 }
 
 func (l *LockConfirmResponse) ToBytes() []byte {
 	success := BoolToBytes(l.Ok)
 	message := StringToBytes(l.Message)
 	releaseId := StringToBytes(string(l.ReleaseId))
-	return AddType(LockConfirmResponseType, bytes.Join([][]byte{success, message, releaseId}, []byte{}))
+	id := StringToBytes(string(l.Id))
+	return AddType(LockConfirmResponseType, bytes.Join([][]byte{success, message, releaseId, id}, []byte{}))
 }
 
 func (l *LockConfirmResponse) Equal(p Payload) bool {
@@ -152,6 +159,9 @@ func (l *LockConfirmResponse) Equal(p Payload) bool {
 		if l.ReleaseId != o.ReleaseId {
 			return false
 		}
+		if l.Id != o.Id {
+			return false
+		}
 		return true
 	}
 	return false
@@ -160,11 +170,13 @@ func (l *LockConfirmResponse) Equal(p Payload) bool {
 func ToLockConfirmResponse(data []byte) *LockConfirmResponse {
 	success, remainder := BoolFromBytes(data)
 	message, remainder := StringFromBytes(remainder)
-	releaseId, _ := StringFromBytes(remainder)
+	releaseId, remainder := StringFromBytes(remainder)
+	id, _ := StringFromBytes(remainder)
 	return &LockConfirmResponse{
 		Ok:        success,
 		Message:   message,
 		ReleaseId: LockReleaseId(releaseId),
+		Id:        LockConfirmId(id),
 	}
 }
 

@@ -32,6 +32,7 @@ type Mgr struct {
 	DiskMgrWrites      chan model.WriteResult
 	WebdavMgrGets      chan model.ReadRequest
 	WebdavMgrPuts      chan model.WriteRequest
+	WebdavMgrLockReq   chan model.Payload
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
@@ -39,6 +40,7 @@ type Mgr struct {
 	MgrUiStatuses      chan model.UiConnectionStatus
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
+	MgrWebdavLockResp  chan model.Payload
 
 	nodesAddressMap map[model.NodeId]string
 	nodeConnMap     set.Bimap[model.NodeId, model.ConnId]

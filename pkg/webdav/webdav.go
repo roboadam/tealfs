@@ -23,24 +23,30 @@ import (
 )
 
 type Webdav struct {
-	webdavMgrGets chan model.ReadRequest
-	webdavMgrPuts chan model.WriteRequest
-	mgrWebdavGets chan model.ReadResult
-	mgrWebdavPuts chan model.WriteResult
-	fileSystem    FileSystem
-	nodeId        model.NodeId
-	pendingReads  map[model.BlockId]chan model.ReadResult
-	pendingPuts   map[model.BlockId]chan model.WriteResult
-	bindAddress   string
-	server        *http.Server
+	webdavMgrGets     chan model.ReadRequest
+	webdavMgrPuts     chan model.WriteRequest
+	mgrWebdavGets     chan model.ReadResult
+	mgrWebdavPuts     chan model.WriteResult
+	webdavMgrLockReq  chan model.Payload
+	mgrWebdavLockResp chan model.Payload
+	fileSystem        FileSystem
+	nodeId            model.NodeId
+	pendingReads      map[model.BlockId]chan model.ReadResult
+	pendingPuts       map[model.BlockId]chan model.WriteResult
+	lockSystem        *LockSystem
+	pendingConfirms   map[model.LockConfirmId]chan model.LockConfirmResponse
+	bindAddress       string
+	server            *http.Server
 }
 
 func New(
 	nodeId model.NodeId,
 	webdavMgrGets chan model.ReadRequest,
 	webdavMgrPuts chan model.WriteRequest,
+	webdavMgrLockReq chan model.Payload,
 	mgrWebdavGets chan model.ReadResult,
 	mgrWebdavPuts chan model.WriteResult,
+	mgrWebdavLockResp chan model.Payload,
 	bindAddress string,
 	ctx context.Context,
 ) Webdav {
@@ -54,19 +60,19 @@ func New(
 		pendingReads:  make(map[model.BlockId]chan model.ReadResult),
 		pendingPuts:   make(map[model.BlockId]chan model.WriteResult),
 		bindAddress:   bindAddress,
+		lockSystem:    NewLockSystem(),
 	}
 	w.start(ctx)
 	return w
 }
 
 func (w *Webdav) start(ctx context.Context) {
-	lockSystem := NewLockSystem()
 	go w.eventLoop(ctx)
 
 	handler := &webdav.Handler{
 		Prefix:     "/",
 		FileSystem: &w.fileSystem,
-		LockSystem: lockSystem,
+		LockSystem: w.lockSystem,
 	}
 
 	mux := http.NewServeMux()
@@ -95,6 +101,11 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				ch <- r
 				delete(w.pendingPuts, r.BlockId)
 			}
+		case r := <-w.lockSystem.ConfirmChan:
+			w.webdavMgrLockReq <- &r.Req
+			w.pendingConfirms[r.Req.Id] = r.Resp
+		case r := <-w.webdavMgrLockReq:
+			
 		case r := <-w.fileSystem.ReadReqResp:
 			w.webdavMgrGets <- r.Req
 			w.pendingReads[r.Req.BlockId] = r.Resp

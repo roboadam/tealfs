@@ -19,6 +19,7 @@ import (
 	"tealfs/pkg/model"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/net/webdav"
 )
 
@@ -63,6 +64,7 @@ func (l *NetLockSystem) Confirm(now time.Time, name0 string, name1 string, condi
 		Name0:      name0,
 		Name1:      name1,
 		Conditions: conditions,
+		Id:         model.LockConfirmId(uuid.New().String()),
 	}
 
 	respChan := make(chan model.LockConfirmResponse)
