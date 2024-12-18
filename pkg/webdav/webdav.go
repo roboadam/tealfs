@@ -34,7 +34,7 @@ type Webdav struct {
 	pendingReads      map[model.BlockId]chan model.ReadResult
 	pendingPuts       map[model.BlockId]chan model.WriteResult
 	lockSystem        *LockSystem
-	pendingConfirms   map[model.LockConfirmId]chan model.LockConfirmResponse
+	pendingConfirms   map[model.LockMessageId]chan model.LockConfirmResponse
 	bindAddress       string
 	server            *http.Server
 }
@@ -43,10 +43,8 @@ func New(
 	nodeId model.NodeId,
 	webdavMgrGets chan model.ReadRequest,
 	webdavMgrPuts chan model.WriteRequest,
-	webdavMgrLockReq chan model.Payload,
 	mgrWebdavGets chan model.ReadResult,
 	mgrWebdavPuts chan model.WriteResult,
-	mgrWebdavLockResp chan model.Payload,
 	bindAddress string,
 	ctx context.Context,
 ) Webdav {
@@ -104,8 +102,8 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 		case r := <-w.lockSystem.ConfirmChan:
 			w.webdavMgrLockReq <- &r.Req
 			w.pendingConfirms[r.Req.Id] = r.Resp
-		case r := <-w.webdavMgrLockReq:
-			
+		case _ = <-w.webdavMgrLockReq:
+
 		case r := <-w.fileSystem.ReadReqResp:
 			w.webdavMgrGets <- r.Req
 			w.pendingReads[r.Req.BlockId] = r.Resp

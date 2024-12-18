@@ -22,7 +22,7 @@ import (
 )
 
 type LockReleaseId string
-type LockConfirmId string
+type LockMessageId string
 
 func (l *LockReleaseId) ToBytes() []byte {
 	id := StringToBytes(string(*l))
@@ -48,7 +48,7 @@ type LockConfirmRequest struct {
 	Now          time.Time
 	Name0, Name1 string
 	Conditions   []webdav.Condition
-	Id           LockConfirmId
+	Id           LockMessageId
 }
 
 func (l *LockConfirmRequest) ToBytes() []byte {
@@ -129,7 +129,7 @@ func ToLockConfirmRequest(data []byte) *LockConfirmRequest {
 		Name0:      name0,
 		Name1:      name1,
 		Conditions: conditions,
-		Id:         LockConfirmId(id),
+		Id:         LockMessageId(id),
 	}
 }
 
@@ -137,7 +137,7 @@ type LockConfirmResponse struct {
 	Ok        bool
 	Message   string
 	ReleaseId LockReleaseId
-	Id        LockConfirmId
+	Id        LockMessageId
 }
 
 func (l *LockConfirmResponse) ToBytes() []byte {
@@ -176,7 +176,7 @@ func ToLockConfirmResponse(data []byte) *LockConfirmResponse {
 		Ok:        success,
 		Message:   message,
 		ReleaseId: LockReleaseId(releaseId),
-		Id:        LockConfirmId(id),
+		Id:        LockMessageId(id),
 	}
 }
 

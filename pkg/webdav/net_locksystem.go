@@ -23,6 +23,14 @@ import (
 	"golang.org/x/net/webdav"
 )
 
+type LockMessage interface {
+	GetId() model.LockMessageId
+}
+
+func (l *model.LockConfirmRequest) GetId() model.LockMessageId {
+	
+}
+
 type LockConfirmReqResp struct {
 	Req  model.LockConfirmRequest
 	Resp chan model.LockConfirmResponse
@@ -64,7 +72,7 @@ func (l *NetLockSystem) Confirm(now time.Time, name0 string, name1 string, condi
 		Name0:      name0,
 		Name1:      name1,
 		Conditions: conditions,
-		Id:         model.LockConfirmId(uuid.New().String()),
+		Id:         model.LockMessageId(uuid.New().String()),
 	}
 
 	respChan := make(chan model.LockConfirmResponse)
