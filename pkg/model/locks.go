@@ -21,24 +21,23 @@ import (
 	"golang.org/x/net/webdav"
 )
 
-type LockReleaseId string
 type LockMessageId string
 
-func (l *LockReleaseId) ToBytes() []byte {
+func (l *LockMessageId) ToBytes() []byte {
 	id := StringToBytes(string(*l))
-	return AddType(LockReleaseIdType, id)
+	return AddType(LockMessageIdType, id)
 }
 
-func (l *LockReleaseId) Equal(p Payload) bool {
-	if o, ok := p.(*LockReleaseId); ok {
+func (l *LockMessageId) Equal(p Payload) bool {
+	if o, ok := p.(*LockMessageId); ok {
 		return l != o
 	}
 	return false
 }
 
-func ToLockReleaseId(data []byte) *LockReleaseId {
+func ToLockMessageId(data []byte) *LockMessageId {
 	id, _ := StringFromBytes(data)
-	lId := LockReleaseId(id)
+	lId := LockMessageId(id)
 	return &lId
 }
 
@@ -49,6 +48,10 @@ type LockConfirmRequest struct {
 	Name0, Name1 string
 	Conditions   []webdav.Condition
 	Id           LockMessageId
+}
+
+func (l *LockConfirmRequest) GetId() LockMessageId {
+	return l.Id
 }
 
 func (l *LockConfirmRequest) ToBytes() []byte {
@@ -136,8 +139,12 @@ func ToLockConfirmRequest(data []byte) *LockConfirmRequest {
 type LockConfirmResponse struct {
 	Ok        bool
 	Message   string
-	ReleaseId LockReleaseId
+	ReleaseId LockMessageId
 	Id        LockMessageId
+}
+
+func (l *LockConfirmResponse) GetId() LockMessageId {
+	return l.Id
 }
 
 func (l *LockConfirmResponse) ToBytes() []byte {
@@ -175,7 +182,7 @@ func ToLockConfirmResponse(data []byte) *LockConfirmResponse {
 	return &LockConfirmResponse{
 		Ok:        success,
 		Message:   message,
-		ReleaseId: LockReleaseId(releaseId),
+		ReleaseId: LockMessageId(releaseId),
 		Id:        LockMessageId(id),
 	}
 }
@@ -183,6 +190,11 @@ func ToLockConfirmResponse(data []byte) *LockConfirmResponse {
 type LockCreateRequest struct {
 	Now     time.Time
 	Details webdav.LockDetails
+	Id      LockMessageId
+}
+
+func (l *LockCreateRequest) GetId() LockMessageId {
+	return l.Id
 }
 
 func LockDetailsToBytes(l *webdav.LockDetails) []byte {
@@ -196,7 +208,8 @@ func LockDetailsToBytes(l *webdav.LockDetails) []byte {
 func (l *LockCreateRequest) ToBytes() []byte {
 	now := Int64ToBytes(l.Now.UnixMicro())
 	details := LockDetailsToBytes(&l.Details)
-	return AddType(LockCreateRequestType, bytes.Join([][]byte{now, details}, []byte{}))
+	id := StringToBytes(string(l.Id))
+	return AddType(LockCreateRequestType, bytes.Join([][]byte{now, details, id}, []byte{}))
 }
 
 func LockDetailsEquals(l1 *webdav.LockDetails, l2 *webdav.LockDetails) bool {
@@ -244,6 +257,9 @@ func (l *LockCreateRequest) Equal(p Payload) bool {
 		if !LockDetailsEquals(&l.Details, &o.Details) {
 			return false
 		}
+		if l.Id != o.Id {
+			return false
+		}
 		return true
 	}
 	return false
@@ -251,10 +267,12 @@ func (l *LockCreateRequest) Equal(p Payload) bool {
 
 func ToLockCreateRequest(data []byte) *LockCreateRequest {
 	now, remainder := Int64FromBytes(data)
-	details, _ := ToLockDetails(remainder)
+	details, remainder := ToLockDetails(remainder)
+	id, _ := StringFromBytes(remainder)
 	return &LockCreateRequest{
 		Now:     time.UnixMicro(now),
 		Details: details,
+		Id:      LockMessageId(id),
 	}
 }
 
@@ -262,6 +280,11 @@ type LockCreateResponse struct {
 	Token   LockToken
 	Ok      bool
 	Message string
+	Id      LockMessageId
+}
+
+func (l *LockCreateResponse) GetId() LockMessageId {
+	return l.Id
 }
 
 func (l *LockCreateResponse) ToBytes() []byte {

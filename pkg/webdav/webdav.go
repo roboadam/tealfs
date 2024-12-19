@@ -27,14 +27,14 @@ type Webdav struct {
 	webdavMgrPuts     chan model.WriteRequest
 	mgrWebdavGets     chan model.ReadResult
 	mgrWebdavPuts     chan model.WriteResult
-	webdavMgrLockReq  chan model.Payload
-	mgrWebdavLockResp chan model.Payload
+	webdavMgrLockReq  chan LockMessage
+	mgrWebdavLockResp chan LockMessage
 	fileSystem        FileSystem
 	nodeId            model.NodeId
 	pendingReads      map[model.BlockId]chan model.ReadResult
 	pendingPuts       map[model.BlockId]chan model.WriteResult
+	pendingLockMsg    map[model.LockMessageId]chan LockMessage
 	lockSystem        *LockSystem
-	pendingConfirms   map[model.LockMessageId]chan model.LockConfirmResponse
 	bindAddress       string
 	server            *http.Server
 }
@@ -49,16 +49,17 @@ func New(
 	ctx context.Context,
 ) Webdav {
 	w := Webdav{
-		webdavMgrGets: webdavMgrGets,
-		webdavMgrPuts: webdavMgrPuts,
-		mgrWebdavGets: mgrWebdavGets,
-		mgrWebdavPuts: mgrWebdavPuts,
-		fileSystem:    NewFileSystem(nodeId),
-		nodeId:        nodeId,
-		pendingReads:  make(map[model.BlockId]chan model.ReadResult),
-		pendingPuts:   make(map[model.BlockId]chan model.WriteResult),
-		bindAddress:   bindAddress,
-		lockSystem:    NewLockSystem(),
+		webdavMgrGets:  webdavMgrGets,
+		webdavMgrPuts:  webdavMgrPuts,
+		mgrWebdavGets:  mgrWebdavGets,
+		mgrWebdavPuts:  mgrWebdavPuts,
+		fileSystem:     NewFileSystem(nodeId),
+		nodeId:         nodeId,
+		pendingReads:   make(map[model.BlockId]chan model.ReadResult),
+		pendingPuts:    make(map[model.BlockId]chan model.WriteResult),
+		pendingLockMsg: make(map[model.LockMessageId]chan LockMessage),
+		bindAddress:    bindAddress,
+		lockSystem:     NewLockSystem(),
 	}
 	w.start(ctx)
 	return w
@@ -101,7 +102,8 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 			}
 		case r := <-w.lockSystem.ConfirmChan:
 			w.webdavMgrLockReq <- &r.Req
-			w.pendingConfirms[r.Req.Id] = r.Resp
+			var respChan chan LockMessage = r.Resp
+			w.pendingLockMsg[r.Req.Id] = respChan
 		case _ = <-w.webdavMgrLockReq:
 
 		case r := <-w.fileSystem.ReadReqResp:

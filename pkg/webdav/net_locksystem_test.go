@@ -96,13 +96,13 @@ func consumeConfirm(ctx context.Context, confirms chan webdav.LockConfirmReqResp
 			return
 		case confirm := <-confirms:
 			if len(remainder) > 0 {
-				confirm.Resp <- model.LockConfirmResponse{
+				confirm.Resp <- &model.LockConfirmResponse{
 					Ok:        true,
 					ReleaseId: remainder[0],
 				}
 				remainder = remainder[1:]
 			} else {
-				confirm.Resp <- model.LockConfirmResponse{
+				confirm.Resp <- &model.LockConfirmResponse{
 					Ok:        false,
 					ReleaseId: "",
 				}
