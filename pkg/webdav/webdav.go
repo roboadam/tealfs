@@ -129,6 +129,50 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 						release()
 						delete(w.pendingReleases, *msg)
 					}
+				case *model.LockUnlockRequest:
+					err := w.lockSystem.Unlock(msg.Now, string(msg.Token))
+					if err == nil {
+						w.mgrWebdavLockResp <- &model.LockUnlockResponse{
+							Ok: true,
+							Id: msg.Id,
+						}
+					} else {
+						w.mgrWebdavLockResp <- &model.LockUnlockResponse{
+							Ok:      false,
+							Message: err.Error(),
+							Id:      msg.Id,
+						}
+					}
+				case *model.LockCreateRequest:
+					token, err := w.lockSystem.Create(msg.Now, msg.Details)
+					if err == nil {
+						w.mgrWebdavLockResp <- &model.LockCreateResponse{
+							Ok:    true,
+							Token: model.LockToken(token),
+							Id:    msg.Id,
+						}
+					} else {
+						w.mgrWebdavLockResp <- &model.LockCreateResponse{
+							Ok:      false,
+							Message: err.Error(),
+							Id:      msg.Id,
+						}
+					}
+				case *model.LockRefreshRequest:
+					details, err := w.lockSystem.Refresh(msg.Now, string(msg.Token), msg.Duration)
+					if err == nil {
+						w.mgrWebdavLockResp <- &model.LockRefreshResponse{
+							Ok:      true,
+							Details: details,
+							Id:      msg.Id,
+						}
+					} else {
+						w.mgrWebdavLockResp <- &model.LockRefreshResponse{
+							Ok:      false,
+							Message: err.Error(),
+							Id:      msg.Id,
+						}
+					}
 				}
 			}
 		case r := <-w.fileSystem.ReadReqResp:
