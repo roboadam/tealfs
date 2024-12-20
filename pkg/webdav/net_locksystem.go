@@ -40,6 +40,7 @@ type NetLockSystem struct {
 func NewNetLockSystem() *NetLockSystem {
 	return &NetLockSystem{
 		Messages: make(chan LockMessageReqResp),
+		Release:  make(chan model.LockMessageId),
 	}
 }
 
@@ -129,7 +130,7 @@ func (l *NetLockSystem) Unlock(now time.Time, token string) error {
 
 	lur, ok := resp.(*model.LockUnlockResponse)
 	if !ok {
-		return errors.New("Not a unlock response")
+		return errors.New("not a unlock response")
 	}
 
 	if lur.Ok {
