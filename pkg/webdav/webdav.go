@@ -100,10 +100,10 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				ch <- r
 				delete(w.pendingPuts, r.BlockId)
 			}
-		case r := <-w.lockSystem.ConfirmChan:
-			w.webdavMgrLockReq <- &r.Req
-			var respChan chan LockMessage = r.Resp
-			w.pendingLockMsg[r.Req.Id] = respChan
+		// case r := <-w.lockSystem.ConfirmChan:
+		// 	w.webdavMgrLockReq <- &r.Req
+		// 	var respChan chan LockMessage = r.Resp
+		// 	w.pendingLockMsg[r.Req.Id] = respChan
 		case _ = <-w.webdavMgrLockReq:
 
 		case r := <-w.fileSystem.ReadReqResp:

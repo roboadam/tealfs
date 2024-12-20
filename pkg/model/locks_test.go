@@ -196,10 +196,10 @@ func TestUnlockResponse(t *testing.T) {
 }
 
 func TestLockReleaseId(t *testing.T) {
-	id := model.LockReleaseId("abc123")
+	id := model.LockMessageId("abc123")
 	serialized := id.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {
-	case *model.LockReleaseId:
+	case *model.LockMessageId:
 		if !id.Equal(p) {
 			t.Error("Expected values to be equal")
 			return

@@ -28,12 +28,10 @@ import (
 func TestConfirmLock(t *testing.T) {
 	ls := webdav.NewNetLockSystem()
 	ctx, cancel := context.WithCancel(context.Background())
-	releaseId := model.LockReleaseId(uuid.New().String())
+	releaseId := model.LockMessageId(uuid.New().String())
 	defer cancel()
-	go consumeMessages(ctx, ls.ConfirmChan, releaseId)
-	go consumeRelease(ctx, ls.ReleaseChan, t, releaseId)
-	go consumeCreate(ctx, ls.CreateChan)
-	go consumeUnlock(ctx, ls.UnlockChan)
+	go consumeMessages(ctx, ls.Messages, gwebdav.LockDetails{}, releaseId)
+	go consumeRelease(ctx, ls.Release, t, releaseId)
 
 	err := ls.Unlock(time.Now(), "token1")
 	if err != nil {
@@ -75,7 +73,7 @@ func TestRefreshLock(t *testing.T) {
 		ZeroDepth: true,
 	}
 	defer cancel()
-	go consumeRefresh(ctx, ls.RefreshChan, expected)
+	go consumeMessages(ctx, ls.Messages, expected)
 
 	received, err := ls.Refresh(time.Now(), "token1", time.Hour)
 	if err != nil {
@@ -88,7 +86,7 @@ func TestRefreshLock(t *testing.T) {
 	}
 }
 
-func consumeMessages(ctx context.Context, lockMessages chan webdav.LockMessageReqResp, releaseIds ...model.LockMessageId) {
+func consumeMessages(ctx context.Context, lockMessages chan webdav.LockMessageReqResp, details gwebdav.LockDetails, releaseIds ...model.LockMessageId) {
 	remainder := releaseIds
 	for {
 		select {
@@ -117,12 +115,24 @@ func consumeMessages(ctx context.Context, lockMessages chan webdav.LockMessageRe
 					Ok: true,
 					Id: msg.Id,
 				}
+			case *model.LockCreateRequest:
+				lockMessage.Resp <- &model.LockCreateResponse{
+					Ok:    true,
+					Token: model.LockToken(uuid.New().String()),
+					Id:    msg.Id,
+				}
+			case *model.LockRefreshRequest:
+				lockMessage.Resp <- &model.LockRefreshResponse{
+					Ok:      true,
+					Details: details,
+					Id:      msg.Id,
+				}
 			}
 		}
 	}
 }
 
-func consumeRelease(ctx context.Context, releases chan model.LockReleaseId, t *testing.T, expected ...model.LockReleaseId) {
+func consumeRelease(ctx context.Context, releases chan model.LockMessageId, t *testing.T, expected ...model.LockMessageId) {
 	remainder := expected
 	for {
 		select {
@@ -134,34 +144,6 @@ func consumeRelease(ctx context.Context, releases chan model.LockReleaseId, t *t
 					t.Error("Unexpected release id")
 				}
 				remainder = remainder[1:]
-			}
-		}
-	}
-}
-
-func consumeCreate(ctx context.Context, creates chan webdav.LockCreateReqResp) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case create := <-creates:
-			create.Resp <- model.LockCreateResponse{
-				Token: model.LockToken(uuid.New().String()),
-				Ok:    true,
-			}
-		}
-	}
-}
-
-func consumeRefresh(ctx context.Context, refreshes chan webdav.LockRefreshReqResp, details gwebdav.LockDetails) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case refresh := <-refreshes:
-			refresh.Resp <- model.LockRefreshResponse{
-				Details: details,
-				Ok:      true,
 			}
 		}
 	}
