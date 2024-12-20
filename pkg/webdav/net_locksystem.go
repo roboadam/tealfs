@@ -60,7 +60,7 @@ func (l *NetLockSystem) Confirm(now time.Time, name0 string, name1 string, condi
 
 	lcr, ok := resp.(*model.LockConfirmResponse)
 	if !ok {
-		return nil, errors.New("Not a confirm response")
+		return nil, errors.New("not a confirm response")
 	}
 
 	if lcr.Ok {
@@ -84,7 +84,7 @@ func (l *NetLockSystem) Create(now time.Time, details webdav.LockDetails) (token
 
 	lcr, ok := resp.(*model.LockCreateResponse)
 	if !ok {
-		return "", errors.New("Not a create response")
+		return "", errors.New("not a create response")
 	}
 
 	if lcr.Ok {
@@ -107,7 +107,7 @@ func (l *NetLockSystem) Refresh(now time.Time, token string, duration time.Durat
 
 	lrr, ok := resp.(*model.LockRefreshResponse)
 	if !ok {
-		return webdav.LockDetails{}, errors.New("Not a create response")
+		return webdav.LockDetails{}, errors.New("not a create response")
 	}
 
 	if lrr.Ok {

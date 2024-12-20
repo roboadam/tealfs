@@ -23,6 +23,10 @@ import (
 
 type LockMessageId string
 
+func (l LockMessageId) GetId() LockMessageId {
+	return l
+}
+
 func (l *LockMessageId) ToBytes() []byte {
 	id := StringToBytes(string(*l))
 	return AddType(LockMessageIdType, id)

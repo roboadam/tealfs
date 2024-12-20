@@ -62,7 +62,7 @@ func (l *LockSystem) Confirm(now time.Time, name0 string, name1 string, conditio
 	case LockSystemModeNet:
 		return l.netLs.Confirm(now, name0, name1, conditions...)
 	default:
-		return nil, errors.New("Invalid lock mode")
+		return nil, errors.New("invalid lock mode")
 	}
 }
 
@@ -73,7 +73,7 @@ func (l *LockSystem) Create(now time.Time, details webdav.LockDetails) (token st
 	case LockSystemModeNet:
 		return l.netLs.Create(now, details)
 	default:
-		return "", errors.New("Invalid lock mode")
+		return "", errors.New("invalid lock mode")
 	}
 }
 
@@ -84,7 +84,7 @@ func (l *LockSystem) Refresh(now time.Time, token string, duration time.Duration
 	case LockSystemModeNet:
 		return l.netLs.Refresh(now, token, duration)
 	default:
-		return webdav.LockDetails{}, errors.New("Invalid lock mode")
+		return webdav.LockDetails{}, errors.New("invalid lock mode")
 	}
 }
 
@@ -95,6 +95,6 @@ func (l *LockSystem) Unlock(now time.Time, token string) error {
 	case LockSystemModeNet:
 		return l.netLs.Unlock(now, token)
 	default:
-		return errors.New("Invalid lock mode")
+		return errors.New("invalid lock mode")
 	}
 }

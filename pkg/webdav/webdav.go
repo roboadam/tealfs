@@ -34,6 +34,7 @@ type Webdav struct {
 	pendingReads      map[model.BlockId]chan model.ReadResult
 	pendingPuts       map[model.BlockId]chan model.WriteResult
 	pendingLockMsg    map[model.LockMessageId]chan LockMessage
+	pendingReleases   map[model.LockMessageId]func()
 	lockSystem        *LockSystem
 	bindAddress       string
 	server            *http.Server
@@ -100,12 +101,36 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				ch <- r
 				delete(w.pendingPuts, r.BlockId)
 			}
-		// case r := <-w.lockSystem.ConfirmChan:
-		// 	w.webdavMgrLockReq <- &r.Req
-		// 	var respChan chan LockMessage = r.Resp
-		// 	w.pendingLockMsg[r.Req.Id] = respChan
-		case _ = <-w.webdavMgrLockReq:
-
+		case r := <-w.lockSystem.MessageChan:
+			w.webdavMgrLockReq <- r.Req
+			var respChan chan LockMessage = r.Resp
+			w.pendingLockMsg[r.Req.GetId()] = respChan
+		case r := <-w.mgrWebdavLockResp:
+			ch, ok := w.pendingLockMsg[r.GetId()]
+			if ok {
+				ch <- r
+				delete(w.pendingLockMsg, r.GetId())
+			} else {
+				switch msg := r.(type) {
+				case *model.LockConfirmRequest:
+					release, err := w.lockSystem.Confirm(msg.Now, msg.Name0, msg.Name1, msg.Conditions...)
+					if err != nil {
+						w.mgrWebdavLockResp <- &model.LockConfirmResponse{
+							Ok:      false,
+							Id:      msg.Id,
+							Message: err.Error(),
+						}
+					} else {
+						w.pendingReleases[msg.Id] = release
+					}
+				case *model.LockMessageId:
+					release, ok := w.pendingReleases[*msg]
+					if ok {
+						release()
+						delete(w.pendingReleases, *msg)
+					}
+				}
+			}
 		case r := <-w.fileSystem.ReadReqResp:
 			w.webdavMgrGets <- r.Req
 			w.pendingReads[r.Req.BlockId] = r.Resp
