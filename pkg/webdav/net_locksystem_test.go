@@ -30,7 +30,7 @@ func TestConfirmLock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	releaseId := model.LockReleaseId(uuid.New().String())
 	defer cancel()
-	go consumeConfirm(ctx, ls.ConfirmChan, releaseId)
+	go consumeMessages(ctx, ls.ConfirmChan, releaseId)
 	go consumeRelease(ctx, ls.ReleaseChan, t, releaseId)
 	go consumeCreate(ctx, ls.CreateChan)
 	go consumeUnlock(ctx, ls.UnlockChan)
@@ -88,23 +88,34 @@ func TestRefreshLock(t *testing.T) {
 	}
 }
 
-func consumeConfirm(ctx context.Context, confirms chan webdav.LockConfirmReqResp, releaseIds ...model.LockReleaseId) {
+func consumeMessages(ctx context.Context, lockMessages chan webdav.LockMessageReqResp, releaseIds ...model.LockMessageId) {
 	remainder := releaseIds
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case confirm := <-confirms:
-			if len(remainder) > 0 {
-				confirm.Resp <- &model.LockConfirmResponse{
-					Ok:        true,
-					ReleaseId: remainder[0],
+		case lockMessage := <-lockMessages:
+			switch msg := lockMessage.Req.(type) {
+			case *model.LockConfirmRequest:
+				if len(remainder) > 0 {
+					lockMessage.Resp <- &model.LockConfirmResponse{
+						Ok:        true,
+						ReleaseId: remainder[0],
+						Id:        msg.Id,
+					}
+					remainder = remainder[1:]
+				} else {
+					lockMessage.Resp <- &model.LockConfirmResponse{
+						Ok:        false,
+						Message:   "No release id",
+						ReleaseId: "",
+						Id:        msg.Id,
+					}
 				}
-				remainder = remainder[1:]
-			} else {
-				confirm.Resp <- &model.LockConfirmResponse{
-					Ok:        false,
-					ReleaseId: "",
+			case *model.LockUnlockRequest:
+				lockMessage.Resp <- &model.LockUnlockResponse{
+					Ok: true,
+					Id: msg.Id,
 				}
 			}
 		}
@@ -151,19 +162,6 @@ func consumeRefresh(ctx context.Context, refreshes chan webdav.LockRefreshReqRes
 			refresh.Resp <- model.LockRefreshResponse{
 				Details: details,
 				Ok:      true,
-			}
-		}
-	}
-}
-
-func consumeUnlock(ctx context.Context, unlocks chan webdav.LockUnlockReqResp) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case unlock := <-unlocks:
-			unlock.Resp <- model.LockUnlockResponse{
-				Ok: true,
 			}
 		}
 	}

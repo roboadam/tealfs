@@ -322,6 +322,11 @@ type LockRefreshRequest struct {
 	Now      time.Time
 	Token    LockToken
 	Duration time.Duration
+	Id       LockMessageId
+}
+
+func (l *LockRefreshRequest) GetId() LockMessageId {
+	return l.Id
 }
 
 func (l *LockRefreshRequest) ToBytes() []byte {
@@ -362,6 +367,11 @@ type LockRefreshResponse struct {
 	Details webdav.LockDetails
 	Ok      bool
 	Message string
+	Id      LockMessageId
+}
+
+func (l *LockRefreshResponse) GetId() LockMessageId {
+	return l.Id
 }
 
 func (l *LockRefreshResponse) ToBytes() []byte {
@@ -401,6 +411,11 @@ func ToLockRefreshResponse(data []byte) *LockRefreshResponse {
 type LockUnlockRequest struct {
 	Now   time.Time
 	Token LockToken
+	Id    LockMessageId
+}
+
+func (l *LockUnlockRequest) GetId() LockMessageId {
+	return l.Id
 }
 
 func (l *LockUnlockRequest) ToBytes() []byte {
@@ -434,6 +449,11 @@ func ToLockUnlockRequest(data []byte) *LockUnlockRequest {
 type LockUnlockResponse struct {
 	Ok      bool
 	Message string
+	Id      LockMessageId
+}
+
+func (l *LockUnlockResponse) GetId() LockMessageId {
+	return l.Id
 }
 
 func (l *LockUnlockResponse) ToBytes() []byte {
