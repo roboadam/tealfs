@@ -22,6 +22,7 @@ import (
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+	"tealfs/pkg/webdav"
 )
 
 type Mgr struct {
@@ -32,7 +33,7 @@ type Mgr struct {
 	DiskMgrWrites      chan model.WriteResult
 	WebdavMgrGets      chan model.ReadRequest
 	WebdavMgrPuts      chan model.WriteRequest
-	WebdavMgrLockReq   chan model.Payload
+	WebdavMgrLockMsg   chan webdav.LockMessage
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
@@ -40,7 +41,7 @@ type Mgr struct {
 	MgrUiStatuses      chan model.UiConnectionStatus
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
-	MgrWebdavLockResp  chan model.Payload
+	MgrWebdavLockMsg   chan webdav.LockMessage
 
 	nodesAddressMap map[model.NodeId]string
 	nodeConnMap     set.Bimap[model.NodeId, model.ConnId]
@@ -61,6 +62,7 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:      make(chan model.ReadRequest, chanSize),
 		WebdavMgrPuts:      make(chan model.WriteRequest, chanSize),
+		WebdavMgrLockMsg:   make(chan webdav.LockMessage, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
@@ -68,6 +70,7 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
+		MgrWebdavLockMsg:   make(chan webdav.LockMessage, chanSize),
 		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
 		connAddress:        make(map[model.ConnId]string),
