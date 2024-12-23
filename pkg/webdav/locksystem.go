@@ -16,6 +16,7 @@ package webdav
 
 import (
 	"errors"
+	"tealfs/pkg/model"
 	"time"
 
 	"golang.org/x/net/webdav"
@@ -33,6 +34,7 @@ type LockSystem struct {
 	netLs       *NetLockSystem
 	localLs     webdav.LockSystem
 	MessageChan chan LockMessageReqResp
+	ReleaseChan chan model.LockMessageId
 }
 
 func NewLockSystem() *LockSystem {
@@ -44,6 +46,7 @@ func NewLockSystem() *LockSystem {
 		netLs:       netLs,
 		localLs:     localLs,
 		MessageChan: netLs.Messages,
+		ReleaseChan: netLs.Release,
 	}
 }
 

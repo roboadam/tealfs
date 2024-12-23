@@ -23,21 +23,21 @@ import (
 )
 
 type Webdav struct {
-	webdavMgrGets     chan model.ReadRequest
-	webdavMgrPuts     chan model.WriteRequest
-	mgrWebdavGets     chan model.ReadResult
-	mgrWebdavPuts     chan model.WriteResult
-	webdavMgrLockReq  chan LockMessage
-	mgrWebdavLockResp chan LockMessage
-	fileSystem        FileSystem
-	nodeId            model.NodeId
-	pendingReads      map[model.BlockId]chan model.ReadResult
-	pendingPuts       map[model.BlockId]chan model.WriteResult
-	pendingLockMsg    map[model.LockMessageId]chan LockMessage
-	pendingReleases   map[model.LockMessageId]func()
-	lockSystem        *LockSystem
-	bindAddress       string
-	server            *http.Server
+	webdavMgrGets    chan model.ReadRequest
+	webdavMgrPuts    chan model.WriteRequest
+	mgrWebdavGets    chan model.ReadResult
+	mgrWebdavPuts    chan model.WriteResult
+	webdavMgrLockMsg chan LockMessage
+	mgrWebdavLockMsg chan LockMessage
+	fileSystem       FileSystem
+	nodeId           model.NodeId
+	pendingReads     map[model.BlockId]chan model.ReadResult
+	pendingPuts      map[model.BlockId]chan model.WriteResult
+	pendingLockMsg   map[model.LockMessageId]chan LockMessage
+	pendingReleases  map[model.LockMessageId]func()
+	lockSystem       *LockSystem
+	bindAddress      string
+	server           *http.Server
 }
 
 func New(
@@ -102,10 +102,11 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				delete(w.pendingPuts, r.BlockId)
 			}
 		case r := <-w.lockSystem.MessageChan:
-			w.webdavMgrLockReq <- r.Req
-			var respChan chan LockMessage = r.Resp
-			w.pendingLockMsg[r.Req.GetId()] = respChan
-		case r := <-w.mgrWebdavLockResp:
+			w.webdavMgrLockMsg <- r.Req
+			w.pendingLockMsg[r.Req.GetId()] = r.Resp
+		case r := <-w.lockSystem.ReleaseChan:
+			w.webdavMgrLockMsg <- r
+		case r := <-w.mgrWebdavLockMsg:
 			ch, ok := w.pendingLockMsg[r.GetId()]
 			if ok {
 				ch <- r
@@ -115,13 +116,17 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				case *model.LockConfirmRequest:
 					release, err := w.lockSystem.Confirm(msg.Now, msg.Name0, msg.Name1, msg.Conditions...)
 					if err != nil {
-						w.mgrWebdavLockResp <- &model.LockConfirmResponse{
+						w.webdavMgrLockMsg <- &model.LockConfirmResponse{
 							Ok:      false,
 							Id:      msg.Id,
 							Message: err.Error(),
 						}
 					} else {
 						w.pendingReleases[msg.Id] = release
+						w.webdavMgrLockMsg <- &model.LockConfirmResponse{
+							Ok: true,
+							Id: msg.Id,
+						}
 					}
 				case *model.LockMessageId:
 					release, ok := w.pendingReleases[*msg]
@@ -132,12 +137,12 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				case *model.LockUnlockRequest:
 					err := w.lockSystem.Unlock(msg.Now, string(msg.Token))
 					if err == nil {
-						w.mgrWebdavLockResp <- &model.LockUnlockResponse{
+						w.webdavMgrLockMsg <- &model.LockUnlockResponse{
 							Ok: true,
 							Id: msg.Id,
 						}
 					} else {
-						w.mgrWebdavLockResp <- &model.LockUnlockResponse{
+						w.webdavMgrLockMsg <- &model.LockUnlockResponse{
 							Ok:      false,
 							Message: err.Error(),
 							Id:      msg.Id,
@@ -146,13 +151,13 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				case *model.LockCreateRequest:
 					token, err := w.lockSystem.Create(msg.Now, msg.Details)
 					if err == nil {
-						w.mgrWebdavLockResp <- &model.LockCreateResponse{
+						w.webdavMgrLockMsg <- &model.LockCreateResponse{
 							Ok:    true,
 							Token: model.LockToken(token),
 							Id:    msg.Id,
 						}
 					} else {
-						w.mgrWebdavLockResp <- &model.LockCreateResponse{
+						w.webdavMgrLockMsg <- &model.LockCreateResponse{
 							Ok:      false,
 							Message: err.Error(),
 							Id:      msg.Id,
@@ -161,13 +166,13 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				case *model.LockRefreshRequest:
 					details, err := w.lockSystem.Refresh(msg.Now, string(msg.Token), msg.Duration)
 					if err == nil {
-						w.mgrWebdavLockResp <- &model.LockRefreshResponse{
+						w.webdavMgrLockMsg <- &model.LockRefreshResponse{
 							Ok:      true,
 							Details: details,
 							Id:      msg.Id,
 						}
 					} else {
-						w.mgrWebdavLockResp <- &model.LockRefreshResponse{
+						w.webdavMgrLockMsg <- &model.LockRefreshResponse{
 							Ok:      false,
 							Message: err.Error(),
 							Id:      msg.Id,
