@@ -271,6 +271,10 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	}
 }
 
+func (m *Mgr) isPrimaryNode() bool {
+	
+}	
+
 func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) error {
 	m.nodesAddressMap[n] = address
 	err := m.saveNodeAddressMap()
