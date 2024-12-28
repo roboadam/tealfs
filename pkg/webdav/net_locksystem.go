@@ -36,12 +36,14 @@ type LockMessageReqResp struct {
 type NetLockSystem struct {
 	Messages chan LockMessageReqResp
 	Release  chan model.LockMessageId
+	NodeId   model.NodeId
 }
 
-func NewNetLockSystem() *NetLockSystem {
+func NewNetLockSystem(nodeId model.NodeId) *NetLockSystem {
 	return &NetLockSystem{
 		Messages: make(chan LockMessageReqResp),
 		Release:  make(chan model.LockMessageId),
+		NodeId:   nodeId,
 	}
 }
 
@@ -52,6 +54,7 @@ func (l *NetLockSystem) Confirm(now time.Time, name0 string, name1 string, condi
 		Name1:      name1,
 		Conditions: conditions,
 		Id:         model.LockMessageId(uuid.New().String()),
+		Caller:     l.NodeId,
 	}
 
 	respChan := make(chan LockMessage)

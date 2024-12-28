@@ -354,9 +354,21 @@ func (m *Mgr) handleWebdavWriteRequest(w model.WriteRequest) {
 }
 
 func (m *Mgr) handleWebdavLockMsg(lm webdav.LockMessage) {
-	//todo, not sure where to send this, sometimes primary, sometime to requestor
-	if m.PrimaryNodeId != m.NodeId {()
-		c, ok := m.nodeConnMap.Get1(m.PrimaryNodeId)
+	switch lm := lm.(type) {
+	case *model.LockConfirmRequest:
+		m.sendLockMessageToPrimaryNode(lm)
+	case *model.LockConfirmResponse:
+		m.sendLockMessageToNode(lm, lm.Caller)
+	}
+}
+
+func (m *Mgr) sendLockMessageToPrimaryNode(lm webdav.LockMessage) {
+	m.sendLockMessageToNode(lm, m.PrimaryNodeId)
+}
+
+func (m *Mgr) sendLockMessageToNode(lm webdav.LockMessage, sendTo model.NodeId) {
+	if sendTo != m.NodeId {
+		c, ok := m.nodeConnMap.Get1(sendTo)
 		if ok {
 			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId:  c,

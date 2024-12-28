@@ -67,7 +67,7 @@ func New(
 		pendingPuts:        make(map[model.BlockId]chan model.WriteResult),
 		pendingLockMsg:     make(map[model.LockMessageId]chan LockMessage),
 		pendingReleases:    map[model.LockMessageId]func(){},
-		lockSystem:         NewLockSystem(),
+		lockSystem:         NewLockSystem(nodeId),
 		bindAddress:        bindAddress,
 	}
 	w.start(ctx)
@@ -128,12 +128,14 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 							Ok:      false,
 							Id:      msg.Id,
 							Message: err.Error(),
+							Caller:  msg.Caller,
 						}
 					} else {
 						w.pendingReleases[msg.Id] = release
 						w.webdavMgrLockMsg <- &model.LockConfirmResponse{
-							Ok: true,
-							Id: msg.Id,
+							Ok:     true,
+							Id:     msg.Id,
+							Caller: msg.Caller,
 						}
 					}
 				case *model.LockMessageId:

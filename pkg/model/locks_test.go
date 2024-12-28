@@ -39,6 +39,7 @@ func TestConfirmRequest(t *testing.T) {
 				ETag:  "etag2",
 			},
 		},
+		Caller: "caller1",
 	}
 
 	serialized := cr.ToBytes()
@@ -60,6 +61,7 @@ func TestConfirmResponse(t *testing.T) {
 		Ok:        false,
 		Message:   "message1",
 		ReleaseId: "releaseId1",
+		Caller:    "caller1",
 	}
 	serialized := cr.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {

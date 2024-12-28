@@ -38,9 +38,9 @@ type LockSystem struct {
 	ReleaseChan chan model.LockMessageId
 }
 
-func NewLockSystem() *LockSystem {
+func NewLockSystem(nodeId model.NodeId) *LockSystem {
 	mode := LockSystemModeLocal
-	netLs := NewNetLockSystem()
+	netLs := NewNetLockSystem(nodeId)
 	localLs := webdav.NewMemLS()
 	return &LockSystem{
 		mode:        mode,

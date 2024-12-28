@@ -26,7 +26,7 @@ import (
 )
 
 func TestConfirmLock(t *testing.T) {
-	ls := webdav.NewNetLockSystem()
+	ls := webdav.NewNetLockSystem("node1")
 	ctx, cancel := context.WithCancel(context.Background())
 	releaseId := model.LockMessageId(uuid.New().String())
 	defer cancel()
@@ -64,7 +64,7 @@ func TestConfirmLock(t *testing.T) {
 }
 
 func TestRefreshLock(t *testing.T) {
-	ls := webdav.NewNetLockSystem()
+	ls := webdav.NewNetLockSystem("node1")
 	ctx, cancel := context.WithCancel(context.Background())
 	expected := gwebdav.LockDetails{
 		Root:      "root1",
@@ -100,6 +100,7 @@ func consumeMessages(ctx context.Context, lockMessages chan webdav.LockMessageRe
 						Ok:        true,
 						ReleaseId: remainder[0],
 						Id:        msg.Id,
+						Caller:    msg.Caller,
 					}
 					remainder = remainder[1:]
 				} else {
@@ -108,6 +109,7 @@ func consumeMessages(ctx context.Context, lockMessages chan webdav.LockMessageRe
 						Message:   "No release id",
 						ReleaseId: "",
 						Id:        msg.Id,
+						Caller:    msg.Caller,
 					}
 				}
 			case *model.LockUnlockRequest:
