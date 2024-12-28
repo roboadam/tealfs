@@ -17,6 +17,8 @@ package mgr
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
+	"math"
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
@@ -272,8 +274,19 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 }
 
 func (m *Mgr) isPrimaryNode() bool {
+	var primary model.NodeId
+	primaryHash := uint64(math.MaxUint64)
+	hasher := fnv.New64a()
+	for node := range m.nodesAddressMap {
+		hasher.Write([]byte(node))
+		hash := hasher.Sum64()
+		if hash < primaryHash {
+			primary = node
+			primaryHash = hash
+		}
+	}
 	
-}	
+}
 
 func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) error {
 	m.nodesAddressMap[n] = address
