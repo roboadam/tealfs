@@ -27,6 +27,10 @@ func (l LockMessageId) GetId() LockMessageId {
 	return l
 }
 
+func (l LockMessageId) AsPayload() Payload {
+	return &l
+}
+
 func (l *LockMessageId) ToBytes() []byte {
 	id := StringToBytes(string(*l))
 	return AddType(LockMessageIdType, id)
@@ -56,6 +60,10 @@ type LockConfirmRequest struct {
 
 func (l *LockConfirmRequest) GetId() LockMessageId {
 	return l.Id
+}
+
+func (l *LockConfirmRequest) AsPayload() Payload {
+	return l
 }
 
 func (l *LockConfirmRequest) ToBytes() []byte {
@@ -151,6 +159,10 @@ func (l *LockConfirmResponse) GetId() LockMessageId {
 	return l.Id
 }
 
+func (l *LockConfirmResponse) AsPayload() Payload {
+	return l
+}
+
 func (l *LockConfirmResponse) ToBytes() []byte {
 	success := BoolToBytes(l.Ok)
 	message := StringToBytes(l.Message)
@@ -199,6 +211,10 @@ type LockCreateRequest struct {
 
 func (l *LockCreateRequest) GetId() LockMessageId {
 	return l.Id
+}
+
+func (l *LockCreateRequest) AsPayload() Payload {
+	return l
 }
 
 func LockDetailsToBytes(l *webdav.LockDetails) []byte {
@@ -291,6 +307,10 @@ func (l *LockCreateResponse) GetId() LockMessageId {
 	return l.Id
 }
 
+func (l *LockCreateResponse) AsPayload() Payload {
+	return l
+}
+
 func (l *LockCreateResponse) ToBytes() []byte {
 	token := StringToBytes(string(l.Token))
 	ok := BoolToBytes(l.Ok)
@@ -331,6 +351,10 @@ type LockRefreshRequest struct {
 
 func (l *LockRefreshRequest) GetId() LockMessageId {
 	return l.Id
+}
+
+func (l *LockRefreshRequest) AsPayload() Payload {
+	return l
 }
 
 func (l *LockRefreshRequest) ToBytes() []byte {
@@ -378,6 +402,10 @@ func (l *LockRefreshResponse) GetId() LockMessageId {
 	return l.Id
 }
 
+func (l *LockRefreshResponse) AsPayload() Payload {
+	return l
+}
+
 func (l *LockRefreshResponse) ToBytes() []byte {
 	details := LockDetailsToBytes(&l.Details)
 	ok := BoolToBytes(l.Ok)
@@ -422,6 +450,10 @@ func (l *LockUnlockRequest) GetId() LockMessageId {
 	return l.Id
 }
 
+func (l *LockUnlockRequest) AsPayload() Payload {
+	return l
+}
+
 func (l *LockUnlockRequest) ToBytes() []byte {
 	now := Int64ToBytes(l.Now.UnixMicro())
 	token := StringToBytes(string(l.Token))
@@ -458,6 +490,10 @@ type LockUnlockResponse struct {
 
 func (l *LockUnlockResponse) GetId() LockMessageId {
 	return l.Id
+}
+
+func (l *LockUnlockResponse) AsPayload() Payload {
+	return l
 }
 
 func (l *LockUnlockResponse) ToBytes() []byte {

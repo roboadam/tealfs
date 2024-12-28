@@ -25,6 +25,7 @@ import (
 
 type LockMessage interface {
 	GetId() model.LockMessageId
+	AsPayload() model.Payload
 }
 
 type LockMessageReqResp struct {
