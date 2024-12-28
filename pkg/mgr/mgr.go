@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
-	"math"
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
@@ -44,10 +43,12 @@ type Mgr struct {
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
 	MgrWebdavLockMsg   chan webdav.LockMessage
+	MgrWebdavIsPrimary chan bool
 
 	nodesAddressMap map[model.NodeId]string
 	nodeConnMap     set.Bimap[model.NodeId, model.ConnId]
 	NodeId          model.NodeId
+	PrimaryNodeId   model.NodeId
 	connAddress     map[model.ConnId]string
 	distributer     dist.Distributer
 	nodeAddress     string
@@ -73,8 +74,10 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
 		MgrWebdavLockMsg:   make(chan webdav.LockMessage, chanSize),
+		MgrWebdavIsPrimary: make(chan bool),
 		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
+		PrimaryNodeId:      nodeId,
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		distributer:        dist.New(),
@@ -114,6 +117,7 @@ func (m *Mgr) loadNodeAddressMap() error {
 	if err != nil {
 		return err
 	}
+	m.setPrimaryNode()
 
 	return nil
 }
@@ -273,23 +277,33 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	}
 }
 
-func (m *Mgr) isPrimaryNode() bool {
-	var primary model.NodeId
-	primaryHash := uint64(math.MaxUint64)
+func (m *Mgr) setPrimaryNode() model.NodeId {
 	hasher := fnv.New64a()
+	primary := m.NodeId
+	hasher.Write([]byte(primary))
+	primaryHash := hasher.Sum64()
+	hasher.Reset()
 	for node := range m.nodesAddressMap {
 		hasher.Write([]byte(node))
 		hash := hasher.Sum64()
+		hasher.Reset()
 		if hash < primaryHash {
 			primary = node
 			primaryHash = hash
 		}
 	}
-	
+	m.PrimaryNodeId = primary
+	if m.PrimaryNodeId == m.NodeId {
+		m.MgrWebdavIsPrimary <- true
+	} else {
+		m.MgrWebdavIsPrimary <- false
+	}
+	return primary
 }
 
 func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) error {
 	m.nodesAddressMap[n] = address
+	m.setPrimaryNode()
 	err := m.saveNodeAddressMap()
 	if err != nil {
 		return err

@@ -23,21 +23,22 @@ import (
 )
 
 type Webdav struct {
-	webdavMgrGets    chan model.ReadRequest
-	webdavMgrPuts    chan model.WriteRequest
-	mgrWebdavGets    chan model.ReadResult
-	mgrWebdavPuts    chan model.WriteResult
-	webdavMgrLockMsg chan LockMessage
-	mgrWebdavLockMsg chan LockMessage
-	fileSystem       FileSystem
-	nodeId           model.NodeId
-	pendingReads     map[model.BlockId]chan model.ReadResult
-	pendingPuts      map[model.BlockId]chan model.WriteResult
-	pendingLockMsg   map[model.LockMessageId]chan LockMessage
-	pendingReleases  map[model.LockMessageId]func()
-	lockSystem       *LockSystem
-	bindAddress      string
-	server           *http.Server
+	webdavMgrGets      chan model.ReadRequest
+	webdavMgrPuts      chan model.WriteRequest
+	mgrWebdavGets      chan model.ReadResult
+	mgrWebdavPuts      chan model.WriteResult
+	mgrWebdavIsPrimary chan bool
+	webdavMgrLockMsg   chan LockMessage
+	mgrWebdavLockMsg   chan LockMessage
+	fileSystem         FileSystem
+	nodeId             model.NodeId
+	pendingReads       map[model.BlockId]chan model.ReadResult
+	pendingPuts        map[model.BlockId]chan model.WriteResult
+	pendingLockMsg     map[model.LockMessageId]chan LockMessage
+	pendingReleases    map[model.LockMessageId]func()
+	lockSystem         *LockSystem
+	bindAddress        string
+	server             *http.Server
 }
 
 func New(
@@ -46,26 +47,28 @@ func New(
 	webdavMgrPuts chan model.WriteRequest,
 	mgrWebdavGets chan model.ReadResult,
 	mgrWebdavPuts chan model.WriteResult,
+	mgrWebdavIsPrimary chan bool,
 	webdavMgrLockMsg chan LockMessage,
 	mgrWebdavLockMsg chan LockMessage,
 	bindAddress string,
 	ctx context.Context,
 ) Webdav {
 	w := Webdav{
-		webdavMgrGets:    webdavMgrGets,
-		webdavMgrPuts:    webdavMgrPuts,
-		mgrWebdavGets:    mgrWebdavGets,
-		mgrWebdavPuts:    mgrWebdavPuts,
-		webdavMgrLockMsg: webdavMgrLockMsg,
-		mgrWebdavLockMsg: mgrWebdavLockMsg,
-		fileSystem:       NewFileSystem(nodeId),
-		nodeId:           nodeId,
-		pendingReads:     make(map[model.BlockId]chan model.ReadResult),
-		pendingPuts:      make(map[model.BlockId]chan model.WriteResult),
-		pendingLockMsg:   make(map[model.LockMessageId]chan LockMessage),
-		pendingReleases:  map[model.LockMessageId]func(){},
-		lockSystem:       NewLockSystem(),
-		bindAddress:      bindAddress,
+		webdavMgrGets:      webdavMgrGets,
+		webdavMgrPuts:      webdavMgrPuts,
+		mgrWebdavGets:      mgrWebdavGets,
+		mgrWebdavPuts:      mgrWebdavPuts,
+		mgrWebdavIsPrimary: mgrWebdavIsPrimary,
+		webdavMgrLockMsg:   webdavMgrLockMsg,
+		mgrWebdavLockMsg:   mgrWebdavLockMsg,
+		fileSystem:         NewFileSystem(nodeId),
+		nodeId:             nodeId,
+		pendingReads:       make(map[model.BlockId]chan model.ReadResult),
+		pendingPuts:        make(map[model.BlockId]chan model.WriteResult),
+		pendingLockMsg:     make(map[model.LockMessageId]chan LockMessage),
+		pendingReleases:    map[model.LockMessageId]func(){},
+		lockSystem:         NewLockSystem(),
+		bindAddress:        bindAddress,
 	}
 	w.start(ctx)
 	return w
@@ -191,6 +194,12 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 		case r := <-w.fileSystem.WriteReqResp:
 			w.webdavMgrPuts <- r.Req
 			w.pendingPuts[r.Req.Block.Id] = r.Resp
+		case isPrimary := <-w.mgrWebdavIsPrimary:
+			if isPrimary {
+				w.lockSystem.UseLocalLockSystem()
+			} else {
+				w.lockSystem.UseNetLockSystem()
+			}
 		}
 	}
 }
