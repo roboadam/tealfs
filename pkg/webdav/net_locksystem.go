@@ -80,6 +80,7 @@ func (l *NetLockSystem) Create(now time.Time, details webdav.LockDetails) (token
 		Now:     now,
 		Details: details,
 		Id:      model.LockMessageId(uuid.New().String()),
+		Caller:  l.NodeId,
 	}
 	respChan := make(chan LockMessage)
 

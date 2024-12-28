@@ -221,6 +221,7 @@ type LockCreateRequest struct {
 	Now     time.Time
 	Details webdav.LockDetails
 	Id      LockMessageId
+	Caller  NodeId
 }
 
 func (l *LockCreateRequest) GetId() LockMessageId {
@@ -243,7 +244,8 @@ func (l *LockCreateRequest) ToBytes() []byte {
 	now := Int64ToBytes(l.Now.UnixMicro())
 	details := LockDetailsToBytes(&l.Details)
 	id := StringToBytes(string(l.Id))
-	return AddType(LockCreateRequestType, bytes.Join([][]byte{now, details, id}, []byte{}))
+	caller := StringToBytes(string(l.Caller))
+	return AddType(LockCreateRequestType, bytes.Join([][]byte{now, details, id, caller}, []byte{}))
 }
 
 func LockDetailsEquals(l1 *webdav.LockDetails, l2 *webdav.LockDetails) bool {
@@ -294,6 +296,9 @@ func (l *LockCreateRequest) Equal(p Payload) bool {
 		if l.Id != o.Id {
 			return false
 		}
+		if l.Caller != o.Caller {
+			return false
+		}
 		return true
 	}
 	return false
@@ -302,11 +307,13 @@ func (l *LockCreateRequest) Equal(p Payload) bool {
 func ToLockCreateRequest(data []byte) *LockCreateRequest {
 	now, remainder := Int64FromBytes(data)
 	details, remainder := ToLockDetails(remainder)
-	id, _ := StringFromBytes(remainder)
+	id, remainder := StringFromBytes(remainder)
+	caller, _ := StringFromBytes(remainder)
 	return &LockCreateRequest{
 		Now:     time.UnixMicro(now),
 		Details: details,
 		Id:      LockMessageId(id),
+		Caller:  NodeId(caller),
 	}
 }
 
@@ -315,6 +322,7 @@ type LockCreateResponse struct {
 	Ok      bool
 	Message string
 	Id      LockMessageId
+	Caller  NodeId
 }
 
 func (l *LockCreateResponse) GetId() LockMessageId {
@@ -329,7 +337,8 @@ func (l *LockCreateResponse) ToBytes() []byte {
 	token := StringToBytes(string(l.Token))
 	ok := BoolToBytes(l.Ok)
 	message := StringToBytes(l.Message)
-	return AddType(LockCreateResponseType, bytes.Join([][]byte{token, ok, message}, []byte{}))
+	caller := StringToBytes(string(l.Caller))
+	return AddType(LockCreateResponseType, bytes.Join([][]byte{token, ok, message, caller}, []byte{}))
 }
 
 func (l *LockCreateResponse) Equal(p Payload) bool {
@@ -340,6 +349,12 @@ func (l *LockCreateResponse) Equal(p Payload) bool {
 		if l.Ok != o.Ok {
 			return false
 		}
+		if l.Message != o.Message {
+			return false
+		}
+		if l.Caller != o.Caller {
+			return false
+		}
 		return true
 	}
 	return false
@@ -348,11 +363,13 @@ func (l *LockCreateResponse) Equal(p Payload) bool {
 func ToLockCreateResponse(data []byte) *LockCreateResponse {
 	token, remainder := StringFromBytes(data)
 	ok, remainder := BoolFromBytes(remainder)
-	message, _ := StringFromBytes(remainder)
+	message, remainder := StringFromBytes(remainder)
+	caller, _ := StringFromBytes(remainder)
 	return &LockCreateResponse{
 		Token:   LockToken(token),
 		Ok:      ok,
 		Message: message,
+		Caller:  NodeId(caller),
 	}
 }
 

@@ -162,15 +162,17 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 					token, err := w.lockSystem.Create(msg.Now, msg.Details)
 					if err == nil {
 						w.webdavMgrLockMsg <- &model.LockCreateResponse{
-							Ok:    true,
-							Token: model.LockToken(token),
-							Id:    msg.Id,
+							Ok:     true,
+							Token:  model.LockToken(token),
+							Id:     msg.Id,
+							Caller: msg.Caller,
 						}
 					} else {
 						w.webdavMgrLockMsg <- &model.LockCreateResponse{
 							Ok:      false,
 							Message: err.Error(),
 							Id:      msg.Id,
+							Caller:  msg.Caller,
 						}
 					}
 				case *model.LockRefreshRequest:

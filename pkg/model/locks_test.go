@@ -85,6 +85,7 @@ func TestCreateRequest(t *testing.T) {
 			OwnerXML:  "<a href=\"https://example.com\">example</a>",
 			ZeroDepth: false,
 		},
+		Caller: "caller1",
 	}
 	serialized := cr.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {
@@ -104,6 +105,7 @@ func TestCreateResponse(t *testing.T) {
 		Token:   "token1",
 		Ok:      true,
 		Message: "message1",
+		Caller: "caller1",
 	}
 	serialized := cr.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {
