@@ -15,13 +15,22 @@
 package model
 
 const (
-	NoOpType         = uint8(0)
-	IAmType          = uint8(1)
-	SyncType         = uint8(2)
-	WriteRequestType = uint8(3)
-	WriteResultType  = uint8(4)
-	ReadRequestType  = uint8(5)
-	ReadResultType   = uint8(6)
+	NoOpType                = uint8(0)
+	IAmType                 = uint8(1)
+	SyncType                = uint8(2)
+	WriteRequestType        = uint8(3)
+	WriteResultType         = uint8(4)
+	ReadRequestType         = uint8(5)
+	ReadResultType          = uint8(6)
+	LockConfirmRequestType  = uint8(7)
+	LockConfirmResponseType = uint8(8)
+	LockCreateRequestType   = uint8(9)
+	LockCreateResponseType  = uint8(10)
+	LockRefreshRequestType  = uint8(11)
+	LockRefreshResponseType = uint8(12)
+	LockUnlockRequestType   = uint8(13)
+	LockUnlockResponseType  = uint8(14)
+	LockMessageIdType       = uint8(15)
 )
 
 type Payload interface {
@@ -43,6 +52,24 @@ func ToPayload(data []byte) Payload {
 		return ToReadRequest(payloadData(data))
 	case ReadResultType:
 		return ToReadResult(payloadData(data))
+	case LockConfirmRequestType:
+		return ToLockConfirmRequest(payloadData(data))
+	case LockConfirmResponseType:
+		return ToLockConfirmResponse(payloadData(data))
+	case LockCreateRequestType:
+		return ToLockCreateRequest(payloadData(data))
+	case LockCreateResponseType:
+		return ToLockCreateResponse(payloadData(data))
+	case LockRefreshRequestType:
+		return ToLockRefreshRequest(payloadData(data))
+	case LockRefreshResponseType:
+		return ToLockRefreshResponse(payloadData(data))
+	case LockUnlockRequestType:
+		return ToLockUnlockRequest(payloadData(data))
+	case LockUnlockResponseType:
+		return ToLockUnlockResponse(payloadData(data))
+	case LockMessageIdType:
+		return ToLockMessageId(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}

@@ -17,11 +17,13 @@ package mgr
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+	"tealfs/pkg/webdav"
 )
 
 type Mgr struct {
@@ -32,6 +34,7 @@ type Mgr struct {
 	DiskMgrWrites      chan model.WriteResult
 	WebdavMgrGets      chan model.ReadRequest
 	WebdavMgrPuts      chan model.WriteRequest
+	WebdavMgrLockMsg   chan webdav.LockMessage
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
@@ -39,10 +42,13 @@ type Mgr struct {
 	MgrUiStatuses      chan model.UiConnectionStatus
 	MgrWebdavGets      chan model.ReadResult
 	MgrWebdavPuts      chan model.WriteResult
+	MgrWebdavLockMsg   chan webdav.LockMessage
+	MgrWebdavIsPrimary chan bool
 
 	nodesAddressMap map[model.NodeId]string
 	nodeConnMap     set.Bimap[model.NodeId, model.ConnId]
 	NodeId          model.NodeId
+	PrimaryNodeId   model.NodeId
 	connAddress     map[model.ConnId]string
 	distributer     dist.Distributer
 	nodeAddress     string
@@ -59,6 +65,7 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:      make(chan model.ReadRequest, chanSize),
 		WebdavMgrPuts:      make(chan model.WriteRequest, chanSize),
+		WebdavMgrLockMsg:   make(chan webdav.LockMessage, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
@@ -66,8 +73,11 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
 		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
+		MgrWebdavLockMsg:   make(chan webdav.LockMessage, chanSize),
+		MgrWebdavIsPrimary: make(chan bool),
 		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
+		PrimaryNodeId:      nodeId,
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		distributer:        dist.New(),
@@ -107,6 +117,7 @@ func (m *Mgr) loadNodeAddressMap() error {
 	if err != nil {
 		return err
 	}
+	m.setPrimaryNode()
 
 	return nil
 }
@@ -129,32 +140,26 @@ func (m *Mgr) eventLoop() {
 	for {
 		select {
 		case r := <-m.UiMgrConnectTos:
-			fmt.Println(m.NodeId, "Received UiMgrConnectTo")
 			m.handleConnectToReq(r)
 		case r := <-m.ConnsMgrStatuses:
-			fmt.Println(m.NodeId, "Received ConnsMgrStatuses")
 			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
-			fmt.Println(m.NodeId, "Received ConnsMgrReceives")
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
-			fmt.Println(m.NodeId, "Received DiskMgrReads")
 			m.handleDiskReads(r)
 		case r := <-m.DiskMgrWrites:
-			fmt.Println(m.NodeId, "Received DiskMgrWrites")
 			m.handleDiskWrites(r)
 		case r := <-m.WebdavMgrGets:
-			fmt.Println(m.NodeId, "Received WebdavMgrGets")
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
-			fmt.Println(m.NodeId, "Received WebdavMgrPuts")
 			m.handleWebdavWriteRequest(r)
+		case r := <-m.WebdavMgrLockMsg:
+			m.handleWebdavLockMsg(r)
 		}
 	}
 }
 
 func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
-	fmt.Println(m.NodeId, "Sending MgrConnsConnectTo")
 	m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: string(i.Address)}
 }
 
@@ -178,7 +183,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
 		m.connAddress[i.ConnId] = p.Address
-		fmt.Println(m.NodeId, "Sending MgrUiStatuses")
 		m.MgrUiStatuses <- model.UiConnectionStatus{
 			Type:          model.Connected,
 			RemoteAddress: p.Address,
@@ -189,7 +193,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		for n := range m.nodesAddressMap {
 			connId, ok := m.nodeConnMap.Get1(n)
 			if ok {
-				fmt.Println(m.NodeId, "Sending MgrConnsSend SyncNodes Payload")
 				m.MgrConnsSends <- model.MgrConnsSend{
 					ConnId:  connId,
 					Payload: &syncNodes,
@@ -203,7 +206,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		missing := remoteNodes.Minus(&localNodes)
 		for _, n := range missing.GetValues() {
 			address := p.AddressForNode(n)
-			fmt.Println(m.NodeId, "Sending MgrConnsConnectTo in response to SyncNodes")
 			m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: address}
 		}
 	case *model.WriteRequest:
@@ -213,38 +215,33 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			return
 		}
 		if m.NodeId == n {
-			fmt.Println(m.NodeId, "Sending MgrDiskWrites")
 			m.MgrDiskWrites <- *p
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)
 			if ok {
-				fmt.Println(m.NodeId, "Sending MgrConnsSend in response to WriteRequest")
 				m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: p}
 			} else {
 				m.MgrDiskWrites <- *p
 			}
 		}
 	case *model.WriteResult:
-		fmt.Println(m.NodeId, "Sending MgrWebDavPuts in response data from other node")
 		m.MgrWebdavPuts <- *p
 	case *model.ReadRequest:
-		fmt.Println(m.NodeId, "Sending MgrDiskReads in response data from other node")
 		m.MgrDiskReads <- *p
 	case *model.ReadResult:
-		fmt.Println(m.NodeId, "Sending MgrWebDavGets in response data from other node")
 		m.MgrWebdavGets <- *p
+	case webdav.LockMessage:
+		m.MgrWebdavLockMsg <- p
 	default:
 		fmt.Println(m.NodeId, "Received unknown payload", p)
 	}
 }
 func (m *Mgr) handleDiskWrites(r model.WriteResult) {
 	if r.Caller == m.NodeId {
-		fmt.Println(m.NodeId, "Sending MgrWebdavPuts WriteResult")
 		m.MgrWebdavPuts <- r
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
 		if ok {
-			fmt.Println(m.NodeId, "Sending MgrConnsSend WriteResult")
 			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
 		} else {
 			fmt.Println("Need to add to queue when reconnected")
@@ -258,7 +255,6 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
 		if ok {
-			fmt.Println(m.NodeId, "Sending MgrConnsSend ReadResult")
 			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
 		} else {
 			fmt.Println("Need to add to queue when reconnected")
@@ -266,8 +262,33 @@ func (m *Mgr) handleDiskReads(r model.ReadResult) {
 	}
 }
 
+func (m *Mgr) setPrimaryNode() model.NodeId {
+	hasher := fnv.New64a()
+	primary := m.NodeId
+	hasher.Write([]byte(primary))
+	primaryHash := hasher.Sum64()
+	hasher.Reset()
+	for node := range m.nodesAddressMap {
+		hasher.Write([]byte(node))
+		hash := hasher.Sum64()
+		hasher.Reset()
+		if hash < primaryHash {
+			primary = node
+			primaryHash = hash
+		}
+	}
+	m.PrimaryNodeId = primary
+	if m.PrimaryNodeId == m.NodeId {
+		m.MgrWebdavIsPrimary <- true
+	} else {
+		m.MgrWebdavIsPrimary <- false
+	}
+	return primary
+}
+
 func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) error {
 	m.nodesAddressMap[n] = address
+	m.setPrimaryNode()
 	err := m.saveNodeAddressMap()
 	if err != nil {
 		return err
@@ -280,7 +301,6 @@ func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) e
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
-		fmt.Println(m.NodeId, "Sending MgrConnsSend Iam in response to successful connection")
 		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId: cs.Id,
 			Payload: &model.IAm{
@@ -297,18 +317,15 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 	n := m.distributer.NodeIdForStoreId(rr.BlockId)
 	if m.NodeId == n {
-		fmt.Println(m.NodeId, "Sending MgrDiskReads in response to WebdavGet ReadRequest")
 		m.MgrDiskReads <- rr
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
 		if ok {
-			fmt.Println(m.NodeId, "Sending MgrConnsSend in response to WebdavGet ReadRequest")
 			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId:  c,
 				Payload: &rr,
 			}
 		} else {
-			fmt.Println(m.NodeId, "Sending MgrWebdavGets unsuccessful read because not connected")
 			m.MgrWebdavGets <- model.ReadResult{
 				Ok:      false,
 				Message: "Not connected",
@@ -322,19 +339,55 @@ func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 func (m *Mgr) handleWebdavWriteRequest(w model.WriteRequest) {
 	n := m.distributer.NodeIdForStoreId(w.Block.Id)
 	if n == m.NodeId {
-		fmt.Println(m.NodeId, "Sending MgrDiskWrites in response to webdav write request")
 		m.MgrDiskWrites <- w
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
 		if ok {
-			fmt.Println(m.NodeId, "Sending MgrConnsSend in response to webdav write request")
 			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId:  c,
 				Payload: &w,
 			}
 		} else {
-			fmt.Println(m.NodeId, "Sending MgrDiskWrites because node is offline")
 			m.MgrDiskWrites <- w
+		}
+	}
+}
+
+func (m *Mgr) handleWebdavLockMsg(lm webdav.LockMessage) {
+	switch lm := lm.(type) {
+	case *model.LockConfirmRequest:
+		m.sendLockMessageToPrimaryNode(lm)
+	case *model.LockConfirmResponse:
+		m.sendLockMessageToNode(lm, lm.Caller)
+	case *model.LockMessageId:
+		m.sendLockMessageToPrimaryNode(lm)
+	case *model.LockCreateRequest:
+		m.sendLockMessageToPrimaryNode(lm)
+	case *model.LockCreateResponse:
+		m.sendLockMessageToNode(lm, lm.Caller)
+	case *model.LockRefreshRequest:
+		m.sendLockMessageToPrimaryNode(lm)
+	case *model.LockRefreshResponse:
+		m.sendLockMessageToNode(lm, lm.Caller)
+	case *model.LockUnlockRequest:
+		m.sendLockMessageToPrimaryNode(lm)
+	case *model.LockUnlockResponse:
+		m.sendLockMessageToNode(lm, lm.Caller)
+	}
+}
+
+func (m *Mgr) sendLockMessageToPrimaryNode(lm webdav.LockMessage) {
+	m.sendLockMessageToNode(lm, m.PrimaryNodeId)
+}
+
+func (m *Mgr) sendLockMessageToNode(lm webdav.LockMessage, sendTo model.NodeId) {
+	if sendTo != m.NodeId {
+		c, ok := m.nodeConnMap.Get1(sendTo)
+		if ok {
+			m.MgrConnsSends <- model.MgrConnsSend{
+				ConnId:  c,
+				Payload: lm.AsPayload(),
+			}
 		}
 	}
 }

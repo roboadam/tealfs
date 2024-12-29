@@ -18,6 +18,8 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
+
+	"context"
 )
 
 func TestConnectToMgr(t *testing.T) {
@@ -359,7 +361,18 @@ type connectedNode struct {
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
 	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	err := m.Start()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-m.MgrWebdavIsPrimary:
+			}
+		}
+	}()
 	if err != nil {
 		t.Error("Error starting", err)
 	}
