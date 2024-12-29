@@ -124,9 +124,10 @@ func (l *NetLockSystem) Refresh(now time.Time, token string, duration time.Durat
 
 func (l *NetLockSystem) Unlock(now time.Time, token string) error {
 	req := model.LockUnlockRequest{
-		Now:   now,
-		Token: model.LockToken(token),
-		Id:    model.LockMessageId(uuid.New().String()),
+		Now:    now,
+		Token:  model.LockToken(token),
+		Id:     model.LockMessageId(uuid.New().String()),
+		Caller: l.NodeId,
 	}
 	respChan := make(chan LockMessage)
 

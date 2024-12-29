@@ -114,8 +114,9 @@ func consumeMessages(ctx context.Context, lockMessages chan webdav.LockMessageRe
 				}
 			case *model.LockUnlockRequest:
 				lockMessage.Resp <- &model.LockUnlockResponse{
-					Ok: true,
-					Id: msg.Id,
+					Ok:     true,
+					Id:     msg.Id,
+					Caller: msg.Caller,
 				}
 			case *model.LockCreateRequest:
 				lockMessage.Resp <- &model.LockCreateResponse{

@@ -22,3 +22,6 @@
 # Go workspace file
 go.work
 .vscode/settings.json
+
+tmp1/
+tmp2/

@@ -168,6 +168,7 @@ func TestUnlockRequest(t *testing.T) {
 	ur := model.LockUnlockRequest{
 		Now:   time.Now(),
 		Token: "token1",
+		Caller: "caller1",
 	}
 	serialized := ur.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {

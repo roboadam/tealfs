@@ -148,14 +148,16 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 					err := w.lockSystem.Unlock(msg.Now, string(msg.Token))
 					if err == nil {
 						w.webdavMgrLockMsg <- &model.LockUnlockResponse{
-							Ok: true,
-							Id: msg.Id,
+							Ok:     true,
+							Id:     msg.Id,
+							Caller: msg.Caller,
 						}
 					} else {
 						w.webdavMgrLockMsg <- &model.LockUnlockResponse{
 							Ok:      false,
 							Message: err.Error(),
 							Id:      msg.Id,
+							Caller:  msg.Caller,
 						}
 					}
 				case *model.LockCreateRequest:

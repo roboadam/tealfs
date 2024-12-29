@@ -369,6 +369,10 @@ func (m *Mgr) handleWebdavLockMsg(lm webdav.LockMessage) {
 		m.sendLockMessageToPrimaryNode(lm)
 	case *model.LockRefreshResponse:
 		m.sendLockMessageToNode(lm, lm.Caller)
+	case *model.LockUnlockRequest:
+		m.sendLockMessageToPrimaryNode(lm)
+	case *model.LockUnlockResponse:
+		m.sendLockMessageToNode(lm, lm.Caller)
 	}
 }
 
