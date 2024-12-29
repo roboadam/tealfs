@@ -39,6 +39,7 @@ func TestConfirmRequest(t *testing.T) {
 				ETag:  "etag2",
 			},
 		},
+		Id:     "lockMessageId1",
 		Caller: "caller1",
 	}
 
@@ -61,6 +62,7 @@ func TestConfirmResponse(t *testing.T) {
 		Ok:        false,
 		Message:   "message1",
 		ReleaseId: "releaseId1",
+		Id:        "abc123",
 		Caller:    "caller1",
 	}
 	serialized := cr.ToBytes()
@@ -85,6 +87,7 @@ func TestCreateRequest(t *testing.T) {
 			OwnerXML:  "<a href=\"https://example.com\">example</a>",
 			ZeroDepth: false,
 		},
+		Id:     "lockMessageId1",
 		Caller: "caller1",
 	}
 	serialized := cr.ToBytes()
@@ -105,7 +108,8 @@ func TestCreateResponse(t *testing.T) {
 		Token:   "token1",
 		Ok:      true,
 		Message: "message1",
-		Caller: "caller1",
+		Caller:  "caller1",
+		Id:      "abc123",
 	}
 	serialized := cr.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {
@@ -125,7 +129,8 @@ func TestRefreshRequest(t *testing.T) {
 		Now:      time.Now(),
 		Token:    "token1",
 		Duration: time.Duration(1234),
-		Caller:  "caller1",
+		Id:       "lockMessageId1",
+		Caller:   "caller1",
 	}
 	serialized := rr.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {
@@ -150,6 +155,8 @@ func TestRefreshResponse(t *testing.T) {
 		},
 		Ok:      true,
 		Message: "message1",
+		Caller:  "caller1",
+		Id:      "abc123",
 	}
 	serialized := rr.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {
@@ -166,8 +173,9 @@ func TestRefreshResponse(t *testing.T) {
 
 func TestUnlockRequest(t *testing.T) {
 	ur := model.LockUnlockRequest{
-		Now:   time.Now(),
-		Token: "token1",
+		Now:    time.Now(),
+		Token:  "token1",
+		Id:     "lockMessageId1",
 		Caller: "caller1",
 	}
 	serialized := ur.ToBytes()
@@ -187,6 +195,8 @@ func TestUnlockResponse(t *testing.T) {
 	ur := model.LockUnlockResponse{
 		Ok:      true,
 		Message: "message1",
+		Caller:  "caller1",
+		Id:      "abc123",
 	}
 	serialized := ur.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {

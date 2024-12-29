@@ -337,8 +337,9 @@ func (l *LockCreateResponse) ToBytes() []byte {
 	token := StringToBytes(string(l.Token))
 	ok := BoolToBytes(l.Ok)
 	message := StringToBytes(l.Message)
+	id := StringToBytes(string(l.Id))
 	caller := StringToBytes(string(l.Caller))
-	return AddType(LockCreateResponseType, bytes.Join([][]byte{token, ok, message, caller}, []byte{}))
+	return AddType(LockCreateResponseType, bytes.Join([][]byte{token, ok, message, id, caller}, []byte{}))
 }
 
 func (l *LockCreateResponse) Equal(p Payload) bool {
@@ -355,6 +356,9 @@ func (l *LockCreateResponse) Equal(p Payload) bool {
 		if l.Caller != o.Caller {
 			return false
 		}
+		if l.Id != o.Id {
+			return false
+		}
 		return true
 	}
 	return false
@@ -364,11 +368,13 @@ func ToLockCreateResponse(data []byte) *LockCreateResponse {
 	token, remainder := StringFromBytes(data)
 	ok, remainder := BoolFromBytes(remainder)
 	message, remainder := StringFromBytes(remainder)
+	id, remainder := StringFromBytes(remainder)
 	caller, _ := StringFromBytes(remainder)
 	return &LockCreateResponse{
 		Token:   LockToken(token),
 		Ok:      ok,
 		Message: message,
+		Id:      LockMessageId(id),
 		Caller:  NodeId(caller),
 	}
 }
@@ -393,8 +399,9 @@ func (l *LockRefreshRequest) ToBytes() []byte {
 	now := Int64ToBytes(l.Now.UnixMicro())
 	token := StringToBytes(string(l.Token))
 	duration := Int64ToBytes(int64(l.Duration))
+	id := StringToBytes(string(l.Id))
 	caller := StringToBytes(string(l.Caller))
-	return AddType(LockRefreshRequestType, bytes.Join([][]byte{now, token, duration, caller}, []byte{}))
+	return AddType(LockRefreshRequestType, bytes.Join([][]byte{now, token, duration, id, caller}, []byte{}))
 }
 
 func (l *LockRefreshRequest) Equal(p Payload) bool {
@@ -411,6 +418,9 @@ func (l *LockRefreshRequest) Equal(p Payload) bool {
 		if l.Caller != o.Caller {
 			return false
 		}
+		if l.Id != o.Id {
+			return false
+		}
 		return true
 	}
 	return false
@@ -420,11 +430,13 @@ func ToLockRefreshRequest(data []byte) *LockRefreshRequest {
 	now, remainder := Int64FromBytes(data)
 	token, remainder := StringFromBytes(remainder)
 	duration, remainder := Int64FromBytes(remainder)
+	id, remainder := StringFromBytes(remainder)
 	caller, _ := StringFromBytes(remainder)
 	return &LockRefreshRequest{
 		Now:      time.UnixMicro(now),
 		Token:    LockToken(token),
 		Duration: time.Duration(duration),
+		Id:       LockMessageId(id),
 		Caller:   NodeId(caller),
 	}
 }
@@ -449,8 +461,9 @@ func (l *LockRefreshResponse) ToBytes() []byte {
 	details := LockDetailsToBytes(&l.Details)
 	ok := BoolToBytes(l.Ok)
 	message := StringToBytes(l.Message)
+	id := StringToBytes(string(l.Id))
 	caller := StringToBytes(string(l.Caller))
-	return AddType(LockRefreshResponseType, bytes.Join([][]byte{details, ok, message, caller}, []byte{}))
+	return AddType(LockRefreshResponseType, bytes.Join([][]byte{details, ok, message, id, caller}, []byte{}))
 }
 
 func (l *LockRefreshResponse) Equal(p Payload) bool {
@@ -462,6 +475,9 @@ func (l *LockRefreshResponse) Equal(p Payload) bool {
 			return false
 		}
 		if l.Message != o.Message {
+			return false
+		}
+		if l.Id != o.Id {
 			return false
 		}
 		if l.Caller != o.Caller {
@@ -476,11 +492,13 @@ func ToLockRefreshResponse(data []byte) *LockRefreshResponse {
 	details, remainder := ToLockDetails(data)
 	ok, remainder := BoolFromBytes(remainder)
 	message, remainder := StringFromBytes(remainder)
+	id, remainder := StringFromBytes(remainder)
 	caller, _ := StringFromBytes(remainder)
 	return &LockRefreshResponse{
 		Details: details,
 		Ok:      ok,
 		Message: message,
+		Id:      LockMessageId(id),
 		Caller:  NodeId(caller),
 	}
 }
@@ -503,8 +521,9 @@ func (l *LockUnlockRequest) AsPayload() Payload {
 func (l *LockUnlockRequest) ToBytes() []byte {
 	now := Int64ToBytes(l.Now.UnixMicro())
 	token := StringToBytes(string(l.Token))
+	id := StringToBytes(string(l.Id))
 	caller := StringToBytes(string(l.Caller))
-	return AddType(LockUnlockRequestType, bytes.Join([][]byte{now, token, caller}, []byte{}))
+	return AddType(LockUnlockRequestType, bytes.Join([][]byte{now, token, id, caller}, []byte{}))
 }
 
 func (l *LockUnlockRequest) Equal(p Payload) bool {
@@ -518,6 +537,9 @@ func (l *LockUnlockRequest) Equal(p Payload) bool {
 		if l.Caller != o.Caller {
 			return false
 		}
+		if l.Id != o.Id {
+			return false
+		}
 		return true
 	}
 	return false
@@ -526,10 +548,12 @@ func (l *LockUnlockRequest) Equal(p Payload) bool {
 func ToLockUnlockRequest(data []byte) *LockUnlockRequest {
 	now, remainder := Int64FromBytes(data)
 	token, remainder := StringFromBytes(remainder)
+	id, remainder := StringFromBytes(remainder)
 	caller, _ := StringFromBytes(remainder)
 	return &LockUnlockRequest{
 		Now:    time.UnixMicro(now),
 		Token:  LockToken(token),
+		Id:     LockMessageId(id),
 		Caller: NodeId(caller),
 	}
 }
@@ -552,8 +576,9 @@ func (l *LockUnlockResponse) AsPayload() Payload {
 func (l *LockUnlockResponse) ToBytes() []byte {
 	ok := BoolToBytes(l.Ok)
 	message := StringToBytes(l.Message)
+	id := StringToBytes(string(l.Id))
 	caller := StringToBytes(string(l.Caller))
-	return AddType(LockUnlockResponseType, bytes.Join([][]byte{ok, message, caller}, []byte{}))
+	return AddType(LockUnlockResponseType, bytes.Join([][]byte{ok, message, id, caller}, []byte{}))
 }
 
 func (l *LockUnlockResponse) Equal(p Payload) bool {
@@ -567,6 +592,9 @@ func (l *LockUnlockResponse) Equal(p Payload) bool {
 		if l.Caller != o.Caller {
 			return false
 		}
+		if l.Id != o.Id {
+			return false
+		}
 		return true
 	}
 	return false
@@ -575,10 +603,12 @@ func (l *LockUnlockResponse) Equal(p Payload) bool {
 func ToLockUnlockResponse(data []byte) *LockUnlockResponse {
 	ok, remainder := BoolFromBytes(data)
 	message, remainder := StringFromBytes(remainder)
+	id, remainder := StringFromBytes(remainder)
 	caller, _ := StringFromBytes(remainder)
 	return &LockUnlockResponse{
 		Ok:      ok,
 		Message: message,
+		Id:      LockMessageId(id),
 		Caller:  NodeId(caller),
 	}
 }
