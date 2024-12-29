@@ -378,6 +378,7 @@ type LockRefreshRequest struct {
 	Token    LockToken
 	Duration time.Duration
 	Id       LockMessageId
+	Caller   NodeId
 }
 
 func (l *LockRefreshRequest) GetId() LockMessageId {
@@ -392,7 +393,8 @@ func (l *LockRefreshRequest) ToBytes() []byte {
 	now := Int64ToBytes(l.Now.UnixMicro())
 	token := StringToBytes(string(l.Token))
 	duration := Int64ToBytes(int64(l.Duration))
-	return AddType(LockRefreshRequestType, bytes.Join([][]byte{now, token, duration}, []byte{}))
+	caller := StringToBytes(string(l.Caller))
+	return AddType(LockRefreshRequestType, bytes.Join([][]byte{now, token, duration, caller}, []byte{}))
 }
 
 func (l *LockRefreshRequest) Equal(p Payload) bool {
@@ -406,6 +408,9 @@ func (l *LockRefreshRequest) Equal(p Payload) bool {
 		if l.Duration != o.Duration {
 			return false
 		}
+		if l.Caller != o.Caller {
+			return false
+		}
 		return true
 	}
 	return false
@@ -414,11 +419,13 @@ func (l *LockRefreshRequest) Equal(p Payload) bool {
 func ToLockRefreshRequest(data []byte) *LockRefreshRequest {
 	now, remainder := Int64FromBytes(data)
 	token, remainder := StringFromBytes(remainder)
-	duration, _ := Int64FromBytes(remainder)
+	duration, remainder := Int64FromBytes(remainder)
+	caller, _ := StringFromBytes(remainder)
 	return &LockRefreshRequest{
 		Now:      time.UnixMicro(now),
 		Token:    LockToken(token),
 		Duration: time.Duration(duration),
+		Caller:   NodeId(caller),
 	}
 }
 
@@ -427,6 +434,7 @@ type LockRefreshResponse struct {
 	Ok      bool
 	Message string
 	Id      LockMessageId
+	Caller  NodeId
 }
 
 func (l *LockRefreshResponse) GetId() LockMessageId {
@@ -441,7 +449,8 @@ func (l *LockRefreshResponse) ToBytes() []byte {
 	details := LockDetailsToBytes(&l.Details)
 	ok := BoolToBytes(l.Ok)
 	message := StringToBytes(l.Message)
-	return AddType(LockRefreshResponseType, bytes.Join([][]byte{details, ok, message}, []byte{}))
+	caller := StringToBytes(string(l.Caller))
+	return AddType(LockRefreshResponseType, bytes.Join([][]byte{details, ok, message, caller}, []byte{}))
 }
 
 func (l *LockRefreshResponse) Equal(p Payload) bool {
@@ -455,6 +464,9 @@ func (l *LockRefreshResponse) Equal(p Payload) bool {
 		if l.Message != o.Message {
 			return false
 		}
+		if l.Caller != o.Caller {
+			return false
+		}
 		return true
 	}
 	return false
@@ -463,11 +475,13 @@ func (l *LockRefreshResponse) Equal(p Payload) bool {
 func ToLockRefreshResponse(data []byte) *LockRefreshResponse {
 	details, remainder := ToLockDetails(data)
 	ok, remainder := BoolFromBytes(remainder)
-	message, _ := StringFromBytes(remainder)
+	message, remainder := StringFromBytes(remainder)
+	caller, _ := StringFromBytes(remainder)
 	return &LockRefreshResponse{
 		Details: details,
 		Ok:      ok,
 		Message: message,
+		Caller:  NodeId(caller),
 	}
 }
 

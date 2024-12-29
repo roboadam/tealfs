@@ -125,6 +125,7 @@ func TestRefreshRequest(t *testing.T) {
 		Now:      time.Now(),
 		Token:    "token1",
 		Duration: time.Duration(1234),
+		Caller:  "caller1",
 	}
 	serialized := rr.ToBytes()
 	switch p := model.ToPayload(serialized).(type) {

@@ -104,6 +104,7 @@ func (l *NetLockSystem) Refresh(now time.Time, token string, duration time.Durat
 		Token:    model.LockToken(token),
 		Duration: duration,
 		Id:       model.LockMessageId(uuid.New().String()),
+		Caller:   l.NodeId,
 	}
 	respChan := make(chan LockMessage)
 

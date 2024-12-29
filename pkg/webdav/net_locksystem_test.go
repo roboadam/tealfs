@@ -129,6 +129,7 @@ func consumeMessages(ctx context.Context, lockMessages chan webdav.LockMessageRe
 					Ok:      true,
 					Details: details,
 					Id:      msg.Id,
+					Caller:  msg.Caller,
 				}
 			}
 		}

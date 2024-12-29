@@ -182,12 +182,14 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 							Ok:      true,
 							Details: details,
 							Id:      msg.Id,
+							Caller:  msg.Caller,
 						}
 					} else {
 						w.webdavMgrLockMsg <- &model.LockRefreshResponse{
 							Ok:      false,
 							Message: err.Error(),
 							Id:      msg.Id,
+							Caller:  msg.Caller,
 						}
 					}
 				}
