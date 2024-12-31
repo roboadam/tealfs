@@ -16,24 +16,89 @@ package model
 
 import (
 	"bytes"
-
-	"github.com/google/uuid"
 )
 
-type BlockId string
+type BlockKeyType uint32
+type BlockKeyId string
 
-func NewBlockId() BlockId {
-	idValue := uuid.New()
-	return BlockId(idValue.String())
+const (
+	Mirrored BlockKeyType = iota
+	XORed
+)
+
+type BlockKey struct {
+	Id     BlockKeyId
+	Type   BlockKeyType
+	Data   []DiskPointer
+	Parity DiskPointer
 }
 
+func (b *BlockKey) ToBytes() []byte {
+	value := StringToBytes(string(b.Id))
+	value = append(value, IntToBytes(uint32(b.Type))...)
+	for i := range b.Data {
+		value = append(value, BytesToBytes(b.Data[i].ToBytes())...)
+	}
+	value = append(value, b.Parity.ToBytes()...)
+	return value
+}
+
+func (b *BlockKey) Equals(o *BlockKey) bool {
+	if b.Id != o.Id {
+		return false
+	}
+	if b.Type != o.Type {
+		return false
+	}
+	if len(b.Data) != len(o.Data) {
+		return false
+	}
+	for i := range b.Data {
+		if !b.Data[i].Equals(&o.Data[i]) {
+			return false
+		}
+	}
+	if !b.Parity.Equals(&o.Parity) {
+		return false
+	}
+	return true
+}
+
+type DiskPointer struct {
+	NodeId   NodeId
+	FileName string
+}
+
+func (d *DiskPointer) ToBytes() []byte {
+	value := StringToBytes(string(d.NodeId))
+	value = append(value, StringToBytes(d.FileName)...)
+	return value
+}
+
+func (d *DiskPointer) Equals(o *DiskPointer) bool {
+	if d.NodeId != o.NodeId {
+		return false
+	}
+	if d.FileName != o.FileName {
+		return false
+	}
+	return true
+}
+
+// type BlockId string
+
+// func NewBlockId() BlockId {
+// 	idValue := uuid.New()
+// 	return BlockId(idValue.String())
+// }
+
 type Block struct {
-	Id   BlockId
+	Id   BlockKey
 	Data []byte
 }
 
 func (r *Block) Equal(o *Block) bool {
-	if r.Id != o.Id {
+	if !r.Id.Equals(&o.Id) {
 		return false
 	}
 	if !bytes.Equal(r.Data, o.Data) {
