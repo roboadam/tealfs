@@ -104,7 +104,7 @@ func AddType(id uint8, data []byte) []byte {
 }
 
 func BlockToBytes(value Block) []byte {
-	id := StringToBytes(string(value.Id))
+	id := BytesToBytes(value.Key.ToBytes())
 	data := BytesToBytes(value.Data)
 	result := bytes.Join([][]byte{id, data}, []byte{})
 
@@ -112,11 +112,11 @@ func BlockToBytes(value Block) []byte {
 }
 
 func BlockFromBytes(value []byte) (Block, []byte) {
-	id, remainder := StringFromBytes(value)
+	id, remainder := BytesFromBytes(value)
 	data, remainder := BytesFromBytes(remainder)
 
 	return Block{
-		Id:   BlockId(id),
+		Key:   BlockId(id),
 		Data: data,
 	}, remainder
 }

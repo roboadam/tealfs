@@ -33,6 +33,19 @@ type BlockKey struct {
 	Parity DiskPointer
 }
 
+func ToBlockKey(data []byte) *BlockKey {
+	rawId, remainder := StringFromBytes(data)
+	rawType, remainder := IntFromBytes(remainder)
+	rawData, remainder := BytesFromBytes(remainder)
+	rawParity, _ := BytesFromBytes(remainder)
+	return &BlockKey{
+		Id:     BlockKeyId(rawId),
+		Type:   BlockKeyType(rawType),
+		Data:   []DiskPointer{ToDiskPointer(rawData)},
+		Parity: *ToDiskPointer(rawParity),
+	}
+}
+
 func (b *BlockKey) ToBytes() []byte {
 	value := StringToBytes(string(b.Id))
 	value = append(value, IntToBytes(uint32(b.Type))...)
@@ -75,6 +88,15 @@ func (d *DiskPointer) ToBytes() []byte {
 	return value
 }
 
+func ToDiskPointer(data []byte) *DiskPointer {
+	rawId, remainder := StringFromBytes(data)
+	rawFileName, _ := StringFromBytes(remainder)
+	return &DiskPointer{
+		NodeId:   NodeId(rawId),
+		FileName: rawFileName,
+	}
+}
+
 func (d *DiskPointer) Equals(o *DiskPointer) bool {
 	if d.NodeId != o.NodeId {
 		return false
@@ -93,12 +115,12 @@ func (d *DiskPointer) Equals(o *DiskPointer) bool {
 // }
 
 type Block struct {
-	Id   BlockKey
+	Key  BlockKey
 	Data []byte
 }
 
 func (r *Block) Equal(o *Block) bool {
-	if !r.Id.Equals(&o.Id) {
+	if !r.Key.Equals(&o.Key) {
 		return false
 	}
 	if !bytes.Equal(r.Data, o.Data) {
