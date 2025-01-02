@@ -33,24 +33,31 @@ type BlockKey struct {
 	Parity DiskPointer
 }
 
-func ToBlockKey(data []byte) *BlockKey {
-	rawId, remainder := StringFromBytes(data)
-	rawType, remainder := IntFromBytes(remainder)
-	rawData, remainder := BytesFromBytes(remainder)
-	rawParity, _ := BytesFromBytes(remainder)
-	return &BlockKey{
-		Id:     BlockKeyId(rawId),
-		Type:   BlockKeyType(rawType),
-		Data:   []DiskPointer{ToDiskPointer(rawData)},
-		Parity: *ToDiskPointer(rawParity),
+func ToBlockKey(rawData []byte) (*BlockKey, []byte) {
+	id, remainder := StringFromBytes(rawData)
+	blockKeyType, remainder := IntFromBytes(remainder)
+	numPointers, remainder := IntFromBytes(remainder)
+	diskPointers := []DiskPointer{}
+	for range numPointers {
+		var pointer *DiskPointer
+		pointer, remainder = ToDiskPointer(remainder)
+		diskPointers = append(diskPointers, *pointer)
 	}
+	parity, remainder := ToDiskPointer(remainder)
+	return &BlockKey{
+		Id:     BlockKeyId(id),
+		Type:   BlockKeyType(blockKeyType),
+		Data:   diskPointers,
+		Parity: *parity,
+	}, remainder
 }
 
 func (b *BlockKey) ToBytes() []byte {
 	value := StringToBytes(string(b.Id))
 	value = append(value, IntToBytes(uint32(b.Type))...)
+	value = append(value, IntToBytes(uint32(len(b.Data)))...)
 	for i := range b.Data {
-		value = append(value, BytesToBytes(b.Data[i].ToBytes())...)
+		value = append(value, b.Data[i].ToBytes()...)
 	}
 	value = append(value, b.Parity.ToBytes()...)
 	return value
@@ -71,10 +78,7 @@ func (b *BlockKey) Equals(o *BlockKey) bool {
 			return false
 		}
 	}
-	if !b.Parity.Equals(&o.Parity) {
-		return false
-	}
-	return true
+	return b.Parity.Equals(&o.Parity)
 }
 
 type DiskPointer struct {
@@ -88,13 +92,13 @@ func (d *DiskPointer) ToBytes() []byte {
 	return value
 }
 
-func ToDiskPointer(data []byte) *DiskPointer {
+func ToDiskPointer(data []byte) (*DiskPointer, []byte) {
 	rawId, remainder := StringFromBytes(data)
-	rawFileName, _ := StringFromBytes(remainder)
+	rawFileName, remainder := StringFromBytes(remainder)
 	return &DiskPointer{
 		NodeId:   NodeId(rawId),
 		FileName: rawFileName,
-	}
+	}, remainder
 }
 
 func (d *DiskPointer) Equals(o *DiskPointer) bool {

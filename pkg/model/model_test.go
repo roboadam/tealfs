@@ -59,7 +59,14 @@ func TestReadResult(t *testing.T) {
 		Message: "some message",
 		Caller:  "some caller",
 		Block: model.Block{
-			Id:   "some block id",
+			Key: model.BlockKey{
+				Id:   "blockKeyId",
+				Type: model.Mirrored,
+				Data: []model.DiskPointer{{
+					NodeId:   "nodeId",
+					FileName: "fileName",
+				}},
+			},
 			Data: []byte{1, 2, 3},
 		},
 	}
@@ -68,7 +75,14 @@ func TestReadResult(t *testing.T) {
 		Message: "some message",
 		Caller:  "some caller",
 		Block: model.Block{
-			Id:   "some block id",
+			Key: model.BlockKey{
+				Id:   "blockKeyId",
+				Type: model.Mirrored,
+				Data: []model.DiskPointer{{
+					NodeId:   "nodeId",
+					FileName: "fileName",
+				}},
+			},
 			Data: []byte{1, 2, 3},
 		},
 	}
@@ -95,13 +109,27 @@ func TestWriteResult(t *testing.T) {
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller",
-		BlockId: "some block id",
+		BlockKey: model.BlockKey{
+			Id:   "blockKeyId",
+			Type: model.Mirrored,
+			Data: []model.DiskPointer{{
+				NodeId:   "nodeId",
+				FileName: "fileName",
+			}},
+		},
 	}
 	wr2 := model.WriteResult{
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller 2",
-		BlockId: "some block id",
+		BlockKey: model.BlockKey{
+			Id:   "blockKeyId",
+			Type: model.Mirrored,
+			Data: []model.DiskPointer{{
+				NodeId:   "nodeId",
+				FileName: "fileName",
+			}},
+		},
 	}
 
 	if wr1.Equal(&wr2) {

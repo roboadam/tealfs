@@ -73,8 +73,8 @@ type ReadReqResp struct {
 
 func (f *FileSystem) fetchBlock(id model.BlockId) model.ReadResult {
 	req := model.ReadRequest{
-		Caller:  f.nodeId,
-		BlockId: id,
+		Caller:   f.nodeId,
+		BlockKey: id,
 	}
 	resp := make(chan model.ReadResult)
 	f.ReadReqResp <- ReadReqResp{req, resp}

@@ -104,10 +104,10 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				delete(w.pendingReads, r.Block.Id)
 			}
 		case r := <-w.mgrWebdavPuts:
-			ch, ok := w.pendingPuts[r.BlockId]
+			ch, ok := w.pendingPuts[r.BlockKey]
 			if ok {
 				ch <- r
-				delete(w.pendingPuts, r.BlockId)
+				delete(w.pendingPuts, r.BlockKey)
 			}
 		case r := <-w.lockSystem.MessageChan:
 			w.webdavMgrLockMsg <- r.Req
@@ -198,7 +198,7 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 			}
 		case r := <-w.fileSystem.ReadReqResp:
 			w.webdavMgrGets <- r.Req
-			w.pendingReads[r.Req.BlockId] = r.Resp
+			w.pendingReads[r.Req.BlockKey] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
 			w.webdavMgrPuts <- r.Req
 			w.pendingPuts[r.Req.Block.Id] = r.Resp

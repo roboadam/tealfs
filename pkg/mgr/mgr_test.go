@@ -218,9 +218,9 @@ func TestReceiveDiskWrite(t *testing.T) {
 	storeId1 := model.NewBlockId()
 
 	wr := model.WriteResult{
-		Ok:      true,
-		Caller:  m.NodeId,
-		BlockId: storeId1,
+		Ok:       true,
+		Caller:   m.NodeId,
+		BlockKey: storeId1,
 	}
 
 	m.DiskMgrWrites <- wr
@@ -232,9 +232,9 @@ func TestReceiveDiskWrite(t *testing.T) {
 	}
 
 	wr2 := model.WriteResult{
-		Ok:      true,
-		Caller:  expectedNodeId1,
-		BlockId: storeId1,
+		Ok:       true,
+		Caller:   expectedNodeId1,
+		BlockKey: storeId1,
 	}
 
 	m.DiskMgrWrites <- wr2
@@ -274,15 +274,15 @@ func TestWebdavGet(t *testing.T) {
 
 	for _, id := range ids {
 		m.WebdavMgrGets <- model.ReadRequest{
-			Caller:  m.NodeId,
-			BlockId: id,
+			Caller:   m.NodeId,
+			BlockKey: id,
 		}
 
 		select {
 		case r := <-m.MgrDiskReads:
 			meCount++
-			if r.BlockId != id {
-				t.Error("expected to read to 1, got", r.BlockId)
+			if r.BlockKey != id {
+				t.Error("expected to read to 1, got", r.BlockKey)
 			}
 		case s := <-m.MgrConnsSends:
 			if s.ConnId == expectedConnectionId1 {

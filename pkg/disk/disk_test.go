@@ -56,8 +56,8 @@ func TestReadData(t *testing.T) {
 	f.ReadData = data
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	mgrDiskReads <- model.ReadRequest{
-		Caller:  caller,
-		BlockId: blockId,
+		Caller:   caller,
+		BlockKey: blockId,
 	}
 	result := <-diskMgrReads
 	if !result.Ok {
@@ -80,8 +80,8 @@ func TestReadNewFile(t *testing.T) {
 	f.ReadData = data
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	mgrDiskReads <- model.ReadRequest{
-		Caller:  caller,
-		BlockId: blockId,
+		Caller:   caller,
+		BlockKey: blockId,
 	}
 	result := <-diskMgrReads
 	if !result.Ok {

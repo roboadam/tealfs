@@ -19,29 +19,29 @@ import (
 )
 
 type ReadRequest struct {
-	Caller  NodeId
-	BlockId BlockId
+	Caller   NodeId
+	BlockKey BlockKey
 }
 
 func (r *ReadRequest) ToBytes() []byte {
 	callerId := StringToBytes(string(r.Caller))
-	blockId := StringToBytes(string(r.BlockId))
-	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, blockId}, []byte{}))
+	blockKey := r.BlockKey.ToBytes()
+	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, blockKey}, []byte{}))
 }
 
 func (r *ReadRequest) Equal(p Payload) bool {
 	if o, ok := p.(*ReadRequest); ok {
-		return r.Caller == o.Caller && r.BlockId == o.BlockId
+		return r.Caller == o.Caller && r.BlockKey.Equals(&o.BlockKey)
 	}
 	return false
 }
 
 func ToReadRequest(data []byte) *ReadRequest {
 	callerId, remainder := StringFromBytes(data)
-	blockId, _ := StringFromBytes(remainder)
+	blockKey, _ := ToBlockKey(remainder)
 	rq := ReadRequest{
-		Caller:  NodeId(callerId),
-		BlockId: BlockId(blockId),
+		Caller:   NodeId(callerId),
+		BlockKey: *blockKey,
 	}
 	return &rq
 }

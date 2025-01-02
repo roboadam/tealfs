@@ -124,13 +124,13 @@ func handleWebdavMgrGets(ctx context.Context, channel chan model.ReadRequest, re
 		select {
 		case req := <-channel:
 			mux.Lock()
-			blockData, exists := data[req.BlockId]
+			blockData, exists := data[req.BlockKey]
 			if exists {
 				respChan <- model.ReadResult{
 					Ok:     true,
 					Caller: caller,
 					Block: model.Block{
-						Id:   req.BlockId,
+						Id:   req.BlockKey,
 						Data: blockData,
 					},
 				}
@@ -139,7 +139,7 @@ func handleWebdavMgrGets(ctx context.Context, channel chan model.ReadRequest, re
 					Ok:     true,
 					Caller: caller,
 					Block: model.Block{
-						Id:   req.BlockId,
+						Id:   req.BlockKey,
 						Data: []byte{},
 					},
 				}
@@ -160,9 +160,9 @@ func handleWebdavMgrPuts(ctx context.Context, channel chan model.WriteRequest, r
 			mux.Lock()
 			data[req.Block.Id] = req.Block.Data
 			result <- model.WriteResult{
-				Ok:      true,
-				Caller:  caller,
-				BlockId: req.Block.Id,
+				Ok:       true,
+				Caller:   caller,
+				BlockKey: req.Block.Id,
 			}
 			mux.Unlock()
 		}

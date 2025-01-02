@@ -59,26 +59,26 @@ func (d *Disk) consumeChannels() {
 			err := d.path.Save(s.Block.Id, s.Block.Data)
 			if err == nil {
 				d.outWrites <- model.WriteResult{
-					Ok:      true,
-					Caller:  s.Caller,
-					BlockId: s.Block.Id,
+					Ok:       true,
+					Caller:   s.Caller,
+					BlockKey: s.Block.Id,
 				}
 			} else {
 				d.outWrites <- model.WriteResult{
-					Ok:      false,
-					Message: err.Error(),
-					Caller:  s.Caller,
-					BlockId: s.Block.Id,
+					Ok:       false,
+					Message:  err.Error(),
+					Caller:   s.Caller,
+					BlockKey: s.Block.Id,
 				}
 			}
 		case r := <-d.inReads:
-			data, err := d.path.Read(r.BlockId)
+			data, err := d.path.Read(r.BlockKey)
 			if err == nil {
 				d.outReads <- model.ReadResult{
 					Ok:     true,
 					Caller: r.Caller,
 					Block: model.Block{
-						Id:   r.BlockId,
+						Id:   r.BlockKey,
 						Data: data,
 					},
 				}

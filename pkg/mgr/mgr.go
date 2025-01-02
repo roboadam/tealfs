@@ -315,7 +315,7 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 }
 
 func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
-	n := m.distributer.NodeIdForStoreId(rr.BlockId)
+	n := m.distributer.NodeIdForStoreId(rr.BlockKey)
 	if m.NodeId == n {
 		m.MgrDiskReads <- rr
 	} else {
@@ -329,7 +329,7 @@ func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 			m.MgrWebdavGets <- model.ReadResult{
 				Ok:      false,
 				Message: "Not connected",
-				Block:   model.Block{Id: rr.BlockId},
+				Block:   model.Block{Id: rr.BlockKey},
 				Caller:  rr.Caller,
 			}
 		}
