@@ -36,7 +36,7 @@ func (r *WriteResult) Equal(p Payload) bool {
 		if r.Caller != o.Caller {
 			return false
 		}
-		if r.BlockKey.Equals(&o.BlockKey) {
+		if !r.BlockKey.Equals(&o.BlockKey) {
 			return false
 		}
 		return true
