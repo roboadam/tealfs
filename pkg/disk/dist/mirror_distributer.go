@@ -21,36 +21,33 @@ import (
 )
 
 type MirrorDistributer struct {
-	dist     map[key]DestNode
+	dist1    map[key]model.NodeId
+	dist2    map[key]model.NodeId
 	weights  map[model.NodeId]int
 	checksum hash.Hash32
 }
 
-type DestNode struct {
-	NodeId1 model.NodeId
-	NodeId2 model.NodeId
-}
-
 func NewMirrorDistributer() MirrorDistributer {
 	return MirrorDistributer{
-		dist:     make(map[key]DestNode),
+		dist1:    make(map[key]model.NodeId),
+		dist2:    make(map[key]model.NodeId),
 		weights:  make(map[model.NodeId]int),
 		checksum: crc32.NewIEEE(),
 	}
 }
 
-func (d *Distributer) MNodeIdForStoreId(id model.BlockId) model.NodeId {
+func (d *MirrorDistributer) KeyForId(id model.BlockKeyId) model.BlockKey {
 	idb := []byte(id)
 	sum := d.Checksum(idb)
 	k := key{value: sum[0]}
 	return d.dist[k]
 }
 
-// func (d *Distributer) Checksum(data []byte) []byte {
-// 	d.checksum.Reset()
-// 	d.checksum.Write(data)
-// 	return d.checksum.Sum(nil)
-// }
+func (d *MirrorDistributer) Checksum(data []byte) []byte {
+	d.checksum.Reset()
+	d.checksum.Write(data)
+	return d.checksum.Sum(nil)
+}
 
 // func (d *Distributer) SetWeight(id model.NodeId, weight int) {
 // 	d.weights[id] = weight
