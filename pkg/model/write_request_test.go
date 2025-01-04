@@ -20,20 +20,29 @@ import (
 )
 
 func TestWriteRequest(t *testing.T) {
-	key := model.BlockKey{
-		Id:   model.BlockKeyId("key"), fixme
-		Type: model.Mirrored,
-		Data: []model.DiskPointer{
-			{NodeId: model.NodeId("nodeId1"), FileName: "fileName1"},
+	wr := model.WriteRequest{
+		Caller: "caller1",
+		Block: model.Block{
+			Key: model.BlockKey{
+				Id:   "block1",
+				Type: model.XORed,
+				Data: []model.DiskPointer{
+					{
+						NodeId:   "node1",
+						FileName: "file1",
+					},
+				},
+				Parity: model.DiskPointer{
+					NodeId:   "node2",
+					FileName: "file2",
+				},
+			},
+			Data: []byte{0x01, 0x02, 0x03},
 		},
-		Parity: model.DiskPointer{NodeId: model.NodeId("nodeId2"), FileName: "fileName2"},
 	}
-	raw := key.ToBytes()
-	newKey, remainder := model.ToBlockKey(raw)
-	if !key.Equals(newKey) {
-		t.Errorf("Expected %v, got %v", key, newKey)
-	}
-	if len(remainder) != 0 {
-		t.Errorf("Expected no remainder, got %v", remainder)
+	raw := wr.ToBytes()
+	newWr := model.ToWriteRequest(raw[1:])
+	if !wr.Equal(newWr) {
+		t.Errorf("Expected %v, got %v", wr, newWr)
 	}
 }
