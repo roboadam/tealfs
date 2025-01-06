@@ -15,8 +15,11 @@
 package dist
 
 import (
+	"encoding/binary"
 	"hash"
 	"hash/crc32"
+	"math/rand"
+	"sort"
 	"tealfs/pkg/model"
 )
 
@@ -37,10 +40,47 @@ func NewMirrorDistributer() MirrorDistributer {
 }
 
 func (d *MirrorDistributer) KeyForId(id model.BlockKeyId) model.BlockKey {
+}
+
+func (d *MirrorDistributer) randomNodeId(id model.BlockKeyId) model.NodeId {
 	idb := []byte(id)
-	sum := d.Checksum(idb)
-	k := key{value: sum[0]}
-	return d.dist[k]
+	checksum := d.Checksum(idb)
+	total := totalWeight(d.weights)
+	randomNum := int(binary.BigEndian.Uint32(checksum)) % total
+
+	cumulativeWeight := 0
+	keys := sortedKeys(d.weights)
+	for _, key := range keys {
+		cumulativeWeight += d.weights[key]
+		if randomNum < cumulativeWeight {
+			return items[i]
+		}
+	}
+}
+
+func sortedKeys(m map[model.NodeId]int) []model.NodeId {
+	stringKeys := make([]string, len(m))
+	for k := range m {
+		stringKeys = append(stringKeys, string(k))
+	}
+	sort.Strings(stringKeys)
+	keys := make([]model.NodeId, len(stringKeys))
+	for k := range stringKeys {
+		keys = append(keys, model.NodeId(k))
+	}
+	return keys
+}
+
+func totalWeight(weights map[model.NodeId]int) int {
+	total := 0
+	for _, weight := range weights {
+		total += weight
+	}
+	return total
+}
+
+func randWeight(max int) int {
+	return rand.Intn(max)
 }
 
 func (d *MirrorDistributer) Checksum(data []byte) []byte {
@@ -49,16 +89,9 @@ func (d *MirrorDistributer) Checksum(data []byte) []byte {
 	return d.checksum.Sum(nil)
 }
 
-// func (d *Distributer) SetWeight(id model.NodeId, weight int) {
-// 	d.weights[id] = weight
-// 	d.applyWeights()
-// }
-
-// func (d *Distributer) PrintDist() {
-// 	for i := 0; i <= 255; i++ {
-// 		println("byteIdx:", i, ", nodeId:", d.dist[key{byte(i)}])
-// 	}
-// }
+func (d *MirrorDistributer) SetWeight(id model.NodeId, weight int) {
+	d.weights[id] = weight
+}
 
 // func (d *Distributer) applyWeights() {
 // 	paths := d.sortedIds()
