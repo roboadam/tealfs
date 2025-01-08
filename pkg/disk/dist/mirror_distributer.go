@@ -24,38 +24,65 @@ import (
 )
 
 type MirrorDistributer struct {
-	dist1    map[key]model.NodeId
-	dist2    map[key]model.NodeId
 	weights  map[model.NodeId]int
 	checksum hash.Hash32
 }
 
 func NewMirrorDistributer() MirrorDistributer {
 	return MirrorDistributer{
-		dist1:    make(map[key]model.NodeId),
-		dist2:    make(map[key]model.NodeId),
 		weights:  make(map[model.NodeId]int),
 		checksum: crc32.NewIEEE(),
 	}
 }
 
 func (d *MirrorDistributer) KeyForId(id model.BlockKeyId) model.BlockKey {
+	nodeIds := d.generateNodeIds(id)
+	data := []model.DiskPointer{}
+	for _, nodeId := range nodeIds {
+		data = append(data, model.DiskPointer{NodeId: nodeId, FileName: string(id)})
+	}
+	return model.BlockKey{
+		Id:   id,
+		Type: model.Mirrored,
+		Data: data,
+	}
 }
 
-func (d *MirrorDistributer) randomNodeId(id model.BlockKeyId) model.NodeId {
+func (d *MirrorDistributer) generateNodeIds(id model.BlockKeyId) []model.NodeId {
+	if len(d.weights) == 0 {
+		return []model.NodeId{}
+	}
+
 	idb := []byte(id)
 	checksum := d.Checksum(idb)
-	total := totalWeight(d.weights)
-	randomNum := int(binary.BigEndian.Uint32(checksum)) % total
+	intHash := int(binary.BigEndian.Uint32(checksum))
+
+	node1 := d.nodeIdForHashAndWeights(intHash, d.weights)
+
+	if len(d.weights) == 1 {
+		return []model.NodeId{node1}
+	}
+
+	weights2 := d.weights
+	delete(weights2, node1)
+	node2 := d.nodeIdForHashAndWeights(intHash, d.weights)
+
+	return []model.NodeId{node1, node2}
+}
+
+func (d *MirrorDistributer) nodeIdForHashAndWeights(hash int, weights map[model.NodeId]int) model.NodeId {
+	total := totalWeight(weights)
+	randomNum := hash % total
 
 	cumulativeWeight := 0
-	keys := sortedKeys(d.weights)
+	keys := sortedKeys(weights)
 	for _, key := range keys {
-		cumulativeWeight += d.weights[key]
+		cumulativeWeight += weights[key]
 		if randomNum < cumulativeWeight {
-			return items[i]
+			return key
 		}
 	}
+	panic("should never get here")
 }
 
 func sortedKeys(m map[model.NodeId]int) []model.NodeId {
@@ -92,73 +119,3 @@ func (d *MirrorDistributer) Checksum(data []byte) []byte {
 func (d *MirrorDistributer) SetWeight(id model.NodeId, weight int) {
 	d.weights[id] = weight
 }
-
-// func (d *Distributer) applyWeights() {
-// 	paths := d.sortedIds()
-// 	if len(paths) == 0 {
-// 		return
-// 	}
-// 	pathIdx := 0
-// 	slotsLeft := d.numSlotsForPath(get(paths, pathIdx))
-
-// 	for i := 0; i <= 255; i++ {
-// 		d.dist[key{byte(i)}] = get(paths, pathIdx)
-// 		slotsLeft--
-// 		if slotsLeft == 0 {
-// 			pathIdx++
-// 			slotsLeft = d.numSlotsForPath(get(paths, pathIdx))
-// 		}
-// 	}
-// }
-
-// func get(paths Slice, idx int) model.NodeId {
-// 	if len(paths) <= 0 {
-// 		return ""
-// 	}
-
-// 	if idx >= len(paths) {
-// 		return paths[len(paths)-1]
-// 	}
-
-// 	return paths[idx]
-// }
-
-// func (d *Distributer) numSlotsForPath(p model.NodeId) int {
-// 	weight := d.weights[p]
-// 	totalWeight := d.totalWeights()
-// 	return weight * 256 / totalWeight
-// }
-
-// func (d *Distributer) totalWeights() int {
-// 	total := 0
-// 	for _, weight := range d.weights {
-// 		total += weight
-// 	}
-// 	return total
-// }
-
-// func (d *Distributer) sortedIds() Slice {
-// 	ids := make(Slice, 0)
-// 	for k := range d.weights {
-// 		ids = append(ids, k)
-// 	}
-// 	sort.Sort(ids)
-// 	return ids
-// }
-
-// type key struct {
-// 	value byte
-// }
-
-// func (k key) next() (bool, key) {
-// 	if k.value == 0xFF {
-// 		return false, key{}
-// 	}
-// 	return true, key{k.value + 1}
-// }
-
-// type Slice []model.NodeId
-
-// func (p Slice) Len() int           { return len(p) }
-// func (p Slice) Less(i, j int) bool { return p[i] < p[j] }
-// func (p Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
