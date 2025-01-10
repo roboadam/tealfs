@@ -15,115 +15,84 @@
 package dist
 
 import (
+	"encoding/binary"
+	"errors"
 	"hash"
 	"hash/crc32"
 	"tealfs/pkg/model"
 )
 
 type XorDistributer struct {
-	dist     map[key]DestNode
 	weights  map[model.NodeId]int
 	checksum hash.Hash32
 }
 
 func NewXorDistributer() XorDistributer {
 	return XorDistributer{
-		dist:     make(map[key]DestNode),
 		weights:  make(map[model.NodeId]int),
 		checksum: crc32.NewIEEE(),
 	}
 }
 
-func (d *Distributer) XNodeIdForStoreId(id model.BlockId) model.NodeId {
-	idb := []byte(id)
-	sum := d.Checksum(idb)
-	k := key{value: sum[0]}
-	return d.dist[k]
+func (d *XorDistributer) KeysForIds(id1 model.BlockKeyId, id2 model.BlockKeyId) (model.BlockKey, model.BlockKey, error) {
+	node1, node2, parity, err := d.generateNodeIds(id1, id2)
+	if err != nil 
+		return model.BlockKey{}, model.BlockKey{}, err
+	}
+	data := []model.DiskPointer{}
+	for _, nodeId := range nodeIds {
+		data = append(data, model.DiskPointer{NodeId: nodeId, FileName: string(id)})
+	}
+	return model.BlockKey{
+		Id:   id,
+		Type: model.Mirrored,
+		Data: data,
+	}
 }
 
-// func (d *Distributer) Checksum(data []byte) []byte {
-// 	d.checksum.Reset()
-// 	d.checksum.Write(data)
-// 	return d.checksum.Sum(nil)
-// }
+func (d *XorDistributer) generateNodeIds(id1 model.BlockKeyId, id2 model.BlockKeyId) (node1 model.NodeId, node2 model.NodeId, parity model.NodeId, err error) {
+	if len(d.weights) < 3 {
+		return "", "", "", errors.New("not enough nodes to generate parity")
+	}
 
-// func (d *Distributer) SetWeight(id model.NodeId, weight int) {
-// 	d.weights[id] = weight
-// 	d.applyWeights()
-// }
+	idb := []byte(id)
+	checksum := d.Checksum(idb)
+	intHash := int(binary.BigEndian.Uint32(checksum))
 
-// func (d *Distributer) PrintDist() {
-// 	for i := 0; i <= 255; i++ {
-// 		println("byteIdx:", i, ", nodeId:", d.dist[key{byte(i)}])
-// 	}
-// }
+	node1 := d.nodeIdForHashAndWeights(intHash, d.weights)
 
-// func (d *Distributer) applyWeights() {
-// 	paths := d.sortedIds()
-// 	if len(paths) == 0 {
-// 		return
-// 	}
-// 	pathIdx := 0
-// 	slotsLeft := d.numSlotsForPath(get(paths, pathIdx))
+	if len(d.weights) == 1 {
+		return []model.NodeId{node1}
+	}
 
-// 	for i := 0; i <= 255; i++ {
-// 		d.dist[key{byte(i)}] = get(paths, pathIdx)
-// 		slotsLeft--
-// 		if slotsLeft == 0 {
-// 			pathIdx++
-// 			slotsLeft = d.numSlotsForPath(get(paths, pathIdx))
-// 		}
-// 	}
-// }
+	weights2 := d.weights
+	delete(weights2, node1)
+	node2 := d.nodeIdForHashAndWeights(intHash, d.weights)
 
-// func get(paths Slice, idx int) model.NodeId {
-// 	if len(paths) <= 0 {
-// 		return ""
-// 	}
+	return []model.NodeId{node1, node2}
+}
 
-// 	if idx >= len(paths) {
-// 		return paths[len(paths)-1]
-// 	}
+func (d *XorDistributer) nodeIdForHashAndWeights(hash int, weights map[model.NodeId]int) model.NodeId {
+	total := totalWeight(weights)
+	randomNum := hash % total
 
-// 	return paths[idx]
-// }
+	cumulativeWeight := 0
+	keys := sortedKeys(weights)
+	for _, key := range keys {
+		cumulativeWeight += weights[key]
+		if randomNum < cumulativeWeight {
+			return key
+		}
+	}
+	panic("should never get here")
+}
 
-// func (d *Distributer) numSlotsForPath(p model.NodeId) int {
-// 	weight := d.weights[p]
-// 	totalWeight := d.totalWeights()
-// 	return weight * 256 / totalWeight
-// }
+func (d *XorDistributer) Checksum(data []byte) []byte {
+	d.checksum.Reset()
+	d.checksum.Write(data)
+	return d.checksum.Sum(nil)
+}
 
-// func (d *Distributer) totalWeights() int {
-// 	total := 0
-// 	for _, weight := range d.weights {
-// 		total += weight
-// 	}
-// 	return total
-// }
-
-// func (d *Distributer) sortedIds() Slice {
-// 	ids := make(Slice, 0)
-// 	for k := range d.weights {
-// 		ids = append(ids, k)
-// 	}
-// 	sort.Sort(ids)
-// 	return ids
-// }
-
-// type key struct {
-// 	value byte
-// }
-
-// func (k key) next() (bool, key) {
-// 	if k.value == 0xFF {
-// 		return false, key{}
-// 	}
-// 	return true, key{k.value + 1}
-// }
-
-// type Slice []model.NodeId
-
-// func (p Slice) Len() int           { return len(p) }
-// func (p Slice) Less(i, j int) bool { return p[i] < p[j] }
-// func (p Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (d *XorDistributer) SetWeight(id model.NodeId, weight int) {
+	d.weights[id] = weight
+}
