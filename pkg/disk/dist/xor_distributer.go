@@ -36,18 +36,36 @@ func NewXorDistributer() XorDistributer {
 
 func (d *XorDistributer) KeysForIds(id1 model.BlockKeyId, id2 model.BlockKeyId) (model.BlockKey, model.BlockKey, error) {
 	node1, node2, parity, err := d.generateNodeIds(id1, id2)
-	if err != nil 
+	if err != nil {
 		return model.BlockKey{}, model.BlockKey{}, err
 	}
-	data := []model.DiskPointer{}
-	for _, nodeId := range nodeIds {
-		data = append(data, model.DiskPointer{NodeId: nodeId, FileName: string(id)})
+
+	parityPointer := model.DiskPointer{
+		NodeId:   parity,
+		FileName: string(id1) + "." + string(id2),
 	}
-	return model.BlockKey{
-		Id:   id,
-		Type: model.Mirrored,
-		Data: data,
+
+	key1 := model.BlockKey{
+		Id:   id1,
+		Type: model.XORed,
+		Data: []model.DiskPointer{model.DiskPointer{
+			NodeId:   node1,
+			FileName: string(id1),
+		}},
+		Parity: parityPointer,
 	}
+
+	key2 := model.BlockKey{
+		Id:   id2,
+		Type: model.XORed,
+		Data: []model.DiskPointer{model.DiskPointer{
+			NodeId:   node2,
+			FileName: string(id2),
+		}},
+		Parity: parityPointer,
+	}
+
+	return key1, key2, nil
 }
 
 func (d *XorDistributer) generateNodeIds(id1 model.BlockKeyId, id2 model.BlockKeyId) (node1 model.NodeId, node2 model.NodeId, parity model.NodeId, err error) {
