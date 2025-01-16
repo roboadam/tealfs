@@ -73,21 +73,45 @@ func (d *XorDistributer) generateNodeIds(id1 model.BlockKeyId, id2 model.BlockKe
 		return "", "", "", errors.New("not enough nodes to generate parity")
 	}
 
-	idb := []byte(id)
+	idb := []byte(id1)
 	checksum := d.Checksum(idb)
 	intHash := int(binary.BigEndian.Uint32(checksum))
 
-	node1 := d.nodeIdForHashAndWeights(intHash, d.weights)
+	node1 = d.nodeIdForHashAndWeights(intHash, d.weights)
 
 	if len(d.weights) == 1 {
-		return []model.NodeId{node1}
+		for key := range d.weights {
+			node2 = key
+			parity = key
+			err = nil
+			return
+		}
 	}
 
 	weights2 := d.weights
 	delete(weights2, node1)
-	node2 := d.nodeIdForHashAndWeights(intHash, d.weights)
 
-	return []model.NodeId{node1, node2}
+	idb = []byte(id2)
+	checksum = d.Checksum(idb)
+	intHash = int(binary.BigEndian.Uint32(checksum))
+
+	node2 = d.nodeIdForHashAndWeights(intHash, d.weights)
+
+	if len(d.weights) == 1 {
+		for key := range d.weights {
+			parity = key
+			err = nil
+			return
+		}
+	}
+
+	idb = []byte(id1 + id2)
+	checksum = d.Checksum(idb)
+	intHash = int(binary.BigEndian.Uint32(checksum))
+
+	parity = d.nodeIdForHashAndWeights(intHash, d.weights)
+	err = nil
+	return
 }
 
 func (d *XorDistributer) nodeIdForHashAndWeights(hash int, weights map[model.NodeId]int) model.NodeId {
