@@ -35,4 +35,16 @@ func TestWriteData(t *testing.T) {
 		t.Error("missing one of the nodes")
 		return
 	}
+	allNodes.Remove(key.Data[0].NodeId)
+
+	if !allNodes.Exists(key.Data[1].NodeId) {
+		t.Error("missing one of the nodes")
+		return
+	}
+	allNodes.Remove(key.Data[1].NodeId)
+
+	if !allNodes.Exists(key.Parity.NodeId) {
+		t.Error("missing one of the nodes")
+		return
+	}
 }

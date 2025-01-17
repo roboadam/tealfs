@@ -91,7 +91,7 @@ func sortedKeys(m map[model.NodeId]int) []model.NodeId {
 	}
 	sort.Strings(stringKeys)
 	keys := make([]model.NodeId, len(stringKeys))
-	for k := range stringKeys {
+	for _, k := range stringKeys {
 		keys = append(keys, model.NodeId(k))
 	}
 	return keys
