@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestWriteData(t *testing.T) {
+func TestMirror(t *testing.T) {
 	d := dist.NewMirrorDistributer()
 	node1 := model.NewNodeId()
 	node2 := model.NewNodeId()

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"hash"
 	"hash/crc32"
+	"maps"
 	"tealfs/pkg/model"
 )
 
@@ -48,7 +49,7 @@ func (d *XorDistributer) KeysForIds(id1 model.BlockKeyId, id2 model.BlockKeyId) 
 	key1 := model.BlockKey{
 		Id:   id1,
 		Type: model.XORed,
-		Data: []model.DiskPointer{model.DiskPointer{
+		Data: []model.DiskPointer{{
 			NodeId:   node1,
 			FileName: string(id1),
 		}},
@@ -58,7 +59,7 @@ func (d *XorDistributer) KeysForIds(id1 model.BlockKeyId, id2 model.BlockKeyId) 
 	key2 := model.BlockKey{
 		Id:   id2,
 		Type: model.XORed,
-		Data: []model.DiskPointer{model.DiskPointer{
+		Data: []model.DiskPointer{{
 			NodeId:   node2,
 			FileName: string(id2),
 		}},
@@ -73,11 +74,13 @@ func (d *XorDistributer) generateNodeIds(id1 model.BlockKeyId, id2 model.BlockKe
 		return "", "", "", errors.New("not enough nodes to generate parity")
 	}
 
+	weights := maps.Clone(d.weights)
+
 	idb := []byte(id1)
 	checksum := d.Checksum(idb)
 	intHash := int(binary.BigEndian.Uint32(checksum))
 
-	node1 = d.nodeIdForHashAndWeights(intHash, d.weights)
+	node1 = d.nodeIdForHashAndWeights(intHash, weights)
 
 	if len(d.weights) == 1 {
 		for key := range d.weights {
@@ -88,28 +91,28 @@ func (d *XorDistributer) generateNodeIds(id1 model.BlockKeyId, id2 model.BlockKe
 		}
 	}
 
-	weights2 := d.weights
-	delete(weights2, node1)
+	delete(weights, node1)
 
 	idb = []byte(id2)
 	checksum = d.Checksum(idb)
 	intHash = int(binary.BigEndian.Uint32(checksum))
 
-	node2 = d.nodeIdForHashAndWeights(intHash, d.weights)
+	node2 = d.nodeIdForHashAndWeights(intHash, weights)
 
-	if len(d.weights) == 1 {
+	if len(weights) == 1 {
 		for key := range d.weights {
 			parity = key
 			err = nil
 			return
 		}
 	}
+	delete(weights, node2)
 
 	idb = []byte(id1 + id2)
 	checksum = d.Checksum(idb)
 	intHash = int(binary.BigEndian.Uint32(checksum))
 
-	parity = d.nodeIdForHashAndWeights(intHash, d.weights)
+	parity = d.nodeIdForHashAndWeights(intHash, weights)
 	err = nil
 	return
 }
