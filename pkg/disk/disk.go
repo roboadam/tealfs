@@ -93,12 +93,12 @@ func (d *Disk) consumeChannels() {
 	}
 }
 
-func (p *Path) Save(id model.BlockId, data []byte) error {
+func (p *Path) Save(id model.BlockKeyId, data []byte) error {
 	filePath := filepath.Join(p.raw, string(id))
 	return p.ops.WriteFile(filePath, data)
 }
 
-func (p *Path) Read(id model.BlockId) ([]byte, error) {
+func (p *Path) Read(id model.BlockKeyId) ([]byte, error) {
 	filePath := filepath.Join(p.raw, string(id))
 	result, err := p.ops.ReadFile(filePath)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
