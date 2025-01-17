@@ -18,20 +18,19 @@ import (
 	"encoding/binary"
 	"hash"
 	"hash/crc32"
-	"math/rand"
 	"sort"
 	"tealfs/pkg/model"
 )
 
 type MirrorDistributer struct {
-	weights  map[model.NodeId]int
-	checksum hash.Hash32
+	weights map[model.NodeId]int
+	hasher  hash.Hash32
 }
 
 func NewMirrorDistributer() MirrorDistributer {
 	return MirrorDistributer{
-		weights:  make(map[model.NodeId]int),
-		checksum: crc32.NewIEEE(),
+		weights: make(map[model.NodeId]int),
+		hasher:  crc32.NewIEEE(),
 	}
 }
 
@@ -54,7 +53,7 @@ func (d *MirrorDistributer) generateNodeIds(id model.BlockKeyId) []model.NodeId 
 	}
 
 	idb := []byte(id)
-	checksum := d.Checksum(idb)
+	checksum := d.checksum(idb)
 	intHash := int(binary.BigEndian.Uint32(checksum))
 
 	node1 := d.nodeIdForHashAndWeights(intHash, d.weights)
@@ -106,14 +105,10 @@ func totalWeight(weights map[model.NodeId]int) int {
 	return total
 }
 
-func randWeight(max int) int {
-	return rand.Intn(max)
-}
-
-func (d *MirrorDistributer) Checksum(data []byte) []byte {
-	d.checksum.Reset()
-	d.checksum.Write(data)
-	return d.checksum.Sum(nil)
+func (d *MirrorDistributer) checksum(data []byte) []byte {
+	d.hasher.Reset()
+	d.hasher.Write(data)
+	return d.hasher.Sum(nil)
 }
 
 func (d *MirrorDistributer) SetWeight(id model.NodeId, weight int) {
