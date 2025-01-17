@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"hash"
 	"hash/crc32"
+	"maps"
 	"sort"
 	"tealfs/pkg/model"
 )
@@ -62,9 +63,9 @@ func (d *MirrorDistributer) generateNodeIds(id model.BlockKeyId) []model.NodeId 
 		return []model.NodeId{node1}
 	}
 
-	weights2 := d.weights
+	weights2 := maps.Clone(d.weights)
 	delete(weights2, node1)
-	node2 := d.nodeIdForHashAndWeights(intHash, d.weights)
+	node2 := d.nodeIdForHashAndWeights(intHash, weights2)
 
 	return []model.NodeId{node1, node2}
 }

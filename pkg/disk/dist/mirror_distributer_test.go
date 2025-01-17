@@ -21,24 +21,57 @@ func TestWriteData(t *testing.T) {
 
 	d.SetWeight(node1, 1)
 	d.SetWeight(node2, 2)
-	d.SetWeight(node3, 3)
+	d.SetWeight(node3, 4)
 
-	block := model.BlockKeyId(uuid.NewString())
-	key := d.KeyForId(block)
+	bucket1 := 0
+	bucket2 := 0
+	bucket3 := 0
 
-	if len(key.Data) != 2 {
-		t.Error("should have 2 main data nodes")
+	for range 100 {
+		nodes := allNodes.Clone()
+		block := model.BlockKeyId(uuid.NewString())
+		key := d.KeyForId(block)
+
+		if len(key.Data) != 2 {
+			t.Error("should have 2 main data nodes")
+			return
+		}
+
+		if !nodes.Exists(key.Data[0].NodeId) {
+			t.Error("missing one of the nodes")
+			return
+		}
+		nodes.Remove(key.Data[0].NodeId)
+
+		if !nodes.Exists(key.Data[1].NodeId) {
+			t.Error("missing one of the nodes")
+			return
+		}
+
+		if key.Data[0].NodeId == node1 {
+			bucket1++
+		} else if key.Data[0].NodeId == node2 {
+			bucket2++
+		} else if key.Data[0].NodeId == node3 {
+			bucket3++
+		}
+
+		if key.Data[1].NodeId == node1 {
+			bucket1++
+		} else if key.Data[1].NodeId == node2 {
+			bucket2++
+		} else if key.Data[1].NodeId == node3 {
+			bucket3++
+		}
+	}
+
+	if bucket1+bucket2+bucket3 != 200 {
+		t.Error("should have 200 blocks")
 		return
 	}
 
-	if !allNodes.Exists(key.Data[0].NodeId) {
-		t.Error("missing one of the nodes")
-		return
-	}
-	allNodes.Remove(key.Data[0].NodeId)
-
-	if !allNodes.Exists(key.Data[1].NodeId) {
-		t.Error("missing one of the nodes")
+	if bucket1 > bucket2 || bucket2 > bucket3 || bucket1 > bucket3 {
+		t.Error("should be distributed")
 		return
 	}
 }
