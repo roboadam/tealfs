@@ -14,20 +14,24 @@ func TestXor(t *testing.T) {
 	node1 := model.NewNodeId()
 	node2 := model.NewNodeId()
 	node3 := model.NewNodeId()
+	node4 := model.NewNodeId()
 	allNodes := set.NewSet[model.NodeId]()
 	allNodes.Add(node1)
 	allNodes.Add(node2)
 	allNodes.Add(node3)
+	allNodes.Add(node4)
 
 	d.SetWeight(node1, 1)
 	d.SetWeight(node2, 2)
 	d.SetWeight(node3, 4)
+	d.SetWeight(node4, 8)
 
 	bucket1 := 0
 	bucket2 := 0
 	bucket3 := 0
+	bucket4 := 0
 
-	for range 100 {
+	for range 1000 {
 		nodes := allNodes.Clone()
 		block1 := model.BlockKeyId(uuid.NewString())
 		block2 := model.BlockKeyId(uuid.NewString())
@@ -70,6 +74,8 @@ func TestXor(t *testing.T) {
 			bucket2++
 		} else if key1.Data[0].NodeId == node3 {
 			bucket3++
+		} else if key1.Data[0].NodeId == node4 {
+			bucket4++
 		}
 
 		if key2.Data[0].NodeId == node1 {
@@ -78,6 +84,8 @@ func TestXor(t *testing.T) {
 			bucket2++
 		} else if key2.Data[0].NodeId == node3 {
 			bucket3++
+		} else if key2.Data[0].NodeId == node4 {
+			bucket4++
 		}
 
 		if key2.Parity.NodeId == node1 {
@@ -86,15 +94,17 @@ func TestXor(t *testing.T) {
 			bucket2++
 		} else if key2.Parity.NodeId == node3 {
 			bucket3++
+		} else if key2.Parity.NodeId == node4 {
+			bucket4++
 		}
 	}
 
-	if bucket1+bucket2+bucket3 != 300 {
-		t.Error("should have 300 blocks")
+	if bucket1+bucket2+bucket3+bucket4 != 3000 {
+		t.Error("should have 3000 blocks")
 		return
 	}
 
-	if bucket1 > bucket2 || bucket2 > bucket3 || bucket1 > bucket3 {
+	if !(bucket1 < bucket2 && bucket2 < bucket3 && bucket3 < bucket4) {
 		t.Error("should be distributed")
 		return
 	}
