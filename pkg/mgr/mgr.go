@@ -244,14 +244,13 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 }
 func (m *Mgr) handleDiskWrites(r model.WriteResult) {
 	if r.Caller == m.NodeId {
+		if r.Ok {
+			resolved := m.pendingBlockWrites.resolve(r.Ptr)
+			if resolved
+		}
 		m.MgrWebdavPuts <- r
 	} else {
-		c, ok := m.nodeConnMap.Get1(r.Caller)
-		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
-		} else {
-			fmt.Println("Need to add to queue when reconnected")
-		}
+		panic("got a write request that isn't for me")
 	}
 }
 
@@ -375,22 +374,21 @@ func (m *Mgr) handleMirroredWriteRequest(b model.Block) {
 			Data: b.Data,
 			Ptr:  ptr,
 		}
+		writeRequest := model.WriteRequest{
+			Data:   data,
+			Caller: m.NodeId,
+		}
 		if ptr.NodeId == m.NodeId {
-			m.MgrDiskWrites <- model.WriteRequest{
-				Data:   data,
-				Caller: m.NodeId,
-			}
+			m.MgrDiskWrites <- writeRequest
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId)
 			if ok {
 				m.MgrConnsSends <- model.MgrConnsSend{
-					ConnId: c,
-					Payload: &model.WriteRequest{
-						Data:   data,
-						Caller: m.NodeId,
-					},
+					ConnId:  c,
+					Payload: &writeRequest,
 				}
 			} else {
+				m.pendingBlockWrites.cancel(b.Id)
 				m.MgrWebdavPuts <- model.BlockIdResponse{
 					BlockId: b.Id,
 					Err:     errors.New("not connected"),

@@ -56,7 +56,7 @@ func (p *pendingBlockWrites) resolve(ptr model.DiskPointer) bool {
 
 func (p *pendingBlockWrites) cancel(b model.BlockId) {
 	if s, exists := p.b2ptr[b]; exists {
-		for ptr := range s.GetValues() {
+		for _, ptr := range s.GetValues() {
 			delete(p.ptr2b, ptr)
 		}
 		delete(p.b2ptr, b)
