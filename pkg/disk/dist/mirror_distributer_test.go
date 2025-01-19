@@ -5,8 +5,6 @@ import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestMirror(t *testing.T) {
@@ -29,38 +27,38 @@ func TestMirror(t *testing.T) {
 
 	for range 100 {
 		nodes := allNodes.Clone()
-		// block := model.BlockKeyId(uuid.NewString())
-		key := d.KeyForId(block)
+		blockId := model.NewBlockId()
+		ptrs := d.PointersForId(blockId)
 
-		if len(key.Data) != 2 {
+		if len(ptrs) != 2 {
 			t.Error("should have 2 main data nodes")
 			return
 		}
 
-		if !nodes.Exists(key.Data[0].NodeId) {
+		if !nodes.Exists(ptrs[0].NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
-		nodes.Remove(key.Data[0].NodeId)
+		nodes.Remove(ptrs[0].NodeId)
 
-		if !nodes.Exists(key.Data[1].NodeId) {
+		if !nodes.Exists(ptrs[1].NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
 
-		if key.Data[0].NodeId == node1 {
+		if ptrs[0].NodeId == node1 {
 			bucket1++
-		} else if key.Data[0].NodeId == node2 {
+		} else if ptrs[0].NodeId == node2 {
 			bucket2++
-		} else if key.Data[0].NodeId == node3 {
+		} else if ptrs[0].NodeId == node3 {
 			bucket3++
 		}
 
-		if key.Data[1].NodeId == node1 {
+		if ptrs[1].NodeId == node1 {
 			bucket1++
-		} else if key.Data[1].NodeId == node2 {
+		} else if ptrs[1].NodeId == node2 {
 			bucket2++
-		} else if key.Data[1].NodeId == node3 {
+		} else if ptrs[1].NodeId == node3 {
 			bucket3++
 		}
 	}

@@ -5,8 +5,6 @@ import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestXor(t *testing.T) {
@@ -33,69 +31,54 @@ func TestXor(t *testing.T) {
 
 	for range 1000 {
 		nodes := allNodes.Clone()
-		block1 := model.BlockKeyId(uuid.NewString())
-		block2 := model.BlockKeyId(uuid.NewString())
-		key1, key2, err := d.KeysForIds(block1, block2)
+		blockId1 := model.NewBlockId()
+		blockId2 := model.NewBlockId()
+		block1 := model.Block{
+			Id:   blockId1,
+			Data: []byte{0x0F, 0xF0, 0x0F},
+		}
+		block2 := model.Block{
+			Id:   blockId2,
+			Data: []byte{0xF0, 0x0F, 0xF0},
+		}
+		rawDatas, err := d.RawDataForBlocks(block1, block2)
 		if err != nil {
 			t.Error(err)
 			return
 		}
 
-		if len(key1.Data) != 1 && len(key2.Data) != 1 {
-			t.Error("should have 1 main data nodes")
+		if len(rawDatas) != 3 {
+			t.Error("should have 3 places to store data")
 			return
 		}
 
-		if !nodes.Exists(key1.Data[0].NodeId) {
+		if !nodes.Exists(rawDatas[0].Ptr.NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
-		nodes.Remove(key1.Data[0].NodeId)
+		nodes.Remove(rawDatas[0].Ptr.NodeId)
 
-		if !nodes.Exists(key2.Data[0].NodeId) {
+		if !nodes.Exists(rawDatas[1].Ptr.NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
-		nodes.Remove(key2.Data[0].NodeId)
+		nodes.Remove(rawDatas[1].Ptr.NodeId)
 
-		if key1.Parity.NodeId != key2.Parity.NodeId {
-			t.Error("parity nodes should be the same")
-			return
-		}
-
-		if !nodes.Exists(key2.Parity.NodeId) {
+		if !nodes.Exists(rawDatas[2].Ptr.NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
 
-		if key1.Data[0].NodeId == node1 {
-			bucket1++
-		} else if key1.Data[0].NodeId == node2 {
-			bucket2++
-		} else if key1.Data[0].NodeId == node3 {
-			bucket3++
-		} else if key1.Data[0].NodeId == node4 {
-			bucket4++
-		}
-
-		if key2.Data[0].NodeId == node1 {
-			bucket1++
-		} else if key2.Data[0].NodeId == node2 {
-			bucket2++
-		} else if key2.Data[0].NodeId == node3 {
-			bucket3++
-		} else if key2.Data[0].NodeId == node4 {
-			bucket4++
-		}
-
-		if key2.Parity.NodeId == node1 {
-			bucket1++
-		} else if key2.Parity.NodeId == node2 {
-			bucket2++
-		} else if key2.Parity.NodeId == node3 {
-			bucket3++
-		} else if key2.Parity.NodeId == node4 {
-			bucket4++
+		for _, rd := range rawDatas {
+			if rd.Ptr.NodeId == node1 {
+				bucket1++
+			} else if rd.Ptr.NodeId == node2 {
+				bucket2++
+			} else if rd.Ptr.NodeId == node3 {
+				bucket3++
+			} else if rd.Ptr.NodeId == node4 {
+				bucket4++
+			}
 		}
 	}
 

@@ -28,13 +28,15 @@ func TestWriteData(t *testing.T) {
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
-	block := model.Block{
-		Id:   blockId,
-		Data: data,
-	}
 	mgrDiskWrites <- model.WriteRequest{
 		Caller: nodeId,
-		Block:  block,
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   nodeId,
+				FileName: "filename",
+			},
+			Data: data,
+		},
 	}
 	result := <-diskMgrWrites
 	if !result.Ok {
@@ -56,14 +58,17 @@ func TestReadData(t *testing.T) {
 	f.ReadData = data
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	mgrDiskReads <- model.ReadRequest{
-		Caller:   caller,
-		BlockKey: blockId,
+		Caller: caller,
+		Ptr: model.DiskPointer{
+			NodeId:   "node1",
+			FileName: "filename",
+		},
 	}
 	result := <-diskMgrReads
 	if !result.Ok {
 		t.Error("Bad write result")
 	}
-	if !bytes.Equal(result.Block.Data, data) {
+	if !bytes.Equal(result.Data.Data, data) {
 		t.Error("Read data is wrong")
 	}
 	if f.ReadPath != expectedPath {
@@ -80,14 +85,17 @@ func TestReadNewFile(t *testing.T) {
 	f.ReadData = data
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	mgrDiskReads <- model.ReadRequest{
-		Caller:   caller,
-		BlockKey: blockId,
+		Caller: caller,
+		Ptr:    model.DiskPointer{
+			NodeId:   "node1",
+			FileName: "fileName",
+		},
 	}
 	result := <-diskMgrReads
 	if !result.Ok {
 		t.Error("Bad write result")
 	}
-	if !bytes.Equal(result.Block.Data, []byte{}) {
+	if !bytes.Equal(result.Data.Data, []byte{}) {
 		t.Error("Written data is wrong")
 	}
 	if f.ReadPath != expectedPath {

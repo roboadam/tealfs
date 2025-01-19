@@ -56,31 +56,27 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Block.Key, s.Block.Data)
+			err := d.path.Save(s.Data)
 			if err == nil {
 				d.outWrites <- model.WriteResult{
-					Ok:       true,
-					Caller:   s.Caller,
-					BlockKey: s.Block.Id,
+					Ok:     true,
+					Caller: s.Caller,
+					Ptr:    s.Data.Ptr,
 				}
 			} else {
 				d.outWrites <- model.WriteResult{
-					Ok:       false,
-					Message:  err.Error(),
-					Caller:   s.Caller,
-					BlockKey: s.Block.Id,
+					Ok:      false,
+					Message: err.Error(),
+					Caller:  s.Caller,
 				}
 			}
 		case r := <-d.inReads:
-			data, err := d.path.Read(r.BlockKey)
+			data, err := d.path.Read(r.Ptr)
 			if err == nil {
 				d.outReads <- model.ReadResult{
 					Ok:     true,
 					Caller: r.Caller,
-					Block: model.Block{
-						Id:   r.BlockKey,
-						Data: data,
-					},
+					Data:   data,
 				}
 			} else {
 				d.outReads <- model.ReadResult{
@@ -93,18 +89,18 @@ func (d *Disk) consumeChannels() {
 	}
 }
 
-func (p *Path) Save(key model.BlockKey, data []byte) error {
-	filePath := filepath.Join(p.raw, string(key.da))
-	return p.ops.WriteFile(filePath, data)
+func (p *Path) Save(rawData model.RawData) error {
+	filePath := filepath.Join(p.raw, rawData.Ptr.FileName)
+	return p.ops.WriteFile(filePath, rawData.Data)
 }
 
-func (p *Path) Read(id model.BlockKeyId) ([]byte, error) {
-	filePath := filepath.Join(p.raw, string(id))
+func (p *Path) Read(ptr model.DiskPointer) (model.RawData, error) {
+	filePath := filepath.Join(p.raw, ptr.FileName)
 	result, err := p.ops.ReadFile(filePath)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
-		return []byte{}, nil
+		return model.RawData{Ptr: ptr, Data: []byte{}}, nil
 	}
-	return result, err
+	return model.RawData{Ptr: ptr, Data: result}, err
 }
 
 func NewPath(rawPath string, ops FileOps) Path {
