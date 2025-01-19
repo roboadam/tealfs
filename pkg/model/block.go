@@ -106,11 +106,15 @@ type BlockResponse struct {
 
 type Block struct {
 	Id   BlockId
+	Type BlockType
 	Data []byte
 }
 
 func (r *Block) Equal(o *Block) bool {
 	if r.Id != o.Id {
+		return false
+	}
+	if r.Type != o.Type {
 		return false
 	}
 	if !bytes.Equal(r.Data, o.Data) {

@@ -340,6 +340,14 @@ func (m *Mgr) handleWebdavGets(rr model.BlockId) {
 }
 
 func (m *Mgr) handleWebdavWriteRequest(w model.Block) {
+	switch w.Type {
+	case model.Mirrored:
+		m.handleMirroredWriteRequest(w)
+	case model.Xored:
+		m.handleXoredWriteRequest(w)
+	default:
+		panic("Unknown block type")
+	}
 	n := m.distributer.NodeIdForStoreId(w.Block.Id)
 	if n == m.NodeId {
 		m.MgrDiskWrites <- w
@@ -354,6 +362,43 @@ func (m *Mgr) handleWebdavWriteRequest(w model.Block) {
 			m.MgrDiskWrites <- w
 		}
 	}
+}
+
+func (m *Mgr) handleMirroredWriteRequest(b model.Block) {
+	ptrs := m.mirrorDistributer.PointersForId(b.Id)
+	for _, ptr := range ptrs {
+		data := model.RawData{
+					Data: b.Data,
+					Ptr:  ptr,
+				}
+		if ptr.NodeId == m.NodeId {
+			m.MgrDiskWrites <- model.WriteRequest{
+				Data: data,
+				Caller: b.Caller,
+			}
+		} else {
+			c, ok := m.nodeConnMap.Get1(ptr.NodeId)
+			if ok {
+				m.MgrConnsSends <- model.MgrConnsSend{
+					ConnId: c,
+					Payload: &model.WriteRequest{
+						Data: model.RawData{
+							Data: b.Data,
+							Ptr:  model.DiskPointer{NodeId: ptr.NodeId, FileName: ptr.FileName},
+						},
+						Caller: b.Caller,
+					},
+				}
+			} else {
+				m.MgrDiskWrites <- model.WriteRequest{
+					Data: model.RawData{
+						Data: b.Data,
+						Ptr:  model.DiskPointer{NodeId: ptr.NodeId, FileName: ptr.FileName},
+					},
+					Caller: b.Caller,
+				}
+			}
+		}
 }
 
 func (m *Mgr) handleWebdavLockMsg(lm webdav.LockMessage) {
