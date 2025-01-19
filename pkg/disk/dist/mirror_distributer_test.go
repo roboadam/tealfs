@@ -29,7 +29,7 @@ func TestMirror(t *testing.T) {
 
 	for range 100 {
 		nodes := allNodes.Clone()
-		block := model.BlockKeyId(uuid.NewString())
+		// block := model.BlockKeyId(uuid.NewString())
 		key := d.KeyForId(block)
 
 		if len(key.Data) != 2 {

@@ -20,7 +20,6 @@ import (
 	"hash"
 	"hash/crc32"
 	"maps"
-	"math"
 	"tealfs/pkg/model"
 )
 
@@ -41,7 +40,7 @@ func (d *XorDistributer) RawDataForBlocks(block1 model.Block, block2 model.Block
 	id2 := block2.Id
 	node1, node2, parity, err := d.generateNodeIds(id1, id2)
 	if err != nil {
-		return []model.DiskPointer{}, err
+		return []model.RawData{}, err
 	}
 
 	ptr1 := model.DiskPointer{
@@ -82,18 +81,23 @@ func max(a, b int) int {
 
 func xor(data1 []byte, data2 []byte) []byte {
 	maxLen := max(len(data1), len(data2))
-	if len(data1) != len(data2) {
-		panic("data lengths must be equal")
-	}
 
-	result := make([]byte, len(data1))
-	for i := 0; i < len(data1); i++ {
-		result[i] = data1[i] ^ data2[i]
+	result := make([]byte, maxLen)
+	for i := range maxLen {
+		var d1 byte = 0
+		var d2 byte = 0
+		if i < len(data1) {
+			d1 = data1[i]
+		} else if i < len(data2) {
+			d2 = data2[i]
+		}
+
+		result[i] = d1 ^ d2
 	}
 	return result
 }
 
-func (d *XorDistributer) generateNodeIds(id1 model.BlockKeyId, id2 model.BlockKeyId) (node1 model.NodeId, node2 model.NodeId, parity model.NodeId, err error) {
+func (d *XorDistributer) generateNodeIds(id1 model.BlockId, id2 model.BlockId) (node1 model.NodeId, node2 model.NodeId, parity model.NodeId, err error) {
 	if len(d.weights) < 3 {
 		return "", "", "", errors.New("not enough nodes to generate parity")
 	}
