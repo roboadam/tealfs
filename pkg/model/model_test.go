@@ -58,14 +58,10 @@ func TestReadResult(t *testing.T) {
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller",
-		Block: model.Block{
-			Key: model.BlockKey{
-				Id:   "blockKeyId",
-				Type: model.Mirrored,
-				Data: []model.DiskPointer{{
-					NodeId:   "nodeId",
-					FileName: "fileName",
-				}},
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   "node1",
+				FileName: "fileName1",
 			},
 			Data: []byte{1, 2, 3},
 		},
@@ -74,14 +70,10 @@ func TestReadResult(t *testing.T) {
 		Ok:      false,
 		Message: "some message",
 		Caller:  "some caller",
-		Block: model.Block{
-			Key: model.BlockKey{
-				Id:   "blockKeyId",
-				Type: model.Mirrored,
-				Data: []model.DiskPointer{{
-					NodeId:   "nodeId",
-					FileName: "fileName",
-				}},
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   "node1",
+				FileName: "fileName1",
 			},
 			Data: []byte{1, 2, 3},
 		},
@@ -109,26 +101,18 @@ func TestWriteResult(t *testing.T) {
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller",
-		BlockKey: model.BlockKey{
-			Id:   "blockKeyId",
-			Type: model.Mirrored,
-			Data: []model.DiskPointer{{
-				NodeId:   "nodeId",
-				FileName: "fileName",
-			}},
+		Ptr: model.DiskPointer{
+			NodeId:   "nodeId",
+			FileName: "fileName",
 		},
 	}
 	wr2 := model.WriteResult{
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller 2",
-		BlockKey: model.BlockKey{
-			Id:   "blockKeyId",
-			Type: model.Mirrored,
-			Data: []model.DiskPointer{{
-				NodeId:   "nodeId",
-				FileName: "fileName",
-			}},
+		Ptr: model.DiskPointer{
+			NodeId:   "nodeId",
+			FileName: "fileName",
 		},
 	}
 

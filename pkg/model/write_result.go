@@ -19,10 +19,10 @@ import (
 )
 
 type WriteResult struct {
-	Ok       bool
-	Message  string
-	Caller   NodeId
-	BlockKey BlockKey
+	Ok      bool
+	Message string
+	Caller  NodeId
+	Ptr     DiskPointer
 }
 
 func (r *WriteResult) Equal(p Payload) bool {
@@ -36,7 +36,7 @@ func (r *WriteResult) Equal(p Payload) bool {
 		if r.Caller != o.Caller {
 			return false
 		}
-		if !r.BlockKey.Equals(&o.BlockKey) {
+		if !r.Ptr.Equals(&o.Ptr) {
 			return false
 		}
 		return true
@@ -48,9 +48,9 @@ func (r *WriteResult) ToBytes() []byte {
 	ok := BoolToBytes(r.Ok)
 	message := StringToBytes(r.Message)
 	caller := StringToBytes(string(r.Caller))
-	blockKey := r.BlockKey.ToBytes()
+	ptr := r.Ptr.ToBytes()
 
-	payload := bytes.Join([][]byte{ok, message, caller, blockKey}, []byte{})
+	payload := bytes.Join([][]byte{ok, message, caller, ptr}, []byte{})
 	return AddType(WriteResultType, payload)
 }
 
@@ -58,11 +58,11 @@ func ToWriteResult(data []byte) *WriteResult {
 	ok, remainder := BoolFromBytes(data)
 	message, remainder := StringFromBytes(remainder)
 	caller, remainder := StringFromBytes(remainder)
-	blockKey, _ := ToBlockKey(remainder)
+	ptr, _ := ToDiskPointer(remainder)
 	return &WriteResult{
-		Ok:       ok,
-		Message:  message,
-		Caller:   NodeId(caller),
-		BlockKey: *blockKey,
+		Ok:      ok,
+		Message: message,
+		Caller:  NodeId(caller),
+		Ptr:     *ptr,
 	}
 }

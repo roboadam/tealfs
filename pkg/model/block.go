@@ -28,33 +28,26 @@ const (
 )
 
 type RawData struct {
-	Id   BlockId
 	Ptr  DiskPointer
 	Data []byte
 }
 
 func ToRawData(dataRaw []byte) (*RawData, []byte) {
-	id, remainder := StringFromBytes(dataRaw)
-	ptr, remainder := ToDiskPointer(remainder)
+	ptr, remainder := ToDiskPointer(dataRaw)
 	data, remainder := BytesFromBytes(remainder)
 	return &RawData{
-		Id:   BlockId(id),
 		Ptr:  *ptr,
 		Data: data,
 	}, remainder
 }
 
 func (b *RawData) ToBytes() []byte {
-	id := StringToBytes(string(b.Id))
 	ptr := b.Ptr.ToBytes()
 	data := BytesToBytes(b.Data)
-	return bytes.Join([][]byte{id, ptr, data}, []byte{})
+	return bytes.Join([][]byte{ptr, data}, []byte{})
 }
 
 func (b *RawData) Equals(o *RawData) bool {
-	if b.Id != o.Id {
-		return false
-	}
 	if !b.Ptr.Equals(&o.Ptr) {
 		return false
 	}

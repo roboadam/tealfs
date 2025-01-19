@@ -35,20 +35,16 @@ func NewMirrorDistributer() MirrorDistributer {
 	}
 }
 
-func (d *MirrorDistributer) KeyForId(id model.BlockKeyId) model.BlockKey {
+func (d *MirrorDistributer) PointersForId(id model.BlockId) []model.DiskPointer {
 	nodeIds := d.generateNodeIds(id)
 	data := []model.DiskPointer{}
 	for _, nodeId := range nodeIds {
 		data = append(data, model.DiskPointer{NodeId: nodeId, FileName: string(id)})
 	}
-	return model.BlockKey{
-		Id:   id,
-		Type: model.Mirrored,
-		Data: data,
-	}
+	return data
 }
 
-func (d *MirrorDistributer) generateNodeIds(id model.BlockKeyId) []model.NodeId {
+func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []model.NodeId {
 	if len(d.weights) == 0 {
 		return []model.NodeId{}
 	}

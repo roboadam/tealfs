@@ -22,20 +22,10 @@ import (
 func TestWriteRequest(t *testing.T) {
 	wr := model.WriteRequest{
 		Caller: "caller1",
-		Block: model.Block{
-			Key: model.BlockKey{
-				Id:   "block1",
-				Type: model.XORed,
-				Data: []model.DiskPointer{
-					{
-						NodeId:   "node1",
-						FileName: "file1",
-					},
-				},
-				Parity: model.DiskPointer{
-					NodeId:   "node2",
-					FileName: "file2",
-				},
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   "node1",
+				FileName: "fileName1",
 			},
 			Data: []byte{0x01, 0x02, 0x03},
 		},

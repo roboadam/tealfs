@@ -20,6 +20,7 @@ import (
 	"hash"
 	"hash/crc32"
 	"maps"
+	"math"
 	"tealfs/pkg/model"
 )
 
@@ -35,38 +36,61 @@ func NewXorDistributer() XorDistributer {
 	}
 }
 
-func (d *XorDistributer) KeysForIds(id1 model.BlockKeyId, id2 model.BlockKeyId) (model.BlockKey, model.BlockKey, error) {
+func (d *XorDistributer) RawDataForBlocks(block1 model.Block, block2 model.Block) ([]model.RawData, error) {
+	id1 := block1.Id
+	id2 := block2.Id
 	node1, node2, parity, err := d.generateNodeIds(id1, id2)
 	if err != nil {
-		return model.BlockKey{}, model.BlockKey{}, err
+		return []model.DiskPointer{}, err
 	}
 
+	ptr1 := model.DiskPointer{
+		NodeId:   node1,
+		FileName: string(id1),
+	}
+	ptr2 := model.DiskPointer{
+		NodeId:   node2,
+		FileName: string(id2),
+	}
 	parityPointer := model.DiskPointer{
 		NodeId:   parity,
 		FileName: string(id1) + "." + string(id2),
 	}
 
-	key1 := model.BlockKey{
-		Id:   id1,
-		Type: model.XORed,
-		Data: []model.DiskPointer{{
-			NodeId:   node1,
-			FileName: string(id1),
-		}},
-		Parity: parityPointer,
+	raw1 := model.RawData{
+		Ptr:  ptr1,
+		Data: block1.Data,
+	}
+	raw2 := model.RawData{
+		Ptr:  ptr2,
+		Data: block2.Data,
+	}
+	rawP := model.RawData{
+		Ptr:  parityPointer,
+		Data: xor(block1.Data, block2.Data),
 	}
 
-	key2 := model.BlockKey{
-		Id:   id2,
-		Type: model.XORed,
-		Data: []model.DiskPointer{{
-			NodeId:   node2,
-			FileName: string(id2),
-		}},
-		Parity: parityPointer,
+	return []model.RawData{raw1, raw2, rawP}, nil
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func xor(data1 []byte, data2 []byte) []byte {
+	maxLen := max(len(data1), len(data2))
+	if len(data1) != len(data2) {
+		panic("data lengths must be equal")
 	}
 
-	return key1, key2, nil
+	result := make([]byte, len(data1))
+	for i := 0; i < len(data1); i++ {
+		result[i] = data1[i] ^ data2[i]
+	}
+	return result
 }
 
 func (d *XorDistributer) generateNodeIds(id1 model.BlockKeyId, id2 model.BlockKeyId) (node1 model.NodeId, node2 model.NodeId, parity model.NodeId, err error) {
