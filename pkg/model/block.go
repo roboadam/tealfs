@@ -94,6 +94,16 @@ func NewBlockId() BlockId {
 	return BlockId(idValue.String())
 }
 
+type BlockIdResponse struct {
+	BlockId BlockId
+	Err     error
+}
+
+type BlockResponse struct {
+	Block Block
+	Err   error
+}
+
 type Block struct {
 	Id   BlockId
 	Data []byte

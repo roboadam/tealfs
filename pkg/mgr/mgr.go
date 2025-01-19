@@ -32,16 +32,16 @@ type Mgr struct {
 	ConnsMgrReceives   chan model.ConnsMgrReceive
 	DiskMgrReads       chan model.ReadResult
 	DiskMgrWrites      chan model.WriteResult
-	WebdavMgrGets      chan model.ReadRequest
-	WebdavMgrPuts      chan model.WriteRequest
+	WebdavMgrGets      chan model.BlockId
+	WebdavMgrPuts      chan model.Block
 	WebdavMgrLockMsg   chan webdav.LockMessage
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
 	MgrDiskReads       chan model.ReadRequest
 	MgrUiStatuses      chan model.UiConnectionStatus
-	MgrWebdavGets      chan model.ReadResult
-	MgrWebdavPuts      chan model.WriteResult
+	MgrWebdavGets      chan model.BlockResponse
+	MgrWebdavPuts      chan model.BlockIdResponse
 	MgrWebdavLockMsg   chan webdav.LockMessage
 	MgrWebdavIsPrimary chan bool
 
@@ -65,16 +65,16 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrWrites:      make(chan model.WriteResult),
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
-		WebdavMgrGets:      make(chan model.ReadRequest, chanSize),
-		WebdavMgrPuts:      make(chan model.WriteRequest, chanSize),
+		WebdavMgrGets:      make(chan model.BlockId, chanSize),
+		WebdavMgrPuts:      make(chan model.Block, chanSize),
 		WebdavMgrLockMsg:   make(chan webdav.LockMessage, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
 		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
-		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
-		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
+		MgrWebdavGets:      make(chan model.BlockResponse, chanSize),
+		MgrWebdavPuts:      make(chan model.BlockIdResponse, chanSize),
 		MgrWebdavLockMsg:   make(chan webdav.LockMessage, chanSize),
 		MgrWebdavIsPrimary: make(chan bool),
 		nodesAddressMap:    make(map[model.NodeId]string),
@@ -214,21 +214,19 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: address}
 		}
 	case *model.WriteRequest:
-		n := m.distributer.NodeIdForStoreId(p.Block.Id)
 		caller, ok := m.nodeConnMap.Get2(i.ConnId)
 		if !ok || caller != p.Caller {
-			return
-		}
-		if m.NodeId == n {
-			m.MgrDiskWrites <- *p
-		} else {
-			c, ok := m.nodeConnMap.Get1(n)
-			if ok {
-				m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: p}
-			} else {
-				m.MgrDiskWrites <- *p
+			payload := model.WriteResult{
+				Ok:      false,
+				Message: "connection error",
+				Caller:  caller,
+			}
+			m.MgrConnsSends <- model.MgrConnsSend{
+				ConnId:  i.ConnId,
+				Payload: &payload,
 			}
 		}
+		m.MgrDiskWrites <- *p
 	case *model.WriteResult:
 		m.MgrWebdavPuts <- *p
 	case *model.ReadRequest:
@@ -319,7 +317,7 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	}
 }
 
-func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
+func (m *Mgr) handleWebdavGets(rr model.BlockId) {
 	n := m.distributer.NodeIdForStoreId(rr.BlockKey)
 	if m.NodeId == n {
 		m.MgrDiskReads <- rr
@@ -341,7 +339,7 @@ func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
 	}
 }
 
-func (m *Mgr) handleWebdavWriteRequest(w model.WriteRequest) {
+func (m *Mgr) handleWebdavWriteRequest(w model.Block) {
 	n := m.distributer.NodeIdForStoreId(w.Block.Id)
 	if n == m.NodeId {
 		m.MgrDiskWrites <- w
