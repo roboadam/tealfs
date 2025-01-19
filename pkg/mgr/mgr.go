@@ -16,6 +16,7 @@ package mgr
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"path/filepath"
@@ -45,17 +46,18 @@ type Mgr struct {
 	MgrWebdavLockMsg   chan webdav.LockMessage
 	MgrWebdavIsPrimary chan bool
 
-	nodesAddressMap   map[model.NodeId]string
-	nodeConnMap       set.Bimap[model.NodeId, model.ConnId]
-	NodeId            model.NodeId
-	PrimaryNodeId     model.NodeId
-	connAddress       map[model.ConnId]string
-	mirrorDistributer dist.MirrorDistributer
-	xorDistributer    dist.XorDistributer
-	blockType         model.BlockType
-	nodeAddress       string
-	savePath          string
-	fileOps           disk.FileOps
+	nodesAddressMap    map[model.NodeId]string
+	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
+	NodeId             model.NodeId
+	PrimaryNodeId      model.NodeId
+	connAddress        map[model.ConnId]string
+	mirrorDistributer  dist.MirrorDistributer
+	xorDistributer     dist.XorDistributer
+	blockType          model.BlockType
+	nodeAddress        string
+	savePath           string
+	fileOps            disk.FileOps
+	pendingBlockWrites pendingBlockWrites
 }
 
 func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType) *Mgr {
@@ -346,7 +348,7 @@ func (m *Mgr) handleWebdavWriteRequest(w model.Block) {
 	case model.Xored:
 		m.handleXoredWriteRequest(w)
 	default:
-		panic("Unknown block type")
+		panic("unknown block type")
 	}
 	n := m.distributer.NodeIdForStoreId(w.Block.Id)
 	if n == m.NodeId {
@@ -368,13 +370,13 @@ func (m *Mgr) handleMirroredWriteRequest(b model.Block) {
 	ptrs := m.mirrorDistributer.PointersForId(b.Id)
 	for _, ptr := range ptrs {
 		data := model.RawData{
-					Data: b.Data,
-					Ptr:  ptr,
-				}
+			Data: b.Data,
+			Ptr:  ptr,
+		}
 		if ptr.NodeId == m.NodeId {
 			m.MgrDiskWrites <- model.WriteRequest{
-				Data: data,
-				Caller: b.Caller,
+				Data:   data,
+				Caller: m.NodeId,
 			}
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId)
@@ -382,23 +384,22 @@ func (m *Mgr) handleMirroredWriteRequest(b model.Block) {
 				m.MgrConnsSends <- model.MgrConnsSend{
 					ConnId: c,
 					Payload: &model.WriteRequest{
-						Data: model.RawData{
-							Data: b.Data,
-							Ptr:  model.DiskPointer{NodeId: ptr.NodeId, FileName: ptr.FileName},
-						},
-						Caller: b.Caller,
+						Data:   data,
+						Caller: m.NodeId,
 					},
 				}
 			} else {
-				m.MgrDiskWrites <- model.WriteRequest{
-					Data: model.RawData{
-						Data: b.Data,
-						Ptr:  model.DiskPointer{NodeId: ptr.NodeId, FileName: ptr.FileName},
-					},
-					Caller: b.Caller,
+				m.MgrWebdavPuts <- model.BlockIdResponse{
+					BlockId: b.Id,
+					Err:     errors.New("not connected"),
 				}
+				return
 			}
 		}
+	}
+}
+
+func (m *Mgr) handleXoredWriteRequest(b model.Block) {
 }
 
 func (m *Mgr) handleWebdavLockMsg(lm webdav.LockMessage) {
