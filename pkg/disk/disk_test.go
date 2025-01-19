@@ -33,7 +33,7 @@ func TestWriteData(t *testing.T) {
 		Data: model.RawData{
 			Ptr: model.DiskPointer{
 				NodeId:   nodeId,
-				FileName: "filename",
+				FileName: string(blockId),
 			},
 			Data: data,
 		},
@@ -41,12 +41,15 @@ func TestWriteData(t *testing.T) {
 	result := <-diskMgrWrites
 	if !result.Ok {
 		t.Error("Bad write result")
+		return
 	}
 	if !bytes.Equal(f.WrittenData, data) {
 		t.Error("Written data is wrong")
+		return
 	}
 	if f.WritePath != expectedPath {
 		t.Error("Written path is wrong")
+		return
 	}
 }
 
@@ -61,18 +64,21 @@ func TestReadData(t *testing.T) {
 		Caller: caller,
 		Ptr: model.DiskPointer{
 			NodeId:   "node1",
-			FileName: "filename",
+			FileName: string(blockId),
 		},
 	}
 	result := <-diskMgrReads
 	if !result.Ok {
 		t.Error("Bad write result")
+		return
 	}
 	if !bytes.Equal(result.Data.Data, data) {
 		t.Error("Read data is wrong")
+		return
 	}
 	if f.ReadPath != expectedPath {
 		t.Error("Read path is wrong")
+		return
 	}
 }
 
@@ -86,20 +92,23 @@ func TestReadNewFile(t *testing.T) {
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	mgrDiskReads <- model.ReadRequest{
 		Caller: caller,
-		Ptr:    model.DiskPointer{
+		Ptr: model.DiskPointer{
 			NodeId:   "node1",
-			FileName: "fileName",
+			FileName: string(blockId),
 		},
 	}
 	result := <-diskMgrReads
 	if !result.Ok {
 		t.Error("Bad write result")
+		return
 	}
 	if !bytes.Equal(result.Data.Data, []byte{}) {
 		t.Error("Written data is wrong")
+		return
 	}
 	if f.ReadPath != expectedPath {
 		t.Error("Written path is wrong")
+		return
 	}
 }
 

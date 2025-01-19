@@ -45,18 +45,20 @@ type Mgr struct {
 	MgrWebdavLockMsg   chan webdav.LockMessage
 	MgrWebdavIsPrimary chan bool
 
-	nodesAddressMap map[model.NodeId]string
-	nodeConnMap     set.Bimap[model.NodeId, model.ConnId]
-	NodeId          model.NodeId
-	PrimaryNodeId   model.NodeId
-	connAddress     map[model.ConnId]string
-	distributer     dist.Distributer
-	nodeAddress     string
-	savePath        string
-	fileOps         disk.FileOps
+	nodesAddressMap   map[model.NodeId]string
+	nodeConnMap       set.Bimap[model.NodeId, model.ConnId]
+	NodeId            model.NodeId
+	PrimaryNodeId     model.NodeId
+	connAddress       map[model.ConnId]string
+	mirrorDistributer dist.MirrorDistributer
+	xorDistributer    dist.XorDistributer
+	blockType         model.BlockType
+	nodeAddress       string
+	savePath          string
+	fileOps           disk.FileOps
 }
 
-func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps) *Mgr {
+func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
@@ -80,12 +82,15 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		PrimaryNodeId:      nodeId,
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
-		distributer:        dist.New(),
+		mirrorDistributer:  dist.NewMirrorDistributer(),
+		xorDistributer:     dist.NewXorDistributer(),
+		blockType:          blockType,
 		nodeAddress:        nodeAddress,
 		savePath:           savePath,
 		fileOps:            fileOps,
 	}
-	mgr.distributer.SetWeight(mgr.NodeId, 1)
+	mgr.mirrorDistributer.SetWeight(mgr.NodeId, 1)
+	mgr.xorDistributer.SetWeight(mgr.NodeId, 1)
 
 	return &mgr
 }
