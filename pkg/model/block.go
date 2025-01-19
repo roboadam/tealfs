@@ -16,69 +16,52 @@ package model
 
 import (
 	"bytes"
+
+	"github.com/google/uuid"
 )
 
-type BlockKeyType uint32
-type BlockKeyId string
+type BlockType uint32
 
 const (
-	Mirrored BlockKeyType = iota
+	Mirrored BlockType = iota
 	XORed
 )
 
-type BlockKey struct {
-	Id     BlockKeyId
-	Type   BlockKeyType
-	Data   []DiskPointer
-	Parity DiskPointer
+type RawData struct {
+	Id   BlockId
+	Ptr  DiskPointer
+	Data []byte
 }
 
-func ToBlockKey(rawData []byte) (*BlockKey, []byte) {
-	id, remainder := StringFromBytes(rawData)
-	blockKeyType, remainder := IntFromBytes(remainder)
-	numPointers, remainder := IntFromBytes(remainder)
-	diskPointers := []DiskPointer{}
-	for range numPointers {
-		var pointer *DiskPointer
-		pointer, remainder = ToDiskPointer(remainder)
-		diskPointers = append(diskPointers, *pointer)
-	}
-	parity, remainder := ToDiskPointer(remainder)
-	return &BlockKey{
-		Id:     BlockKeyId(id),
-		Type:   BlockKeyType(blockKeyType),
-		Data:   diskPointers,
-		Parity: *parity,
+func ToRawData(dataRaw []byte) (*RawData, []byte) {
+	id, remainder := StringFromBytes(dataRaw)
+	ptr, remainder := ToDiskPointer(remainder)
+	data, remainder := BytesFromBytes(remainder)
+	return &RawData{
+		Id:   BlockId(id),
+		Ptr:  *ptr,
+		Data: data,
 	}, remainder
 }
 
-func (b *BlockKey) ToBytes() []byte {
-	value := StringToBytes(string(b.Id))
-	value = append(value, IntToBytes(uint32(b.Type))...)
-	value = append(value, IntToBytes(uint32(len(b.Data)))...)
-	for i := range b.Data {
-		value = append(value, b.Data[i].ToBytes()...)
-	}
-	value = append(value, b.Parity.ToBytes()...)
-	return value
+func (b *RawData) ToBytes() []byte {
+	id := StringToBytes(string(b.Id))
+	ptr := b.Ptr.ToBytes()
+	data := BytesToBytes(b.Data)
+	return bytes.Join([][]byte{id, ptr, data}, []byte{})
 }
 
-func (b *BlockKey) Equals(o *BlockKey) bool {
+func (b *RawData) Equals(o *RawData) bool {
 	if b.Id != o.Id {
 		return false
 	}
-	if b.Type != o.Type {
+	if !b.Ptr.Equals(&o.Ptr) {
 		return false
 	}
-	if len(b.Data) != len(o.Data) {
+	if !bytes.Equal(b.Data, o.Data) {
 		return false
 	}
-	for i := range b.Data {
-		if !b.Data[i].Equals(&o.Data[i]) {
-			return false
-		}
-	}
-	return b.Parity.Equals(&o.Parity)
+	return true
 }
 
 type DiskPointer struct {
@@ -111,20 +94,20 @@ func (d *DiskPointer) Equals(o *DiskPointer) bool {
 	return true
 }
 
-// type BlockId string
+type BlockId string
 
-// func NewBlockId() BlockId {
-// 	idValue := uuid.New()
-// 	return BlockId(idValue.String())
-// }
+func NewBlockId() BlockId {
+	idValue := uuid.New()
+	return BlockId(idValue.String())
+}
 
 type Block struct {
-	Key  BlockKey
+	Id   BlockId
 	Data []byte
 }
 
 func (r *Block) Equal(o *Block) bool {
-	if !r.Key.Equals(&o.Key) {
+	if r.Id != o.Id {
 		return false
 	}
 	if !bytes.Equal(r.Data, o.Data) {

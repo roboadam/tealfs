@@ -19,19 +19,15 @@ import (
 	"testing"
 )
 
-func TestBlockKey(t *testing.T) {
-	key := model.BlockKey{
-		Id:   model.BlockKeyId("key"),
-		Type: model.Mirrored,
-		Data: []model.DiskPointer{
-			{NodeId: model.NodeId("nodeId1"), FileName: "fileName1"},
-		},
-		Parity: model.DiskPointer{NodeId: model.NodeId("nodeId2"), FileName: "fileName2"},
+func TestDiskPtr(t *testing.T) {
+	ptr := model.DiskPointer{
+		NodeId:   model.NodeId("nodeId"),
+		FileName: "fileName",
 	}
-	raw := key.ToBytes()
-	newKey, remainder := model.ToBlockKey(raw)
-	if !key.Equals(newKey) {
-		t.Errorf("Expected %v, got %v", key, newKey)
+	raw := ptr.ToBytes()
+	newPtr, remainder := model.ToDiskPointer(raw)
+	if !ptr.Equals(newPtr) {
+		t.Errorf("Expected %v, got %v", ptr, newPtr)
 	}
 	if len(remainder) != 0 {
 		t.Errorf("Expected no remainder, got %v", remainder)

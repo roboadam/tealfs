@@ -56,7 +56,7 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Block.Id, s.Block.Data)
+			err := d.path.Save(s.Block.Key, s.Block.Data)
 			if err == nil {
 				d.outWrites <- model.WriteResult{
 					Ok:       true,
@@ -93,8 +93,8 @@ func (d *Disk) consumeChannels() {
 	}
 }
 
-func (p *Path) Save(id model.BlockKeyId, data []byte) error {
-	filePath := filepath.Join(p.raw, string(id))
+func (p *Path) Save(key model.BlockKey, data []byte) error {
+	filePath := filepath.Join(p.raw, string(key.da))
 	return p.ops.WriteFile(filePath, data)
 }
 
