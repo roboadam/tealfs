@@ -90,6 +90,7 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		nodeAddress:        nodeAddress,
 		savePath:           savePath,
 		fileOps:            fileOps,
+		pendingBlockWrites: newPendingBlockWrites(),
 	}
 	mgr.mirrorDistributer.SetWeight(mgr.NodeId, 1)
 	mgr.xorDistributer.SetWeight(mgr.NodeId, 1)
@@ -369,6 +370,7 @@ func (m *Mgr) handleWebdavWriteRequest(w model.Block) {
 func (m *Mgr) handleMirroredWriteRequest(b model.Block) {
 	ptrs := m.mirrorDistributer.PointersForId(b.Id)
 	for _, ptr := range ptrs {
+		m.pendingBlockWrites.add(b.Id, ptr)
 		data := model.RawData{
 			Data: b.Data,
 			Ptr:  ptr,
