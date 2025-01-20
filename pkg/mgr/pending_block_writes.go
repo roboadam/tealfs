@@ -40,18 +40,26 @@ func (p *pendingBlockWrites) add(b model.BlockId, ptr model.DiskPointer) {
 	s.Add(ptr)
 }
 
-func (p *pendingBlockWrites) resolve(ptr model.DiskPointer) bool {
+type resolveResult int
+
+const (
+	done resolveResult = iota
+	notDone
+	notTracking
+)
+
+func (p *pendingBlockWrites) resolve(ptr model.DiskPointer) (resolveResult, model.BlockId) {
 	if b, exists := p.ptr2b[ptr]; exists {
 		s := p.b2ptr[b]
 		s.Remove(ptr)
 		delete(p.ptr2b, ptr)
 		if s.Len() == 0 {
 			delete(p.b2ptr, b)
-			return true
+			return done, b
 		}
-		return false
+		return notDone, b
 	}
-	return true
+	return notTracking, ""
 }
 
 func (p *pendingBlockWrites) cancel(b model.BlockId) {

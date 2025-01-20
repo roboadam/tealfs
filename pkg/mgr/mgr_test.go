@@ -25,7 +25,7 @@ import (
 func TestConnectToMgr(t *testing.T) {
 	const expectedAddress = "some-address:123"
 
-	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{})
+	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
 	err := m.Start()
 	if err != nil {
 		t.Error("Error starting", err)
@@ -121,7 +121,14 @@ func TestReceiveSaveData(t *testing.T) {
 			ConnId: expectedConnectionId1,
 			Payload: &model.WriteRequest{
 				Caller: expectedNodeId1,
-				Block:  model.Block{Id: id, Data: value},
+				Data: model.RawData{
+					Ptr: model.DiskPointer{
+						NodeId:   expectedNodeId1,
+						FileName: string(id),
+					},
+					Data: value,
+				},
+				Block: model.Block{Id: id, Data: value},
 			},
 		}
 

@@ -58,6 +58,7 @@ type Mgr struct {
 	savePath           string
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
+	pendingBlockReads  pendingBlockWrites
 }
 
 func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType) *Mgr {
@@ -91,6 +92,7 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		savePath:           savePath,
 		fileOps:            fileOps,
 		pendingBlockWrites: newPendingBlockWrites(),
+		pendingBlockReads:  newPendingBlockWrites(),
 	}
 	mgr.mirrorDistributer.SetWeight(mgr.NodeId, 1)
 	mgr.xorDistributer.SetWeight(mgr.NodeId, 1)
@@ -154,9 +156,9 @@ func (m *Mgr) eventLoop() {
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
-			m.handleDiskReads(r)
+			m.handleDiskReadResult(r)
 		case r := <-m.DiskMgrWrites:
-			m.handleDiskWrites(r)
+			m.handleDiskWriteResult(r)
 		case r := <-m.WebdavMgrGets:
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
@@ -218,11 +220,12 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		}
 	case *model.WriteRequest:
 		caller, ok := m.nodeConnMap.Get2(i.ConnId)
-		if !ok || caller != p.Caller {
+		if !ok {
 			payload := model.WriteResult{
 				Ok:      false,
 				Message: "connection error",
 				Caller:  caller,
+				Ptr:     p.Data.Ptr,
 			}
 			m.MgrConnsSends <- model.MgrConnsSend{
 				ConnId:  i.ConnId,
@@ -231,39 +234,53 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		}
 		m.MgrDiskWrites <- *p
 	case *model.WriteResult:
-		m.MgrWebdavPuts <- *p
+		m.handleDiskWriteResult(*p)
 	case *model.ReadRequest:
 		m.MgrDiskReads <- *p
 	case *model.ReadResult:
-		m.MgrWebdavGets <- *p
+		m.handleDiskReadResult(*p)
 	case webdav.LockMessage:
 		m.MgrWebdavLockMsg <- p
 	default:
 		fmt.Println(m.NodeId, "Received unknown payload", p)
 	}
 }
-func (m *Mgr) handleDiskWrites(r model.WriteResult) {
+
+func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 	if r.Caller == m.NodeId {
-		if r.Ok {
-			resolved := m.pendingBlockWrites.resolve(r.Ptr)
-			if resolved
+		resolved, blockId := m.pendingBlockWrites.resolve(r.Ptr)
+		var err error = nil
+		if !r.Ok {
+			err = errors.New(r.Message)
+			m.pendingBlockWrites.cancel(blockId)
 		}
-		m.MgrWebdavPuts <- r
+		switch resolved {
+		case done:
+			m.MgrWebdavPuts <- model.BlockIdResponse{
+				BlockId: blockId,
+				Err:     err,
+			}
+		}
 	} else {
 		panic("got a write request that isn't for me")
 	}
 }
 
-func (m *Mgr) handleDiskReads(r model.ReadResult) {
+func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
+	result, blockId := m.pendingBlockReads.resolve(r.Data.Ptr)
 	if r.Caller == m.NodeId {
-		m.MgrWebdavGets <- r
-	} else {
-		c, ok := m.nodeConnMap.Get1(r.Caller)
-		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
-		} else {
-			fmt.Println("Need to add to queue when reconnected")
+		if result == done {
+			m.MgrWebdavGets <- model.BlockResponse{
+				Block: model.Block{
+					Id:   blockId,
+					Type: model.Mirrored,
+					Data: r.Data.Data,
+				},
+				Err: nil,
+			}
 		}
+	} else {
+		panic("read result sent to wrong place")
 	}
 }
 
@@ -299,7 +316,8 @@ func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) e
 		return err
 	}
 	m.nodeConnMap.Add(n, c)
-	m.distributer.SetWeight(n, 1)
+	m.mirrorDistributer.SetWeight(n, 1)
+	m.xorDistributer.SetWeight(n, 1)
 	return nil
 }
 
@@ -319,23 +337,34 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	}
 }
 
-func (m *Mgr) handleWebdavGets(rr model.BlockId) {
-	n := m.distributer.NodeIdForStoreId(rr.BlockKey)
-	if m.NodeId == n {
-		m.MgrDiskReads <- rr
+func (m *Mgr) handleWebdavGets(blockId model.BlockId) {
+	ptrs := m.mirrorDistributer.PointersForId(blockId)
+	if len(ptrs) == 0 {
+		m.MgrWebdavGets <- model.BlockResponse{
+			Block: model.Block{},
+			Err:   errors.New("not found"),
+		}
 	} else {
-		c, ok := m.nodeConnMap.Get1(n)
-		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{
-				ConnId:  c,
-				Payload: &rr,
-			}
+		n := ptrs[0].NodeId
+		rr := model.ReadRequest{
+			Caller: m.NodeId,
+			Ptr:    ptrs[0],
+		}
+		m.pendingBlockReads.add(blockId, ptrs[0])
+		if m.NodeId == n {
+			m.MgrDiskReads <- rr
 		} else {
-			m.MgrWebdavGets <- model.ReadResult{
-				Ok:      false,
-				Message: "Not connected",
-				Block:   model.Block{Id: rr.BlockKey},
-				Caller:  rr.Caller,
+			c, ok := m.nodeConnMap.Get1(n)
+			if ok {
+				m.MgrConnsSends <- model.MgrConnsSend{
+					ConnId:  c,
+					Payload: &rr,
+				}
+			} else {
+				m.MgrWebdavGets <- model.BlockResponse{
+					Block: model.Block{},
+					Err:   errors.New("no connection"),
+				}
 			}
 		}
 	}
@@ -345,24 +374,10 @@ func (m *Mgr) handleWebdavWriteRequest(w model.Block) {
 	switch w.Type {
 	case model.Mirrored:
 		m.handleMirroredWriteRequest(w)
-	case model.Xored:
+	case model.XORed:
 		m.handleXoredWriteRequest(w)
 	default:
 		panic("unknown block type")
-	}
-	n := m.distributer.NodeIdForStoreId(w.Block.Id)
-	if n == m.NodeId {
-		m.MgrDiskWrites <- w
-	} else {
-		c, ok := m.nodeConnMap.Get1(n)
-		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{
-				ConnId:  c,
-				Payload: &w,
-			}
-		} else {
-			m.MgrDiskWrites <- w
-		}
 	}
 }
 
@@ -400,6 +415,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.Block) {
 }
 
 func (m *Mgr) handleXoredWriteRequest(b model.Block) {
+	panic("not implemented yet")
 }
 
 func (m *Mgr) handleWebdavLockMsg(lm webdav.LockMessage) {

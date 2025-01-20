@@ -23,8 +23,9 @@ func TestPendingBlockWrites(t *testing.T) {
 		FileName: "someFile3",
 	}
 
-	if pbw.resolve(ptr1) == false {
-		t.Errorf("should be resolved")
+	result, _ := pbw.resolve(ptr1)
+	if result != notTracking {
+		t.Errorf("should be not tracking")
 		return
 	}
 
@@ -32,23 +33,21 @@ func TestPendingBlockWrites(t *testing.T) {
 	pbw.add(blockId1, ptr2)
 	pbw.add(blockId2, ptr3)
 
-	if pbw.resolve(ptr1) == true {
-		t.Errorf("should not be resolved")
+	result, blockResult := pbw.resolve(ptr1)
+	if result != notDone || blockResult != blockId1 {
+		t.Errorf("should not be done")
 		return
 	}
 
-	if pbw.resolve(ptr1) == true {
-		t.Errorf("should not be resolved")
+	result, blockResult = pbw.resolve(ptr2)
+	if result != done || blockResult != blockId1 {
+		t.Errorf("should be done")
 		return
 	}
 
-	if pbw.resolve(ptr2) == false {
-		t.Errorf("should be resolved")
-		return
-	}
-
-	if pbw.resolve(ptr3) == false {
-		t.Errorf("should be resolved")
+	result, blockResult = pbw.resolve(ptr3)
+	if result != done || blockResult != blockId2 {
+		t.Errorf("should nbe done")
 		return
 	}
 }
