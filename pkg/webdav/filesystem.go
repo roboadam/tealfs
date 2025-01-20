@@ -62,21 +62,18 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 }
 
 type WriteReqResp struct {
-	Req  model.WriteRequest
-	Resp chan model.WriteResult
+	Req  model.Block
+	Resp chan model.BlockIdResponse
 }
 
 type ReadReqResp struct {
-	Req  model.ReadRequest
-	Resp chan model.ReadResult
+	Req  model.BlockId
+	Resp chan model.BlockResponse
 }
 
-func (f *FileSystem) fetchBlock(id model.BlockId) model.ReadResult {
-	req := model.ReadRequest{
-		Caller:   f.nodeId,
-		BlockKey: id,
-	}
-	resp := make(chan model.ReadResult)
+func (f *FileSystem) fetchBlock(id model.BlockId) model.BlockResponse {
+	req := id
+	resp := make(chan model.BlockResponse)
 	f.ReadReqResp <- ReadReqResp{req, resp}
 	return <-resp
 }
@@ -92,10 +89,9 @@ func (f *FileSystem) immediateChildren(path Path) []*File {
 	return children
 }
 
-func (f *FileSystem) pushBlock(block model.Block) model.WriteResult {
-	req := model.WriteRequest{Caller: f.nodeId, Block: block}
-	resp := make(chan model.WriteResult)
-	f.WriteReqResp <- WriteReqResp{req, resp}
+func (f *FileSystem) pushBlock(block model.Block) model.BlockIdResponse {
+	resp := make(chan model.BlockIdResponse)
+	f.WriteReqResp <- WriteReqResp{Req: block, Resp: resp}
 	return <-resp
 }
 
