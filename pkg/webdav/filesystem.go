@@ -217,8 +217,8 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 func (f *FileSystem) fetchFileIndex() error {
 	result := f.fetchBlock("fileIndex")
 
-	if !result.Ok {
-		return errors.New(result.Message)
+	if result.Err != nil {
+		return result.Err
 	}
 
 	return f.fileHolder.UpdateFileHolderFromBytes(result.Block.Data, f)
@@ -230,8 +230,8 @@ func (f *FileSystem) persistFileIndex() error {
 		Data: f.fileHolder.ToBytes(),
 	})
 
-	if !result.Ok {
-		return errors.New(result.Message)
+	if result.Err != nil {
+		return result.Err
 	}
 	return nil
 }
