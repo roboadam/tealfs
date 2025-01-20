@@ -15,6 +15,7 @@
 package mgr
 
 import (
+	"bytes"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
@@ -92,171 +93,6 @@ func TestReceiveSyncNodes(t *testing.T) {
 	}
 }
 
-func TestReceiveSaveData(t *testing.T) {
-	const expectedAddress1 = "some-address:123"
-	const expectedConnectionId1 = 1
-	var expectedNodeId1 = model.NewNodeId()
-	const expectedAddress2 = "some-address2:234"
-	const expectedConnectionId2 = 2
-	var expectedNodeId2 = model.NewNodeId()
-
-	m := mgrWithConnectedNodes([]connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, t)
-
-	ids := []model.BlockId{}
-	for range 100 {
-		ids = append(ids, model.NewBlockId())
-	}
-
-	value := []byte("123")
-
-	meCount := 0
-	oneCount := 0
-	twoCount := 0
-
-	for _, id := range ids {
-		m.ConnsMgrReceives <- model.ConnsMgrReceive{
-			ConnId: expectedConnectionId1,
-			Payload: &model.WriteRequest{
-				Caller: expectedNodeId1,
-				Data: model.RawData{
-					Ptr: model.DiskPointer{
-						NodeId:   expectedNodeId1,
-						FileName: string(id),
-					},
-					Data: value,
-				},
-				Block: model.Block{Id: id, Data: value},
-			},
-		}
-
-		select {
-		case w := <-m.MgrDiskWrites:
-			meCount++
-			if w.Block.Id != id {
-				t.Error("expected to write to 1, got", w.Block.Id)
-			}
-		case s := <-m.MgrConnsSends:
-			//Todo: s.Payload should be checked for the correct value
-			if s.ConnId == expectedConnectionId1 {
-				oneCount++
-			} else if s.ConnId == expectedConnectionId2 {
-				twoCount++
-			} else {
-				t.Error("expected to connect to", s.ConnId)
-			}
-		}
-	}
-	if meCount == 0 || oneCount == 0 || twoCount == 0 {
-		t.Error("Expected everyone to get some data")
-	}
-}
-
-func TestReceiveDiskRead(t *testing.T) {
-	const expectedAddress1 = "some-address:123"
-	const expectedConnectionId1 = 1
-	var expectedNodeId1 = model.NewNodeId()
-	const expectedAddress2 = "some-address2:234"
-	const expectedConnectionId2 = 2
-	var expectedNodeId2 = model.NewNodeId()
-
-	m := mgrWithConnectedNodes([]connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, t)
-
-	storeId1 := model.NewBlockId()
-	data1 := []byte{0x00, 0x01, 0x02}
-
-	rr := model.ReadResult{
-		Ok:     true,
-		Caller: m.NodeId,
-		Block: model.Block{
-			Id:   storeId1,
-			Data: data1,
-		},
-	}
-
-	m.DiskMgrReads <- rr
-
-	toWebdav := <-m.MgrWebdavGets
-
-	if !rr.Equal(&toWebdav) {
-		t.Errorf("rr didn't equal toWebdav")
-	}
-
-	rr2 := model.ReadResult{
-		Ok:     true,
-		Caller: expectedNodeId1,
-		Block: model.Block{
-			Id:   storeId1,
-			Data: data1,
-		},
-	}
-
-	m.DiskMgrReads <- rr2
-	sent2 := <-m.MgrConnsSends
-
-	expectedMCS2 := model.MgrConnsSend{
-		ConnId:  expectedConnectionId1,
-		Payload: &rr2,
-	}
-
-	if !sent2.Equal(&expectedMCS2) {
-		t.Errorf("sent2 not equal expectedMCS2")
-	}
-}
-
-func TestReceiveDiskWrite(t *testing.T) {
-	const expectedAddress1 = "some-address:123"
-	const expectedConnectionId1 = 1
-	var expectedNodeId1 = model.NewNodeId()
-	const expectedAddress2 = "some-address2:234"
-	const expectedConnectionId2 = 2
-	var expectedNodeId2 = model.NewNodeId()
-
-	m := mgrWithConnectedNodes([]connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, t)
-
-	storeId1 := model.NewBlockId()
-
-	wr := model.WriteResult{
-		Ok:       true,
-		Caller:   m.NodeId,
-		BlockKey: storeId1,
-	}
-
-	m.DiskMgrWrites <- wr
-
-	toWebdav := <-m.MgrWebdavPuts
-
-	if !wr.Equal(&toWebdav) {
-		t.Errorf("wr didn't equal toWebdav")
-	}
-
-	wr2 := model.WriteResult{
-		Ok:       true,
-		Caller:   expectedNodeId1,
-		BlockKey: storeId1,
-	}
-
-	m.DiskMgrWrites <- wr2
-	sent2 := <-m.MgrConnsSends
-
-	expectedMCS2 := model.MgrConnsSend{
-		ConnId:  expectedConnectionId1,
-		Payload: &wr2,
-	}
-
-	if !sent2.Equal(&expectedMCS2) {
-		t.Errorf("sent2 not equal expectedMCS2")
-	}
-}
-
 func TestWebdavGet(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
@@ -279,17 +115,26 @@ func TestWebdavGet(t *testing.T) {
 	oneCount := 0
 	twoCount := 0
 
-	for _, id := range ids {
-		m.WebdavMgrGets <- model.ReadRequest{
-			Caller:   m.NodeId,
-			BlockKey: id,
-		}
+	for _, blockId := range ids {
+		m.WebdavMgrGets <- blockId
 
 		select {
 		case r := <-m.MgrDiskReads:
 			meCount++
-			if r.BlockKey != id {
-				t.Error("expected to read to 1, got", r.BlockKey)
+			if r.Ptr.FileName != string(blockId) {
+				t.Error("expected to read to 1, got", r.Ptr.FileName)
+				return
+			}
+			m.DiskMgrReads <- model.ReadResult{
+				Ok:     true,
+				Caller: m.NodeId,
+				Data: model.RawData{
+					Ptr: model.DiskPointer{
+						NodeId:   m.NodeId,
+						FileName: string(blockId),
+					},
+					Data: []byte{1, 2, 3},
+				},
 			}
 		case s := <-m.MgrConnsSends:
 			if s.ConnId == expectedConnectionId1 {
@@ -298,6 +143,26 @@ func TestWebdavGet(t *testing.T) {
 				twoCount++
 			} else {
 				t.Error("expected to connect to", s.ConnId)
+				return
+			}
+			m.ConnsMgrReceives <- model.ConnsMgrReceive{
+				ConnId: s.ConnId,
+				Payload: &model.ReadResult{
+					Ok:     true,
+					Caller: "",
+					Data: model.RawData{
+						Ptr: model.DiskPointer{
+							NodeId:   expectedNodeId1,
+							FileName: string(blockId),
+						},
+						Data: []byte{1, 2, 3},
+					},
+				},
+			}
+		case w := <-m.MgrWebdavGets:
+			if w.Block.Id != blockId {
+				t.Error("unexpected block id")
+				return
 			}
 		}
 	}
@@ -334,16 +199,21 @@ func TestWebdavPut(t *testing.T) {
 	twoCount := 0
 
 	for _, block := range blocks {
-		m.WebdavMgrPuts <- model.WriteRequest{
-			Caller: m.NodeId,
-			Block:  block,
-		}
+		m.WebdavMgrPuts <- block
 
 		select {
 		case w := <-m.MgrDiskWrites:
 			meCount++
-			if !w.Block.Equal(&block) {
+			if !bytes.Equal(w.Data.Data, block.Data) {
 				t.Error("expected the original block")
+			}
+			m.DiskMgrWrites <- model.WriteResult{
+				Ok:     true,
+				Caller: m.NodeId,
+				Ptr: model.DiskPointer{
+					NodeId:   m.NodeId,
+					FileName: string(block.Id),
+				},
 			}
 		case s := <-m.MgrConnsSends:
 			if s.ConnId == expectedConnectionId1 {
@@ -352,11 +222,24 @@ func TestWebdavPut(t *testing.T) {
 				twoCount++
 			} else {
 				t.Error("expected to connect to", s.ConnId)
+				return
+			}
+			m.ConnsMgrReceives <- model.ConnsMgrReceive{
+				ConnId: s.ConnId,
+				Payload: &model.WriteResult{
+					Ok:     true,
+					Caller: "",
+					Ptr: model.DiskPointer{
+						NodeId:   expectedNodeId1,
+						FileName: string(block.Id),
+					},
+				},
 			}
 		}
 	}
 	if meCount == 0 || oneCount == 0 || twoCount == 0 {
 		t.Error("Expected everyone to fetch some data")
+		return
 	}
 }
 
@@ -367,7 +250,7 @@ type connectedNode struct {
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
-	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{})
+	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := m.Start()
