@@ -267,8 +267,8 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 }
 
 func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
-	result, blockId := m.pendingBlockReads.resolve(r.Data.Ptr)
 	if r.Caller == m.NodeId {
+		result, blockId := m.pendingBlockReads.resolve(r.Data.Ptr)
 		if result == done {
 			m.MgrWebdavGets <- model.BlockResponse{
 				Block: model.Block{
@@ -280,7 +280,15 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 			}
 		}
 	} else {
-		panic("read result sent to wrong place")
+		c, ok := m.nodeConnMap.Get1(r.Caller)
+		if ok {
+			m.MgrConnsSends <- model.MgrConnsSend{
+				ConnId:  c,
+				Payload: &r,
+			}
+		} else {
+			panic("not connected")
+		}
 	}
 }
 
