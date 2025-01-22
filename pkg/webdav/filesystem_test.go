@@ -159,7 +159,7 @@ func TestWriteAndRead(t *testing.T) {
 	resultData := [5]byte{}
 	n, err = f.Read(resultData[:])
 	if err != nil {
-		t.Error("error reading the data")
+		t.Error("error reading the data", err)
 		return
 	}
 	if !bytes.Equal(expectedData, resultData[:]) {

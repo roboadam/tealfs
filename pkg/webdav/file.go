@@ -161,7 +161,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 func (f *File) ensureData() error {
 	if !f.HasData {
 		resp := f.FileSystem.fetchBlock(f.Block.Id)
-		if resp.Err != nil {
+		if resp.Err == nil {
 			f.Block = resp.Block
 			f.HasData = true
 		} else {
