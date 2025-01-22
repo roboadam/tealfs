@@ -49,7 +49,13 @@ func TestSendData(t *testing.T) {
 	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest(ctx)
 	expected := model.WriteRequest{
 		Caller: model.NewNodeId(),
-		Block:  model.Block{Id: "blockId", Data: []byte{1, 2, 3}},
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   "destNode",
+				FileName: "blockId",
+			},
+			Data: []byte{1, 2, 3},
+		},
 	}
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{

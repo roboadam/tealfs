@@ -29,21 +29,20 @@ import (
 
 func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
-	webdavMgrGets := make(chan model.ReadRequest)
-	webdavMgrPuts := make(chan model.WriteRequest)
-	mgrWebdavGets := make(chan model.ReadResult)
-	mgrWebdavPuts := make(chan model.WriteResult)
+	webdavMgrGets := make(chan model.BlockId)
+	webdavMgrPuts := make(chan model.Block)
+	mgrWebdavGets := make(chan model.BlockResponse)
+	mgrWebdavPuts := make(chan model.BlockIdResponse)
 	mgrWebdavIsPrimary := make(chan bool)
 	mgrWebdavLockMsg := make(chan webdav.LockMessage)
 	webdavMgrLockMsg := make(chan webdav.LockMessage)
-	otherNode := model.NewNodeId()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	mux := sync.Mutex{}
 	mockStorage := make(map[model.BlockId][]byte)
-	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, otherNode, &mux, mockStorage)
-	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, otherNode, &mux, mockStorage)
+	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, &mux, mockStorage)
+	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, &mux, mockStorage)
 
 	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, mgrWebdavIsPrimary, webdavMgrLockMsg, mgrWebdavLockMsg, "localhost:7654", ctx)
 	time.Sleep(1 * time.Second) //FIXME, need a better way to wait for listener to start
@@ -119,29 +118,19 @@ func propFind(url string) (string, error) {
 	return string(body), nil
 }
 
-func handleWebdavMgrGets(ctx context.Context, channel chan model.ReadRequest, respChan chan model.ReadResult, caller model.NodeId, mux *sync.Mutex, data map[model.BlockId][]byte) {
+func handleWebdavMgrGets(ctx context.Context, channel chan model.BlockId, respChan chan model.BlockResponse, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case req := <-channel:
 			mux.Lock()
-			blockData, exists := data[req.BlockKey]
+			blockData, exists := data[req]
 			if exists {
-				respChan <- model.ReadResult{
-					Ok:     true,
-					Caller: caller,
-					Block: model.Block{
-						Id:   req.BlockKey,
-						Data: blockData,
-					},
+				respChan <- model.BlockResponse{
+					Block: model.Block{Id: req, Data: blockData},
 				}
 			} else {
-				respChan <- model.ReadResult{
-					Ok:     true,
-					Caller: caller,
-					Block: model.Block{
-						Id:   req.BlockKey,
-						Data: []byte{},
-					},
+				respChan <- model.BlockResponse{
+					Block: model.Block{Id: req, Data: []byte{}},
 				}
 			}
 			mux.Unlock()
@@ -151,19 +140,15 @@ func handleWebdavMgrGets(ctx context.Context, channel chan model.ReadRequest, re
 	}
 }
 
-func handleWebdavMgrPuts(ctx context.Context, channel chan model.WriteRequest, result chan model.WriteResult, caller model.NodeId, mux *sync.Mutex, data map[model.BlockId][]byte) {
+func handleWebdavMgrPuts(ctx context.Context, channel chan model.Block, result chan model.BlockIdResponse, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case req := <-channel:
 			mux.Lock()
-			data[req.Block.Id] = req.Block.Data
-			result <- model.WriteResult{
-				Ok:       true,
-				Caller:   caller,
-				BlockKey: req.Block.Id,
-			}
+			data[req.Id] = req.Data
+			result <- model.BlockIdResponse{BlockId: req.Id}
 			mux.Unlock()
 		}
 	}

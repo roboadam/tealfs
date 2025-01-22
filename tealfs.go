@@ -35,7 +35,7 @@ func main() {
 }
 
 func startTealFs(id model.NodeId, storagePath string, webdavAddress string, uiAddress string, nodeAddress string, ctx context.Context) error {
-	m := mgr.NewWithChanSize(id, 1, nodeAddress, storagePath, &disk.DiskFileOps{})
+	m := mgr.NewWithChanSize(id, 1, nodeAddress, storagePath, &disk.DiskFileOps{}, model.Mirrored)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
