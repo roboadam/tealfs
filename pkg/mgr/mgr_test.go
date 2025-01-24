@@ -137,10 +137,13 @@ func TestWebdavGet(t *testing.T) {
 				},
 			}
 		case s := <-m.MgrConnsSends:
+			var nodeWithData model.NodeId
 			if s.ConnId == expectedConnectionId1 {
 				oneCount++
+				nodeWithData = expectedNodeId1
 			} else if s.ConnId == expectedConnectionId2 {
 				twoCount++
+				nodeWithData = expectedNodeId2
 			} else {
 				t.Error("expected to connect to", s.ConnId)
 				return
@@ -149,10 +152,10 @@ func TestWebdavGet(t *testing.T) {
 				ConnId: s.ConnId,
 				Payload: &model.ReadResult{
 					Ok:     true,
-					Caller: "",
+					Caller: m.NodeId,
 					Data: model.RawData{
 						Ptr: model.DiskPointer{
-							NodeId:   expectedNodeId1,
+							NodeId:   nodeWithData,
 							FileName: string(blockId),
 						},
 						Data: []byte{1, 2, 3},
@@ -206,6 +209,7 @@ func TestWebdavPut(t *testing.T) {
 			meCount++
 			if !bytes.Equal(w.Data.Data, block.Data) {
 				t.Error("expected the original block")
+				return
 			}
 			m.DiskMgrWrites <- model.WriteResult{
 				Ok:     true,
@@ -215,11 +219,15 @@ func TestWebdavPut(t *testing.T) {
 					FileName: string(block.Id),
 				},
 			}
+			println("test")
 		case s := <-m.MgrConnsSends:
+			var nodeWithData model.NodeId
 			if s.ConnId == expectedConnectionId1 {
 				oneCount++
+				nodeWithData = expectedNodeId1
 			} else if s.ConnId == expectedConnectionId2 {
 				twoCount++
+				nodeWithData = expectedNodeId2
 			} else {
 				t.Error("expected to connect to", s.ConnId)
 				return
@@ -228,13 +236,14 @@ func TestWebdavPut(t *testing.T) {
 				ConnId: s.ConnId,
 				Payload: &model.WriteResult{
 					Ok:     true,
-					Caller: "",
+					Caller: m.NodeId,
 					Ptr: model.DiskPointer{
-						NodeId:   expectedNodeId1,
+						NodeId:   nodeWithData,
 						FileName: string(block.Id),
 					},
 				},
 			}
+			println("test")
 		}
 	}
 	if meCount == 0 || oneCount == 0 || twoCount == 0 {
@@ -285,12 +294,15 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
 		case *model.IAm:
 			if p.NodeId != m.NodeId {
 				t.Error("Unexpected nodeId")
+				panic("Unexpected nodeId")
 			}
 			if expectedIam.ConnId != n.conn {
 				t.Error("Unexpected connId")
+				panic("Unexpected connId")
 			}
 		default:
 			t.Error("Unexpected payload", p)
+			panic("Unexpected payload")
 		}
 
 		// Send a message to Mgr indicating the newly
@@ -318,6 +330,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
 
 		if !cIdSnSliceEquals(expectedSyncNodes, syncNodesWeSent) {
 			t.Error("Expected sync nodes to match", expectedSyncNodes, syncNodesWeSent)
+			panic("Expected sync nodes to match")
 		}
 	}
 
@@ -335,6 +348,7 @@ func assertAllPayloadsSyncNodes(t *testing.T, mcs []model.MgrConnsSend) []connId
 			}{ConnId: mc.ConnId, Payload: *p})
 		default:
 			t.Error("Unexpected payload", p)
+			panic("Unexpected payload")
 		}
 	}
 	return results

@@ -38,6 +38,8 @@ func (p *pendingBlockWrites) add(b model.BlockId, ptr model.DiskPointer) {
 
 	s := p.b2ptr[b]
 	s.Add(ptr)
+
+	p.ptr2b[ptr] = b
 }
 
 type resolveResult int
