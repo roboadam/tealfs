@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 
 	"context"
@@ -107,8 +108,10 @@ func TestWebdavGet(t *testing.T) {
 	}, t)
 
 	ids := []model.BlockId{}
+	idsInFlight := set.NewSet[model.BlockId]()
 	for range 100 {
-		ids = append(ids, model.NewBlockId())
+		blockId := model.NewBlockId()
+		ids = append(ids, blockId)
 	}
 
 	meCount := 0
@@ -116,12 +119,13 @@ func TestWebdavGet(t *testing.T) {
 	twoCount := 0
 
 	for _, blockId := range ids {
+		idsInFlight.Add(blockId)
 		m.WebdavMgrGets <- blockId
 
 		select {
 		case r := <-m.MgrDiskReads:
 			meCount++
-			if r.Ptr.FileName != string(blockId) {
+			if !idsInFlight.Exists(model.BlockId(r.Ptr.FileName)) {
 				t.Error("expected to read to 1, got", r.Ptr.FileName)
 				return
 			}
@@ -163,10 +167,11 @@ func TestWebdavGet(t *testing.T) {
 				},
 			}
 		case w := <-m.MgrWebdavGets:
-			if w.Block.Id != blockId {
+			if !idsInFlight.Exists(w.Block.Id) {
 				t.Error("unexpected block id")
 				return
 			}
+			idsInFlight.Remove(w.Block.Id)
 		}
 	}
 	if meCount == 0 || oneCount == 0 || twoCount == 0 {
@@ -259,7 +264,7 @@ type connectedNode struct {
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
-	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
+	m := NewWithChanSize(model.NewNodeId(), 5, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := m.Start()
