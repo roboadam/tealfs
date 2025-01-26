@@ -16,7 +16,6 @@ package webdav
 
 import (
 	"errors"
-	"fmt"
 	"tealfs/pkg/model"
 	"time"
 
@@ -52,12 +51,10 @@ func NewLockSystem(nodeId model.NodeId) *LockSystem {
 }
 
 func (l *LockSystem) UseNetLockSystem() {
-	fmt.Println("Using net lock system")
 	l.mode = LockSystemModeNet
 }
 
 func (l *LockSystem) UseLocalLockSystem() {
-	fmt.Println("Using local lock system")
 	l.mode = LockSystemModeLocal
 }
 

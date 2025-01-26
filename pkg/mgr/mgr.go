@@ -262,7 +262,7 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 			}
 		}
 	} else {
-		panic("got a write request that isn't for me")
+		panic("got a write result that isn't for me")
 	}
 }
 

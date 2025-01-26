@@ -75,6 +75,8 @@ func TestTwoNodeCluster(t *testing.T) {
 	nodeAddress2 := "localhost:9082"
 	storagePath1 := "tmp1"
 	storagePath2 := "tmp2"
+	os.RemoveAll(storagePath1)
+	os.RemoveAll(storagePath2)
 	connectToUrl := "http://" + uiAddress1 + "/connect-to"
 	fileContents1 := "test content 1"
 	fileContents2 := "test content 2"
