@@ -55,7 +55,7 @@ func TestConnectToSuccess(t *testing.T) {
 	mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, t)
+	}, 0, t)
 }
 
 func TestReceiveSyncNodes(t *testing.T) {
@@ -71,7 +71,7 @@ func TestReceiveSyncNodes(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId},
 		{address: localAddress, conn: localConnectionId, node: localNodeId},
-	}, t)
+	}, 0, t)
 
 	sn := model.NewSyncNodes()
 	sn.Nodes.Add(struct {
@@ -106,7 +106,7 @@ func TestWebdavGet(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, t)
+	}, 0, t)
 
 	ids := []model.BlockId{}
 	for range 100 {
@@ -186,6 +186,7 @@ func TestWebdavPut(t *testing.T) {
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = model.NewNodeId()
+	maxNumberOfWritesInOnePass := 2
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -193,7 +194,7 @@ func TestWebdavPut(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, t)
+	}, maxNumberOfWritesInOnePass, t)
 
 	blocks := []model.Block{}
 	for i := range 100 {
@@ -272,8 +273,8 @@ type connectedNode struct {
 	node    model.NodeId
 }
 
-func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
-	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
+func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T) *Mgr {
+	m := NewWithChanSize(model.NewNodeId(), chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := m.Start()
