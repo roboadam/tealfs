@@ -191,6 +191,9 @@ func TestWebdavPut(t *testing.T) {
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = model.NewNodeId()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
@@ -206,11 +209,61 @@ func TestWebdavPut(t *testing.T) {
 		blocks = append(blocks, block)
 	}
 
-	meCount := 0
-	oneCount := 0
-	twoCount := 0
+	meCount := int32(0)
+	oneCount := int32(0)
+	twoCount := int32(0)
 
 	blockDataFlight := [][]byte{}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case w := <-m.MgrDiskWrites:
+				atomic.AddInt32(&meCount, 1)
+				m.DiskMgrWrites <- model.WriteResult{
+					Ok:     true,
+					Caller: m.NodeId,
+					Ptr:    w.Data.Ptr,
+				}
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case s := <-m.MgrConnsSends:
+				// var nodeWithData model.NodeId
+				// if s.ConnId == expectedConnectionId1 {
+				// 	atomic.AddInt32(&oneCount, 1)
+				// 	nodeWithData = expectedNodeId1
+				// } else if s.ConnId == expectedConnectionId2 {
+				// 	atomic.AddInt32(&twoCount, 1)
+				// 	nodeWithData = expectedNodeId2
+				// } else {
+				// 	t.Error("expected to connect to", s.ConnId)
+				// 	return
+				// }
+
+				switch writeRequest := s.Payload.(type) {
+				case *model.WriteRequest:
+					m.ConnsMgrReceives <- model.ConnsMgrReceive{
+						ConnId: s.ConnId,
+						Payload: &model.WriteResult{
+							Ok:     true,
+							Caller: writeRequest.Caller,
+							Ptr:    writeRequest.Data.Ptr,
+						},
+					}
+				}
+
+			}
+		}
+	}()
 
 	for _, block := range blocks {
 		m.WebdavMgrPuts <- block
