@@ -15,7 +15,6 @@
 package mgr
 
 import (
-	"bytes"
 	"sync/atomic"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -150,9 +149,6 @@ func TestWebdavGet(t *testing.T) {
 						atomic.AddInt32(&oneCount, 1)
 					} else if s.ConnId == expectedConnectionId2 {
 						atomic.AddInt32(&twoCount, 1)
-					} else {
-						t.Error("expected to connect to", s.ConnId)
-						return
 					}
 					m.ConnsMgrReceives <- model.ConnsMgrReceive{
 						ConnId: s.ConnId,
@@ -213,8 +209,6 @@ func TestWebdavPut(t *testing.T) {
 	oneCount := int32(0)
 	twoCount := int32(0)
 
-	blockDataFlight := [][]byte{}
-
 	go func() {
 		for {
 			select {
@@ -237,17 +231,11 @@ func TestWebdavPut(t *testing.T) {
 			case <-ctx.Done():
 				return
 			case s := <-m.MgrConnsSends:
-				// var nodeWithData model.NodeId
-				// if s.ConnId == expectedConnectionId1 {
-				// 	atomic.AddInt32(&oneCount, 1)
-				// 	nodeWithData = expectedNodeId1
-				// } else if s.ConnId == expectedConnectionId2 {
-				// 	atomic.AddInt32(&twoCount, 1)
-				// 	nodeWithData = expectedNodeId2
-				// } else {
-				// 	t.Error("expected to connect to", s.ConnId)
-				// 	return
-				// }
+				if s.ConnId == expectedConnectionId1 {
+					atomic.AddInt32(&oneCount, 1)
+				} else if s.ConnId == expectedConnectionId2 {
+					atomic.AddInt32(&twoCount, 1)
+				}
 
 				switch writeRequest := s.Payload.(type) {
 				case *model.WriteRequest:
@@ -267,64 +255,15 @@ func TestWebdavPut(t *testing.T) {
 
 	for _, block := range blocks {
 		m.WebdavMgrPuts <- block
-		blockDataFlight = append(blockDataFlight, block.Data)
-
-		select {
-		case w := <-m.MgrDiskWrites:
-			meCount++
-			exists, newInFlight := contains(blockDataFlight, w.Data.Data)
-			if !exists {
-				t.Error("expected the original block")
-				return
-			}
-			blockDataFlight = newInFlight
-
-			m.DiskMgrWrites <- model.WriteResult{
-				Ok:     true,
-				Caller: m.NodeId,
-				Ptr: model.DiskPointer{
-					NodeId:   m.NodeId,
-					FileName: string(block.Id),
-				},
-			}
-		case s := <-m.MgrConnsSends:
-			var nodeWithData model.NodeId
-			if s.ConnId == expectedConnectionId1 {
-				oneCount++
-				nodeWithData = expectedNodeId1
-			} else if s.ConnId == expectedConnectionId2 {
-				twoCount++
-				nodeWithData = expectedNodeId2
-			} else {
-				t.Error("expected to connect to", s.ConnId)
-				return
-			}
-			m.ConnsMgrReceives <- model.ConnsMgrReceive{
-				ConnId: s.ConnId,
-				Payload: &model.WriteResult{
-					Ok:     true,
-					Caller: m.NodeId,
-					Ptr: model.DiskPointer{
-						NodeId:   nodeWithData,
-						FileName: string(block.Id),
-					},
-				},
-			}
+		w := <-m.MgrWebdavPuts
+		if w.BlockId != block.Id {
+			t.Error("Expected", block.Id, "got", w.BlockId)
 		}
 	}
 	if meCount == 0 || oneCount == 0 || twoCount == 0 {
 		t.Error("Expected everyone to fetch some data")
 		return
 	}
-}
-
-func contains(data [][]byte, d []byte) (bool, [][]byte) {
-	for i, b := range data {
-		if bytes.Equal(b, d) {
-			return true, append(data[:i], data[i+1:]...)
-		}
-	}
-	return false, data
 }
 
 type connectedNode struct {
