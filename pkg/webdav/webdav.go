@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -23,17 +23,17 @@ import (
 )
 
 type Webdav struct {
-	webdavMgrGets      chan model.ReadRequest
-	webdavMgrPuts      chan model.WriteRequest
-	mgrWebdavGets      chan model.ReadResult
-	mgrWebdavPuts      chan model.WriteResult
+	webdavMgrGets      chan model.BlockId
+	webdavMgrPuts      chan model.Block
+	mgrWebdavGets      chan model.BlockResponse
+	mgrWebdavPuts      chan model.BlockIdResponse
 	mgrWebdavIsPrimary chan bool
 	webdavMgrLockMsg   chan LockMessage
 	mgrWebdavLockMsg   chan LockMessage
 	fileSystem         FileSystem
 	nodeId             model.NodeId
-	pendingReads       map[model.BlockId]chan model.ReadResult
-	pendingPuts        map[model.BlockId]chan model.WriteResult
+	pendingReads       map[model.BlockId]chan model.BlockResponse
+	pendingPuts        map[model.BlockId]chan model.BlockIdResponse
 	pendingLockMsg     map[model.LockMessageId]chan LockMessage
 	pendingReleases    map[model.LockMessageId]func()
 	lockSystem         *LockSystem
@@ -43,10 +43,10 @@ type Webdav struct {
 
 func New(
 	nodeId model.NodeId,
-	webdavMgrGets chan model.ReadRequest,
-	webdavMgrPuts chan model.WriteRequest,
-	mgrWebdavGets chan model.ReadResult,
-	mgrWebdavPuts chan model.WriteResult,
+	webdavMgrGets chan model.BlockId,
+	webdavMgrPuts chan model.Block,
+	mgrWebdavGets chan model.BlockResponse,
+	mgrWebdavPuts chan model.BlockIdResponse,
 	mgrWebdavIsPrimary chan bool,
 	webdavMgrLockMsg chan LockMessage,
 	mgrWebdavLockMsg chan LockMessage,
@@ -63,8 +63,8 @@ func New(
 		mgrWebdavLockMsg:   mgrWebdavLockMsg,
 		fileSystem:         NewFileSystem(nodeId),
 		nodeId:             nodeId,
-		pendingReads:       make(map[model.BlockId]chan model.ReadResult),
-		pendingPuts:        make(map[model.BlockId]chan model.WriteResult),
+		pendingReads:       make(map[model.BlockId]chan model.BlockResponse),
+		pendingPuts:        make(map[model.BlockId]chan model.BlockIdResponse),
 		pendingLockMsg:     make(map[model.LockMessageId]chan LockMessage),
 		pendingReleases:    map[model.LockMessageId]func(){},
 		lockSystem:         NewLockSystem(nodeId),
@@ -198,10 +198,10 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 			}
 		case r := <-w.fileSystem.ReadReqResp:
 			w.webdavMgrGets <- r.Req
-			w.pendingReads[r.Req.BlockId] = r.Resp
+			w.pendingReads[r.Req] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
 			w.webdavMgrPuts <- r.Req
-			w.pendingPuts[r.Req.Block.Id] = r.Resp
+			w.pendingPuts[r.Req.Id] = r.Resp
 		case isPrimary := <-w.mgrWebdavIsPrimary:
 			if isPrimary {
 				w.lockSystem.UseLocalLockSystem()

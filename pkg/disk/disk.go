@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -56,31 +56,27 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Block.Id, s.Block.Data)
+			err := d.path.Save(s.Data)
 			if err == nil {
 				d.outWrites <- model.WriteResult{
-					Ok:      true,
-					Caller:  s.Caller,
-					BlockId: s.Block.Id,
+					Ok:     true,
+					Caller: s.Caller,
+					Ptr:    s.Data.Ptr,
 				}
 			} else {
 				d.outWrites <- model.WriteResult{
 					Ok:      false,
 					Message: err.Error(),
 					Caller:  s.Caller,
-					BlockId: s.Block.Id,
 				}
 			}
 		case r := <-d.inReads:
-			data, err := d.path.Read(r.BlockId)
+			data, err := d.path.Read(r.Ptr)
 			if err == nil {
 				d.outReads <- model.ReadResult{
 					Ok:     true,
 					Caller: r.Caller,
-					Block: model.Block{
-						Id:   r.BlockId,
-						Data: data,
-					},
+					Data:   data,
 				}
 			} else {
 				d.outReads <- model.ReadResult{
@@ -93,18 +89,18 @@ func (d *Disk) consumeChannels() {
 	}
 }
 
-func (p *Path) Save(id model.BlockId, data []byte) error {
-	filePath := filepath.Join(p.raw, string(id))
-	return p.ops.WriteFile(filePath, data)
+func (p *Path) Save(rawData model.RawData) error {
+	filePath := filepath.Join(p.raw, rawData.Ptr.FileName)
+	return p.ops.WriteFile(filePath, rawData.Data)
 }
 
-func (p *Path) Read(id model.BlockId) ([]byte, error) {
-	filePath := filepath.Join(p.raw, string(id))
+func (p *Path) Read(ptr model.DiskPointer) (model.RawData, error) {
+	filePath := filepath.Join(p.raw, ptr.FileName)
 	result, err := p.ops.ReadFile(filePath)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
-		return []byte{}, nil
+		return model.RawData{Ptr: ptr, Data: []byte{}}, nil
 	}
-	return result, err
+	return model.RawData{Ptr: ptr, Data: result}, err
 }
 
 func NewPath(rawPath string, ops FileOps) Path {

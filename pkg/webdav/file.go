@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -147,7 +147,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 	}
 
 	result := f.FileSystem.pushBlock(f.Block)
-	if result.Ok {
+	if result.Err == nil {
 		err = f.FileSystem.persistFileIndex()
 		if err != nil {
 			return 0, err
@@ -155,17 +155,17 @@ func (f *File) Write(p []byte) (n int, err error) {
 		return len(p), nil
 	}
 
-	return 0, errors.New(result.Message)
+	return 0, result.Err
 }
 
 func (f *File) ensureData() error {
 	if !f.HasData {
 		resp := f.FileSystem.fetchBlock(f.Block.Id)
-		if resp.Ok {
+		if resp.Err == nil {
 			f.Block = resp.Block
 			f.HasData = true
 		} else {
-			return errors.New(resp.Message)
+			return resp.Err
 		}
 	}
 	return nil

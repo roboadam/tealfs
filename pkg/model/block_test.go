@@ -12,36 +12,24 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package model
+package model_test
 
 import (
-	"bytes"
+	"tealfs/pkg/model"
+	"testing"
 )
 
-type ReadRequest struct {
-	Caller NodeId
-	Ptr    DiskPointer
-}
-
-func (r *ReadRequest) ToBytes() []byte {
-	callerId := StringToBytes(string(r.Caller))
-	blockKey := r.Ptr.ToBytes()
-	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, blockKey}, []byte{}))
-}
-
-func (r *ReadRequest) Equal(p Payload) bool {
-	if o, ok := p.(*ReadRequest); ok {
-		return r.Caller == o.Caller && r.Ptr.Equals(&o.Ptr)
+func TestDiskPtr(t *testing.T) {
+	ptr := model.DiskPointer{
+		NodeId:   model.NodeId("nodeId"),
+		FileName: "fileName",
 	}
-	return false
-}
-
-func ToReadRequest(data []byte) *ReadRequest {
-	callerId, remainder := StringFromBytes(data)
-	ptr, _ := ToDiskPointer(remainder)
-	rq := ReadRequest{
-		Caller: NodeId(callerId),
-		Ptr:    *ptr,
+	raw := ptr.ToBytes()
+	newPtr, remainder := model.ToDiskPointer(raw)
+	if !ptr.Equals(newPtr) {
+		t.Errorf("Expected %v, got %v", ptr, newPtr)
 	}
-	return &rq
+	if len(remainder) != 0 {
+		t.Errorf("Expected no remainder, got %v", remainder)
+	}
 }

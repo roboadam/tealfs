@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -22,7 +22,7 @@ type WriteResult struct {
 	Ok      bool
 	Message string
 	Caller  NodeId
-	BlockId BlockId
+	Ptr     DiskPointer
 }
 
 func (r *WriteResult) Equal(p Payload) bool {
@@ -36,7 +36,7 @@ func (r *WriteResult) Equal(p Payload) bool {
 		if r.Caller != o.Caller {
 			return false
 		}
-		if r.BlockId != o.BlockId {
+		if !r.Ptr.Equals(&o.Ptr) {
 			return false
 		}
 		return true
@@ -48,9 +48,9 @@ func (r *WriteResult) ToBytes() []byte {
 	ok := BoolToBytes(r.Ok)
 	message := StringToBytes(r.Message)
 	caller := StringToBytes(string(r.Caller))
-	blockId := StringToBytes(string(r.BlockId))
+	ptr := r.Ptr.ToBytes()
 
-	payload := bytes.Join([][]byte{ok, message, caller, blockId}, []byte{})
+	payload := bytes.Join([][]byte{ok, message, caller, ptr}, []byte{})
 	return AddType(WriteResultType, payload)
 }
 
@@ -58,11 +58,11 @@ func ToWriteResult(data []byte) *WriteResult {
 	ok, remainder := BoolFromBytes(data)
 	message, remainder := StringFromBytes(remainder)
 	caller, remainder := StringFromBytes(remainder)
-	blockId, _ := StringFromBytes(remainder)
+	ptr, _ := ToDiskPointer(remainder)
 	return &WriteResult{
 		Ok:      ok,
 		Message: message,
 		Caller:  NodeId(caller),
-		BlockId: BlockId(blockId),
+		Ptr:     *ptr,
 	}
 }

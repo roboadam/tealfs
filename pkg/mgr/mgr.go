@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -16,6 +16,7 @@ package mgr
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"path/filepath"
@@ -32,47 +33,51 @@ type Mgr struct {
 	ConnsMgrReceives   chan model.ConnsMgrReceive
 	DiskMgrReads       chan model.ReadResult
 	DiskMgrWrites      chan model.WriteResult
-	WebdavMgrGets      chan model.ReadRequest
-	WebdavMgrPuts      chan model.WriteRequest
+	WebdavMgrGets      chan model.BlockId
+	WebdavMgrPuts      chan model.Block
 	WebdavMgrLockMsg   chan webdav.LockMessage
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
 	MgrDiskReads       chan model.ReadRequest
 	MgrUiStatuses      chan model.UiConnectionStatus
-	MgrWebdavGets      chan model.ReadResult
-	MgrWebdavPuts      chan model.WriteResult
+	MgrWebdavGets      chan model.BlockResponse
+	MgrWebdavPuts      chan model.BlockIdResponse
 	MgrWebdavLockMsg   chan webdav.LockMessage
 	MgrWebdavIsPrimary chan bool
 
-	nodesAddressMap map[model.NodeId]string
-	nodeConnMap     set.Bimap[model.NodeId, model.ConnId]
-	NodeId          model.NodeId
-	PrimaryNodeId   model.NodeId
-	connAddress     map[model.ConnId]string
-	distributer     dist.Distributer
-	nodeAddress     string
-	savePath        string
-	fileOps         disk.FileOps
+	nodesAddressMap    map[model.NodeId]string
+	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
+	NodeId             model.NodeId
+	PrimaryNodeId      model.NodeId
+	connAddress        map[model.ConnId]string
+	mirrorDistributer  dist.MirrorDistributer
+	xorDistributer     dist.XorDistributer
+	blockType          model.BlockType
+	nodeAddress        string
+	savePath           string
+	fileOps            disk.FileOps
+	pendingBlockWrites pendingBlockWrites
+	pendingBlockReads  pendingBlockWrites
 }
 
-func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps) *Mgr {
+func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrWrites:      make(chan model.WriteResult),
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
-		WebdavMgrGets:      make(chan model.ReadRequest, chanSize),
-		WebdavMgrPuts:      make(chan model.WriteRequest, chanSize),
+		WebdavMgrGets:      make(chan model.BlockId, chanSize),
+		WebdavMgrPuts:      make(chan model.Block, chanSize),
 		WebdavMgrLockMsg:   make(chan webdav.LockMessage, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
 		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
-		MgrWebdavGets:      make(chan model.ReadResult, chanSize),
-		MgrWebdavPuts:      make(chan model.WriteResult, chanSize),
+		MgrWebdavGets:      make(chan model.BlockResponse, chanSize),
+		MgrWebdavPuts:      make(chan model.BlockIdResponse, chanSize),
 		MgrWebdavLockMsg:   make(chan webdav.LockMessage, chanSize),
 		MgrWebdavIsPrimary: make(chan bool),
 		nodesAddressMap:    make(map[model.NodeId]string),
@@ -80,12 +85,17 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		PrimaryNodeId:      nodeId,
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
-		distributer:        dist.New(),
+		mirrorDistributer:  dist.NewMirrorDistributer(),
+		xorDistributer:     dist.NewXorDistributer(),
+		blockType:          blockType,
 		nodeAddress:        nodeAddress,
 		savePath:           savePath,
 		fileOps:            fileOps,
+		pendingBlockWrites: newPendingBlockWrites(),
+		pendingBlockReads:  newPendingBlockWrites(),
 	}
-	mgr.distributer.SetWeight(mgr.NodeId, 1)
+	mgr.mirrorDistributer.SetWeight(mgr.NodeId, 1)
+	mgr.xorDistributer.SetWeight(mgr.NodeId, 1)
 
 	return &mgr
 }
@@ -146,9 +156,9 @@ func (m *Mgr) eventLoop() {
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
-			m.handleDiskReads(r)
+			m.handleDiskReadResult(r)
 		case r := <-m.DiskMgrWrites:
-			m.handleDiskWrites(r)
+			m.handleDiskWriteResult(r)
 		case r := <-m.WebdavMgrGets:
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
@@ -209,55 +219,83 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: address}
 		}
 	case *model.WriteRequest:
-		n := m.distributer.NodeIdForStoreId(p.Block.Id)
 		caller, ok := m.nodeConnMap.Get2(i.ConnId)
-		if !ok || caller != p.Caller {
-			return
-		}
-		if m.NodeId == n {
-			m.MgrDiskWrites <- *p
-		} else {
-			c, ok := m.nodeConnMap.Get1(n)
-			if ok {
-				m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: p}
-			} else {
-				m.MgrDiskWrites <- *p
+		if !ok {
+			payload := model.WriteResult{
+				Ok:      false,
+				Message: "connection error",
+				Caller:  caller,
+				Ptr:     p.Data.Ptr,
+			}
+			m.MgrConnsSends <- model.MgrConnsSend{
+				ConnId:  i.ConnId,
+				Payload: &payload,
 			}
 		}
+		m.MgrDiskWrites <- *p
 	case *model.WriteResult:
-		m.MgrWebdavPuts <- *p
+		m.handleDiskWriteResult(*p)
 	case *model.ReadRequest:
 		m.MgrDiskReads <- *p
 	case *model.ReadResult:
-		m.MgrWebdavGets <- *p
+		m.handleDiskReadResult(*p)
 	case webdav.LockMessage:
 		m.MgrWebdavLockMsg <- p
 	default:
-		fmt.Println(m.NodeId, "Received unknown payload", p)
+		panic("Received unknown payload")
 	}
 }
-func (m *Mgr) handleDiskWrites(r model.WriteResult) {
+
+func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 	if r.Caller == m.NodeId {
-		m.MgrWebdavPuts <- r
+		resolved, blockId := m.pendingBlockWrites.resolve(r.Ptr)
+		var err error = nil
+		if !r.Ok {
+			err = errors.New(r.Message)
+			m.pendingBlockWrites.cancel(blockId)
+		}
+		switch resolved {
+		case done:
+			m.MgrWebdavPuts <- model.BlockIdResponse{
+				BlockId: blockId,
+				Err:     err,
+			}
+		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
 		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
+			m.MgrConnsSends <- model.MgrConnsSend{
+				ConnId:  c,
+				Payload: &r,
+			}
 		} else {
-			fmt.Println("Need to add to queue when reconnected")
+			panic("not connected")
 		}
 	}
 }
 
-func (m *Mgr) handleDiskReads(r model.ReadResult) {
+func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 	if r.Caller == m.NodeId {
-		m.MgrWebdavGets <- r
+		result, blockId := m.pendingBlockReads.resolve(r.Data.Ptr)
+		if result == done {
+			m.MgrWebdavGets <- model.BlockResponse{
+				Block: model.Block{
+					Id:   blockId,
+					Type: model.Mirrored,
+					Data: r.Data.Data,
+				},
+				Err: nil,
+			}
+		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
 		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{ConnId: c, Payload: &r}
+			m.MgrConnsSends <- model.MgrConnsSend{
+				ConnId:  c,
+				Payload: &r,
+			}
 		} else {
-			fmt.Println("Need to add to queue when reconnected")
+			panic("not connected")
 		}
 	}
 }
@@ -294,7 +332,8 @@ func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) e
 		return err
 	}
 	m.nodeConnMap.Add(n, c)
-	m.distributer.SetWeight(n, 1)
+	m.mirrorDistributer.SetWeight(n, 1)
+	m.xorDistributer.SetWeight(n, 1)
 	return nil
 }
 
@@ -314,43 +353,85 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	}
 }
 
-func (m *Mgr) handleWebdavGets(rr model.ReadRequest) {
-	n := m.distributer.NodeIdForStoreId(rr.BlockId)
-	if m.NodeId == n {
-		m.MgrDiskReads <- rr
+func (m *Mgr) handleWebdavGets(blockId model.BlockId) {
+	ptrs := m.mirrorDistributer.PointersForId(blockId)
+	if len(ptrs) == 0 {
+		m.MgrWebdavGets <- model.BlockResponse{
+			Block: model.Block{},
+			Err:   errors.New("not found"),
+		}
 	} else {
-		c, ok := m.nodeConnMap.Get1(n)
-		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{
-				ConnId:  c,
-				Payload: &rr,
-			}
+		n := ptrs[0].NodeId
+		rr := model.ReadRequest{
+			Caller: m.NodeId,
+			Ptr:    ptrs[0],
+		}
+		m.pendingBlockReads.add(blockId, ptrs[0])
+		if m.NodeId == n {
+			m.MgrDiskReads <- rr
 		} else {
-			m.MgrWebdavGets <- model.ReadResult{
-				Ok:      false,
-				Message: "Not connected",
-				Block:   model.Block{Id: rr.BlockId},
-				Caller:  rr.Caller,
+			c, ok := m.nodeConnMap.Get1(n)
+			if ok {
+				m.MgrConnsSends <- model.MgrConnsSend{
+					ConnId:  c,
+					Payload: &rr,
+				}
+			} else {
+				m.MgrWebdavGets <- model.BlockResponse{
+					Block: model.Block{},
+					Err:   errors.New("no connection"),
+				}
 			}
 		}
 	}
 }
 
-func (m *Mgr) handleWebdavWriteRequest(w model.WriteRequest) {
-	n := m.distributer.NodeIdForStoreId(w.Block.Id)
-	if n == m.NodeId {
-		m.MgrDiskWrites <- w
-	} else {
-		c, ok := m.nodeConnMap.Get1(n)
-		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{
-				ConnId:  c,
-				Payload: &w,
-			}
+func (m *Mgr) handleWebdavWriteRequest(w model.Block) {
+	switch w.Type {
+	case model.Mirrored:
+		m.handleMirroredWriteRequest(w)
+	case model.XORed:
+		m.handleXoredWriteRequest(w)
+	default:
+		panic("unknown block type")
+	}
+}
+
+func (m *Mgr) handleMirroredWriteRequest(b model.Block) {
+	ptrs := m.mirrorDistributer.PointersForId(b.Id)
+	for _, ptr := range ptrs {
+		m.pendingBlockWrites.add(b.Id, ptr)
+		data := model.RawData{
+			Data: b.Data,
+			Ptr:  ptr,
+		}
+		writeRequest := model.WriteRequest{
+			Data:   data,
+			Caller: m.NodeId,
+		}
+		if ptr.NodeId == m.NodeId {
+			m.MgrDiskWrites <- writeRequest
 		} else {
-			m.MgrDiskWrites <- w
+			c, ok := m.nodeConnMap.Get1(ptr.NodeId)
+			if ok {
+				m.MgrConnsSends <- model.MgrConnsSend{
+					ConnId:  c,
+					Payload: &writeRequest,
+				}
+			} else {
+				m.pendingBlockWrites.cancel(b.Id)
+				m.MgrWebdavPuts <- model.BlockIdResponse{
+					BlockId: b.Id,
+					Err:     errors.New("not connected"),
+				}
+				return
+			}
 		}
 	}
+}
+
+func (m *Mgr) handleXoredWriteRequest(b model.Block) {
+	panic("not implemented yet")
 }
 
 func (m *Mgr) handleWebdavLockMsg(lm webdav.LockMessage) {

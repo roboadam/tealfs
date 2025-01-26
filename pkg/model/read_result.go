@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -22,7 +22,7 @@ type ReadResult struct {
 	Ok      bool
 	Message string
 	Caller  NodeId
-	Block   Block
+	Data    RawData
 }
 
 func (r *ReadResult) Equal(p Payload) bool {
@@ -37,7 +37,7 @@ func (r *ReadResult) Equal(p Payload) bool {
 		if r.Caller != o.Caller {
 			return false
 		}
-		if !r.Block.Equal(&o.Block) {
+		if !r.Data.Equals(&o.Data) {
 			return false
 		}
 
@@ -50,8 +50,8 @@ func (r *ReadResult) ToBytes() []byte {
 	ok := BoolToBytes(r.Ok)
 	message := StringToBytes(r.Message)
 	caller := StringToBytes(string(r.Caller))
-	block := BlockToBytes(r.Block)
-	payload := bytes.Join([][]byte{ok, message, caller, block}, []byte{})
+	raw := r.Data.ToBytes()
+	payload := bytes.Join([][]byte{ok, message, caller, raw}, []byte{})
 	return AddType(ReadResultType, payload)
 }
 
@@ -59,11 +59,11 @@ func ToReadResult(data []byte) *ReadResult {
 	ok, remainder := BoolFromBytes(data)
 	message, remainder := StringFromBytes(remainder)
 	caller, remainder := StringFromBytes(remainder)
-	block, _ := BlockFromBytes(remainder)
+	raw, _ := ToRawData(remainder)
 	return &ReadResult{
 		Ok:      ok,
 		Message: message,
 		Caller:  NodeId(caller),
-		Block:   block,
+		Data:    *raw,
 	}
 }

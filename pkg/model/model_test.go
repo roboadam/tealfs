@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -58,8 +58,11 @@ func TestReadResult(t *testing.T) {
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller",
-		Block: model.Block{
-			Id:   "some block id",
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   "node1",
+				FileName: "fileName1",
+			},
 			Data: []byte{1, 2, 3},
 		},
 	}
@@ -67,8 +70,11 @@ func TestReadResult(t *testing.T) {
 		Ok:      false,
 		Message: "some message",
 		Caller:  "some caller",
-		Block: model.Block{
-			Id:   "some block id",
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   "node1",
+				FileName: "fileName1",
+			},
 			Data: []byte{1, 2, 3},
 		},
 	}
@@ -95,13 +101,19 @@ func TestWriteResult(t *testing.T) {
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller",
-		BlockId: "some block id",
+		Ptr: model.DiskPointer{
+			NodeId:   "nodeId",
+			FileName: "fileName",
+		},
 	}
 	wr2 := model.WriteResult{
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller 2",
-		BlockId: "some block id",
+		Ptr: model.DiskPointer{
+			NodeId:   "nodeId",
+			FileName: "fileName",
+		},
 	}
 
 	if wr1.Equal(&wr2) {

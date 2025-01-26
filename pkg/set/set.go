@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -48,7 +48,7 @@ func (s *Set[K]) Equal(b *Set[K]) bool {
 	}
 
 	for key := range s.data {
-		if !b.Exists(key) {
+		if !b.Contains(key) {
 			return false
 		}
 	}
@@ -56,7 +56,7 @@ func (s *Set[K]) Equal(b *Set[K]) bool {
 	return true
 }
 
-func (s *Set[K]) Exists(k K) bool {
+func (s *Set[K]) Contains(k K) bool {
 	_, exists := s.data[k]
 	return exists
 }
@@ -74,7 +74,7 @@ func (s *Set[K]) GetValues() []K {
 func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
 	result := NewSet[K]()
 	for k := range s.data {
-		if !o.Exists(k) {
+		if !o.Contains(k) {
 			result.Add(k)
 		}
 	}

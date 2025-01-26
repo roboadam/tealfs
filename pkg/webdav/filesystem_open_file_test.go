@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -63,7 +63,7 @@ func TestCreateEmptyFile(t *testing.T) {
 		return
 	}
 	if numWritten != len(bytesInWrite) {
-		t.Error("wrong number of blocks written", err)
+		t.Error("wrong number of blocks written. expected", len(bytesInWrite), "got", numWritten)
 		return
 	}
 }
@@ -105,31 +105,31 @@ func TestOpenRoot(t *testing.T) {
 	}
 }
 
-func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, caller model.NodeId, mux *sync.Mutex, data map[model.BlockId][]byte) {
+func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case req := <-reqs:
 			mux.Lock()
-			blockData, exists := data[req.Req.BlockId]
+			blockData, exists := data[req.Req]
 			if exists {
-				req.Resp <- model.ReadResult{
-					Ok:     true,
-					Caller: caller,
+				req.Resp <- model.BlockResponse{
 					Block: model.Block{
-						Id:   req.Req.BlockId,
+						Id:   req.Req,
+						Type: model.Mirrored,
 						Data: blockData,
 					},
+					Err: nil,
 				}
 			} else {
-				req.Resp <- model.ReadResult{
-					Ok:     true,
-					Caller: caller,
+				req.Resp <- model.BlockResponse{
 					Block: model.Block{
-						Id:   req.Req.BlockId,
+						Id:   req.Req,
+						Type: model.Mirrored,
 						Data: []byte{},
 					},
+					Err: nil,
 				}
 			}
 			mux.Unlock()
@@ -137,18 +137,17 @@ func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, call
 	}
 }
 
-func handlePushBlockReq(ctx context.Context, reqs chan webdav.WriteReqResp, caller model.NodeId, mux *sync.Mutex, data map[model.BlockId][]byte) {
+func handlePushBlockReq(ctx context.Context, reqs chan webdav.WriteReqResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case req := <-reqs:
 			mux.Lock()
-			data[req.Req.Block.Id] = req.Req.Block.Data
-			req.Resp <- model.WriteResult{
-				Ok:      true,
-				Caller:  caller,
-				BlockId: req.Req.Block.Id,
+			data[req.Req.Id] = req.Req.Data
+			req.Resp <- model.BlockIdResponse{
+				BlockId: req.Req.Id,
+				Err:     nil,
 			}
 			mux.Unlock()
 		}
@@ -158,6 +157,6 @@ func handlePushBlockReq(ctx context.Context, reqs chan webdav.WriteReqResp, call
 func mockPushesAndPulls(ctx context.Context, fs *webdav.FileSystem) {
 	mux := sync.Mutex{}
 	mockStorage := make(map[model.BlockId][]byte)
-	go handleFetchBlockReq(ctx, fs.ReadReqResp, model.NewNodeId(), &mux, mockStorage)
-	go handlePushBlockReq(ctx, fs.WriteReqResp, model.NewNodeId(), &mux, mockStorage)
+	go handleFetchBlockReq(ctx, fs.ReadReqResp, &mux, mockStorage)
+	go handlePushBlockReq(ctx, fs.WriteReqResp, &mux, mockStorage)
 }

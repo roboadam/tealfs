@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -28,23 +28,28 @@ func TestWriteData(t *testing.T) {
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
-	block := model.Block{
-		Id:   blockId,
-		Data: data,
-	}
 	mgrDiskWrites <- model.WriteRequest{
 		Caller: nodeId,
-		Block:  block,
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   nodeId,
+				FileName: string(blockId),
+			},
+			Data: data,
+		},
 	}
 	result := <-diskMgrWrites
 	if !result.Ok {
 		t.Error("Bad write result")
+		return
 	}
 	if !bytes.Equal(f.WrittenData, data) {
 		t.Error("Written data is wrong")
+		return
 	}
 	if f.WritePath != expectedPath {
 		t.Error("Written path is wrong")
+		return
 	}
 }
 
@@ -56,18 +61,24 @@ func TestReadData(t *testing.T) {
 	f.ReadData = data
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	mgrDiskReads <- model.ReadRequest{
-		Caller:  caller,
-		BlockId: blockId,
+		Caller: caller,
+		Ptr: model.DiskPointer{
+			NodeId:   "node1",
+			FileName: string(blockId),
+		},
 	}
 	result := <-diskMgrReads
 	if !result.Ok {
 		t.Error("Bad write result")
+		return
 	}
-	if !bytes.Equal(result.Block.Data, data) {
+	if !bytes.Equal(result.Data.Data, data) {
 		t.Error("Read data is wrong")
+		return
 	}
 	if f.ReadPath != expectedPath {
 		t.Error("Read path is wrong")
+		return
 	}
 }
 
@@ -80,18 +91,24 @@ func TestReadNewFile(t *testing.T) {
 	f.ReadData = data
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	mgrDiskReads <- model.ReadRequest{
-		Caller:  caller,
-		BlockId: blockId,
+		Caller: caller,
+		Ptr: model.DiskPointer{
+			NodeId:   "node1",
+			FileName: string(blockId),
+		},
 	}
 	result := <-diskMgrReads
 	if !result.Ok {
 		t.Error("Bad write result")
+		return
 	}
-	if !bytes.Equal(result.Block.Data, []byte{}) {
+	if !bytes.Equal(result.Data.Data, []byte{}) {
 		t.Error("Written data is wrong")
+		return
 	}
 	if f.ReadPath != expectedPath {
 		t.Error("Written path is wrong")
+		return
 	}
 }
 

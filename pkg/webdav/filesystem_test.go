@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -159,7 +159,7 @@ func TestWriteAndRead(t *testing.T) {
 	resultData := [5]byte{}
 	n, err = f.Read(resultData[:])
 	if err != nil {
-		t.Error("error reading the data")
+		t.Error("error reading the data", err)
 		return
 	}
 	if !bytes.Equal(expectedData, resultData[:]) {

@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -20,7 +20,7 @@ import (
 
 type WriteRequest struct {
 	Caller NodeId
-	Block  Block
+	Data   RawData
 }
 
 func (r *WriteRequest) Equal(p Payload) bool {
@@ -28,23 +28,23 @@ func (r *WriteRequest) Equal(p Payload) bool {
 		if r.Caller != o.Caller {
 			return false
 		}
-		return r.Block.Equal(&o.Block)
+		return r.Data.Equals(&o.Data)
 	}
 	return false
 }
 
 func (r *WriteRequest) ToBytes() []byte {
 	caller := StringToBytes(string(r.Caller))
-	block := BlockToBytes(r.Block)
-	payload := bytes.Join([][]byte{caller, block}, []byte{})
+	rawData := r.Data.ToBytes()
+	payload := bytes.Join([][]byte{caller, rawData}, []byte{})
 	return AddType(WriteRequestType, payload)
 }
 
-func ToWriteRequest(data []byte) *WriteRequest {
-	caller, remainder := StringFromBytes(data)
-	block, _ := BlockFromBytes(remainder)
+func ToWriteRequest(raw []byte) *WriteRequest {
+	caller, remainder := StringFromBytes(raw)
+	rawData, _ := ToRawData(remainder)
 	return &WriteRequest{
 		Caller: NodeId(caller),
-		Block:  block,
+		Data:   *rawData,
 	}
 }

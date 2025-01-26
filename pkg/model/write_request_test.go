@@ -12,36 +12,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package model
+package model_test
 
 import (
-	"bytes"
+	"tealfs/pkg/model"
+	"testing"
 )
 
-type ReadRequest struct {
-	Caller NodeId
-	Ptr    DiskPointer
-}
-
-func (r *ReadRequest) ToBytes() []byte {
-	callerId := StringToBytes(string(r.Caller))
-	blockKey := r.Ptr.ToBytes()
-	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, blockKey}, []byte{}))
-}
-
-func (r *ReadRequest) Equal(p Payload) bool {
-	if o, ok := p.(*ReadRequest); ok {
-		return r.Caller == o.Caller && r.Ptr.Equals(&o.Ptr)
+func TestWriteRequest(t *testing.T) {
+	wr := model.WriteRequest{
+		Caller: "caller1",
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   "node1",
+				FileName: "fileName1",
+			},
+			Data: []byte{0x01, 0x02, 0x03},
+		},
 	}
-	return false
-}
-
-func ToReadRequest(data []byte) *ReadRequest {
-	callerId, remainder := StringFromBytes(data)
-	ptr, _ := ToDiskPointer(remainder)
-	rq := ReadRequest{
-		Caller: NodeId(callerId),
-		Ptr:    *ptr,
+	raw := wr.ToBytes()
+	newWr := model.ToWriteRequest(raw[1:])
+	if !wr.Equal(newWr) {
+		t.Errorf("Expected %v, got %v", wr, newWr)
 	}
-	return &rq
 }

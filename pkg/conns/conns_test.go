@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -49,7 +49,13 @@ func TestSendData(t *testing.T) {
 	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest(ctx)
 	expected := model.WriteRequest{
 		Caller: model.NewNodeId(),
-		Block:  model.Block{Id: "blockId", Data: []byte{1, 2, 3}},
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   "destNode",
+				FileName: "blockId",
+			},
+			Data: []byte{1, 2, 3},
+		},
 	}
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{

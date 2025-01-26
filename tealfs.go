@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Adam Hess
+// Copyright (C) 2025 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -35,7 +35,7 @@ func main() {
 }
 
 func startTealFs(id model.NodeId, storagePath string, webdavAddress string, uiAddress string, nodeAddress string, ctx context.Context) error {
-	m := mgr.NewWithChanSize(id, 1, nodeAddress, storagePath, &disk.DiskFileOps{})
+	m := mgr.NewWithChanSize(id, 2, nodeAddress, storagePath, &disk.DiskFileOps{}, model.Mirrored)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
