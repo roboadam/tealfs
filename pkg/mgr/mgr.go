@@ -262,7 +262,15 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 			}
 		}
 	} else {
-		panic("got a write result that isn't for me")
+		c, ok := m.nodeConnMap.Get1(r.Caller)
+		if ok {
+			m.MgrConnsSends <- model.MgrConnsSend{
+				ConnId:  c,
+				Payload: &r,
+			}
+		} else {
+			panic("not connected")
+		}
 	}
 }
 
