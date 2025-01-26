@@ -66,19 +66,19 @@ func TestXor(t *testing.T) {
 			return
 		}
 
-		if !nodes.Exists(rawDatas[0].Ptr.NodeId) {
+		if !nodes.Contains(rawDatas[0].Ptr.NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
 		nodes.Remove(rawDatas[0].Ptr.NodeId)
 
-		if !nodes.Exists(rawDatas[1].Ptr.NodeId) {
+		if !nodes.Contains(rawDatas[1].Ptr.NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
 		nodes.Remove(rawDatas[1].Ptr.NodeId)
 
-		if !nodes.Exists(rawDatas[2].Ptr.NodeId) {
+		if !nodes.Contains(rawDatas[2].Ptr.NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}

@@ -16,6 +16,7 @@ package mgr
 
 import (
 	"bytes"
+	"fmt"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -125,7 +126,7 @@ func TestWebdavGet(t *testing.T) {
 		select {
 		case r := <-m.MgrDiskReads:
 			meCount++
-			if !idsInFlight.Exists(model.BlockId(r.Ptr.FileName)) {
+			if !idsInFlight.Contains(model.BlockId(r.Ptr.FileName)) {
 				t.Error("expected to read to 1, got", r.Ptr.FileName)
 				return
 			}
@@ -141,37 +142,36 @@ func TestWebdavGet(t *testing.T) {
 				},
 			}
 		case s := <-m.MgrConnsSends:
-			var nodeWithData model.NodeId
-			if s.ConnId == expectedConnectionId1 {
-				oneCount++
-				nodeWithData = expectedNodeId1
-			} else if s.ConnId == expectedConnectionId2 {
-				twoCount++
-				nodeWithData = expectedNodeId2
-			} else {
-				t.Error("expected to connect to", s.ConnId)
-				return
-			}
-			m.ConnsMgrReceives <- model.ConnsMgrReceive{
-				ConnId: s.ConnId,
-				Payload: &model.ReadResult{
-					Ok:     true,
-					Caller: m.NodeId,
-					Data: model.RawData{
-						Ptr: model.DiskPointer{
-							NodeId:   nodeWithData,
-							FileName: string(blockId),
+			switch readRequest := s.Payload.(type) {
+			case *model.ReadRequest:
+				if s.ConnId == expectedConnectionId1 {
+					oneCount++
+				} else if s.ConnId == expectedConnectionId2 {
+					twoCount++
+				} else {
+					t.Error("expected to connect to", s.ConnId)
+					return
+				}
+				m.ConnsMgrReceives <- model.ConnsMgrReceive{
+					ConnId: s.ConnId,
+					Payload: &model.ReadResult{
+						Ok:     true,
+						Caller: readRequest.Caller,
+						Data: model.RawData{
+							Ptr:  readRequest.Ptr,
+							Data: []byte{1, 2, 3},
 						},
-						Data: []byte{1, 2, 3},
 					},
-				},
+				}
 			}
+
 		case w := <-m.MgrWebdavGets:
-			if !idsInFlight.Exists(w.Block.Id) {
+			if !idsInFlight.Contains(w.Block.Id) {
 				t.Error("unexpected block id")
 				return
 			}
 			idsInFlight.Remove(w.Block.Id)
+			fmt.Println("removed", w.Block.Id)
 		}
 	}
 	if meCount == 0 || oneCount == 0 || twoCount == 0 {
@@ -206,16 +206,22 @@ func TestWebdavPut(t *testing.T) {
 	oneCount := 0
 	twoCount := 0
 
+	blockDataFlight := [][]byte{}
+
 	for _, block := range blocks {
 		m.WebdavMgrPuts <- block
+		blockDataFlight = append(blockDataFlight, block.Data)
 
 		select {
 		case w := <-m.MgrDiskWrites:
 			meCount++
-			if !bytes.Equal(w.Data.Data, block.Data) {
+			exists, newInFlight := contains(blockDataFlight, w.Data.Data)
+			if !exists {
 				t.Error("expected the original block")
 				return
 			}
+			blockDataFlight = newInFlight
+
 			m.DiskMgrWrites <- model.WriteResult{
 				Ok:     true,
 				Caller: m.NodeId,
@@ -224,7 +230,6 @@ func TestWebdavPut(t *testing.T) {
 					FileName: string(block.Id),
 				},
 			}
-			println("test")
 		case s := <-m.MgrConnsSends:
 			var nodeWithData model.NodeId
 			if s.ConnId == expectedConnectionId1 {
@@ -248,13 +253,21 @@ func TestWebdavPut(t *testing.T) {
 					},
 				},
 			}
-			println("test")
 		}
 	}
 	if meCount == 0 || oneCount == 0 || twoCount == 0 {
 		t.Error("Expected everyone to fetch some data")
 		return
 	}
+}
+
+func contains(data [][]byte, d []byte) (bool, [][]byte) {
+	for i, b := range data {
+		if bytes.Equal(b, d) {
+			return true, append(data[:i], data[i+1:]...)
+		}
+	}
+	return false, data
 }
 
 type connectedNode struct {
@@ -264,7 +277,7 @@ type connectedNode struct {
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
-	m := NewWithChanSize(model.NewNodeId(), 5, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
+	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := m.Start()

@@ -49,13 +49,13 @@ func TestMirror(t *testing.T) {
 			return
 		}
 
-		if !nodes.Exists(ptrs[0].NodeId) {
+		if !nodes.Contains(ptrs[0].NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
 		nodes.Remove(ptrs[0].NodeId)
 
-		if !nodes.Exists(ptrs[1].NodeId) {
+		if !nodes.Contains(ptrs[1].NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}

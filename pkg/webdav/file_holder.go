@@ -89,7 +89,7 @@ func (f *FileHolder) UpdateFileHolderFromBytes(data []byte, fileSystem *FileSyst
 		f.updateFile(&file)
 	}
 	for _, file := range f.AllFiles() {
-		if !allBlockIds.Exists(file.Block.Id) {
+		if !allBlockIds.Contains(file.Block.Id) {
 			f.Delete(file)
 		}
 	}
