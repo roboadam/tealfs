@@ -16,10 +16,9 @@ package mgr
 
 import (
 	"bytes"
-	"fmt"
+	"sync/atomic"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 	"testing"
 
 	"context"
@@ -102,6 +101,8 @@ func TestWebdavGet(t *testing.T) {
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = model.NewNodeId()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
@@ -109,87 +110,76 @@ func TestWebdavGet(t *testing.T) {
 	}, t)
 
 	ids := []model.BlockId{}
-	idsSet := set.NewSet[model.BlockId]()
 	for range 100 {
 		blockId := model.NewBlockId()
 		ids = append(ids, blockId)
-		idsSet.Add(blockId)
 	}
 
-	meCount := 0
-	oneCount := 0
-	twoCount := 0
+	meCount := int32(0)
+	oneCount := int32(0)
+	twoCount := int32(0)
 
 	go func() {
-		for _, blockId := range ids {
-			fmt.Println("FromTest to WebdavMgrGets", blockId)
-			m.WebdavMgrGets <- blockId
-			fmt.Println("FromTest to WebdavMgrGets SENT", blockId)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case r := <-m.MgrDiskReads:
+				atomic.AddInt32(&meCount, 1)
+				m.DiskMgrReads <- model.ReadResult{
+					Ok:     true,
+					Caller: m.NodeId,
+					Data: model.RawData{
+						Ptr:  r.Ptr,
+						Data: []byte{1, 2, 3},
+					},
+				}
+			}
 		}
 	}()
 
-	for {
-		select {
-		case r := <-m.MgrDiskReads:
-			fmt.Println("ToTest Read from MgrDiskReads", r.Ptr.FileName)
-			meCount++
-			if !idsSet.Contains(model.BlockId(r.Ptr.FileName)) {
-				t.Error("expected to read to 1, got", r.Ptr.FileName)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
 				return
-			}
-			fmt.Println("FromTest to DiskMgrReads", r.Ptr.FileName)
-			m.DiskMgrReads <- model.ReadResult{
-				Ok:     true,
-				Caller: m.NodeId,
-				Data: model.RawData{
-					Ptr:  r.Ptr,
-					Data: []byte{1, 2, 3},
-				},
-			}
-			fmt.Println("FromTest to DiskMgrReads SENT", r.Ptr.FileName)
-		case s := <-m.MgrConnsSends:
-			fmt.Println("ToTest Read from MgrConnsSends")
-			switch readRequest := s.Payload.(type) {
-			case *model.ReadRequest:
-				fmt.Println("ToTest Read from MgrConnsSends", readRequest.Ptr.FileName)
-				if s.ConnId == expectedConnectionId1 {
-					oneCount++
-				} else if s.ConnId == expectedConnectionId2 {
-					twoCount++
-				} else {
-					t.Error("expected to connect to", s.ConnId)
-					return
-				}
-				fmt.Println("FromTest to ConnsMgrReceives", readRequest.Ptr.FileName)
-				m.ConnsMgrReceives <- model.ConnsMgrReceive{
-					ConnId: s.ConnId,
-					Payload: &model.ReadResult{
-						Ok:     true,
-						Caller: readRequest.Caller,
-						Data: model.RawData{
-							Ptr:  readRequest.Ptr,
-							Data: []byte{1, 2, 3},
+			case s := <-m.MgrConnsSends:
+				switch readRequest := s.Payload.(type) {
+				case *model.ReadRequest:
+					if s.ConnId == expectedConnectionId1 {
+						atomic.AddInt32(&oneCount, 1)
+					} else if s.ConnId == expectedConnectionId2 {
+						atomic.AddInt32(&twoCount, 1)
+					} else {
+						t.Error("expected to connect to", s.ConnId)
+						return
+					}
+					m.ConnsMgrReceives <- model.ConnsMgrReceive{
+						ConnId: s.ConnId,
+						Payload: &model.ReadResult{
+							Ok:     true,
+							Caller: readRequest.Caller,
+							Data: model.RawData{
+								Ptr:  readRequest.Ptr,
+								Data: []byte{1, 2, 3},
+							},
 						},
-					},
+					}
 				}
-				fmt.Println("FromTest to ConnsMgrReceives SENT", readRequest.Ptr.FileName)
-			}
-
-		case w := <-m.MgrWebdavGets:
-			fmt.Println("ToTest Read from MgrWebdavGets", w.Block.Id)
-			if !idsSet.Contains(w.Block.Id) {
-				t.Error("unexpected block id")
-				return
-			}
-			idsSet.Remove(w.Block.Id)
-			if idsSet.Len() == 0 {
-				if meCount == 0 || oneCount == 0 || twoCount == 0 {
-					t.Error("Expected everyone to get some data")
-					return
-				}
-				return
 			}
 		}
+	}()
+
+	for _, blockId := range ids {
+		m.WebdavMgrGets <- blockId
+		w := <-m.MgrWebdavGets
+		if w.Block.Id != blockId {
+			t.Error("Expected", blockId, "got", w.Block.Id)
+		}
+	}
+	if meCount == 0 || oneCount == 0 || twoCount == 0 {
+		t.Error("Expected everyone to get some data")
+		return
 	}
 }
 
@@ -291,7 +281,7 @@ type connectedNode struct {
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, t *testing.T) *Mgr {
-	m := NewWithChanSize(model.NewNodeId(), 1000, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
+	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := m.Start()

@@ -156,12 +156,10 @@ func (m *Mgr) eventLoop() {
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
-			fmt.Println("ToMgr Read from DiskMgrReads", r.Data.Ptr.FileName)
 			m.handleDiskReadResult(r)
 		case r := <-m.DiskMgrWrites:
 			m.handleDiskWriteResult(r)
 		case r := <-m.WebdavMgrGets:
-			fmt.Println("ToMgr Read from WebdavMgrGets", r)
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
 			m.handleWebdavWriteRequest(r)
@@ -238,17 +236,13 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.WriteResult:
 		m.handleDiskWriteResult(*p)
 	case *model.ReadRequest:
-		fmt.Println("ToMgr Read from ConnsMgrReceives-ReadRequest", p.Ptr.FileName)
-		fmt.Println("FromMgr to MgrDiskReads", p.Ptr.FileName)
 		m.MgrDiskReads <- *p
-		fmt.Println("FromMgr to MgrDiskReads SENT", p.Ptr.FileName)
 	case *model.ReadResult:
-		fmt.Println("ToMgr Read from ConnsMgrReceives-ReadResult", p.Data.Ptr.FileName)
 		m.handleDiskReadResult(*p)
 	case webdav.LockMessage:
 		m.MgrWebdavLockMsg <- p
 	default:
-		fmt.Println(m.NodeId, "Received unknown payload", p)
+		panic("Received unknown payload")
 	}
 }
 
@@ -275,9 +269,7 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 	if r.Caller == m.NodeId {
 		result, blockId := m.pendingBlockReads.resolve(r.Data.Ptr)
-		fmt.Println("resolved", r.Data.Ptr.FileName, result)
 		if result == done {
-			fmt.Println("Mgr sending block answer for get for", blockId)
 			m.MgrWebdavGets <- model.BlockResponse{
 				Block: model.Block{
 					Id:   blockId,
@@ -286,10 +278,8 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 				},
 				Err: nil,
 			}
-			fmt.Println("Mgr sent block answer for get for", blockId)
 		}
 	} else {
-		fmt.Println("WTF")
 		c, ok := m.nodeConnMap.Get1(r.Caller)
 		if ok {
 			m.MgrConnsSends <- model.MgrConnsSend{
@@ -358,12 +348,10 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 func (m *Mgr) handleWebdavGets(blockId model.BlockId) {
 	ptrs := m.mirrorDistributer.PointersForId(blockId)
 	if len(ptrs) == 0 {
-		fmt.Println("FromMgr to MgrWebdavGets error")
 		m.MgrWebdavGets <- model.BlockResponse{
 			Block: model.Block{},
 			Err:   errors.New("not found"),
 		}
-		fmt.Println("FromMgr to MgrWebdavGets error SENT")
 	} else {
 		n := ptrs[0].NodeId
 		rr := model.ReadRequest{
@@ -371,27 +359,20 @@ func (m *Mgr) handleWebdavGets(blockId model.BlockId) {
 			Ptr:    ptrs[0],
 		}
 		m.pendingBlockReads.add(blockId, ptrs[0])
-		fmt.Println("need to resolve", blockId)
 		if m.NodeId == n {
-			fmt.Println("FromMgr to MgrDiskReads", rr.Ptr.FileName)
 			m.MgrDiskReads <- rr
-			fmt.Println("FromMgr to MgrDiskReads SENT", rr.Ptr.FileName)
 		} else {
 			c, ok := m.nodeConnMap.Get1(n)
 			if ok {
-				fmt.Println("FromMgr to MgrConnsSend", rr.Ptr.FileName)
 				m.MgrConnsSends <- model.MgrConnsSend{
 					ConnId:  c,
 					Payload: &rr,
 				}
-				fmt.Println("FromMgr to MgrConnsSend SENT", rr.Ptr.FileName)
 			} else {
-				fmt.Println("FromMgr to MgrWebdavGets error")
 				m.MgrWebdavGets <- model.BlockResponse{
 					Block: model.Block{},
 					Err:   errors.New("no connection"),
 				}
-				fmt.Println("FromMgr to MgrWebdavGets error SENT")
 			}
 		}
 	}
