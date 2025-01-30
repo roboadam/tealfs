@@ -15,12 +15,61 @@
 package webdav_test
 
 import (
+	"bytes"
 	"io"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
 	"time"
 )
+
+func TestRead(t *testing.T) {
+	file := webdav.File{
+		SizeValue: 6,
+		ModeValue: 0,
+		Modtime:   time.Now(),
+		Position:  0,
+		HasData:   true,
+		Block: model.Block{
+			Id:   "",
+			Data: []byte{1, 2, 3, 4, 5, 6},
+		},
+	}
+
+	buf := make([]byte, 4)
+	n, err := file.Read(buf)
+	if err != nil {
+		t.Error("error reading", err)
+		return
+	}
+	if n != 4 {
+		t.Error("should have read 4 bytes instead of", n)
+		return
+	}
+	if !bytes.Equal(buf, []byte{1, 2, 3, 4}) {
+		t.Error("buffer is different", buf)
+		return
+	}
+	n, err = file.Read(buf)
+	if err != nil {
+		t.Error("error reading", err)
+		return
+	}
+	if n != 2 {
+		t.Error("should have read 2 bytes instead of", n)
+		return
+	}
+	if !bytes.Equal(buf[:2], []byte{5, 6}) {
+		t.Error("buffer is different", buf)
+		return
+	}
+	n, err = file.Read(buf)
+	if err != io.EOF {
+		t.Error("should have reached EOF", err, n)
+		return
+	}
+
+}
 
 func TestSeek(t *testing.T) {
 	file := webdav.File{

@@ -93,7 +93,9 @@ func (f *File) Read(p []byte) (n int, err error) {
 	}
 
 	copy(p, f.Block.Data[start:end])
-	return int(end - start), nil
+	bytesRead := int(end - start)
+	f.Position += int64(bytesRead)
+	return bytesRead, nil
 }
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {
