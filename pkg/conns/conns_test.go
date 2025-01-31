@@ -96,6 +96,7 @@ func TestGetData(t *testing.T) {
 	payload := &model.IAm{
 		NodeId:  "nodeId",
 		Address: "localAddress:123",
+		FreeBytes: 1,
 	}
 	dataReceived := payload.ToBytes()
 	length := lenAsBytes(dataReceived)

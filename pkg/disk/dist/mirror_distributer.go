@@ -109,5 +109,9 @@ func (d *MirrorDistributer) checksum(data []byte) []byte {
 }
 
 func (d *MirrorDistributer) SetWeight(id model.NodeId, weight int) {
-	d.weights[id] = weight
+	if weight > 0 {
+		d.weights[id] = weight
+	} else {
+		delete(d.weights, id)
+	}
 }

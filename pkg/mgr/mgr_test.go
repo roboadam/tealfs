@@ -323,8 +323,9 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T) *M
 		// Send a message to Mgr indicating the newly
 		// connected node has sent us an Iam payload
 		iamPayload := model.IAm{
-			NodeId:  n.node,
-			Address: n.address,
+			NodeId:    n.node,
+			Address:   n.address,
+			FreeBytes: 1,
 		}
 		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId:  n.conn,

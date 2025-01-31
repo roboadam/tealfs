@@ -96,8 +96,8 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		pendingBlockReads:  newPendingBlockWrites(),
 		freeBytes:          freeBytes,
 	}
-	mgr.mirrorDistributer.SetWeight(mgr.NodeId, 1)
-	mgr.xorDistributer.SetWeight(mgr.NodeId, 1)
+	mgr.mirrorDistributer.SetWeight(mgr.NodeId, int(freeBytes))
+	mgr.xorDistributer.SetWeight(mgr.NodeId, int(freeBytes))
 
 	return &mgr
 }
@@ -200,7 +200,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			RemoteAddress: p.Address,
 			Id:            i.ConnId,
 		}
-		_ = m.addNodeToCluster(p.NodeId, p.Address, i.ConnId)
+		_ = m.addNodeToCluster(*p, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
 		for n := range m.nodesAddressMap {
 			connId, ok := m.nodeConnMap.Get1(n)
@@ -326,16 +326,16 @@ func (m *Mgr) setPrimaryNode() model.NodeId {
 	return primary
 }
 
-func (m *Mgr) addNodeToCluster(n model.NodeId, address string, c model.ConnId) error {
-	m.nodesAddressMap[n] = address
+func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
+	m.nodesAddressMap[iam.NodeId] = iam.Address
 	m.setPrimaryNode()
 	err := m.saveNodeAddressMap()
 	if err != nil {
 		return err
 	}
-	m.nodeConnMap.Add(n, c)
-	m.mirrorDistributer.SetWeight(n, 1)
-	m.xorDistributer.SetWeight(n, 1)
+	m.nodeConnMap.Add(iam.NodeId, c)
+	m.mirrorDistributer.SetWeight(iam.NodeId, int(iam.FreeBytes))
+	m.xorDistributer.SetWeight(iam.NodeId, int(iam.FreeBytes))
 	return nil
 }
 
