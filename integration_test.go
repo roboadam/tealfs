@@ -39,7 +39,7 @@ func TestOneNodeCluster(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(model.NewNodeId(), storagePath, webdavAddress, uiAddress, nodeAddress, ctx)
+	go startTealFs(model.NewNodeId(), storagePath, webdavAddress, uiAddress, nodeAddress, 1, ctx)
 	time.Sleep(time.Second)
 
 	resp, ok := putFile(ctx, webdavUrl, "text/plain", fileContents, t)
@@ -89,8 +89,8 @@ func TestTwoNodeCluster(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(nodeId1, storagePath1, webdavAddress1, uiAddress1, nodeAddress1, ctx)
-	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, ctx)
+	go startTealFs(nodeId1, storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
+	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
 	time.Sleep(time.Second)
 
 	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
@@ -155,8 +155,8 @@ func TestTwoNodeCluster(t *testing.T) {
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(nodeId1, storagePath1, webdavAddress1, uiAddress1, nodeAddress1, ctx)
-	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, ctx)
+	go startTealFs(nodeId1, storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
+	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
 
 	time.Sleep(time.Second)
 

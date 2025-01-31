@@ -59,9 +59,10 @@ type Mgr struct {
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
 	pendingBlockReads  pendingBlockWrites
+	freeBytes          uint32
 }
 
-func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType) *Mgr {
+func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType, freeBytes uint32) *Mgr {
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
@@ -93,6 +94,7 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 		fileOps:            fileOps,
 		pendingBlockWrites: newPendingBlockWrites(),
 		pendingBlockReads:  newPendingBlockWrites(),
+		freeBytes:          freeBytes,
 	}
 	mgr.mirrorDistributer.SetWeight(mgr.NodeId, 1)
 	mgr.xorDistributer.SetWeight(mgr.NodeId, 1)
@@ -343,8 +345,9 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId: cs.Id,
 			Payload: &model.IAm{
-				NodeId:  m.NodeId,
-				Address: m.nodeAddress,
+				NodeId:    m.NodeId,
+				Address:   m.nodeAddress,
+				FreeBytes: m.freeBytes,
 			},
 		}
 	case model.NotConnected:
