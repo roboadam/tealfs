@@ -186,6 +186,94 @@ func TestTwoNodeCluster(t *testing.T) {
 	}
 }
 
+func TestTwoNodeOneStorageCluster(t *testing.T) {
+	nodeId1 := model.NewNodeId()
+	nodeId2 := model.NewNodeId()
+	webdavAddress1 := "localhost:8080"
+	webdavAddress2 := "localhost:9080"
+	path1 := "/test1.txt"
+	path2 := "/test2.txt"
+	uiAddress1 := "localhost:8081"
+	uiAddress2 := "localhost:9081"
+	nodeAddress1 := "localhost:8082"
+	nodeAddress2 := "localhost:9082"
+	storagePath1 := "tmp1"
+	storagePath2 := "tmp2"
+	os.RemoveAll(storagePath1)
+	os.RemoveAll(storagePath2)
+	connectToUrl := "http://" + uiAddress1 + "/connect-to"
+	fileContents1 := "test content 1"
+	fileContents2 := "test content 2"
+	connectToContents := "hostAndPort=" + url.QueryEscape(nodeAddress2)
+	os.Mkdir(storagePath1, 0755)
+	defer os.RemoveAll(storagePath1)
+	os.Mkdir(storagePath2, 0755)
+	defer os.RemoveAll(storagePath2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go startTealFs(nodeId1, storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 0, ctx)
+	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+	time.Sleep(time.Second)
+
+	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
+	if !ok {
+		t.Error("error response", resp.Status)
+		return
+	}
+	resp.Body.Close()
+	time.Sleep(time.Second)
+
+	if resp.StatusCode >= 400 {
+		t.Error("error response", resp.Status)
+		return
+	}
+
+	resp, ok = putFile(ctx, urlFor(webdavAddress1, path1), "text/plain", fileContents1, t)
+	if !ok {
+		t.Error("error response", resp.Status)
+		return
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		t.Error("error response", resp.Status)
+		return
+	}
+
+	resp, ok = putFile(ctx, urlFor(webdavAddress2, path2), "text/plain", fileContents2, t)
+	if !ok {
+		t.Error("error putting file")
+		return
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		t.Error("error response", resp.Status)
+		return
+	}
+
+	fetchedContent, ok := getFile(ctx, urlFor(webdavAddress2, path1), t)
+	if !ok {
+		t.Error("error getting file")
+		return
+	}
+	if fetchedContent != fileContents1 {
+		t.Error("unexpected contents", fetchedContent)
+		return
+	}
+
+	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path2), t)
+	if !ok {
+		t.Error("error getting file")
+		return
+	}
+	if fetchedContent != fileContents2 {
+		t.Error("unexpected contents", fetchedContent)
+		return
+	}
+}
+
 func getFile(ctx context.Context, url string, t *testing.T) (string, bool) {
 	client := http.Client{}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
