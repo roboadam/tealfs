@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/mgr"
@@ -27,15 +28,24 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 5 {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address> <node address>")
+	if len(os.Args) < 6 {
+		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address> <node address> <free bytes>")
 		os.Exit(1)
 	}
-	_ = startTealFs(model.NewNodeId(), os.Args[1], os.Args[2], os.Args[3], os.Args[4], context.Background())
+
+	val, err := strconv.ParseUint(os.Args[5], 10, 32)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address> <node address> <free bytes>")
+		os.Exit(1)
+	}
+
+	freeBytes := uint32(val)
+
+	_ = startTealFs(model.NewNodeId(), os.Args[1], os.Args[2], os.Args[3], os.Args[4], freeBytes, context.Background())
 }
 
-func startTealFs(id model.NodeId, storagePath string, webdavAddress string, uiAddress string, nodeAddress string, ctx context.Context) error {
-	m := mgr.NewWithChanSize(id, 2, nodeAddress, storagePath, &disk.DiskFileOps{}, model.Mirrored)
+func startTealFs(id model.NodeId, storagePath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
+	m := mgr.NewWithChanSize(id, 2, nodeAddress, storagePath, &disk.DiskFileOps{}, model.Mirrored, freeBytes)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,

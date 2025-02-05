@@ -17,28 +17,32 @@ package model
 import "bytes"
 
 type IAm struct {
-	NodeId  NodeId
-	Address string
+	NodeId    NodeId
+	Address   string
+	FreeBytes uint32
 }
 
 func (h *IAm) ToBytes() []byte {
 	nodeId := StringToBytes(string(h.NodeId))
 	address := StringToBytes(h.Address)
-	return AddType(IAmType, bytes.Join([][]byte{nodeId, address}, []byte{}))
+	freeByes := IntToBytes(h.FreeBytes)
+	return AddType(IAmType, bytes.Join([][]byte{nodeId, address, freeByes}, []byte{}))
 }
 
 func (h *IAm) Equal(p Payload) bool {
 	if h2, ok := p.(*IAm); ok {
-		return h2.NodeId == h.NodeId
+		return h2.NodeId == h.NodeId && h2.Address == h.Address && h2.FreeBytes == h.FreeBytes
 	}
 	return false
 }
 
 func ToHello(data []byte) *IAm {
 	rawId, remainder := StringFromBytes(data)
-	rawAddress, _ := StringFromBytes(remainder)
+	rawAddress, remainder := StringFromBytes(remainder)
+	rawFreeBytes, _ := IntFromBytes(remainder)
 	return &IAm{
-		NodeId:  NodeId(rawId),
-		Address: rawAddress,
+		NodeId:    NodeId(rawId),
+		Address:   rawAddress,
+		FreeBytes: rawFreeBytes,
 	}
 }

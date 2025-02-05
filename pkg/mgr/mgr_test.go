@@ -26,7 +26,7 @@ import (
 func TestConnectToMgr(t *testing.T) {
 	const expectedAddress = "some-address:123"
 
-	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
+	m := NewWithChanSize(model.NewNodeId(), 0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1)
 	err := m.Start()
 	if err != nil {
 		t.Error("Error starting", err)
@@ -274,7 +274,7 @@ type connectedNode struct {
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T) *Mgr {
-	m := NewWithChanSize(model.NewNodeId(), chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored)
+	m := NewWithChanSize(model.NewNodeId(), chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := m.Start()
@@ -323,8 +323,9 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T) *M
 		// Send a message to Mgr indicating the newly
 		// connected node has sent us an Iam payload
 		iamPayload := model.IAm{
-			NodeId:  n.node,
-			Address: n.address,
+			NodeId:    n.node,
+			Address:   n.address,
+			FreeBytes: 1,
 		}
 		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId:  n.conn,
