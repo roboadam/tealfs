@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"os"
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
@@ -62,7 +63,12 @@ type Mgr struct {
 	freeBytes          uint32
 }
 
-func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType, freeBytes uint32) *Mgr {
+func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType, freeBytes uint32) *Mgr {
+	nodeId, err := readNodeId(fileOps)
+	if err != nil {
+		panic(err)
+	}
+
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
@@ -100,6 +106,17 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 	mgr.xorDistributer.SetWeight(mgr.NodeId, int(freeBytes))
 
 	return &mgr
+}
+
+func readNodeId(fileOps disk.FileOps) (model.NodeId, error) {
+	data, err := fileOps.ReadFile(filepath.Join("node_id"))
+	if err != nil {
+		if err == os.ErrNotExist {
+			return model.NewNodeId(), nil
+		}
+		return "", err
+	}
+	return model.NodeId(data), nil
 }
 
 func (m *Mgr) Start() error {
@@ -198,7 +215,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		m.MgrUiStatuses <- model.UiConnectionStatus{
 			Type:          model.Connected,
 			RemoteAddress: p.Address,
-			Id:            i.ConnId,
+			Id:            p.NodeId,
 		}
 		_ = m.addNodeToCluster(*p, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()

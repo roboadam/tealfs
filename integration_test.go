@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"tealfs/pkg/model"
 	"testing"
 	"time"
 )
@@ -39,7 +38,7 @@ func TestOneNodeCluster(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(model.NewNodeId(), storagePath, webdavAddress, uiAddress, nodeAddress, 1, ctx)
+	go startTealFs(storagePath, webdavAddress, uiAddress, nodeAddress, 1, ctx)
 	time.Sleep(time.Second)
 
 	resp, ok := putFile(ctx, webdavUrl, "text/plain", fileContents, t)
@@ -64,8 +63,6 @@ func TestOneNodeCluster(t *testing.T) {
 }
 
 func TestTwoNodeCluster(t *testing.T) {
-	nodeId1 := model.NewNodeId()
-	nodeId2 := model.NewNodeId()
 	webdavAddress1 := "localhost:8080"
 	webdavAddress2 := "localhost:9080"
 	path1 := "/test1.txt"
@@ -89,8 +86,9 @@ func TestTwoNodeCluster(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(nodeId1, storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
-	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
+	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+
 	time.Sleep(time.Second)
 
 	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
@@ -155,8 +153,8 @@ func TestTwoNodeCluster(t *testing.T) {
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(nodeId1, storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
-	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
+	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
 
 	time.Sleep(time.Second)
 
@@ -187,8 +185,6 @@ func TestTwoNodeCluster(t *testing.T) {
 }
 
 func TestTwoNodeOneStorageCluster(t *testing.T) {
-	nodeId1 := model.NewNodeId()
-	nodeId2 := model.NewNodeId()
 	webdavAddress1 := "localhost:8080"
 	webdavAddress2 := "localhost:9080"
 	path1 := "/test1.txt"
@@ -212,8 +208,8 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(nodeId1, storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 0, ctx)
-	go startTealFs(nodeId2, storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 0, ctx)
+	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
 	time.Sleep(time.Second)
 
 	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)

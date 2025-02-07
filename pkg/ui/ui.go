@@ -26,13 +26,13 @@ import (
 type Ui struct {
 	connToReq  chan model.UiMgrConnectTo
 	connToResp chan model.UiConnectionStatus
-	statuses   map[model.ConnId]model.UiConnectionStatus
+	statuses   map[model.NodeId]model.UiConnectionStatus
 	sMux       sync.Mutex
 	ops        HtmlOps
 }
 
 func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string, ctx context.Context) *Ui {
-	statuses := make(map[model.ConnId]model.UiConnectionStatus)
+	statuses := make(map[model.NodeId]model.UiConnectionStatus)
 	ui := Ui{
 		connToReq:  connToReq,
 		connToResp: connToResp,
