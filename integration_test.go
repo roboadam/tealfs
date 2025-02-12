@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -83,15 +84,17 @@ func TestTwoNodeCluster(t *testing.T) {
 	defer os.RemoveAll(storagePath1)
 	os.Mkdir(storagePath2, 0755)
 	defer os.RemoveAll(storagePath2)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	defer cancel1()
+	defer cancel2()
 
-	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
-	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx1)
+	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx2)
 
 	time.Sleep(time.Second)
 
-	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
+	resp, ok := putFile(ctx1, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
 	if !ok {
 		t.Error("error response", resp.Status)
 		return
@@ -104,7 +107,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	resp, ok = putFile(ctx, urlFor(webdavAddress1, path1), "text/plain", fileContents1, t)
+	resp, ok = putFile(ctx1, urlFor(webdavAddress1, path1), "text/plain", fileContents1, t)
 	if !ok {
 		t.Error("error response", resp.Status)
 		return
@@ -116,7 +119,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	resp, ok = putFile(ctx, urlFor(webdavAddress2, path2), "text/plain", fileContents2, t)
+	resp, ok = putFile(ctx2, urlFor(webdavAddress2, path2), "text/plain", fileContents2, t)
 	if !ok {
 		t.Error("error putting file")
 		return
@@ -128,7 +131,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	fetchedContent, ok := getFile(ctx, urlFor(webdavAddress2, path1), t)
+	fetchedContent, ok := getFile(ctx2, urlFor(webdavAddress2, path1), t)
 	if !ok {
 		t.Error("error getting file")
 		return
@@ -138,7 +141,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path2), t)
+	fetchedContent, ok = getFile(ctx1, urlFor(webdavAddress1, path2), t)
 	if !ok {
 		t.Error("error getting file")
 		return
@@ -148,13 +151,13 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	cancel()
+	cancel1()
 	time.Sleep(time.Second)
-	ctx, cancel = context.WithCancel(context.Background())
-	defer cancel()
+	ctx1, cancel1 = context.WithCancel(context.Background())
+	defer cancel1()
 
-	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
-	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx1)
+	// go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
 
 	time.Sleep(time.Second)
 
@@ -163,7 +166,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path1), t)
+	fetchedContent, ok = getFile(ctx1, urlFor(webdavAddress1, path1), t)
 	if !ok {
 		t.Error("error getting file")
 		return
@@ -173,7 +176,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress2, path2), t)
+	fetchedContent, ok = getFile(ctx2, urlFor(webdavAddress2, path2), t)
 	if !ok {
 		t.Error("error getting file")
 		return
@@ -182,6 +185,22 @@ func TestTwoNodeCluster(t *testing.T) {
 		t.Error("unexpected contents", fetchedContent)
 		return
 	}
+
+	uiContents1, ok := getFile(ctx1, urlFor(uiAddress1, "/"), t)
+	if !ok {
+		t.Error("error getting ui contents")
+		return
+	}
+
+	fmt.Println(uiContents1)
+
+	uiContents2, ok := getFile(ctx2, urlFor(uiAddress2, "/"), t)
+	if !ok {
+		t.Error("error getting ui contents")
+		return
+	}
+
+	fmt.Println(uiContents2)
 }
 
 func TestTwoNodeOneStorageCluster(t *testing.T) {

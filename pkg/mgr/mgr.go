@@ -64,7 +64,7 @@ type Mgr struct {
 }
 
 func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType, freeBytes uint32) *Mgr {
-	nodeId, err := readNodeId(fileOps)
+	nodeId, err := readNodeId(savePath, fileOps)
 	if err != nil {
 		panic(err)
 	}
@@ -108,10 +108,15 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 	return &mgr
 }
 
-func readNodeId(fileOps disk.FileOps) (model.NodeId, error) {
-	data, err := fileOps.ReadFile(filepath.Join("node_id"))
+func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
+	data, err := fileOps.ReadFile(filepath.Join(savePath, "node_id"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			nodeId := model.NewNodeId()
+			err = fileOps.WriteFile(filepath.Join(savePath, "node_id"), []byte(nodeId))
+			if err != nil {
+				return "", err
+			}
 			return model.NewNodeId(), nil
 		}
 		return "", err
