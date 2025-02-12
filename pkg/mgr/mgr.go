@@ -111,7 +111,7 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 func readNodeId(fileOps disk.FileOps) (model.NodeId, error) {
 	data, err := fileOps.ReadFile(filepath.Join("node_id"))
 	if err != nil {
-		if err == os.ErrNotExist {
+		if errors.Is(err, os.ErrNotExist) {
 			return model.NewNodeId(), nil
 		}
 		return "", err
