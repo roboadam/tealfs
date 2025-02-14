@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -189,6 +190,11 @@ func TestTwoNodeCluster(t *testing.T) {
 	uiContents1, ok := getFile(ctx1, urlFor(uiAddress1, "/"), t)
 	if !ok {
 		t.Error("error getting ui contents")
+		return
+	}
+
+	if strings.Count(uiContents1, nodeAddress2) != 1 {
+		t.Error("should be connected to remote node exactly once")
 		return
 	}
 
