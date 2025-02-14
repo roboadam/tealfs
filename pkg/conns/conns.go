@@ -127,6 +127,13 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		netConn := c.netConns[conn]
 		bytes, err := tnet.ReadPayload(netConn)
 		if err != nil {
+			_ = netConn.Close()
+			delete(c.netConns, conn)
+			c.outStatuses <- model.NetConnectionStatus{
+				Type: model.NotConnected,
+				Msg:  "Connection closed",
+				Id:   conn,
+			}
 			return
 		}
 		payload := model.ToPayload(bytes)

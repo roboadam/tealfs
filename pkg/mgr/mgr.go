@@ -375,6 +375,12 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 			},
 		}
 	case model.NotConnected:
+		address := m.connAddress[cs.Id]
+		delete(m.connAddress, cs.Id)
+		// Todo: need a mechanism to back off
+		m.MgrConnsConnectTos <- model.MgrConnsConnectTo{
+			Address: address,
+		}
 		// Todo: reflect this in the ui
 		fmt.Println("Not Connected")
 	}
