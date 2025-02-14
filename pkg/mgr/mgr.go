@@ -117,7 +117,7 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 			if err != nil {
 				return "", err
 			}
-			return model.NewNodeId(), nil
+			return nodeId, nil
 		}
 		return "", err
 	}
@@ -130,9 +130,11 @@ func (m *Mgr) Start() error {
 		return err
 	}
 	go m.eventLoop()
-	for _, address := range m.nodesAddressMap {
-		m.UiMgrConnectTos <- model.UiMgrConnectTo{
-			Address: address,
+	for nodeId, address := range m.nodesAddressMap {
+		if nodeId != m.NodeId {
+			m.UiMgrConnectTos <- model.UiMgrConnectTo{
+				Address: address,
+			}
 		}
 	}
 	return nil

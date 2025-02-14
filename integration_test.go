@@ -158,7 +158,6 @@ func TestTwoNodeCluster(t *testing.T) {
 	defer cancel1()
 
 	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx1)
-	// go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
 
 	time.Sleep(time.Second)
 
@@ -198,11 +197,26 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
+	if strings.Count(uiContents1, nodeAddress1) != 0 {
+		t.Error("should not be connected to yourself")
+		return
+	}
+
 	fmt.Println(uiContents1)
 
 	uiContents2, ok := getFile(ctx2, urlFor(uiAddress2, "/"), t)
 	if !ok {
 		t.Error("error getting ui contents")
+		return
+	}
+
+	if strings.Count(uiContents2, nodeAddress1) != 1 {
+		t.Error("should be connected to remote node exactly once")
+		return
+	}
+
+	if strings.Count(uiContents2, nodeAddress2) != 0 {
+		t.Error("should not be connected to yourself")
 		return
 	}
 
