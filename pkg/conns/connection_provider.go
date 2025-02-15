@@ -60,10 +60,14 @@ func (m *MockConnectionProvider) GetListener(address string) (net.Listener, erro
 type MockConn struct {
 	dataToRead  chan []byte
 	dataWritten chan []byte
+	ReadError   error
 }
 type MockAddr struct{}
 
 func (m *MockConn) Read(b []byte) (n int, err error) {
+	if m.ReadError != nil {
+		return 0, m.ReadError
+	}
 	d := <-m.dataToRead
 	copy(b, d)
 	return min(len(b), len(d)), nil

@@ -17,6 +17,7 @@ package conns
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"tealfs/pkg/model"
 	"testing"
 )
@@ -75,6 +76,14 @@ func TestSendData(t *testing.T) {
 	}
 }
 
+func TestConnectionError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, outStatus, _, inConnectTo, _, provider := newConnsTest(ctx)
+	provider.Conn.ReadError = errors.New("some error reading")
+	_ = connectTo("address:123", outStatus, inConnectTo)
+}
+
 func collectPayload(channel chan []byte) []byte {
 	data := <-channel
 	size := binary.BigEndian.Uint32(data[:4])
@@ -94,8 +103,8 @@ func TestGetData(t *testing.T) {
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest(ctx)
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
 	payload := &model.IAm{
-		NodeId:  "nodeId",
-		Address: "localAddress:123",
+		NodeId:    "nodeId",
+		Address:   "localAddress:123",
 		FreeBytes: 1,
 	}
 	dataReceived := payload.ToBytes()
