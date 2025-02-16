@@ -81,7 +81,16 @@ func TestConnectionError(t *testing.T) {
 	defer cancel()
 	_, outStatus, _, inConnectTo, _, provider := newConnsTest(ctx)
 	provider.Conn.ReadError = errors.New("some error reading")
-	_ = connectTo("address:123", outStatus, inConnectTo)
+	firstStatus := connectTo("address:123", outStatus, inConnectTo)
+	if firstStatus.Type != model.Connected {
+		t.Error("expected to be connected")
+		return
+	}
+	secondStatus := <-outStatus
+	if secondStatus.Type != model.NotConnected {
+		t.Error("Expected not connected status")
+		return
+	}
 }
 
 func collectPayload(channel chan []byte) []byte {
@@ -131,12 +140,12 @@ func connectTo(address string, outStatus chan model.NetConnectionStatus, inConne
 	return <-outStatus
 }
 
-func newConnsTest(ctx context.Context) (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, MockConnectionProvider) {
+func newConnsTest(ctx context.Context) (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, *MockConnectionProvider) {
 	outStatuses := make(chan model.NetConnectionStatus)
 	outReceives := make(chan model.ConnsMgrReceive)
 	inConnectTo := make(chan model.MgrConnsConnectTo)
 	inSends := make(chan model.MgrConnsSend)
 	provider := NewMockConnectionProvider()
 	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)
-	return c, outStatuses, outReceives, inConnectTo, inSends, provider
+	return c, outStatuses, outReceives, inConnectTo, inSends, &provider
 }
