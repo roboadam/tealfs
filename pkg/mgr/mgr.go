@@ -301,8 +301,23 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 }
 
 func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
+	result, blockId, ptr := m.pendingBlockReads.resolve(r.Data.Ptr)
+	if !r.Ok {
+		switch result {
+		case done:
+			m.MgrWebdavGets <- model.BlockResponse{
+				Err:   errors.New(r.Message),
+			}
+		case notDone:
+			m.readDiskPtr(ptr)
+		case notTracking:
+			m.MgrWebdavGets <- model.BlockResponse{
+				Err:   errors.New(r.Message),
+			}
+	}
+
 	if r.Caller == m.NodeId {
-		result, blockId := m.pendingBlockReads.resolve(r.Data.Ptr)
+		result, blockId, ptr := m.pendingBlockReads.resolve(r.Data.Ptr)
 		if result == done {
 			m.MgrWebdavGets <- model.BlockResponse{
 				Block: model.Block{
@@ -394,26 +409,32 @@ func (m *Mgr) handleWebdavGets(blockId model.BlockId) {
 			Err:   errors.New("not found"),
 		}
 	} else {
-		n := ptrs[0].NodeId
-		rr := model.ReadRequest{
-			Caller: m.NodeId,
-			Ptr:    ptrs[0],
+		for _, ptr := range ptrs {
+			m.pendingBlockReads.add(blockId, ptr)
 		}
-		m.pendingBlockReads.add(blockId, ptrs[0])
-		if m.NodeId == n {
-			m.MgrDiskReads <- rr
+		m.readDiskPtr(ptrs[0])
+	}
+}
+
+func (m *Mgr) readDiskPtr(ptr model.DiskPointer) {
+	n := ptr.NodeId
+	rr := model.ReadRequest{
+		Caller: m.NodeId,
+		Ptr:    ptr,
+	}
+	if m.NodeId == n {
+		m.MgrDiskReads <- rr
+	} else {
+		c, ok := m.nodeConnMap.Get1(n)
+		if ok {
+			m.MgrConnsSends <- model.MgrConnsSend{
+				ConnId:  c,
+				Payload: &rr,
+			}
 		} else {
-			c, ok := m.nodeConnMap.Get1(n)
-			if ok {
-				m.MgrConnsSends <- model.MgrConnsSend{
-					ConnId:  c,
-					Payload: &rr,
-				}
-			} else {
-				m.MgrWebdavGets <- model.BlockResponse{
-					Block: model.Block{},
-					Err:   errors.New("no connection"),
-				}
+			m.MgrWebdavGets <- model.BlockResponse{
+				Block: model.Block{},
+				Err:   errors.New("no connection"),
 			}
 		}
 	}

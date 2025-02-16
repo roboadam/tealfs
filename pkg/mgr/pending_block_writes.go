@@ -50,18 +50,18 @@ const (
 	notTracking
 )
 
-func (p *pendingBlockWrites) resolve(ptr model.DiskPointer) (resolveResult, model.BlockId) {
+func (p *pendingBlockWrites) resolve(ptr model.DiskPointer) (resolveResult, model.BlockId, model.DiskPointer) {
 	if b, exists := p.ptr2b[ptr]; exists {
 		s := p.b2ptr[b]
 		s.Remove(ptr)
 		delete(p.ptr2b, ptr)
 		if s.Len() == 0 {
 			delete(p.b2ptr, b)
-			return done, b
+			return done, b, model.DiskPointer{}
 		}
-		return notDone, b
+		return notDone, b, s.GetValues()[0]
 	}
-	return notTracking, ""
+	return notTracking, "", model.DiskPointer{}
 }
 
 func (p *pendingBlockWrites) cancel(b model.BlockId) {
