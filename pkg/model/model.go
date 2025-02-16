@@ -24,7 +24,7 @@ type UiConnectionStatus struct {
 	Type          ConnectedStatus
 	RemoteAddress string
 	Msg           string
-	Id            ConnId
+	Id            NodeId
 }
 
 type NetConnectionStatus struct {

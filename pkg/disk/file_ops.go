@@ -32,22 +32,31 @@ func (d *DiskFileOps) WriteFile(name string, data []byte) error {
 }
 
 type MockFileOps struct {
-	ReadError   error
-	ReadData    []byte
-	WriteError  error
-	ReadPath    string
-	WritePath   string
-	WrittenData []byte
+	ReadError  error
+	WriteError error
+	mockFS     map[string][]byte
 }
 
 func (m *MockFileOps) ReadFile(name string) ([]byte, error) {
-	m.ReadPath = name
-	return m.ReadData, m.ReadError
+	if m.ReadError != nil {
+		return nil, m.ReadError
+	}
+	if m.mockFS == nil {
+		m.mockFS = make(map[string][]byte)
+	}
+	if data, ok := m.mockFS[name]; ok {
+		return data, nil
+	}
+	return nil, os.ErrNotExist
 }
 
 func (m *MockFileOps) WriteFile(name string, data []byte) error {
-	m.WrittenData = make([]byte, len(data))
-	copy(m.WrittenData, data)
-	m.WritePath = name
-	return m.WriteError
+	if m.WriteError != nil {
+		return m.WriteError
+	}
+	if m.mockFS == nil {
+		m.mockFS = make(map[string][]byte)
+	}
+	m.mockFS[name] = data
+	return nil
 }

@@ -65,12 +65,12 @@ func TestStatus(t *testing.T) {
 	connToResp <- model.UiConnectionStatus{
 		Type:          model.Connected,
 		RemoteAddress: "1234",
-		Id:            model.ConnId(1),
+		Id:            model.NewNodeId(),
 	}
 	connToResp <- model.UiConnectionStatus{
 		Type:          model.NotConnected,
 		RemoteAddress: "5678",
-		Id:            model.ConnId(2),
+		Id:            model.NewNodeId(),
 	}
 
 	waitForWrittenData(func() string {

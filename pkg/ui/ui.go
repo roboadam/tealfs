@@ -26,13 +26,13 @@ import (
 type Ui struct {
 	connToReq  chan model.UiMgrConnectTo
 	connToResp chan model.UiConnectionStatus
-	statuses   map[model.ConnId]model.UiConnectionStatus
+	statuses   map[model.NodeId]model.UiConnectionStatus
 	sMux       sync.Mutex
 	ops        HtmlOps
 }
 
 func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string, ctx context.Context) *Ui {
-	statuses := make(map[model.ConnId]model.UiConnectionStatus)
+	statuses := make(map[model.NodeId]model.UiConnectionStatus)
 	ui := Ui{
 		connToReq:  connToReq,
 		connToResp: connToResp,
@@ -102,7 +102,7 @@ func (ui *Ui) handleRoot() {
 			<!DOCTYPE html>
 			<html>
 			<head>
-				<title>TealFS</title>
+				<title>TealFS recon-work</title>
 				<link rel="stylesheet" href="https://unpkg.com/mvp.css@1.12/mvp.css" /> 
 				<script src="https://unpkg.com/htmx.org@1.9.2"></script>
 			</head>

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"os"
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
@@ -62,7 +63,12 @@ type Mgr struct {
 	freeBytes          uint32
 }
 
-func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType, freeBytes uint32) *Mgr {
+func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType, freeBytes uint32) *Mgr {
+	nodeId, err := readNodeId(savePath, fileOps)
+	if err != nil {
+		panic(err)
+	}
+
 	mgr := Mgr{
 		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
 		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
@@ -102,15 +108,33 @@ func NewWithChanSize(nodeId model.NodeId, chanSize int, nodeAddress string, save
 	return &mgr
 }
 
+func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
+	data, err := fileOps.ReadFile(filepath.Join(savePath, "node_id"))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			nodeId := model.NewNodeId()
+			err = fileOps.WriteFile(filepath.Join(savePath, "node_id"), []byte(nodeId))
+			if err != nil {
+				return "", err
+			}
+			return nodeId, nil
+		}
+		return "", err
+	}
+	return model.NodeId(data), nil
+}
+
 func (m *Mgr) Start() error {
 	err := m.loadNodeAddressMap()
 	if err != nil {
 		return err
 	}
 	go m.eventLoop()
-	for _, address := range m.nodesAddressMap {
-		m.UiMgrConnectTos <- model.UiMgrConnectTo{
-			Address: address,
+	for nodeId, address := range m.nodesAddressMap {
+		if nodeId != m.NodeId {
+			m.UiMgrConnectTos <- model.UiMgrConnectTo{
+				Address: address,
+			}
 		}
 	}
 	return nil
@@ -198,7 +222,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		m.MgrUiStatuses <- model.UiConnectionStatus{
 			Type:          model.Connected,
 			RemoteAddress: p.Address,
-			Id:            i.ConnId,
+			Id:            p.NodeId,
 		}
 		_ = m.addNodeToCluster(*p, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
@@ -351,6 +375,12 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 			},
 		}
 	case model.NotConnected:
+		address := m.connAddress[cs.Id]
+		delete(m.connAddress, cs.Id)
+		// Todo: need a mechanism to back off
+		m.MgrConnsConnectTos <- model.MgrConnsConnectTo{
+			Address: address,
+		}
 		// Todo: reflect this in the ui
 		fmt.Println("Not Connected")
 	}

@@ -17,6 +17,7 @@ package conns
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"tealfs/pkg/model"
 	"testing"
 )
@@ -75,6 +76,23 @@ func TestSendData(t *testing.T) {
 	}
 }
 
+func TestConnectionError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, outStatus, _, inConnectTo, _, provider := newConnsTest(ctx)
+	provider.Conn.ReadError = errors.New("some error reading")
+	firstStatus := connectTo("address:123", outStatus, inConnectTo)
+	if firstStatus.Type != model.Connected {
+		t.Error("expected to be connected")
+		return
+	}
+	secondStatus := <-outStatus
+	if secondStatus.Type != model.NotConnected {
+		t.Error("Expected not connected status")
+		return
+	}
+}
+
 func collectPayload(channel chan []byte) []byte {
 	data := <-channel
 	size := binary.BigEndian.Uint32(data[:4])
@@ -94,8 +112,8 @@ func TestGetData(t *testing.T) {
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest(ctx)
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
 	payload := &model.IAm{
-		NodeId:  "nodeId",
-		Address: "localAddress:123",
+		NodeId:    "nodeId",
+		Address:   "localAddress:123",
 		FreeBytes: 1,
 	}
 	dataReceived := payload.ToBytes()
@@ -122,12 +140,12 @@ func connectTo(address string, outStatus chan model.NetConnectionStatus, inConne
 	return <-outStatus
 }
 
-func newConnsTest(ctx context.Context) (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, MockConnectionProvider) {
+func newConnsTest(ctx context.Context) (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, *MockConnectionProvider) {
 	outStatuses := make(chan model.NetConnectionStatus)
 	outReceives := make(chan model.ConnsMgrReceive)
 	inConnectTo := make(chan model.MgrConnsConnectTo)
 	inSends := make(chan model.MgrConnsSend)
 	provider := NewMockConnectionProvider()
 	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)
-	return c, outStatuses, outReceives, inConnectTo, inSends, provider
+	return c, outStatuses, outReceives, inConnectTo, inSends, &provider
 }

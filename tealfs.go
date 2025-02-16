@@ -41,11 +41,11 @@ func main() {
 
 	freeBytes := uint32(val)
 
-	_ = startTealFs(model.NewNodeId(), os.Args[1], os.Args[2], os.Args[3], os.Args[4], freeBytes, context.Background())
+	_ = startTealFs(os.Args[1], os.Args[2], os.Args[3], os.Args[4], freeBytes, context.Background())
 }
 
-func startTealFs(id model.NodeId, storagePath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
-	m := mgr.NewWithChanSize(id, 2, nodeAddress, storagePath, &disk.DiskFileOps{}, model.Mirrored, freeBytes)
+func startTealFs(storagePath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
+	m := mgr.NewWithChanSize(2, nodeAddress, storagePath, &disk.DiskFileOps{}, model.Mirrored, freeBytes)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
