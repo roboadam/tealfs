@@ -20,11 +20,12 @@ import (
 
 type ReadRequest struct {
 	Caller NodeId
-	Ptr    DiskPointer
+	Ptr    []DiskPointer
 }
 
 func (r *ReadRequest) ToBytes() []byte {
 	callerId := StringToBytes(string(r.Caller))
+	ptrLen := IntToBytes(uint32(len(r.Ptr)))
 	blockKey := r.Ptr.ToBytes()
 	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, blockKey}, []byte{}))
 }

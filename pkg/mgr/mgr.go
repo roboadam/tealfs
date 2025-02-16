@@ -99,7 +99,6 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		savePath:           savePath,
 		fileOps:            fileOps,
 		pendingBlockWrites: newPendingBlockWrites(),
-		pendingBlockReads:  newPendingBlockWrites(),
 		freeBytes:          freeBytes,
 	}
 	mgr.mirrorDistributer.SetWeight(mgr.NodeId, int(freeBytes))
@@ -301,23 +300,8 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 }
 
 func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
-	result, blockId, ptr := m.pendingBlockReads.resolve(r.Data.Ptr)
-	if !r.Ok {
-		switch result {
-		case done:
-			m.MgrWebdavGets <- model.BlockResponse{
-				Err:   errors.New(r.Message),
-			}
-		case notDone:
-			m.readDiskPtr(ptr)
-		case notTracking:
-			m.MgrWebdavGets <- model.BlockResponse{
-				Err:   errors.New(r.Message),
-			}
-	}
-
 	if r.Caller == m.NodeId {
-		result, blockId, ptr := m.pendingBlockReads.resolve(r.Data.Ptr)
+		result, blockId:= m.pendingBlockReads.resolve(r.Data.Ptr)
 		if result == done {
 			m.MgrWebdavGets <- model.BlockResponse{
 				Block: model.Block{
