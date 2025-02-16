@@ -128,10 +128,12 @@ func TestWebdavGet(t *testing.T) {
 				m.DiskMgrReads <- model.ReadResult{
 					Ok:     true,
 					Caller: m.NodeId,
+					Ptrs:   r.Ptrs[1:],
 					Data: model.RawData{
-						Ptr:  r.Ptr,
+						Ptr:  r.Ptrs[0],
 						Data: []byte{1, 2, 3},
 					},
+					BlockId: r.BlockId,
 				}
 			}
 		}
@@ -155,10 +157,12 @@ func TestWebdavGet(t *testing.T) {
 						Payload: &model.ReadResult{
 							Ok:     true,
 							Caller: readRequest.Caller,
+							Ptrs:   readRequest.Ptrs[1:],
 							Data: model.RawData{
-								Ptr:  readRequest.Ptr,
+								Ptr:  readRequest.Ptrs[0],
 								Data: []byte{1, 2, 3},
 							},
+							BlockId: readRequest.BlockId,
 						},
 					}
 				}

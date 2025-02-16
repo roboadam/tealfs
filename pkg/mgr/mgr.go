@@ -59,7 +59,6 @@ type Mgr struct {
 	savePath           string
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
-	pendingBlockReads  pendingBlockWrites
 	freeBytes          uint32
 }
 
@@ -301,16 +300,13 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 
 func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 	if r.Caller == m.NodeId {
-		result, blockId:= m.pendingBlockReads.resolve(r.Data.Ptr)
-		if result == done {
-			m.MgrWebdavGets <- model.BlockResponse{
-				Block: model.Block{
-					Id:   blockId,
-					Type: model.Mirrored,
-					Data: r.Data.Data,
-				},
-				Err: nil,
-			}
+		m.MgrWebdavGets <- model.BlockResponse{
+			Block: model.Block{
+				Id:   r.BlockId,
+				Type: model.Mirrored,
+				Data: r.Data.Data,
+			},
+			Err: nil,
 		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller)
@@ -393,18 +389,19 @@ func (m *Mgr) handleWebdavGets(blockId model.BlockId) {
 			Err:   errors.New("not found"),
 		}
 	} else {
-		for _, ptr := range ptrs {
-			m.pendingBlockReads.add(blockId, ptr)
-		}
-		m.readDiskPtr(ptrs[0])
+		m.readDiskPtr(ptrs, blockId)
 	}
 }
 
-func (m *Mgr) readDiskPtr(ptr model.DiskPointer) {
-	n := ptr.NodeId
+func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, blockId model.BlockId) {
+	if len(ptrs) == 0 {
+		return
+	}
+	n := ptrs[0].NodeId
 	rr := model.ReadRequest{
-		Caller: m.NodeId,
-		Ptr:    ptr,
+		Caller:  m.NodeId,
+		Ptrs:    ptrs,
+		BlockId: blockId,
 	}
 	if m.NodeId == n {
 		m.MgrDiskReads <- rr

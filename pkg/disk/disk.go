@@ -71,18 +71,31 @@ func (d *Disk) consumeChannels() {
 				}
 			}
 		case r := <-d.inReads:
-			data, err := d.path.Read(r.Ptr)
+			if len(r.Ptrs) == 0 {
+				d.outReads <- model.ReadResult{
+					Ok:      false,
+					Message: "no pointers in read request",
+					Caller:  r.Caller,
+					Ptrs:    r.Ptrs,
+					BlockId: r.BlockId,
+				}
+			}
+			data, err := d.path.Read(r.Ptrs[0])
 			if err == nil {
 				d.outReads <- model.ReadResult{
-					Ok:     true,
-					Caller: r.Caller,
-					Data:   data,
+					Ok:      true,
+					Caller:  r.Caller,
+					Data:    data,
+					Ptrs:    r.Ptrs[1:],
+					BlockId: r.BlockId,
 				}
 			} else {
 				d.outReads <- model.ReadResult{
 					Ok:      false,
 					Message: err.Error(),
 					Caller:  r.Caller,
+					Ptrs:    r.Ptrs[1:],
+					BlockId: r.BlockId,
 				}
 			}
 		}

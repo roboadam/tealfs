@@ -58,6 +58,16 @@ func TestReadResult(t *testing.T) {
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller",
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "node1",
+				FileName: "fileName1",
+			},
+			{
+				NodeId:   "node2",
+				FileName: "fileName2",
+			},
+		},
 		Data: model.RawData{
 			Ptr: model.DiskPointer{
 				NodeId:   "node1",
@@ -65,11 +75,22 @@ func TestReadResult(t *testing.T) {
 			},
 			Data: []byte{1, 2, 3},
 		},
+		BlockId: "blockId",
 	}
 	rr2 := model.ReadResult{
 		Ok:      false,
 		Message: "some message",
 		Caller:  "some caller",
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "node1",
+				FileName: "fileName1",
+			},
+			{
+				NodeId:   "node2",
+				FileName: "fileName2",
+			},
+		},
 		Data: model.RawData{
 			Ptr: model.DiskPointer{
 				NodeId:   "node1",
@@ -77,6 +98,7 @@ func TestReadResult(t *testing.T) {
 			},
 			Data: []byte{1, 2, 3},
 		},
+		BlockId: "blockId",
 	}
 	if rr1.Equal(&rr2) {
 		t.Error("should not be equal")
