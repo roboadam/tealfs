@@ -63,9 +63,11 @@ func TestReadData(t *testing.T) {
 	_ = f.WriteFile(expectedPath, data)
 	mgrDiskReads <- model.ReadRequest{
 		Caller: caller,
-		Ptr: model.DiskPointer{
-			NodeId:   "node1",
-			FileName: string(blockId),
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "node1",
+				FileName: string(blockId),
+			},
 		},
 	}
 	result := <-diskMgrReads
@@ -89,9 +91,11 @@ func TestReadNewFile(t *testing.T) {
 	_ = f.WriteFile(expectedPath, data)
 	mgrDiskReads <- model.ReadRequest{
 		Caller: caller,
-		Ptr: model.DiskPointer{
-			NodeId:   "node1",
-			FileName: string(blockId),
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "node1",
+				FileName: string(blockId),
+			},
 		},
 	}
 	result := <-diskMgrReads
