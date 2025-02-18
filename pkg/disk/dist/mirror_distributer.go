@@ -16,6 +16,7 @@ package dist
 
 import (
 	"encoding/binary"
+	"fmt"
 	"hash"
 	"hash/crc32"
 	"maps"
@@ -118,6 +119,7 @@ func (d *MirrorDistributer) checksum(data []byte) []byte {
 func (d *MirrorDistributer) SetWeight(id model.NodeId, weight int) {
 	if weight > 0 {
 		d.weights[id] = weight
+		fmt.Println("Setting weight for node", id, "to", weight, "total weights", len(d.weights))
 	} else {
 		delete(d.weights, id)
 	}
