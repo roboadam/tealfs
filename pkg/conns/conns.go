@@ -117,9 +117,8 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend) {
 	payload := sendReq.Payload
 	switch p := payload.(type) {
 	case *model.ReadRequest:
-		ptrs := []model.DiskPointer{}
 		if len(p.Ptrs) > 0 {
-			ptrs = p.Ptrs[1:]
+			ptrs := p.Ptrs[1:]
 			rr := model.ReadRequest{
 				Caller:  p.Caller,
 				Ptrs:    ptrs,
