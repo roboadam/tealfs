@@ -299,25 +299,29 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 }
 
 func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
-	if r.Caller == m.NodeId {
-		m.MgrWebdavGets <- model.BlockResponse{
-			Block: model.Block{
-				Id:   r.BlockId,
-				Type: model.Mirrored,
-				Data: r.Data.Data,
-			},
-			Err: nil,
-		}
-	} else {
-		c, ok := m.nodeConnMap.Get1(r.Caller)
-		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{
-				ConnId:  c,
-				Payload: &r,
+	if r.Ok {
+		if r.Caller == m.NodeId {
+			m.MgrWebdavGets <- model.BlockResponse{
+				Block: model.Block{
+					Id:   r.BlockId,
+					Type: model.Mirrored,
+					Data: r.Data.Data,
+				},
+				Err: nil,
 			}
 		} else {
-			panic("not connected")
+			c, ok := m.nodeConnMap.Get1(r.Caller)
+			if ok {
+				m.MgrConnsSends <- model.MgrConnsSend{
+					ConnId:  c,
+					Payload: &r,
+				}
+			} else {
+				fmt.Println("handleDiskReadResult: not connected")
+			}
 		}
+	} else {
+		m.readDiskPtr(r.Ptrs, r.BlockId)
 	}
 }
 
