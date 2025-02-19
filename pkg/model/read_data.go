@@ -48,7 +48,7 @@ func (r *ReadRequest) Equal(p Payload) bool {
 				return false
 			}
 		}
-		return r.BlockId != o.BlockId
+		return r.BlockId == o.BlockId
 	}
 	return false
 }
@@ -56,7 +56,7 @@ func (r *ReadRequest) Equal(p Payload) bool {
 func ToReadRequest(data []byte) *ReadRequest {
 	callerId, remainder := StringFromBytes(data)
 	numPtrs, remainder := IntFromBytes(remainder)
-	ptrs := make([]DiskPointer, numPtrs)
+	ptrs := make([]DiskPointer, 0, numPtrs)
 	for range numPtrs {
 		var ptr *DiskPointer
 		ptr, remainder = ToDiskPointer(remainder)
