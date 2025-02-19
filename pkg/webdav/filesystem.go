@@ -17,7 +17,6 @@ package webdav
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"tealfs/pkg/model"
@@ -226,10 +225,6 @@ func (f *FileSystem) fetchFileIndex() error {
 }
 
 func (f *FileSystem) persistFileIndex() error {
-	fmt.Println("persisting file index")
-	for pathValue := range f.fileHolder.byPath {
-		fmt.Println(pathValue)
-	}
 	result := f.pushBlock(model.Block{
 		Id:   "fileIndex",
 		Data: f.fileHolder.ToBytes(),

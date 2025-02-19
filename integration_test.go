@@ -17,7 +17,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -202,8 +201,6 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	fmt.Println(uiContents1)
-
 	uiContents2, ok := getFile(ctx2, urlFor(uiAddress2, "/"), t)
 	if !ok {
 		t.Error("error getting ui contents")
@@ -219,8 +216,6 @@ func TestTwoNodeCluster(t *testing.T) {
 		t.Error("should not be connected to yourself")
 		return
 	}
-
-	fmt.Println(uiContents2)
 }
 
 func TestTwoNodeOneStorageCluster(t *testing.T) {
