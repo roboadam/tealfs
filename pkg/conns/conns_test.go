@@ -119,6 +119,9 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	}
 }
 
+func TestSendReadRequestSendFailure(t *testing.T) {
+}
+
 func TestConnectionError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -145,7 +148,6 @@ func collectPayload(channel chan []byte) []byte {
 			return data
 		}
 		data = append(data, <-channel...)
-
 	}
 }
 

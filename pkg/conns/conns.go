@@ -103,11 +103,12 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 			_, ok := c.netConns[sendReq.ConnId]
 			if !ok {
 				c.handleSendFailure(sendReq)
-			}
-			//Todo maybe this should be async
-			err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
-			if err != nil {
-				c.handleSendFailure(sendReq)
+			} else {
+				//Todo maybe this should be async
+				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
+				if err != nil {
+					c.handleSendFailure(sendReq)
+				}
 			}
 		}
 	}
