@@ -76,6 +76,94 @@ func TestSendData(t *testing.T) {
 	}
 }
 
+func TestSendReadRequestNoConnected(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, _, outReceives, _, inSend, _ := newConnsTest(ctx)
+	readRequest := model.ReadRequest{
+		Caller: "caller1",
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "nodeId1",
+				FileName: "filename1",
+			},
+			{
+				NodeId:   "nodeId2",
+				FileName: "filename2",
+			},
+		},
+		BlockId: "blockId1",
+	}
+	inSend <- model.MgrConnsSend{
+		ConnId:  0,
+		Payload: &readRequest,
+	}
+	outReceive := <-outReceives
+	if outReceive.ConnId != 0 {
+		t.Error("Expected ConnId to be 0")
+		return
+	}
+	switch p := outReceive.Payload.(type) {
+	case *model.ReadRequest:
+		if p.BlockId != readRequest.BlockId || p.Caller != readRequest.Caller {
+			t.Error("unexpected read request not equal")
+			return
+		}
+		if len(p.Ptrs) != 1 || p.Ptrs[0] != readRequest.Ptrs[1] {
+			t.Error("Expected ptrs to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
+	}
+}
+
+func TestSendReadRequestSendFailure(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, outStatus, outReceives, inConnectTo, inSend, connProvider := newConnsTest(ctx)
+	status := connectTo("address:123", outStatus, inConnectTo)
+	connProvider.Conn.WriteError = errors.New("some error writing")
+	readRequest := model.ReadRequest{
+		Caller: "caller1",
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "nodeId1",
+				FileName: "filename1",
+			},
+			{
+				NodeId:   "nodeId2",
+				FileName: "filename2",
+			},
+		},
+		BlockId: "blockId1",
+	}
+	inSend <- model.MgrConnsSend{
+		ConnId:  status.Id,
+		Payload: &readRequest,
+	}
+	outReceive := <-outReceives
+	if outReceive.ConnId != 0 {
+		t.Error("Expected ConnId to be 0")
+		return
+	}
+	switch p := outReceive.Payload.(type) {
+	case *model.ReadRequest:
+		if p.BlockId != readRequest.BlockId || p.Caller != readRequest.Caller {
+			t.Error("unexpected read request not equal")
+			return
+		}
+		if len(p.Ptrs) != 1 || p.Ptrs[0] != readRequest.Ptrs[1] {
+			t.Error("Expected ptrs to be equal")
+			return
+		}
+	default:
+		t.Error("Unexpected payload", p)
+		return
+	}
+}
+
 func TestConnectionError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -102,7 +190,6 @@ func collectPayload(channel chan []byte) []byte {
 			return data
 		}
 		data = append(data, <-channel...)
-
 	}
 }
 

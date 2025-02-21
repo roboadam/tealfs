@@ -62,8 +62,15 @@ func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []model.NodeId {
 	weights2 := maps.Clone(d.weights)
 	delete(weights2, node1)
 	node2 := d.nodeIdForHashAndWeights(intHash, weights2)
+	delete(weights2, node2)
 
-	return []model.NodeId{node1, node2}
+	result := []model.NodeId{node1, node2}
+
+	for nodeId := range weights2 {
+		result = append(result, nodeId)
+	}
+
+	return result
 }
 
 func (d *MirrorDistributer) nodeIdForHashAndWeights(hash int, weights map[model.NodeId]int) model.NodeId {

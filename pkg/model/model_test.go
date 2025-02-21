@@ -58,6 +58,16 @@ func TestReadResult(t *testing.T) {
 		Ok:      true,
 		Message: "some message",
 		Caller:  "some caller",
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "node1",
+				FileName: "fileName1",
+			},
+			{
+				NodeId:   "node2",
+				FileName: "fileName2",
+			},
+		},
 		Data: model.RawData{
 			Ptr: model.DiskPointer{
 				NodeId:   "node1",
@@ -65,11 +75,22 @@ func TestReadResult(t *testing.T) {
 			},
 			Data: []byte{1, 2, 3},
 		},
+		BlockId: "blockId",
 	}
 	rr2 := model.ReadResult{
 		Ok:      false,
 		Message: "some message",
 		Caller:  "some caller",
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "node1",
+				FileName: "fileName1",
+			},
+			{
+				NodeId:   "node2",
+				FileName: "fileName2",
+			},
+		},
 		Data: model.RawData{
 			Ptr: model.DiskPointer{
 				NodeId:   "node1",
@@ -77,6 +98,7 @@ func TestReadResult(t *testing.T) {
 			},
 			Data: []byte{1, 2, 3},
 		},
+		BlockId: "blockId",
 	}
 	if rr1.Equal(&rr2) {
 		t.Error("should not be equal")
@@ -118,12 +140,14 @@ func TestWriteResult(t *testing.T) {
 
 	if wr1.Equal(&wr2) {
 		t.Error("should not be equal")
+		return
 	}
 
 	wr2.Caller = "some caller"
 
 	if !wr1.Equal(&wr2) {
 		t.Error("should be equal")
+		return
 	}
 
 	bytes1 := wr1.ToBytes()
@@ -131,5 +155,49 @@ func TestWriteResult(t *testing.T) {
 
 	if !wr1.Equal(rr3) {
 		t.Error("should be equal")
+		return
+	}
+}
+
+func TestReadRequest(t *testing.T) {
+	rr1 := model.ReadRequest{
+		Caller: "caller1",
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "nodeId1",
+				FileName: "filename1",
+			},
+		},
+		BlockId: "blockId1",
+	}
+	rr2 := model.ReadRequest{
+		Caller: "caller1",
+		Ptrs: []model.DiskPointer{
+			{
+				NodeId:   "nodeId1",
+				FileName: "filename1",
+			},
+		},
+		BlockId: "blockId2",
+	}
+
+	if rr1.Equal(&rr2) {
+		t.Error("should not be equal")
+		return
+	}
+
+	rr2.BlockId = "blockId1"
+
+	if !rr1.Equal(&rr2) {
+		t.Error("should be equal")
+		return
+	}
+
+	bytes1 := rr1.ToBytes()
+	rr3 := model.ToReadRequest(bytes1[1:])
+
+	if !rr1.Equal(rr3) {
+		t.Error("should be equal")
+		return
 	}
 }

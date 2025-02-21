@@ -100,8 +100,46 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 				}
 			}
 		case sendReq := <-c.inSends:
-			//Todo maybe this should be async
-			tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
+			_, ok := c.netConns[sendReq.ConnId]
+			if !ok {
+				c.handleSendFailure(sendReq)
+			} else {
+				//Todo maybe this should be async
+				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
+				if err != nil {
+					c.handleSendFailure(sendReq)
+				}
+			}
+		}
+	}
+}
+
+func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend) {
+	payload := sendReq.Payload
+	switch p := payload.(type) {
+	case *model.ReadRequest:
+		if len(p.Ptrs) > 0 {
+			ptrs := p.Ptrs[1:]
+			rr := model.ReadRequest{
+				Caller:  p.Caller,
+				Ptrs:    ptrs,
+				BlockId: p.BlockId,
+			}
+
+			c.outReceives <- model.ConnsMgrReceive{
+				ConnId:  sendReq.ConnId,
+				Payload: &rr,
+			}
+		} else {
+			c.outReceives <- model.ConnsMgrReceive{
+				ConnId: sendReq.ConnId,
+				Payload: &model.ReadResult{
+					Ok:      false,
+					Message: "no pointers in read request",
+					Caller:  p.Caller,
+					BlockId: p.BlockId,
+				},
+			}
 		}
 	}
 }

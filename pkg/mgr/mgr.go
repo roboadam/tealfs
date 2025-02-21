@@ -59,7 +59,6 @@ type Mgr struct {
 	savePath           string
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
-	pendingBlockReads  pendingBlockWrites
 	freeBytes          uint32
 }
 
@@ -99,7 +98,6 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		savePath:           savePath,
 		fileOps:            fileOps,
 		pendingBlockWrites: newPendingBlockWrites(),
-		pendingBlockReads:  newPendingBlockWrites(),
 		freeBytes:          freeBytes,
 	}
 	mgr.mirrorDistributer.SetWeight(mgr.NodeId, int(freeBytes))
@@ -301,28 +299,29 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 }
 
 func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
-	if r.Caller == m.NodeId {
-		result, blockId := m.pendingBlockReads.resolve(r.Data.Ptr)
-		if result == done {
+	if r.Ok {
+		if r.Caller == m.NodeId {
 			m.MgrWebdavGets <- model.BlockResponse{
 				Block: model.Block{
-					Id:   blockId,
+					Id:   r.BlockId,
 					Type: model.Mirrored,
 					Data: r.Data.Data,
 				},
 				Err: nil,
 			}
+		} else {
+			c, ok := m.nodeConnMap.Get1(r.Caller)
+			if ok {
+				m.MgrConnsSends <- model.MgrConnsSend{
+					ConnId:  c,
+					Payload: &r,
+				}
+			} else {
+				fmt.Println("handleDiskReadResult: not connected")
+			}
 		}
 	} else {
-		c, ok := m.nodeConnMap.Get1(r.Caller)
-		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{
-				ConnId:  c,
-				Payload: &r,
-			}
-		} else {
-			panic("not connected")
-		}
+		m.readDiskPtr(r.Ptrs, r.BlockId)
 	}
 }
 
@@ -394,26 +393,33 @@ func (m *Mgr) handleWebdavGets(blockId model.BlockId) {
 			Err:   errors.New("not found"),
 		}
 	} else {
-		n := ptrs[0].NodeId
-		rr := model.ReadRequest{
-			Caller: m.NodeId,
-			Ptr:    ptrs[0],
-		}
-		m.pendingBlockReads.add(blockId, ptrs[0])
-		if m.NodeId == n {
-			m.MgrDiskReads <- rr
+		m.readDiskPtr(ptrs, blockId)
+	}
+}
+
+func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, blockId model.BlockId) {
+	if len(ptrs) == 0 {
+		return
+	}
+	n := ptrs[0].NodeId
+	rr := model.ReadRequest{
+		Caller:  m.NodeId,
+		Ptrs:    ptrs,
+		BlockId: blockId,
+	}
+	if m.NodeId == n {
+		m.MgrDiskReads <- rr
+	} else {
+		c, ok := m.nodeConnMap.Get1(n)
+		if ok {
+			m.MgrConnsSends <- model.MgrConnsSend{
+				ConnId:  c,
+				Payload: &rr,
+			}
 		} else {
-			c, ok := m.nodeConnMap.Get1(n)
-			if ok {
-				m.MgrConnsSends <- model.MgrConnsSend{
-					ConnId:  c,
-					Payload: &rr,
-				}
-			} else {
-				m.MgrWebdavGets <- model.BlockResponse{
-					Block: model.Block{},
-					Err:   errors.New("no connection"),
-				}
+			m.MgrWebdavGets <- model.BlockResponse{
+				Block: model.Block{},
+				Err:   errors.New("no connection"),
 			}
 		}
 	}

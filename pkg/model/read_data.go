@@ -19,29 +19,54 @@ import (
 )
 
 type ReadRequest struct {
-	Caller NodeId
-	Ptr    DiskPointer
+	Caller  NodeId
+	Ptrs    []DiskPointer
+	BlockId BlockId
 }
 
 func (r *ReadRequest) ToBytes() []byte {
 	callerId := StringToBytes(string(r.Caller))
-	blockKey := r.Ptr.ToBytes()
-	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, blockKey}, []byte{}))
+	ptrLen := IntToBytes(uint32(len(r.Ptrs)))
+	ptrs := make([]byte, 0)
+	for _, ptr := range r.Ptrs {
+		ptrs = append(ptrs, ptr.ToBytes()...)
+	}
+	blockId := StringToBytes(string(r.BlockId))
+	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, ptrLen, ptrs, blockId}, []byte{}))
 }
 
 func (r *ReadRequest) Equal(p Payload) bool {
 	if o, ok := p.(*ReadRequest); ok {
-		return r.Caller == o.Caller && r.Ptr.Equals(&o.Ptr)
+		if r.Caller != o.Caller {
+			return false
+		}
+		if len(r.Ptrs) != len(o.Ptrs) {
+			return false
+		}
+		for i, ptr := range r.Ptrs {
+			if !ptr.Equals(&o.Ptrs[i]) {
+				return false
+			}
+		}
+		return r.BlockId == o.BlockId
 	}
 	return false
 }
 
 func ToReadRequest(data []byte) *ReadRequest {
 	callerId, remainder := StringFromBytes(data)
-	ptr, _ := ToDiskPointer(remainder)
+	numPtrs, remainder := IntFromBytes(remainder)
+	ptrs := make([]DiskPointer, 0, numPtrs)
+	for range numPtrs {
+		var ptr *DiskPointer
+		ptr, remainder = ToDiskPointer(remainder)
+		ptrs = append(ptrs, *ptr)
+	}
+	blockId, _ := StringFromBytes(remainder)
 	rq := ReadRequest{
-		Caller: NodeId(callerId),
-		Ptr:    *ptr,
+		Caller:  NodeId(callerId),
+		Ptrs:    ptrs,
+		BlockId: BlockId(blockId),
 	}
 	return &rq
 }

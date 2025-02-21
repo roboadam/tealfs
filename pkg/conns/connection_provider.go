@@ -61,6 +61,7 @@ type MockConn struct {
 	dataToRead  chan []byte
 	dataWritten chan []byte
 	ReadError   error
+	WriteError  error
 }
 type MockAddr struct{}
 
@@ -74,6 +75,9 @@ func (m *MockConn) Read(b []byte) (n int, err error) {
 }
 
 func (m *MockConn) Write(b []byte) (n int, err error) {
+	if m.WriteError != nil {
+		return 0, m.WriteError
+	}
 	m.dataWritten <- b
 	return len(b), nil
 }

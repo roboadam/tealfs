@@ -44,8 +44,8 @@ func TestMirror(t *testing.T) {
 		blockId := model.NewBlockId()
 		ptrs := d.PointersForId(blockId)
 
-		if len(ptrs) != 2 {
-			t.Error("should have 2 main data nodes")
+		if len(ptrs) != 3 {
+			t.Error("should have 3 main data nodes had", len(ptrs))
 			return
 		}
 
