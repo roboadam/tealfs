@@ -25,7 +25,6 @@ import (
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
-	"tealfs/pkg/webdav"
 )
 
 type Mgr struct {
@@ -36,7 +35,6 @@ type Mgr struct {
 	DiskMgrWrites      chan model.WriteResult
 	WebdavMgrGets      chan model.BlockId
 	WebdavMgrPuts      chan model.Block
-	WebdavMgrLockMsg   chan webdav.LockMessage
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
@@ -44,7 +42,6 @@ type Mgr struct {
 	MgrUiStatuses      chan model.UiConnectionStatus
 	MgrWebdavGets      chan model.BlockResponse
 	MgrWebdavPuts      chan model.BlockIdResponse
-	MgrWebdavLockMsg   chan webdav.LockMessage
 	MgrWebdavIsPrimary chan bool
 
 	nodesAddressMap    map[model.NodeId]string
@@ -76,7 +73,6 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:      make(chan model.BlockId, chanSize),
 		WebdavMgrPuts:      make(chan model.Block, chanSize),
-		WebdavMgrLockMsg:   make(chan webdav.LockMessage, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
@@ -84,7 +80,6 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.BlockResponse, chanSize),
 		MgrWebdavPuts:      make(chan model.BlockIdResponse, chanSize),
-		MgrWebdavLockMsg:   make(chan webdav.LockMessage, chanSize),
 		MgrWebdavIsPrimary: make(chan bool),
 		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
@@ -187,8 +182,6 @@ func (m *Mgr) eventLoop() {
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
 			m.handleWebdavWriteRequest(r)
-		case r := <-m.WebdavMgrLockMsg:
-			m.handleWebdavLockMsg(r)
 		}
 	}
 }
@@ -263,8 +256,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		m.MgrDiskReads <- *p
 	case *model.ReadResult:
 		m.handleDiskReadResult(*p)
-	case webdav.LockMessage:
-		m.MgrWebdavLockMsg <- p
 	default:
 		panic("Received unknown payload")
 	}
@@ -471,43 +462,4 @@ func (m *Mgr) handleMirroredWriteRequest(b model.Block) {
 
 func (m *Mgr) handleXoredWriteRequest(b model.Block) {
 	panic("not implemented yet")
-}
-
-func (m *Mgr) handleWebdavLockMsg(lm webdav.LockMessage) {
-	switch lm := lm.(type) {
-	case *model.LockConfirmRequest:
-		m.sendLockMessageToPrimaryNode(lm)
-	case *model.LockConfirmResponse:
-		m.sendLockMessageToNode(lm, lm.Caller)
-	case *model.LockMessageId:
-		m.sendLockMessageToPrimaryNode(lm)
-	case *model.LockCreateRequest:
-		m.sendLockMessageToPrimaryNode(lm)
-	case *model.LockCreateResponse:
-		m.sendLockMessageToNode(lm, lm.Caller)
-	case *model.LockRefreshRequest:
-		m.sendLockMessageToPrimaryNode(lm)
-	case *model.LockRefreshResponse:
-		m.sendLockMessageToNode(lm, lm.Caller)
-	case *model.LockUnlockRequest:
-		m.sendLockMessageToPrimaryNode(lm)
-	case *model.LockUnlockResponse:
-		m.sendLockMessageToNode(lm, lm.Caller)
-	}
-}
-
-func (m *Mgr) sendLockMessageToPrimaryNode(lm webdav.LockMessage) {
-	m.sendLockMessageToNode(lm, m.PrimaryNodeId)
-}
-
-func (m *Mgr) sendLockMessageToNode(lm webdav.LockMessage, sendTo model.NodeId) {
-	if sendTo != m.NodeId {
-		c, ok := m.nodeConnMap.Get1(sendTo)
-		if ok {
-			m.MgrConnsSends <- model.MgrConnsSend{
-				ConnId:  c,
-				Payload: lm.AsPayload(),
-			}
-		}
-	}
 }

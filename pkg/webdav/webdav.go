@@ -36,7 +36,7 @@ type Webdav struct {
 	pendingPuts        map[model.BlockId]chan model.BlockIdResponse
 	pendingLockMsg     map[model.LockMessageId]chan LockMessage
 	pendingReleases    map[model.LockMessageId]func()
-	lockSystem         *LockSystem
+	lockSystem         webdav.LockSystem
 	bindAddress        string
 	server             *http.Server
 }
@@ -48,8 +48,6 @@ func New(
 	mgrWebdavGets chan model.BlockResponse,
 	mgrWebdavPuts chan model.BlockIdResponse,
 	mgrWebdavIsPrimary chan bool,
-	webdavMgrLockMsg chan LockMessage,
-	mgrWebdavLockMsg chan LockMessage,
 	bindAddress string,
 	ctx context.Context,
 ) Webdav {
@@ -67,7 +65,7 @@ func New(
 		pendingPuts:        make(map[model.BlockId]chan model.BlockIdResponse),
 		pendingLockMsg:     make(map[model.LockMessageId]chan LockMessage),
 		pendingReleases:    map[model.LockMessageId]func(){},
-		lockSystem:         NewLockSystem(nodeId),
+		lockSystem:         webdav.NewMemLS(),
 		bindAddress:        bindAddress,
 	}
 	w.start(ctx)
@@ -109,11 +107,6 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				ch <- r
 				delete(w.pendingPuts, r.BlockId)
 			}
-		case r := <-w.lockSystem.MessageChan:
-			w.webdavMgrLockMsg <- r.Req
-			w.pendingLockMsg[r.Req.GetId()] = r.Resp
-		case r := <-w.lockSystem.ReleaseChan:
-			w.webdavMgrLockMsg <- r
 		case r := <-w.mgrWebdavLockMsg:
 			ch, ok := w.pendingLockMsg[r.GetId()]
 			if ok {
