@@ -72,6 +72,7 @@ func startTealFs(storagePath string, webdavAddress string, uiAddress string, nod
 		m.MgrWebdavGets,
 		m.MgrWebdavPuts,
 		m.MgrWebdavIsPrimary,
+		webdavAddress,
 		ctx,
 	)
 	err := m.Start()
