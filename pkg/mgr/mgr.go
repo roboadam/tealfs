@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"os"
 	"path/filepath"
 	"tealfs/pkg/disk"
@@ -42,12 +41,10 @@ type Mgr struct {
 	MgrUiStatuses      chan model.UiConnectionStatus
 	MgrWebdavGets      chan model.BlockResponse
 	MgrWebdavPuts      chan model.BlockIdResponse
-	MgrWebdavIsPrimary chan bool
 
 	nodesAddressMap    map[model.NodeId]string
 	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
 	NodeId             model.NodeId
-	PrimaryNodeId      model.NodeId
 	connAddress        map[model.ConnId]string
 	mirrorDistributer  dist.MirrorDistributer
 	xorDistributer     dist.XorDistributer
@@ -80,10 +77,8 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.BlockResponse, chanSize),
 		MgrWebdavPuts:      make(chan model.BlockIdResponse, chanSize),
-		MgrWebdavIsPrimary: make(chan bool),
 		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
-		PrimaryNodeId:      nodeId,
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		mirrorDistributer:  dist.NewMirrorDistributer(),
@@ -146,7 +141,6 @@ func (m *Mgr) loadNodeAddressMap() error {
 	if err != nil {
 		return err
 	}
-	m.setPrimaryNode()
 
 	return nil
 }
@@ -316,33 +310,8 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 	}
 }
 
-func (m *Mgr) setPrimaryNode() model.NodeId {
-	hasher := fnv.New64a()
-	primary := m.NodeId
-	hasher.Write([]byte(primary))
-	primaryHash := hasher.Sum64()
-	hasher.Reset()
-	for node := range m.nodesAddressMap {
-		hasher.Write([]byte(node))
-		hash := hasher.Sum64()
-		hasher.Reset()
-		if hash < primaryHash {
-			primary = node
-			primaryHash = hash
-		}
-	}
-	m.PrimaryNodeId = primary
-	if m.PrimaryNodeId == m.NodeId {
-		m.MgrWebdavIsPrimary <- true
-	} else {
-		m.MgrWebdavIsPrimary <- false
-	}
-	return primary
-}
-
 func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	m.nodesAddressMap[iam.NodeId] = iam.Address
-	m.setPrimaryNode()
 	err := m.saveNodeAddressMap()
 	if err != nil {
 		return err

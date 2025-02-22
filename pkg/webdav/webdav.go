@@ -43,22 +43,20 @@ func New(
 	webdavMgrPuts chan model.Block,
 	mgrWebdavGets chan model.BlockResponse,
 	mgrWebdavPuts chan model.BlockIdResponse,
-	mgrWebdavIsPrimary chan bool,
 	bindAddress string,
 	ctx context.Context,
 ) Webdav {
 	w := Webdav{
-		webdavMgrGets:      webdavMgrGets,
-		webdavMgrPuts:      webdavMgrPuts,
-		mgrWebdavGets:      mgrWebdavGets,
-		mgrWebdavPuts:      mgrWebdavPuts,
-		mgrWebdavIsPrimary: mgrWebdavIsPrimary,
-		fileSystem:         NewFileSystem(nodeId),
-		nodeId:             nodeId,
-		pendingReads:       make(map[model.BlockId]chan model.BlockResponse),
-		pendingPuts:        make(map[model.BlockId]chan model.BlockIdResponse),
-		lockSystem:         webdav.NewMemLS(),
-		bindAddress:        bindAddress,
+		webdavMgrGets: webdavMgrGets,
+		webdavMgrPuts: webdavMgrPuts,
+		mgrWebdavGets: mgrWebdavGets,
+		mgrWebdavPuts: mgrWebdavPuts,
+		fileSystem:    NewFileSystem(nodeId),
+		nodeId:        nodeId,
+		pendingReads:  make(map[model.BlockId]chan model.BlockResponse),
+		pendingPuts:   make(map[model.BlockId]chan model.BlockIdResponse),
+		lockSystem:    webdav.NewMemLS(),
+		bindAddress:   bindAddress,
 	}
 	w.start(ctx)
 	return w

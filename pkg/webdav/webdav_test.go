@@ -33,7 +33,6 @@ func TestCreateFile(t *testing.T) {
 	webdavMgrPuts := make(chan model.Block)
 	mgrWebdavGets := make(chan model.BlockResponse)
 	mgrWebdavPuts := make(chan model.BlockIdResponse)
-	mgrWebdavIsPrimary := make(chan bool)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -42,7 +41,7 @@ func TestCreateFile(t *testing.T) {
 	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, &mux, mockStorage)
 	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, &mux, mockStorage)
 
-	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, mgrWebdavIsPrimary, "localhost:7654", ctx)
+	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654", ctx)
 	time.Sleep(1 * time.Second) //FIXME, need a better way to wait for listener to start
 
 	_, err := propFind("http://localhost:7654/")
