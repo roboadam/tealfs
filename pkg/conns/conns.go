@@ -16,9 +16,13 @@ package conns
 
 import (
 	"context"
+	"errors"
 	"net"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Conns struct {
@@ -102,19 +106,19 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 		case sendReq := <-c.inSends:
 			_, ok := c.netConns[sendReq.ConnId]
 			if !ok {
-				c.handleSendFailure(sendReq)
+				c.handleSendFailure(sendReq, errors.New("connection not found"))
 			} else {
 				//Todo maybe this should be async
 				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
 				if err != nil {
-					c.handleSendFailure(sendReq)
+					c.handleSendFailure(sendReq, err)
 				}
 			}
 		}
 	}
 }
 
-func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend) {
+func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 	payload := sendReq.Payload
 	switch p := payload.(type) {
 	case *model.ReadRequest:
@@ -141,6 +145,8 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend) {
 				},
 			}
 		}
+	default:
+		log.Panic("Error sending", err)
 	}
 }
 
@@ -151,7 +157,8 @@ func (c *Conns) listen() {
 			incomingConnReq := AcceptedConns{netConn: conn}
 			c.acceptedConns <- incomingConnReq
 		} else {
-			return
+			log.Warn("Error accepting connection", err)
+			time.Sleep(time.Second)
 		}
 	}
 }
@@ -165,7 +172,10 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		netConn := c.netConns[conn]
 		bytes, err := tnet.ReadPayload(netConn)
 		if err != nil {
-			_ = netConn.Close()
+			closeErr := netConn.Close()
+			if closeErr != nil {
+				log.Panic("Error closing connection", closeErr)
+			}
 			delete(c.netConns, conn)
 			c.outStatuses <- model.NetConnectionStatus{
 				Type: model.NotConnected,

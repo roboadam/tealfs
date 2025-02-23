@@ -24,6 +24,8 @@ import (
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Mgr struct {
@@ -325,6 +327,7 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
+		log.Trace("Mgr: Connected")
 		m.MgrConnsSends <- model.MgrConnsSend{
 			ConnId: cs.Id,
 			Payload: &model.IAm{
@@ -334,6 +337,7 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 			},
 		}
 	case model.NotConnected:
+		log.Trace("Mgr: NotConnected")
 		address := m.connAddress[cs.Id]
 		delete(m.connAddress, cs.Id)
 		// Todo: need a mechanism to back off
@@ -341,7 +345,6 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 			Address: address,
 		}
 		// Todo: reflect this in the ui
-		fmt.Println("Not Connected")
 	}
 }
 
