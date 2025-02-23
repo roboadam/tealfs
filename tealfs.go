@@ -71,9 +71,6 @@ func startTealFs(storagePath string, webdavAddress string, uiAddress string, nod
 		m.WebdavMgrPuts,
 		m.MgrWebdavGets,
 		m.MgrWebdavPuts,
-		m.MgrWebdavIsPrimary,
-		m.WebdavMgrLockMsg,
-		m.MgrWebdavLockMsg,
 		webdavAddress,
 		ctx,
 	)

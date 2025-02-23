@@ -279,18 +279,7 @@ type connectedNode struct {
 
 func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T) *Mgr {
 	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	err := m.Start()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-m.MgrWebdavIsPrimary:
-			}
-		}
-	}()
 	if err != nil {
 		t.Error("Error starting", err)
 	}
