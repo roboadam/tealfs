@@ -25,9 +25,12 @@ import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
+	log.SetLevel(log.TraceLevel)
 	if len(os.Args) < 6 {
 		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address> <node address> <free bytes>")
 		os.Exit(1)
