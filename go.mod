@@ -14,8 +14,8 @@
 
 module tealfs
 
-go 1.22
+go 1.23
 
 require github.com/google/uuid v1.6.0
 
-require golang.org/x/net v0.30.0
+require golang.org/x/net v0.35.0
