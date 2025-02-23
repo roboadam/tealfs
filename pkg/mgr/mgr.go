@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
@@ -165,25 +166,36 @@ func (m *Mgr) eventLoop() {
 	for {
 		select {
 		case r := <-m.UiMgrConnectTos:
+			log.Trace("mgr: ui->mgr connect to ", r.Address)
 			m.handleConnectToReq(r)
 		case r := <-m.ConnsMgrStatuses:
+			log.Trace("mgr: conns->mgr status ", r.Type)
 			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
+			log.Trace("mgr: conns->mgr receive")
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
+			log.Trace("mgr: disk->mgr read")
 			m.handleDiskReadResult(r)
 		case r := <-m.DiskMgrWrites:
+			log.Trace("mgr: disk->mgr write")
 			m.handleDiskWriteResult(r)
 		case r := <-m.WebdavMgrGets:
+			log.Trace("mgr: webdav->mgr get")
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
+			log.Trace("mgr: webdav->mgr put")
 			m.handleWebdavWriteRequest(r)
 		}
 	}
 }
 
 func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
-	m.MgrConnsConnectTos <- model.MgrConnsConnectTo{Address: string(i.Address)}
+	chanutil.Send(
+		m.MgrConnsConnectTos,
+		model.MgrConnsConnectTo{Address: string(i.Address)},
+		"mgr: handleConnectToReq",
+	)
 }
 
 func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
@@ -206,11 +218,12 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
 		m.connAddress[i.ConnId] = p.Address
-		m.MgrUiStatuses <- model.UiConnectionStatus{
+		status := model.UiConnectionStatus{
 			Type:          model.Connected,
 			RemoteAddress: p.Address,
 			Id:            p.NodeId,
 		}
+		chanutil.Send(m.MgrUiStatuses, status, "mgr: handleReceives: ui status")
 		_ = m.addNodeToCluster(*p, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
 		for n := range m.nodesAddressMap {
