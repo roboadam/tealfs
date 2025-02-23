@@ -80,28 +80,34 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 			return
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
+			log.Trace("conns accepted connection sending success status")
 			c.outStatuses <- model.NetConnectionStatus{
 				Type: model.Connected,
 				Msg:  "Success",
 				Id:   id,
 			}
+			log.Trace("conns accepted connection sent success status")
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
+				log.Trace("conns connected to sending success status")
 				c.outStatuses <- model.NetConnectionStatus{
 					Type: model.Connected,
 					Msg:  "Success",
 					Id:   id,
 				}
+				log.Trace("conns connected to sent success status")
 				go c.consumeData(id)
 			} else {
+				log.Trace("conns failed to connect sending failure status")
 				c.outStatuses <- model.NetConnectionStatus{
 					Type: model.NotConnected,
 					Msg:  "Failure connecting",
 					Id:   id,
 				}
+				log.Trace("conns failed to connect sent failure status")
 			}
 		case sendReq := <-c.inSends:
 			_, ok := c.netConns[sendReq.ConnId]
@@ -129,12 +135,14 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 				Ptrs:    ptrs,
 				BlockId: p.BlockId,
 			}
-
+			log.Trace("conns failed to send read request sending new read request")
 			c.outReceives <- model.ConnsMgrReceive{
 				ConnId:  sendReq.ConnId,
 				Payload: &rr,
 			}
+			log.Trace("conns failed to send read request sent new read request")
 		} else {
+			log.Trace("conns failed to send read request sending failure status")
 			c.outReceives <- model.ConnsMgrReceive{
 				ConnId: sendReq.ConnId,
 				Payload: &model.ReadResult{
@@ -144,6 +152,7 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 					BlockId: p.BlockId,
 				},
 			}
+			log.Trace("conns failed to send read request sent failure status")
 		}
 	default:
 		log.Panic("Error sending", err)
@@ -156,7 +165,9 @@ func (c *Conns) listen() {
 		log.Info("Accepted connection")
 		if err == nil {
 			incomingConnReq := AcceptedConns{netConn: conn}
+			log.Trace("conns accepted connection sending to acceptedConns")
 			c.acceptedConns <- incomingConnReq
+			log.Trace("conns accepted connection sent to acceptedConns")
 		} else {
 			log.Warn("Error accepting connection", err)
 			time.Sleep(time.Second)
@@ -178,19 +189,22 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				log.Panic("Error closing connection", closeErr)
 			}
 			delete(c.netConns, conn)
-			log.Info("Connection closed", conn)
+			log.Trace("conns connection closed sending status")
 			c.outStatuses <- model.NetConnectionStatus{
 				Type: model.NotConnected,
 				Msg:  "Connection closed",
 				Id:   conn,
 			}
+			log.Trace("conns connection closed sent status")
 			return
 		}
 		payload := model.ToPayload(bytes)
+		log.Trace("conns received payload sending to connsMgr")
 		c.outReceives <- model.ConnsMgrReceive{
 			ConnId:  conn,
 			Payload: payload,
 		}
+		log.Trace("conns received payload sent to connsMgr")
 	}
 }
 
