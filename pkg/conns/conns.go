@@ -178,6 +178,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				log.Panic("Error closing connection", closeErr)
 			}
 			delete(c.netConns, conn)
+			log.Info("Connection closed", conn)
 			c.outStatuses <- model.NetConnectionStatus{
 				Type: model.NotConnected,
 				Msg:  "Connection closed",
@@ -209,5 +210,6 @@ func (c *Conns) saveNetConn(netConn net.Conn) model.ConnId {
 	id := c.nextId
 	c.nextId++
 	c.netConns[id] = netConn
+	log.Info("Saved connection", id)
 	return id
 }
