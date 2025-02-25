@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
 	"time"
@@ -29,8 +30,8 @@ type Conns struct {
 	netConns      map[model.ConnId]net.Conn
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
-	outStatuses   chan<- model.NetConnectionStatus
-	outReceives   chan<- model.ConnsMgrReceive
+	outStatuses   chan model.NetConnectionStatus
+	outReceives   chan model.ConnsMgrReceive
 	inConnectTo   <-chan model.MgrConnsConnectTo
 	inSends       <-chan model.MgrConnsSend
 	Address       string
@@ -40,8 +41,8 @@ type Conns struct {
 }
 
 func NewConns(
-	outStatuses chan<- model.NetConnectionStatus,
-	outReceives chan<- model.ConnsMgrReceive,
+	outStatuses chan model.NetConnectionStatus,
+	outReceives chan model.ConnsMgrReceive,
 	inConnectTo <-chan model.MgrConnsConnectTo,
 	inSends <-chan model.MgrConnsSend,
 	provider ConnectionProvider,
@@ -80,34 +81,32 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 			return
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
-			log.Trace("conns accepted connection sending success status")
-			c.outStatuses <- model.NetConnectionStatus{
+			status := model.NetConnectionStatus{
 				Type: model.Connected,
 				Msg:  "Success",
 				Id:   id,
 			}
-			log.Trace("conns accepted connection sent success status")
+			chanutil.Send(c.outStatuses, status, "conns accepted connection sending success status")
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
 				log.Trace("conns connected to sending success status")
-				c.outStatuses <- model.NetConnectionStatus{
+				status := model.NetConnectionStatus{
 					Type: model.Connected,
 					Msg:  "Success",
 					Id:   id,
 				}
-				log.Trace("conns connected to sent success status")
+				chanutil.Send(c.outStatuses, status, "conns connected sending success status")
 				go c.consumeData(id)
 			} else {
-				log.Trace("conns failed to connect sending failure status")
-				c.outStatuses <- model.NetConnectionStatus{
+				status := model.NetConnectionStatus{
 					Type: model.NotConnected,
 					Msg:  "Failure connecting",
 					Id:   id,
 				}
-				log.Trace("conns failed to connect sent failure status")
+				chanutil.Send(c.outStatuses, status, "conns failed to connect sending failure status")
 			}
 		case sendReq := <-c.inSends:
 			_, ok := c.netConns[sendReq.ConnId]
@@ -135,12 +134,11 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 				Ptrs:    ptrs,
 				BlockId: p.BlockId,
 			}
-			log.Trace("conns failed to send read request sending new read request")
-			c.outReceives <- model.ConnsMgrReceive{
+			cmr := model.ConnsMgrReceive{
 				ConnId:  sendReq.ConnId,
 				Payload: &rr,
 			}
-			log.Trace("conns failed to send read request sent new read request")
+			chanutil.Send(c.outReceives, cmr, "conns failed to send read request, sending new read request")
 		} else {
 			log.Trace("conns failed to send read request sending failure status")
 			c.outReceives <- model.ConnsMgrReceive{

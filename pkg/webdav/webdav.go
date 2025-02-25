@@ -89,25 +89,23 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 		case <-ctx.Done():
 			w.server.Shutdown(context.Background())
 		case r := <-w.mgrWebdavGets:
-			log.Trace("webdav: got read response from mgr ", r.Block.Id)
 			ch, ok := w.pendingReads[r.Block.Id]
 			if ok {
 				chanutil.Send(ch, r, "webdav: response for pending read to fs")
 				delete(w.pendingReads, r.Block.Id)
 			}
 		case r := <-w.mgrWebdavPuts:
-			log.Trace("webdav: got write response")
 			ch, ok := w.pendingPuts[r.BlockId]
 			if ok {
 				chanutil.Send(ch, r, "webdav: response for pending write to fs")
 				delete(w.pendingPuts, r.BlockId)
+			} else {
+				log.Warn("webdav: received write response for unknown block id", r.BlockId)
 			}
 		case r := <-w.fileSystem.ReadReqResp:
-			log.Trace("webdav: got read request from fs")
 			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr")
 			w.pendingReads[r.Req] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
-			log.Trace("webdav: got write request from fs")
 			chanutil.Send(w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
 			w.pendingPuts[r.Req.Id] = r.Resp
 		}

@@ -1,15 +1,29 @@
 package chanutil
 
 import (
+	"context"
+	"time"
+
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 func Send[T any](channel chan T, value T, message string) {
-	uuid := uuid.New()
-	log.Trace("S:B:", uuid, ":", message)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go checkDone(ctx, message)
 	channel <- value
-	log.Trace("S:A:", uuid, ":", message)
+}
+
+func checkDone(ctx context.Context, message string) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second * 5):
+			log.Error("Send timed out:", message)
+		}
+	}
 }
 
 func Receive[T any](channel chan T, message string) T {
