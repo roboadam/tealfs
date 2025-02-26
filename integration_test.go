@@ -21,7 +21,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -214,6 +216,93 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	if strings.Count(uiContents2, nodeAddress2) != 0 {
 		t.Error("should not be connected to yourself")
+		return
+	}
+}
+
+func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
+	webdavAddress1 := "localhost:8080"
+	webdavAddress2 := "localhost:9080"
+	paths := make([]string, 20)
+	fileContents := make([]string, 20)
+	for i := range 20 {
+		paths[i] = "/test" + strconv.Itoa(i) + ".txt"
+		fileContents[i] = "test content " + strconv.Itoa(i)
+	}
+	uiAddress1 := "localhost:8081"
+	uiAddress2 := "localhost:9081"
+	nodeAddress1 := "localhost:8082"
+	nodeAddress2 := "localhost:9082"
+	storagePath1 := "tmp1"
+	storagePath2 := "tmp2"
+	os.RemoveAll(storagePath1)
+	os.RemoveAll(storagePath2)
+	connectToUrl := "http://" + uiAddress1 + "/connect-to"
+	connectToContents := "hostAndPort=" + url.QueryEscape(nodeAddress2)
+	os.Mkdir(storagePath1, 0755)
+	defer os.RemoveAll(storagePath1)
+	os.Mkdir(storagePath2, 0755)
+	defer os.RemoveAll(storagePath2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
+	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+
+	time.Sleep(time.Second)
+
+	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
+	if !ok {
+		t.Error("error response", resp.Status)
+		return
+	}
+	resp.Body.Close()
+	time.Sleep(time.Second)
+
+	if resp.StatusCode >= 400 {
+		t.Error("error response", resp.Status)
+		return
+	}
+
+	var wg sync.WaitGroup
+	for i := range 20 {
+		wg.Add(1)
+		go putFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
+	}
+	wg.Wait()
+
+	wg = sync.WaitGroup{}
+	for i := range 20 {
+		wg.Add(1)
+		go getFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress2)
+	}
+	wg.Wait()
+}
+
+func putFileWg(path string, contents string, wg *sync.WaitGroup, t *testing.T, ctx context.Context, webdavAddress string) {
+	defer wg.Done()
+	resp, ok := putFile(ctx, urlFor(webdavAddress, path), "text/plain", contents, t)
+	if !ok {
+		t.Error("error response", resp.Status)
+		return
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		t.Error("error response", resp.Status)
+		return
+	}
+}
+
+func getFileWg(path string, expectedContents string, wg *sync.WaitGroup, t *testing.T, ctx context.Context, webdavAddress string) {
+	defer wg.Done()
+	fetchedContent, ok := getFile(ctx, urlFor(webdavAddress, path), t)
+	if !ok {
+		t.Error("error getting file")
+		return
+	}
+	if fetchedContent != expectedContents {
+		t.Error("unexpected contents", fetchedContent)
 		return
 	}
 }
