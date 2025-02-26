@@ -140,8 +140,7 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 			}
 			chanutil.Send(c.outReceives, cmr, "conns failed to send read request, sending new read request")
 		} else {
-			log.Trace("conns failed to send read request sending failure status")
-			c.outReceives <- model.ConnsMgrReceive{
+			cmr := model.ConnsMgrReceive{
 				ConnId: sendReq.ConnId,
 				Payload: &model.ReadResult{
 					Ok:      false,
@@ -150,7 +149,7 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 					BlockId: p.BlockId,
 				},
 			}
-			log.Trace("conns failed to send read request sent failure status")
+			chanutil.Send(c.outReceives, cmr, "conns: failed to send read request sent failure status")
 		}
 	default:
 		log.Panic("Error sending", err)
@@ -163,9 +162,7 @@ func (c *Conns) listen() {
 		log.Info("Accepted connection")
 		if err == nil {
 			incomingConnReq := AcceptedConns{netConn: conn}
-			log.Trace("conns accepted connection sending to acceptedConns")
-			c.acceptedConns <- incomingConnReq
-			log.Trace("conns accepted connection sent to acceptedConns")
+			chanutil.Send(c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
 		} else {
 			log.Warn("Error accepting connection", err)
 			time.Sleep(time.Second)
@@ -187,22 +184,20 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				log.Panic("Error closing connection", closeErr)
 			}
 			delete(c.netConns, conn)
-			log.Trace("conns connection closed sending status")
-			c.outStatuses <- model.NetConnectionStatus{
+			ncs := model.NetConnectionStatus{
 				Type: model.NotConnected,
 				Msg:  "Connection closed",
 				Id:   conn,
 			}
-			log.Trace("conns connection closed sent status")
+			chanutil.Send(c.outStatuses, ncs, "conns connection closed sent status")
 			return
 		}
 		payload := model.ToPayload(bytes)
-		log.Trace("conns received payload sending to connsMgr")
-		c.outReceives <- model.ConnsMgrReceive{
+		cmr := model.ConnsMgrReceive{
 			ConnId:  conn,
 			Payload: payload,
 		}
-		log.Trace("conns received payload sent to connsMgr")
+		chanutil.Send(c.outReceives, cmr, "conns received payload sent to connsMgr")
 	}
 }
 

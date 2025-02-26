@@ -16,20 +16,18 @@ func Send[T any](channel chan T, value T, message string) {
 }
 
 func checkDone(ctx context.Context, message string) {
+	timedOut := false
+	uuid := uuid.New().String()[:8]
 	for {
 		select {
 		case <-ctx.Done():
+			if timedOut {
+				log.Error("SND:SUC:", uuid, ":", message)
+			}
 			return
 		case <-time.After(time.Second * 5):
-			log.Error("Send timed out:", message)
+			log.Error("SND:TIM:", uuid, ":", message)
+			timedOut = true
 		}
 	}
-}
-
-func Receive[T any](channel chan T, message string) T {
-	uuid := uuid.New()
-	log.Trace("R:B:", uuid, ":", message)
-	value := <-channel
-	log.Trace("R:A:", uuid, ":", message)
-	return value
 }
