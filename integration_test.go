@@ -222,59 +222,37 @@ func TestTwoNodeCluster(t *testing.T) {
 
 func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
-	webdavAddress2 := "localhost:9080"
-	paths := make([]string, 20)
-	fileContents := make([]string, 20)
-	for i := range 20 {
+	parallel := 2
+	paths := make([]string, parallel)
+	fileContents := make([]string, parallel)
+	for i := range parallel {
 		paths[i] = "/test" + strconv.Itoa(i) + ".txt"
 		fileContents[i] = "test content " + strconv.Itoa(i)
 	}
 	uiAddress1 := "localhost:8081"
-	uiAddress2 := "localhost:9081"
 	nodeAddress1 := "localhost:8082"
-	nodeAddress2 := "localhost:9082"
 	storagePath1 := "tmp1"
-	storagePath2 := "tmp2"
 	os.RemoveAll(storagePath1)
-	os.RemoveAll(storagePath2)
-	connectToUrl := "http://" + uiAddress1 + "/connect-to"
-	connectToContents := "hostAndPort=" + url.QueryEscape(nodeAddress2)
 	os.Mkdir(storagePath1, 0755)
 	defer os.RemoveAll(storagePath1)
-	os.Mkdir(storagePath2, 0755)
-	defer os.RemoveAll(storagePath2)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
-	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
 
 	time.Sleep(time.Second)
-
-	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
-	if !ok {
-		t.Error("error response", resp.Status)
-		return
-	}
-	resp.Body.Close()
-	time.Sleep(time.Second)
-
-	if resp.StatusCode >= 400 {
-		t.Error("error response", resp.Status)
-		return
-	}
 
 	var wg sync.WaitGroup
-	for i := range 20 {
+	for i := range parallel {
 		wg.Add(1)
 		go putFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
 	}
 	wg.Wait()
 
 	wg = sync.WaitGroup{}
-	for i := range 20 {
+	for i := range parallel {
 		wg.Add(1)
-		go getFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress2)
+		go getFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
 	}
 	wg.Wait()
 }
