@@ -21,7 +21,6 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -159,13 +158,12 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 func (c *Conns) listen() {
 	for {
 		conn, err := c.listener.Accept()
-		log.Info("Accepted connection")
 		if err == nil {
+			log.Info("Accepted connection")
 			incomingConnReq := AcceptedConns{netConn: conn}
 			chanutil.Send(c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
 		} else {
-			log.Warn("Error accepting connection", err)
-			time.Sleep(time.Second)
+			log.Warn("Error accepting connection ", err)
 		}
 	}
 }
@@ -203,12 +201,12 @@ func (c *Conns) consumeData(conn model.ConnId) {
 
 func (c *Conns) connectTo(address string) (model.ConnId, error) {
 	netConn, err := c.provider.GetConnection(address)
-	log.Info("Connecting to", address)
+	log.Info("Connecting to ", address)
 	if err != nil {
-		log.Warn("Error connecting to", address, err)
+		log.Warn("Error connecting to ", address, err)
 		return 0, err
 	}
-	log.Info("Connected to", address)
+	log.Info("Connected to ", address)
 	id := c.saveNetConn(netConn)
 	return id, nil
 }
