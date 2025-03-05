@@ -19,38 +19,67 @@ import (
 )
 
 type ReadResult struct {
-	Ok      bool
-	Message string
-	Caller  NodeId
-	Ptrs    []DiskPointer
-	Data    RawData
-	BlockId BlockId
+	ok      bool
+	message string
+	caller  NodeId
+	ptrs    []DiskPointer
+	data    RawData
+	reqId   GetBlockId
+}
+
+func NewReadResultOk(
+	caller NodeId,
+	ptrs []DiskPointer,
+	data RawData,
+	reqId GetBlockId,
+) ReadResult {
+	return ReadResult{
+		ok:      true,
+		message: "",
+		caller:  caller,
+		ptrs:    ptrs,
+		data:    data,
+		reqId:   reqId,
+	}
+}
+
+func NewReadResultErr(
+	message string,
+	caller NodeId,
+	reqId GetBlockId,
+) ReadResult {
+	return ReadResult{
+		ok:      false,
+		message: message,
+		caller:  caller,
+		reqId:   reqId,
+	}
 }
 
 func (r *ReadResult) Equal(p Payload) bool {
 
 	if o, ok := p.(*ReadResult); ok {
-		if r.Ok != o.Ok {
+		if r.ok != o.ok {
 			return false
 		}
-		if r.Message != o.Message {
+		if r.message != o.message {
 			return false
 		}
-		if r.Caller != o.Caller {
+		if r.caller != o.caller {
 			return false
 		}
-		if len(r.Ptrs) != len(o.Ptrs) {
+		if len(r.ptrs) != len(o.ptrs) {
 			return false
 		}
-		for i, ptr := range r.Ptrs {
-			if !ptr.Equals(&o.Ptrs[i]) {
+		for i, ptr := range r.ptrs {
+			if !ptr.Equals(&o.ptrs[i]) {
 				return false
 			}
 		}
-		if !r.Data.Equals(&o.Data) {
+		if !r.data.Equals(&o.data) {
 			return false
 		}
-		if r.BlockId != o.BlockId {
+		if r.reqId != o.reqId {
 			return false
 		}
 
@@ -60,17 +89,17 @@ func (r *ReadResult) Equal(p Payload) bool {
 }
 
 func (r *ReadResult) ToBytes() []byte {
-	ok := BoolToBytes(r.Ok)
-	message := StringToBytes(r.Message)
-	caller := StringToBytes(string(r.Caller))
-	numPtrs := IntToBytes(uint32(len(r.Ptrs)))
+	ok := BoolToBytes(r.ok)
+	message := StringToBytes(r.message)
+	caller := StringToBytes(string(r.caller))
+	numPtrs := IntToBytes(uint32(len(r.ptrs)))
 	ptrs := make([]byte, 0)
-	for _, ptr := range r.Ptrs {
+	for _, ptr := range r.ptrs {
 		ptrs = append(ptrs, ptr.ToBytes()...)
 	}
-	raw := r.Data.ToBytes()
-	blockId := StringToBytes(string(r.BlockId))
-	payload := bytes.Join([][]byte{ok, message, caller, numPtrs, ptrs, raw, blockId}, []byte{})
+	raw := r.data.ToBytes()
+	reqId := StringToBytes(string(r.reqId))
+	payload := bytes.Join([][]byte{ok, message, caller, numPtrs, ptrs, raw, reqId}, []byte{})
 	return AddType(ReadResultType, payload)
 }
 
@@ -86,13 +115,13 @@ func ToReadResult(data []byte) *ReadResult {
 		ptrs = append(ptrs, *ptr)
 	}
 	raw, remainder := ToRawData(remainder)
-	blockId, _ := StringFromBytes(remainder)
+	reqId, _ := StringFromBytes(remainder)
 	return &ReadResult{
-		Ok:      ok,
-		Message: message,
-		Caller:  NodeId(caller),
-		Ptrs:    ptrs,
-		Data:    *raw,
-		BlockId: BlockId(blockId),
+		ok:      ok,
+		message: message,
+		caller:  NodeId(caller),
+		ptrs:    ptrs,
+		data:    *raw,
+		reqId:   GetBlockId(reqId),
 	}
 }

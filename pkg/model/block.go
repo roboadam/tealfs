@@ -87,6 +87,37 @@ func (d *DiskPointer) Equals(o *DiskPointer) bool {
 	return true
 }
 
+type GetBlockReq struct {
+	id      GetBlockId
+	BlockId BlockId
+}
+
+type PutBlockReq struct {
+	id    PutBlockId
+	Block Block
+}
+
+func NewGetBlockReq(blockId BlockId) GetBlockReq {
+	id := GetBlockId(uuid.New().String())
+	return GetBlockReq{id, blockId}
+}
+
+func NewPutBlockReq(block Block) PutBlockReq {
+	id := PutBlockId(uuid.New().String())
+	return PutBlockReq{id, block}
+}
+
+func (g *GetBlockReq) Id() GetBlockId {
+	return g.id
+}
+
+func (p *PutBlockReq) Id() PutBlockId {
+	return p.id
+}
+
+type GetBlockId string
+type PutBlockId string
+
 type BlockId string
 
 func NewBlockId() BlockId {
@@ -94,12 +125,13 @@ func NewBlockId() BlockId {
 	return BlockId(idValue.String())
 }
 
-type BlockIdResponse struct {
-	BlockId BlockId
-	Err     error
+type PutBlockResp struct {
+	Id  PutBlockId
+	Err error
 }
 
-type BlockResponse struct {
+type GetBlockResp struct {
+	Id    GetBlockId
 	Block Block
 	Err   error
 }

@@ -34,15 +34,15 @@ type Mgr struct {
 	ConnsMgrReceives   chan model.ConnsMgrReceive
 	DiskMgrReads       chan model.ReadResult
 	DiskMgrWrites      chan model.WriteResult
-	WebdavMgrGets      chan model.BlockId
-	WebdavMgrPuts      chan model.Block
+	WebdavMgrGets      chan model.GetBlockReq
+	WebdavMgrPuts      chan model.PutBlockReq
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
 	MgrDiskReads       chan model.ReadRequest
 	MgrUiStatuses      chan model.UiConnectionStatus
-	MgrWebdavGets      chan model.BlockResponse
-	MgrWebdavPuts      chan model.BlockIdResponse
+	MgrWebdavGets      chan model.GetBlockResp
+	MgrWebdavPuts      chan model.PutBlockResp
 
 	nodesAddressMap    map[model.NodeId]string
 	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
@@ -70,15 +70,15 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrWrites:      make(chan model.WriteResult),
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
-		WebdavMgrGets:      make(chan model.BlockId, chanSize),
-		WebdavMgrPuts:      make(chan model.Block, chanSize),
+		WebdavMgrGets:      make(chan model.GetBlockReq, chanSize),
+		WebdavMgrPuts:      make(chan model.PutBlockReq, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
 		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
-		MgrWebdavGets:      make(chan model.BlockResponse, chanSize),
-		MgrWebdavPuts:      make(chan model.BlockIdResponse, chanSize),
+		MgrWebdavGets:      make(chan model.GetBlockResp, chanSize),
+		MgrWebdavPuts:      make(chan model.PutBlockResp, chanSize),
 		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
 		connAddress:        make(map[model.ConnId]string),
@@ -357,26 +357,25 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	}
 }
 
-func (m *Mgr) handleWebdavGets(blockId model.BlockId) {
-	ptrs := m.mirrorDistributer.PointersForId(blockId)
+func (m *Mgr) handleWebdavGets(req model.GetBlockReq) {
+	ptrs := m.mirrorDistributer.PointersForId(req.BlockId)
 	if len(ptrs) == 0 {
-		br := model.BlockResponse{Err: errors.New("not found")}
-		chanutil.Send(m.MgrWebdavGets, br, "mgr: handleWebdavGets: not found")
+		resp := model.GetBlockResp{
+			Id:  req.Id(),
+			Err: errors.New("not found"),
+		}
+		chanutil.Send(m.MgrWebdavGets, resp, "mgr: handleWebdavGets: not found")
 	} else {
 		m.readDiskPtr(ptrs, blockId)
 	}
 }
 
-func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, blockId model.BlockId) {
+func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, req model.GetBlockReq) {
 	if len(ptrs) == 0 {
 		return
 	}
 	n := ptrs[0].NodeId
-	rr := model.ReadRequest{
-		Caller:  m.NodeId,
-		Ptrs:    ptrs,
-		BlockId: blockId,
-	}
+	rr := model.NewReadRequest(m.NodeId, ptrs, req.BlockId, req.Id())
 	if m.NodeId == n {
 		chanutil.Send(m.MgrDiskReads, rr, "mgr: readDiskPtr: local")
 	} else {
@@ -385,14 +384,17 @@ func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, blockId model.BlockId) {
 			mcs := model.MgrConnsSend{ConnId: c, Payload: &rr}
 			chanutil.Send(m.MgrConnsSends, mcs, "mgr: readDiskPtr: remote")
 		} else {
-			br := model.BlockResponse{Err: errors.New("not connected")}
-			chanutil.Send(m.MgrWebdavGets, br, "mgr: readDiskPtr: not connected")
+			resp := model.GetBlockResp{
+				Id:  req.Id(),
+				Err: errors.New("not connected"),
+			}
+			chanutil.Send(m.MgrWebdavGets, resp, "mgr: readDiskPtr: not connected")
 		}
 	}
 }
 
-func (m *Mgr) handleWebdavWriteRequest(w model.Block) {
-	switch w.Type {
+func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
+	switch w.Block.Type {
 	case model.Mirrored:
 		m.handleMirroredWriteRequest(w)
 	case model.XORed:
@@ -402,12 +404,12 @@ func (m *Mgr) handleWebdavWriteRequest(w model.Block) {
 	}
 }
 
-func (m *Mgr) handleMirroredWriteRequest(b model.Block) {
-	ptrs := m.mirrorDistributer.PointersForId(b.Id)
+func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
+	ptrs := m.mirrorDistributer.PointersForId(b.Block.Id)
 	for _, ptr := range ptrs {
-		m.pendingBlockWrites.add(b.Id, ptr)
+		m.pendingBlockWrites.add(b.Block.Id, ptr)
 		data := model.RawData{
-			Data: b.Data,
+			Data: b.Block.Data,
 			Ptr:  ptr,
 		}
 		writeRequest := model.WriteRequest{
