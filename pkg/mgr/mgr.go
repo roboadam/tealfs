@@ -244,12 +244,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		if ok {
 			chanutil.Send(m.MgrDiskWrites, *p, "mgr: handleReceives: write request")
 		} else {
-			payload := model.WriteResult{
-				Ok:      false,
-				Message: "connection error",
-				Caller:  caller,
-				Ptr:     p.Data.Ptr,
-			}
+			payload := model.NewWriteResultErr("connection error", caller, p.ReqId())
 			mcs := model.MgrConnsSend{
 				ConnId:  i.ConnId,
 				Payload: &payload,
@@ -269,23 +264,23 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 }
 
 func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
-	if r.Caller == m.NodeId {
-		resolved, blockId := m.pendingBlockWrites.resolve(r.Ptr)
+	if r.Caller() == m.NodeId {
+		resolved, blockId := m.pendingBlockWrites.resolve(r.Ptr())
 		var err error = nil
-		if !r.Ok {
-			err = errors.New(r.Message)
+		if !r.Ok() {
+			err = errors.New(r.Message())
 			m.pendingBlockWrites.cancel(blockId)
 		}
 		switch resolved {
 		case done:
-			bir := model.BlockIdResponse{
-				BlockId: blockId,
-				Err:     err,
+			resp := model.PutBlockResp{
+				Id:  r.ReqId(),
+				Err: err,
 			}
-			chanutil.Send(m.MgrWebdavPuts, bir, "mgr: handleDiskWriteResult: done")
+			chanutil.Send(m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
 		}
 	} else {
-		c, ok := m.nodeConnMap.Get1(r.Caller)
+		c, ok := m.nodeConnMap.Get1(r.Caller())
 		if ok {
 			mcs := model.MgrConnsSend{
 				ConnId:  c,
@@ -299,18 +294,19 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 }
 
 func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
-	if r.Ok {
-		if r.Caller == m.NodeId {
-			br := model.BlockResponse{
+	if r.Ok() {
+		if r.Caller() == m.NodeId {
+			br := model.GetBlockResp{
+				Id: r.ReqId(),
 				Block: model.Block{
-					Id:   r.BlockId,
+					Id:   r.BlockId(),
 					Type: model.Mirrored,
-					Data: r.Data.Data,
+					Data: r.Data().Data,
 				},
 			}
 			chanutil.Send(m.MgrWebdavGets, br, "mgr: handleDiskReadResult: to local webdav")
 		} else {
-			c, ok := m.nodeConnMap.Get1(r.Caller)
+			c, ok := m.nodeConnMap.Get1(r.Caller())
 			if ok {
 				mcs := model.MgrConnsSend{ConnId: c, Payload: &r}
 				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleDiskReadResult: to remote webdav")
@@ -319,7 +315,7 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 			}
 		}
 	} else {
-		m.readDiskPtr(r.Ptrs, r.BlockId)
+		m.readDiskPtr(r.Ptrs(), r.ReqId())
 	}
 }
 

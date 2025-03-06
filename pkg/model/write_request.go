@@ -21,9 +21,9 @@ import (
 )
 
 type WriteRequest struct {
-	caller     NodeId
-	data       RawData
-	putBlockId PutBlockId
+	caller NodeId
+	data   RawData
+	reqId  PutBlockId
 }
 
 func NewWriteRequest(
@@ -31,22 +31,22 @@ func NewWriteRequest(
 	data RawData,
 ) WriteRequest {
 	return WriteRequest{
-		caller:     caller,
-		data:       data,
-		putBlockId: PutBlockId(uuid.New().String()),
+		caller: caller,
+		data:   data,
+		reqId:  PutBlockId(uuid.New().String()),
 	}
 }
 
-func (r *WriteRequest) Caller() NodeId         { return r.caller }
-func (r *WriteRequest) Data() RawData          { return r.data }
-func (r *WriteRequest) PutBlockId() PutBlockId { return r.putBlockId }
+func (r *WriteRequest) Caller() NodeId    { return r.caller }
+func (r *WriteRequest) Data() RawData     { return r.data }
+func (r *WriteRequest) ReqId() PutBlockId { return r.reqId }
 
 func (r *WriteRequest) Equal(p Payload) bool {
 	if o, ok := p.(*WriteRequest); ok {
 		if r.caller != o.caller {
 			return false
 		}
-		if r.putBlockId != o.putBlockId {
+		if r.reqId != o.reqId {
 			return false
 		}
 		return r.data.Equals(&o.data)
@@ -57,7 +57,7 @@ func (r *WriteRequest) Equal(p Payload) bool {
 func (r *WriteRequest) ToBytes() []byte {
 	caller := StringToBytes(string(r.caller))
 	rawData := r.data.ToBytes()
-	putblockId := StringToBytes(string(r.putBlockId))
+	putblockId := StringToBytes(string(r.reqId))
 	payload := bytes.Join([][]byte{caller, rawData, putblockId}, []byte{})
 	return AddType(WriteRequestType, payload)
 }
@@ -67,8 +67,8 @@ func ToWriteRequest(raw []byte) *WriteRequest {
 	rawData, remainder := ToRawData(remainder)
 	putBlockId, _ := StringFromBytes(remainder)
 	return &WriteRequest{
-		caller:     NodeId(caller),
-		data:       *rawData,
-		putBlockId: PutBlockId(putBlockId),
+		caller: NodeId(caller),
+		data:   *rawData,
+		reqId:  PutBlockId(putBlockId),
 	}
 }

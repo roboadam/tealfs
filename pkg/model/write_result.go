@@ -87,6 +87,12 @@ func (r *WriteResult) Equal(p Payload) bool {
 	return false
 }
 
+func (r *WriteResult) Ok() bool          { return r.ok }
+func (r *WriteResult) Message() string   { return r.message }
+func (r *WriteResult) Caller() NodeId    { return r.caller }
+func (r *WriteResult) Ptr() DiskPointer  { return r.ptr }
+func (r *WriteResult) ReqId() PutBlockId { return r.reqId }
+
 func (r *WriteResult) ToBytes() []byte {
 	ok := BoolToBytes(r.ok)
 	message := StringToBytes(r.message)

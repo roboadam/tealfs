@@ -24,6 +24,7 @@ type ReadResult struct {
 	caller  NodeId
 	ptrs    []DiskPointer
 	data    RawData
+	blockId BlockId
 	reqId   GetBlockId
 }
 
@@ -32,6 +33,7 @@ func NewReadResultOk(
 	ptrs []DiskPointer,
 	data RawData,
 	reqId GetBlockId,
+	blockId BlockId,
 ) ReadResult {
 	return ReadResult{
 		ok:      true,
@@ -40,6 +42,7 @@ func NewReadResultOk(
 		ptrs:    ptrs,
 		data:    data,
 		reqId:   reqId,
+		blockId: blockId,
 	}
 }
 
@@ -47,14 +50,24 @@ func NewReadResultErr(
 	message string,
 	caller NodeId,
 	reqId GetBlockId,
+	blockId BlockId,
 ) ReadResult {
 	return ReadResult{
 		ok:      false,
 		message: message,
 		caller:  caller,
 		reqId:   reqId,
+		blockId: blockId,
 	}
 }
+
+func (r *ReadResult) Ok() bool            { return r.ok }
+func (r *ReadResult) Message() string     { return r.message }
+func (r *ReadResult) Caller() NodeId      { return r.caller }
+func (r *ReadResult) Ptrs() []DiskPointer { return r.ptrs }
+func (r *ReadResult) Data() RawData       { return r.data }
+func (r *ReadResult) ReqId() GetBlockId   { return r.reqId }
+func (r *ReadResult) BlockId() BlockId    { return r.blockId }
 
 func (r *ReadResult) Equal(p Payload) bool {
 
@@ -82,6 +95,9 @@ func (r *ReadResult) Equal(p Payload) bool {
 		if r.reqId != o.reqId {
 			return false
 		}
+		if r.blockId != o.blockId {
+			return false
+		}
 
 		return true
 	}
@@ -99,7 +115,8 @@ func (r *ReadResult) ToBytes() []byte {
 	}
 	raw := r.data.ToBytes()
 	reqId := StringToBytes(string(r.reqId))
-	payload := bytes.Join([][]byte{ok, message, caller, numPtrs, ptrs, raw, reqId}, []byte{})
+	blockId := StringToBytes(string(r.blockId))
+	payload := bytes.Join([][]byte{ok, message, caller, numPtrs, ptrs, raw, reqId, blockId}, []byte{})
 	return AddType(ReadResultType, payload)
 }
 
@@ -115,7 +132,8 @@ func ToReadResult(data []byte) *ReadResult {
 		ptrs = append(ptrs, *ptr)
 	}
 	raw, remainder := ToRawData(remainder)
-	reqId, _ := StringFromBytes(remainder)
+	reqId, remainder := StringFromBytes(remainder)
+	blockId, _ := StringFromBytes(remainder)
 	return &ReadResult{
 		ok:      ok,
 		message: message,
@@ -123,5 +141,6 @@ func ToReadResult(data []byte) *ReadResult {
 		ptrs:    ptrs,
 		data:    *raw,
 		reqId:   GetBlockId(reqId),
+		blockId: BlockId(blockId),
 	}
 }

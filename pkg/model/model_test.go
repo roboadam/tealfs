@@ -68,8 +68,9 @@ func TestReadResult(t *testing.T) {
 		Data: []byte{1, 2, 4},
 	}
 	reqId := model.GetBlockId("getBlockId")
-	rr1 := model.NewReadResultOk(caller, ptrs, data1, reqId)
-	rr2 := model.NewReadResultOk(caller, ptrs, data2, reqId)
+	blockId := model.BlockId("blockId")
+	rr1 := model.NewReadResultOk(caller, ptrs, data1, reqId, blockId)
+	rr2 := model.NewReadResultOk(caller, ptrs, data2, reqId, blockId)
 	if rr1.Equal(&rr2) {
 		t.Error("should not be equal")
 	}
