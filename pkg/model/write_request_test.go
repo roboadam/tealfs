@@ -20,16 +20,16 @@ import (
 )
 
 func TestWriteRequest(t *testing.T) {
-	wr := model.WriteRequest{
-		Caller: "caller1",
-		Data: model.RawData{
-			Ptr: model.DiskPointer{
-				NodeId:   "node1",
-				FileName: "fileName1",
-			},
-			Data: []byte{0x01, 0x02, 0x03},
+	caller := model.NodeId("caller1")
+	data := model.RawData{
+		Ptr: model.DiskPointer{
+			NodeId:   "node1",
+			FileName: "fileName1",
 		},
+		Data: []byte{0x01, 0x02, 0x03},
 	}
+	wr := model.NewWriteRequest(caller, data)
+
 	raw := wr.ToBytes()
 	newWr := model.ToWriteRequest(raw[1:])
 	if !wr.Equal(newWr) {

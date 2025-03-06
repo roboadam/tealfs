@@ -16,26 +16,27 @@ package model
 
 import (
 	"bytes"
+
+	"github.com/google/uuid"
 )
 
 type ReadRequest struct {
-	caller     NodeId
-	ptrs       []DiskPointer
-	blockId    BlockId
-	getBlockId GetBlockId
+	caller  NodeId
+	ptrs    []DiskPointer
+	blockId BlockId
+	reqId   GetBlockId
 }
 
 func NewReadRequest(
 	caller NodeId,
 	ptrs []DiskPointer,
 	blockId BlockId,
-	getBlockId GetBlockId,
 ) ReadRequest {
 	return ReadRequest{
-		caller:     caller,
-		ptrs:       ptrs,
-		blockId:    blockId,
-		getBlockId: getBlockId,
+		caller:  caller,
+		ptrs:    ptrs,
+		blockId: blockId,
+		reqId:   GetBlockId(uuid.New().String()),
 	}
 }
 
@@ -49,7 +50,7 @@ func (r *ReadRequest) BlockId() BlockId {
 	return r.blockId
 }
 func (r *ReadRequest) GetBlockId() GetBlockId {
-	return r.getBlockId
+	return r.reqId
 }
 
 func (r *ReadRequest) ToBytes() []byte {
@@ -60,8 +61,8 @@ func (r *ReadRequest) ToBytes() []byte {
 		ptrs = append(ptrs, ptr.ToBytes()...)
 	}
 	blockId := StringToBytes(string(r.blockId))
-	getBlockId := StringToBytes(string(r.getBlockId))
-	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, ptrLen, ptrs, blockId, getBlockId}, []byte{}))
+	reqId := StringToBytes(string(r.reqId))
+	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, ptrLen, ptrs, blockId, reqId}, []byte{}))
 }
 
 func (r *ReadRequest) Equal(p Payload) bool {
@@ -77,7 +78,7 @@ func (r *ReadRequest) Equal(p Payload) bool {
 				return false
 			}
 		}
-		if r.getBlockId != o.getBlockId {
+		if r.reqId != o.reqId {
 			return false
 		}
 		return r.blockId == o.blockId
@@ -94,11 +95,13 @@ func ToReadRequest(data []byte) *ReadRequest {
 		ptr, remainder = ToDiskPointer(remainder)
 		ptrs = append(ptrs, *ptr)
 	}
-	blockId, _ := StringFromBytes(remainder)
+	blockId, remainder := StringFromBytes(remainder)
+	reqId, _ := StringFromBytes(remainder)
 	rq := ReadRequest{
 		caller:  NodeId(callerId),
 		ptrs:    ptrs,
 		blockId: BlockId(blockId),
+		reqId:   GetBlockId(reqId),
 	}
 	return &rq
 }

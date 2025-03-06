@@ -16,6 +16,8 @@ package model
 
 import (
 	"bytes"
+
+	"github.com/google/uuid"
 )
 
 type WriteRequest struct {
@@ -27,12 +29,11 @@ type WriteRequest struct {
 func NewWriteRequest(
 	caller NodeId,
 	data RawData,
-	putBlockId PutBlockId,
 ) WriteRequest {
 	return WriteRequest{
 		caller:     caller,
 		data:       data,
-		putBlockId: putBlockId,
+		putBlockId: PutBlockId(uuid.New().String()),
 	}
 }
 
