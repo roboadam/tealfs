@@ -418,7 +418,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleMirroredWriteRequest: remote")
 			} else {
 				m.pendingBlockWrites.cancel(b.Block.Id)
-				bir := model.BlockIdResponse{BlockId: b.Id, Err: errors.New("not connected")}
+				bir := model.PutBlockResp{Id: b.Id(), Err: errors.New("not connected")}
 				chanutil.Send(m.MgrWebdavPuts, bir, "mgr: handleMirroredWriteRequest: not connected")
 				return
 			}
