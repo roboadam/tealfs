@@ -315,7 +315,7 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 			}
 		}
 	} else {
-		m.readDiskPtr(r.Ptrs(), r.ReqId())
+		m.readDiskPtr(r.Ptrs(), r.ReqId(), r.BlockId())
 	}
 }
 
@@ -362,16 +362,16 @@ func (m *Mgr) handleWebdavGets(req model.GetBlockReq) {
 		}
 		chanutil.Send(m.MgrWebdavGets, resp, "mgr: handleWebdavGets: not found")
 	} else {
-		m.readDiskPtr(ptrs, blockId)
+		m.readDiskPtr(ptrs, req.Id(), req.BlockId)
 	}
 }
 
-func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, req model.GetBlockReq) {
+func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, reqId model.GetBlockId, blockId model.BlockId) {
 	if len(ptrs) == 0 {
 		return
 	}
 	n := ptrs[0].NodeId
-	rr := model.NewReadRequest(m.NodeId, ptrs, req.BlockId, req.Id())
+	rr := model.NewReadRequest(m.NodeId, ptrs, blockId, reqId)
 	if m.NodeId == n {
 		chanutil.Send(m.MgrDiskReads, rr, "mgr: readDiskPtr: local")
 	} else {
@@ -381,7 +381,7 @@ func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, req model.GetBlockReq) {
 			chanutil.Send(m.MgrConnsSends, mcs, "mgr: readDiskPtr: remote")
 		} else {
 			resp := model.GetBlockResp{
-				Id:  req.Id(),
+				Id:  reqId,
 				Err: errors.New("not connected"),
 			}
 			chanutil.Send(m.MgrWebdavGets, resp, "mgr: readDiskPtr: not connected")
@@ -408,10 +408,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 			Data: b.Block.Data,
 			Ptr:  ptr,
 		}
-		writeRequest := model.WriteRequest{
-			Data:   data,
-			Caller: m.NodeId,
-		}
+		writeRequest := model.NewWriteRequest(m.NodeId, data)
 		if ptr.NodeId == m.NodeId {
 			chanutil.Send(m.MgrDiskWrites, writeRequest, "mgr: handleMirroredWriteRequest: local")
 		} else {
@@ -420,7 +417,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 				mcs := model.MgrConnsSend{ConnId: c, Payload: &writeRequest}
 				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleMirroredWriteRequest: remote")
 			} else {
-				m.pendingBlockWrites.cancel(b.Id)
+				m.pendingBlockWrites.cancel(b.Block.Id)
 				bir := model.BlockIdResponse{BlockId: b.Id, Err: errors.New("not connected")}
 				chanutil.Send(m.MgrWebdavPuts, bir, "mgr: handleMirroredWriteRequest: not connected")
 				return
@@ -429,6 +426,6 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 	}
 }
 
-func (m *Mgr) handleXoredWriteRequest(b model.Block) {
+func (m *Mgr) handleXoredWriteRequest(b model.PutBlockReq) {
 	panic("not implemented yet")
 }

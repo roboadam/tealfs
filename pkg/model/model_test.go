@@ -108,8 +108,10 @@ func TestReadRequest(t *testing.T) {
 	caller := model.NodeId("caller1")
 	ptrs := []model.DiskPointer{{NodeId: "nodeId1", FileName: "filename1"}}
 	blockId := model.BlockId("blockId1")
-	rr1 := model.NewReadRequest(caller, ptrs, blockId)
-	rr2 := model.NewReadRequest(caller, ptrs, blockId)
+	reqId1 := model.GetBlockId("reqId1")
+	reqId2 := model.GetBlockId("reqId2")
+	rr1 := model.NewReadRequest(caller, ptrs, blockId, reqId1)
+	rr2 := model.NewReadRequest(caller, ptrs, blockId, reqId2)
 
 	if rr1.Equal(&rr2) {
 		t.Error("should not be equal because of the internal request id")

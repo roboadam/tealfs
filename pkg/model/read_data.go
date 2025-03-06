@@ -16,8 +16,6 @@ package model
 
 import (
 	"bytes"
-
-	"github.com/google/uuid"
 )
 
 type ReadRequest struct {
@@ -31,12 +29,13 @@ func NewReadRequest(
 	caller NodeId,
 	ptrs []DiskPointer,
 	blockId BlockId,
+	reqId GetBlockId,
 ) ReadRequest {
 	return ReadRequest{
 		caller:  caller,
 		ptrs:    ptrs,
 		blockId: blockId,
-		reqId:   GetBlockId(uuid.New().String()),
+		reqId:   reqId,
 	}
 }
 
