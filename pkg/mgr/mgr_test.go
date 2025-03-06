@@ -125,16 +125,16 @@ func TestWebdavGet(t *testing.T) {
 				return
 			case r := <-m.MgrDiskReads:
 				atomic.AddInt32(&meCount, 1)
-				m.DiskMgrReads <- model.ReadResult{
-					Ok:     true,
-					Caller: m.NodeId,
-					Ptrs:   r.Ptrs[1:],
-					Data: model.RawData{
-						Ptr:  r.Ptrs[0],
-						Data: []byte{1, 2, 3},
-					},
-					BlockId: r.BlockId,
+				caller := m.NodeId
+				ptrs := r.Ptrs()[1:]
+				data := model.RawData{
+					Ptr:  r.Ptrs()[0],
+					Data: []byte{1, 2, 3},
 				}
+				reqId := r.GetBlockId()
+				blockId := r.BlockId()
+
+				m.DiskMgrReads <- model.NewReadResultOk(caller, ptrs, data, reqId, blockId)
 			}
 		}
 	}()
@@ -152,18 +152,20 @@ func TestWebdavGet(t *testing.T) {
 					} else if s.ConnId == expectedConnectionId2 {
 						atomic.AddInt32(&twoCount, 1)
 					}
+					data := model.RawData{
+						Ptr:  readRequest.Ptrs()[0],
+						Data: []byte{1, 2, 3},
+					}
+					result := model.NewReadResultOk(
+						readRequest.Caller(),
+						readRequest.Ptrs()[1:],
+						data,
+						readRequest.GetBlockId(),
+						readRequest.BlockId(),
+					)
 					m.ConnsMgrReceives <- model.ConnsMgrReceive{
-						ConnId: s.ConnId,
-						Payload: &model.ReadResult{
-							Ok:     true,
-							Caller: readRequest.Caller,
-							Ptrs:   readRequest.Ptrs[1:],
-							Data: model.RawData{
-								Ptr:  readRequest.Ptrs[0],
-								Data: []byte{1, 2, 3},
-							},
-							BlockId: readRequest.BlockId,
-						},
+						ConnId:  s.ConnId,
+						Payload: &result,
 					}
 				}
 			}
@@ -171,7 +173,7 @@ func TestWebdavGet(t *testing.T) {
 	}()
 
 	for _, blockId := range ids {
-		m.WebdavMgrGets <- blockId
+		m.WebdavMgrGets <- model.NewGetBlockReq(blockId)
 		w := <-m.MgrWebdavGets
 		if w.Block.Id != blockId {
 			t.Error("Expected", blockId, "got", w.Block.Id)
@@ -221,11 +223,7 @@ func TestWebdavPut(t *testing.T) {
 				return
 			case w := <-m.MgrDiskWrites:
 				atomic.AddInt32(&meCount, 1)
-				m.DiskMgrWrites <- model.WriteResult{
-					Ok:     true,
-					Caller: m.NodeId,
-					Ptr:    w.Data.Ptr,
-				}
+				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
 			}
 		}
 	}()
@@ -242,15 +240,12 @@ func TestWebdavPut(t *testing.T) {
 					atomic.AddInt32(&twoCount, 1)
 				}
 
-				switch writeRequest := s.Payload.(type) {
+				switch request := s.Payload.(type) {
 				case *model.WriteRequest:
+					result := model.NewWriteResultOk(request.Data().Ptr, request.Caller(), request.ReqId())
 					m.ConnsMgrReceives <- model.ConnsMgrReceive{
-						ConnId: s.ConnId,
-						Payload: &model.WriteResult{
-							Ok:     true,
-							Caller: writeRequest.Caller,
-							Ptr:    writeRequest.Data.Ptr,
-						},
+						ConnId:  s.ConnId,
+						Payload: &result,
 					}
 				}
 
@@ -259,7 +254,7 @@ func TestWebdavPut(t *testing.T) {
 	}()
 
 	for _, block := range blocks {
-		m.WebdavMgrPuts <- block
+		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
 		w := <-m.MgrWebdavPuts
 		if w.BlockId != block.Id {
 			t.Error("Expected", block.Id, "got", w.BlockId)
