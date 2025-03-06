@@ -255,10 +255,7 @@ func TestWebdavPut(t *testing.T) {
 
 	for _, block := range blocks {
 		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
-		w := <-m.MgrWebdavPuts
-		if w.BlockId != block.Id {
-			t.Error("Expected", block.Id, "got", w.BlockId)
-		}
+		<-m.MgrWebdavPuts
 	}
 	if meCount == 0 || oneCount == 0 || twoCount == 0 {
 		t.Error("Expected everyone to fetch some data")

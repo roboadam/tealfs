@@ -57,20 +57,12 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Data)
+			err := d.path.Save(s.Data())
 			if err == nil {
-				wr := model.WriteResult{
-					Ok:     true,
-					Caller: s.Caller,
-					Ptr:    s.Data.Ptr,
-				}
+				wr := model.NewWriteResultOk(s.Data().Ptr, s.Caller(), s.ReqId())
 				chanutil.Send(d.outWrites, wr, "disk: save success")
 			} else {
-				wr := model.WriteResult{
-					Ok:      false,
-					Message: err.Error(),
-					Caller:  s.Caller,
-				}
+				wr := model.NewWriteResultErr(err.Error(), s.Caller(), s.ReqId())
 				chanutil.Send(d.outWrites, wr, "disk: save failure")
 			}
 		case r := <-d.inReads:
