@@ -28,18 +28,19 @@ func TestWriteData(t *testing.T) {
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
-	mgrDiskWrites <- model.WriteRequest{
-		Caller: nodeId,
-		Data: model.RawData{
+	req := model.NewWriteRequest(
+		nodeId,
+		model.RawData{
 			Ptr: model.DiskPointer{
 				NodeId:   nodeId,
 				FileName: string(blockId),
 			},
 			Data: data,
 		},
-	}
+	)
+	mgrDiskWrites <- req
 	result := <-diskMgrWrites
-	if !result.Ok {
+	if !result.Ok() {
 		t.Error("Bad write result")
 		return
 	}
@@ -61,21 +62,19 @@ func TestReadData(t *testing.T) {
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	_ = f.WriteFile(expectedPath, data)
-	mgrDiskReads <- model.ReadRequest{
-		Caller: caller,
-		Ptrs: []model.DiskPointer{
-			{
-				NodeId:   "node1",
-				FileName: string(blockId),
-			},
-		},
-	}
+	req := model.NewReadRequest(
+		caller,
+		[]model.DiskPointer{{NodeId: "node1", FileName: string(blockId)}},
+		blockId,
+		model.GetBlockId("getBlockId1"),
+	)
+	mgrDiskReads <- req
 	result := <-diskMgrReads
-	if !result.Ok {
+	if !result.Ok() {
 		t.Error("Bad write result")
 		return
 	}
-	if !bytes.Equal(result.Data.Data, data) {
+	if !bytes.Equal(result.Data().Data, data) {
 		t.Error("Read data is wrong")
 		return
 	}
@@ -89,21 +88,19 @@ func TestReadNewFile(t *testing.T) {
 	f.ReadError = fs.ErrNotExist
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	_ = f.WriteFile(expectedPath, data)
-	mgrDiskReads <- model.ReadRequest{
-		Caller: caller,
-		Ptrs: []model.DiskPointer{
-			{
-				NodeId:   "node1",
-				FileName: string(blockId),
-			},
-		},
-	}
+	req := model.NewReadRequest(
+		caller,
+		[]model.DiskPointer{{NodeId: "node1", FileName: string(blockId)}},
+		blockId,
+		model.GetBlockId("getBlockId1"),
+	)
+	mgrDiskReads <- req
 	result := <-diskMgrReads
-	if !result.Ok {
+	if !result.Ok() {
 		t.Error("Bad write result")
 		return
 	}
-	if !bytes.Equal(result.Data.Data, []byte{}) {
+	if !bytes.Equal(result.Data().Data, []byte{}) {
 		t.Error("Written data is wrong")
 		return
 	}
