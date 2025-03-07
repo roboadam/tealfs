@@ -112,20 +112,22 @@ func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux 
 			return
 		case req := <-reqs:
 			mux.Lock()
-			blockData, exists := data[req.Req]
+			blockData, exists := data[req.Req.BlockId]
 			if exists {
-				req.Resp <- model.BlockResponse{
+				req.Resp <- model.GetBlockResp{
+					Id: req.Req.Id(),
 					Block: model.Block{
-						Id:   req.Req,
+						Id:   req.Req.BlockId,
 						Type: model.Mirrored,
 						Data: blockData,
 					},
 					Err: nil,
 				}
 			} else {
-				req.Resp <- model.BlockResponse{
+				req.Resp <- model.GetBlockResp{
+					Id: req.Req.Id(),
 					Block: model.Block{
-						Id:   req.Req,
+						Id:   req.Req.BlockId,
 						Type: model.Mirrored,
 						Data: []byte{},
 					},
@@ -144,11 +146,8 @@ func handlePushBlockReq(ctx context.Context, reqs chan webdav.WriteReqResp, mux 
 			return
 		case req := <-reqs:
 			mux.Lock()
-			data[req.Req.Id] = req.Req.Data
-			req.Resp <- model.BlockIdResponse{
-				BlockId: req.Req.Id,
-				Err:     nil,
-			}
+			data[req.Req.Block.Id] = req.Req.Block.Data
+			req.Resp <- model.PutBlockResp{Id: req.Req.Id()}
 			mux.Unlock()
 		}
 	}

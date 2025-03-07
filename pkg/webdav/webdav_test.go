@@ -29,10 +29,10 @@ import (
 
 func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
-	webdavMgrGets := make(chan model.BlockId)
-	webdavMgrPuts := make(chan model.Block)
-	mgrWebdavGets := make(chan model.BlockResponse)
-	mgrWebdavPuts := make(chan model.BlockIdResponse)
+	webdavMgrGets := make(chan model.GetBlockReq)
+	webdavMgrPuts := make(chan model.PutBlockReq)
+	mgrWebdavGets := make(chan model.GetBlockResp)
+	mgrWebdavPuts := make(chan model.PutBlockResp)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -115,19 +115,20 @@ func propFind(url string) (string, error) {
 	return string(body), nil
 }
 
-func handleWebdavMgrGets(ctx context.Context, channel chan model.BlockId, respChan chan model.BlockResponse, mux *sync.Mutex, data map[model.BlockId][]byte) {
+func handleWebdavMgrGets(ctx context.Context, channel chan model.GetBlockReq, respChan chan model.GetBlockResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case req := <-channel:
 			mux.Lock()
-			blockData, exists := data[req]
+			blockData, exists := data[req.BlockId]
 			if exists {
-				respChan <- model.BlockResponse{
-					Block: model.Block{Id: req, Data: blockData},
+				respChan <- model.GetBlockResp{
+					Id:    req.Id(),
+					Block: model.Block{Id: req.BlockId, Data: blockData},
 				}
 			} else {
-				respChan <- model.BlockResponse{
-					Block: model.Block{Id: req, Data: []byte{}},
+				respChan <- model.GetBlockResp{
+					Block: model.Block{Id: req.BlockId, Data: []byte{}},
 				}
 			}
 			mux.Unlock()
@@ -137,15 +138,15 @@ func handleWebdavMgrGets(ctx context.Context, channel chan model.BlockId, respCh
 	}
 }
 
-func handleWebdavMgrPuts(ctx context.Context, channel chan model.Block, result chan model.BlockIdResponse, mux *sync.Mutex, data map[model.BlockId][]byte) {
+func handleWebdavMgrPuts(ctx context.Context, channel chan model.PutBlockReq, result chan model.PutBlockResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case req := <-channel:
 			mux.Lock()
-			data[req.Id] = req.Data
-			result <- model.BlockIdResponse{BlockId: req.Id}
+			data[req.Block.Id] = req.Block.Data
+			result <- model.PutBlockResp{Id: req.Id()}
 			mux.Unlock()
 		}
 	}

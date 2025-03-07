@@ -148,7 +148,8 @@ func (f *File) Write(p []byte) (n int, err error) {
 		}
 	}
 
-	result := f.FileSystem.pushBlock(f.Block)
+	req := model.NewPutBlockReq(f.Block)
+	result := f.FileSystem.pushBlock(req)
 	if result.Err == nil {
 		err = f.FileSystem.persistFileIndex()
 		if err != nil {
@@ -162,7 +163,8 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 func (f *File) ensureData() error {
 	if !f.HasData {
-		resp := f.FileSystem.fetchBlock(f.Block.Id)
+		req := model.NewGetBlockReq(f.Block.Id)
+		resp := f.FileSystem.fetchBlock(req)
 		if resp.Err == nil {
 			f.Block = resp.Block
 			f.HasData = true

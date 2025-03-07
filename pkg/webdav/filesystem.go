@@ -62,18 +62,17 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 }
 
 type WriteReqResp struct {
-	Req  model.Block
-	Resp chan model.BlockIdResponse
+	Req  model.PutBlockReq
+	Resp chan model.PutBlockResp
 }
 
 type ReadReqResp struct {
-	Req  model.BlockId
-	Resp chan model.BlockResponse
+	Req  model.GetBlockReq
+	Resp chan model.GetBlockResp
 }
 
-func (f *FileSystem) fetchBlock(id model.BlockId) model.BlockResponse {
-	req := id
-	resp := make(chan model.BlockResponse)
+func (f *FileSystem) fetchBlock(req model.GetBlockReq) model.GetBlockResp {
+	resp := make(chan model.GetBlockResp)
 	f.ReadReqResp <- ReadReqResp{req, resp}
 	return <-resp
 }
@@ -89,9 +88,9 @@ func (f *FileSystem) immediateChildren(path Path) []*File {
 	return children
 }
 
-func (f *FileSystem) pushBlock(block model.Block) model.BlockIdResponse {
-	resp := make(chan model.BlockIdResponse)
-	f.WriteReqResp <- WriteReqResp{Req: block, Resp: resp}
+func (f *FileSystem) pushBlock(req model.PutBlockReq) model.PutBlockResp {
+	resp := make(chan model.PutBlockResp)
+	f.WriteReqResp <- WriteReqResp{Req: req, Resp: resp}
 	return <-resp
 }
 
@@ -215,7 +214,8 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 }
 
 func (f *FileSystem) fetchFileIndex() error {
-	result := f.fetchBlock("fileIndex")
+	req := model.NewGetBlockReq("fileIndex")
+	result := f.fetchBlock(req)
 
 	if result.Err != nil {
 		return result.Err
@@ -225,10 +225,11 @@ func (f *FileSystem) fetchFileIndex() error {
 }
 
 func (f *FileSystem) persistFileIndex() error {
-	result := f.pushBlock(model.Block{
+	req := model.NewPutBlockReq(model.Block{
 		Id:   "fileIndex",
 		Data: f.fileHolder.ToBytes(),
 	})
+	result := f.pushBlock(req)
 
 	if result.Err != nil {
 		return result.Err

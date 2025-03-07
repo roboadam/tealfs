@@ -26,15 +26,15 @@ import (
 )
 
 type Webdav struct {
-	webdavMgrGets      chan model.BlockId
-	webdavMgrPuts      chan model.Block
-	mgrWebdavGets      chan model.BlockResponse
-	mgrWebdavPuts      chan model.BlockIdResponse
+	webdavMgrGets      chan model.GetBlockReq
+	webdavMgrPuts      chan model.PutBlockReq
+	mgrWebdavGets      chan model.GetBlockResp
+	mgrWebdavPuts      chan model.PutBlockResp
 	mgrWebdavIsPrimary chan bool
 	fileSystem         FileSystem
 	nodeId             model.NodeId
-	pendingReads       map[model.BlockId]chan model.BlockResponse
-	pendingPuts        map[model.BlockId]chan model.BlockIdResponse
+	pendingReads       map[model.GetBlockId]chan model.GetBlockResp
+	pendingPuts        map[model.PutBlockId]chan model.PutBlockResp
 	lockSystem         webdav.LockSystem
 	bindAddress        string
 	server             *http.Server
@@ -42,10 +42,10 @@ type Webdav struct {
 
 func New(
 	nodeId model.NodeId,
-	webdavMgrGets chan model.BlockId,
-	webdavMgrPuts chan model.Block,
-	mgrWebdavGets chan model.BlockResponse,
-	mgrWebdavPuts chan model.BlockIdResponse,
+	webdavMgrGets chan model.GetBlockReq,
+	webdavMgrPuts chan model.PutBlockReq,
+	mgrWebdavGets chan model.GetBlockResp,
+	mgrWebdavPuts chan model.PutBlockResp,
 	bindAddress string,
 	ctx context.Context,
 ) Webdav {
@@ -56,8 +56,8 @@ func New(
 		mgrWebdavPuts: mgrWebdavPuts,
 		fileSystem:    NewFileSystem(nodeId),
 		nodeId:        nodeId,
-		pendingReads:  make(map[model.BlockId]chan model.BlockResponse),
-		pendingPuts:   make(map[model.BlockId]chan model.BlockIdResponse),
+		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
+		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
 		lockSystem:    webdav.NewMemLS(),
 		bindAddress:   bindAddress,
 	}
@@ -89,25 +89,25 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 		case <-ctx.Done():
 			w.server.Shutdown(context.Background())
 		case r := <-w.mgrWebdavGets:
-			ch, ok := w.pendingReads[r.Block.Id]
+			ch, ok := w.pendingReads[r.Id]
 			if ok {
 				chanutil.Send(ch, r, "webdav: response for pending read to fs")
-				delete(w.pendingReads, r.Block.Id)
+				delete(w.pendingReads, r.Id)
 			}
 		case r := <-w.mgrWebdavPuts:
-			ch, ok := w.pendingPuts[r.BlockId]
+			ch, ok := w.pendingPuts[r.Id]
 			if ok {
 				chanutil.Send(ch, r, "webdav: response for pending write to fs")
-				delete(w.pendingPuts, r.BlockId)
+				delete(w.pendingPuts, r.Id)
 			} else {
-				log.Warn("webdav: received write response for unknown block id", r.BlockId)
+				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
 		case r := <-w.fileSystem.ReadReqResp:
 			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr")
-			w.pendingReads[r.Req] = r.Resp
+			w.pendingReads[r.Req.Id()] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
 			chanutil.Send(w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
-			w.pendingPuts[r.Req.Id] = r.Resp
+			w.pendingPuts[r.Req.Id()] = r.Resp
 		}
 	}
 }
