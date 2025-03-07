@@ -126,27 +126,19 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 	payload := sendReq.Payload
 	switch p := payload.(type) {
 	case *model.ReadRequest:
-		if len(p.Ptrs) > 0 {
-			ptrs := p.Ptrs[1:]
-			rr := model.ReadRequest{
-				Caller:  p.Caller,
-				Ptrs:    ptrs,
-				BlockId: p.BlockId,
-			}
+		if len(p.Ptrs()) > 0 {
+			ptrs := p.Ptrs()[1:]
+			rr := model.NewReadRequest(p.Caller(), ptrs, p.BlockId(), p.GetBlockId())
 			cmr := model.ConnsMgrReceive{
 				ConnId:  sendReq.ConnId,
 				Payload: &rr,
 			}
 			chanutil.Send(c.outReceives, cmr, "conns failed to send read request, sending new read request")
 		} else {
+			result := model.NewReadResultErr("no pointers in read request", p.Caller(), p.GetBlockId(), p.BlockId())
 			cmr := model.ConnsMgrReceive{
-				ConnId: sendReq.ConnId,
-				Payload: &model.ReadResult{
-					Ok:      false,
-					Message: "no pointers in read request",
-					Caller:  p.Caller,
-					BlockId: p.BlockId,
-				},
+				ConnId:  sendReq.ConnId,
+				Payload: &result,
 			}
 			chanutil.Send(c.outReceives, cmr, "conns: failed to send read request sent failure status")
 		}
