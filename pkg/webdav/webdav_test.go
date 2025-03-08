@@ -128,6 +128,7 @@ func handleWebdavMgrGets(ctx context.Context, channel chan model.GetBlockReq, re
 				}
 			} else {
 				respChan <- model.GetBlockResp{
+					Id:    req.Id(),
 					Block: model.Block{Id: req.BlockId, Data: []byte{}},
 				}
 			}
