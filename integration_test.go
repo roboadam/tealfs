@@ -236,7 +236,7 @@ func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
 	storagePath1 := "tmp1"
 	os.RemoveAll(storagePath1)
 	os.Mkdir(storagePath1, 0755)
-	defer os.RemoveAll(storagePath1)
+	// defer os.RemoveAll(storagePath1)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -288,6 +288,8 @@ func getFileWg(path string, expectedContents string, wg *sync.WaitGroup, t *test
 	if fetchedContent != expectedContents {
 		t.Error("unexpected contents:", fetchedContent, ":")
 		return
+	} else {
+		logrus.Info("expected contents", fetchedContent)
 	}
 }
 

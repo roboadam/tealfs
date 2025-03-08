@@ -155,7 +155,7 @@ func (c *Conns) listen() {
 			incomingConnReq := AcceptedConns{netConn: conn}
 			chanutil.Send(c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
 		} else {
-			log.Warn("Error accepting connection ", err)
+			// log.Warn("Error accepting connection ", err)
 		}
 	}
 }
