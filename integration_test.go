@@ -26,8 +26,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 func TestOneNodeCluster(t *testing.T) {
@@ -261,9 +259,7 @@ func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
 
 func putFileWg(path string, contents string, wg *sync.WaitGroup, t *testing.T, ctx context.Context, webdavAddress string) {
 	defer wg.Done()
-	logrus.Info("start putfile:", path)
 	resp, ok := putFile(ctx, urlFor(webdavAddress, path), "text/plain", contents, t)
-	logrus.Info("done  putfile:", path)
 	if !ok {
 		t.Error("error response", resp.Status)
 		return
@@ -278,9 +274,7 @@ func putFileWg(path string, contents string, wg *sync.WaitGroup, t *testing.T, c
 
 func getFileWg(path string, expectedContents string, wg *sync.WaitGroup, t *testing.T, ctx context.Context, webdavAddress string) {
 	defer wg.Done()
-	logrus.Info("start getfile:", path)
 	fetchedContent, ok := getFile(ctx, urlFor(webdavAddress, path), t)
-	logrus.Info("done  getfile:", path)
 	if !ok {
 		t.Error("error getting file", path)
 		return

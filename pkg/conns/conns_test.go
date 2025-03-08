@@ -79,7 +79,6 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	_, _, outReceives, _, inSend, _ := newConnsTest(ctx)
-	// readRequest := model.ReadRequest{
 	caller := model.NodeId("caller1")
 	ptrs := []model.DiskPointer{
 		{
@@ -93,7 +92,6 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	}
 	blockId := model.BlockId("blockId1")
 	reqId := model.GetBlockId("reqid")
-	// }
 	request := model.NewReadRequest(caller, ptrs, blockId, reqId)
 
 	inSend <- model.MgrConnsSend{

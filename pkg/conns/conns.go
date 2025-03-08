@@ -91,7 +91,6 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
-				log.Trace("conns connected to sending success status")
 				status := model.NetConnectionStatus{
 					Type: model.Connected,
 					Msg:  "Success",
@@ -142,8 +141,6 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 			}
 			chanutil.Send(c.outReceives, cmr, "conns: failed to send read request sent failure status")
 		}
-	default:
-		log.Panic("Error sending", err)
 	}
 }
 
@@ -151,11 +148,8 @@ func (c *Conns) listen() {
 	for {
 		conn, err := c.listener.Accept()
 		if err == nil {
-			log.Info("Accepted connection")
 			incomingConnReq := AcceptedConns{netConn: conn}
 			chanutil.Send(c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
-		} else {
-			// log.Warn("Error accepting connection ", err)
 		}
 	}
 }
@@ -171,7 +165,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		if err != nil {
 			closeErr := netConn.Close()
 			if closeErr != nil {
-				log.Panic("Error closing connection", closeErr)
+				log.Warn("Error closing connection", closeErr)
 			}
 			delete(c.netConns, conn)
 			ncs := model.NetConnectionStatus{
@@ -193,12 +187,9 @@ func (c *Conns) consumeData(conn model.ConnId) {
 
 func (c *Conns) connectTo(address string) (model.ConnId, error) {
 	netConn, err := c.provider.GetConnection(address)
-	log.Info("Connecting to ", address)
 	if err != nil {
-		log.Warn("Error connecting to ", address, err)
 		return 0, err
 	}
-	log.Info("Connected to ", address)
 	id := c.saveNetConn(netConn)
 	return id, nil
 }
@@ -207,6 +198,5 @@ func (c *Conns) saveNetConn(netConn net.Conn) model.ConnId {
 	id := c.nextId
 	c.nextId++
 	c.netConns[id] = netConn
-	log.Info("Saved connection", id)
 	return id
 }

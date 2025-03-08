@@ -96,7 +96,6 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 		case r := <-w.mgrWebdavPuts:
 			ch, ok := w.pendingPuts[r.Id]
 			if ok {
-				log.Info("mgr->webdav write:", r.Id)
 				chanutil.Send(ch, r, "webdav: response for pending write to fs")
 				delete(w.pendingPuts, r.Id)
 			} else {
@@ -106,9 +105,6 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr")
 			w.pendingReads[r.Req.Id()] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
-			if r.Req.Block.Id == "fileIndex" {
-				log.Info("webdav->mgr write:", r.Req.Id(), " ", r.Req.Block.Id)
-			}
 			chanutil.Send(w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
 			w.pendingPuts[r.Req.Id()] = r.Resp
 		}

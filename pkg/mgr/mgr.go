@@ -268,7 +268,6 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 		resolved := m.pendingBlockWrites.resolve(r.Ptr(), r.ReqId())
 		var err error = nil
 		if !r.Ok() {
-			log.Error("Mgr: Error in disk write result")
 			err = errors.New(r.Message())
 			m.pendingBlockWrites.cancel(r.ReqId())
 		}
@@ -391,15 +390,11 @@ func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, reqId model.GetBlockId, bloc
 }
 
 func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
-	if w.Block.Id == "fileIndex" {
-		log.Info("                  ", w.Id())
-	}
 	switch w.Block.Type {
 	case model.Mirrored:
 		m.handleMirroredWriteRequest(w)
 	case model.XORed:
 		panic("unknown block type")
-		// m.handleXoredWriteRequest(w)
 	default:
 		panic("unknown block type")
 	}
@@ -416,9 +411,6 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
 		if ptr.NodeId == m.NodeId {
 			chanutil.Send(m.MgrDiskWrites, writeRequest, "mgr: handleMirroredWriteRequest: local")
-			if b.Block.Id == "fileIndex" {
-				log.Info("               dw:", b.Id())
-			}
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId)
 			if ok {
@@ -432,8 +424,4 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 			}
 		}
 	}
-}
-
-func (m *Mgr) handleXoredWriteRequest(b model.PutBlockReq) {
-	panic("not implemented yet")
 }
