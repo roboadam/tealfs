@@ -22,6 +22,7 @@ const (
 	WriteResultType  = uint8(4)
 	ReadRequestType  = uint8(5)
 	ReadResultType   = uint8(6)
+	BroadcastType        = uint8(7)
 )
 
 type Payload interface {
