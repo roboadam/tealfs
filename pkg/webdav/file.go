@@ -20,6 +20,8 @@ import (
 	"io/fs"
 	"tealfs/pkg/model"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type File struct {
@@ -79,10 +81,12 @@ func (f *File) Close() error {
 func (f *File) Read(p []byte) (n int, err error) {
 	error := f.ensureData()
 	if error != nil {
+		log.Warn("Error reading data for ", f.Name())
 		return 0, error
 	}
 
 	if f.Position >= int64(len(f.Block.Data)) {
+		log.Warn("EOF reading data for ", f.Name())
 		return 0, io.EOF
 	}
 

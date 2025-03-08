@@ -286,10 +286,8 @@ func getFileWg(path string, expectedContents string, wg *sync.WaitGroup, t *test
 		return
 	}
 	if fetchedContent != expectedContents {
-		t.Error("unexpected contents:", fetchedContent, ":")
+		t.Error("for ", path, " unexpected contents:", fetchedContent, ":")
 		return
-	} else {
-		logrus.Info("expected contents", fetchedContent)
 	}
 }
 
