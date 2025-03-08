@@ -265,11 +265,12 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 
 func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 	if r.Caller() == m.NodeId {
-		resolved, blockId := m.pendingBlockWrites.resolve(r.Ptr())
+		resolved := m.pendingBlockWrites.resolve(r.Ptr(), r.ReqId())
 		var err error = nil
 		if !r.Ok() {
+			log.Error("Mgr: Error in disk write result")
 			err = errors.New(r.Message())
-			m.pendingBlockWrites.cancel(blockId)
+			m.pendingBlockWrites.cancel(r.ReqId())
 		}
 		switch resolved {
 		case done:
@@ -390,11 +391,15 @@ func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, reqId model.GetBlockId, bloc
 }
 
 func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
+	if w.Block.Id == "fileIndex" {
+		log.Info("                  ", w.Id())
+	}
 	switch w.Block.Type {
 	case model.Mirrored:
 		m.handleMirroredWriteRequest(w)
 	case model.XORed:
-		m.handleXoredWriteRequest(w)
+		panic("unknown block type")
+		// m.handleXoredWriteRequest(w)
 	default:
 		panic("unknown block type")
 	}
@@ -403,7 +408,7 @@ func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
 func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 	ptrs := m.mirrorDistributer.PointersForId(b.Block.Id)
 	for _, ptr := range ptrs {
-		m.pendingBlockWrites.add(b.Block.Id, ptr)
+		m.pendingBlockWrites.add(b.Id(), ptr)
 		data := model.RawData{
 			Data: b.Block.Data,
 			Ptr:  ptr,
@@ -411,13 +416,16 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
 		if ptr.NodeId == m.NodeId {
 			chanutil.Send(m.MgrDiskWrites, writeRequest, "mgr: handleMirroredWriteRequest: local")
+			if b.Block.Id == "fileIndex" {
+				log.Info("               dw:", b.Id())
+			}
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId)
 			if ok {
 				mcs := model.MgrConnsSend{ConnId: c, Payload: &writeRequest}
 				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleMirroredWriteRequest: remote")
 			} else {
-				m.pendingBlockWrites.cancel(b.Block.Id)
+				m.pendingBlockWrites.cancel(b.Id())
 				bir := model.PutBlockResp{Id: b.Id(), Err: errors.New("not connected")}
 				chanutil.Send(m.MgrWebdavPuts, bir, "mgr: handleMirroredWriteRequest: not connected")
 				return
