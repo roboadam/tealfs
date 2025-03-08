@@ -56,7 +56,7 @@ func TestSendData(t *testing.T) {
 		},
 		Data: []byte{1, 2, 3},
 	}
-	expected := model.NewWriteRequest(caller, data)
+	expected := model.NewWriteRequest(caller, data, "putBlockId")
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{
 		ConnId:  status.Id,

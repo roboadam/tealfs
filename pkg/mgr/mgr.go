@@ -408,7 +408,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 			Data: b.Block.Data,
 			Ptr:  ptr,
 		}
-		writeRequest := model.NewWriteRequest(m.NodeId, data)
+		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
 		if ptr.NodeId == m.NodeId {
 			chanutil.Send(m.MgrDiskWrites, writeRequest, "mgr: handleMirroredWriteRequest: local")
 		} else {

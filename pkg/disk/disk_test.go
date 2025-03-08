@@ -37,6 +37,7 @@ func TestWriteData(t *testing.T) {
 			},
 			Data: data,
 		},
+		"putBlockId",
 	)
 	mgrDiskWrites <- req
 	result := <-diskMgrWrites

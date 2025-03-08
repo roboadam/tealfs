@@ -28,7 +28,7 @@ func TestWriteRequest(t *testing.T) {
 		},
 		Data: []byte{0x01, 0x02, 0x03},
 	}
-	wr := model.NewWriteRequest(caller, data)
+	wr := model.NewWriteRequest(caller, data, "putBlockId")
 
 	raw := wr.ToBytes()
 	newWr := model.ToWriteRequest(raw[1:])
