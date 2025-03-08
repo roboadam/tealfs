@@ -25,9 +25,12 @@ import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
+	log.SetLevel(log.TraceLevel)
 	if len(os.Args) < 6 {
 		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address> <node address> <free bytes>")
 		os.Exit(1)
@@ -45,7 +48,7 @@ func main() {
 }
 
 func startTealFs(storagePath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
-	m := mgr.NewWithChanSize(2, nodeAddress, storagePath, &disk.DiskFileOps{}, model.Mirrored, freeBytes)
+	m := mgr.NewWithChanSize(10, nodeAddress, storagePath, &disk.DiskFileOps{}, model.Mirrored, freeBytes)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,

@@ -54,60 +54,25 @@ func TestSyncNodes(t *testing.T) {
 }
 
 func TestReadResult(t *testing.T) {
-	rr1 := model.ReadResult{
-		Ok:      true,
-		Message: "some message",
-		Caller:  "some caller",
-		Ptrs: []model.DiskPointer{
-			{
-				NodeId:   "node1",
-				FileName: "fileName1",
-			},
-			{
-				NodeId:   "node2",
-				FileName: "fileName2",
-			},
-		},
-		Data: model.RawData{
-			Ptr: model.DiskPointer{
-				NodeId:   "node1",
-				FileName: "fileName1",
-			},
-			Data: []byte{1, 2, 3},
-		},
-		BlockId: "blockId",
+	caller := model.NodeId("some caller")
+	ptrs := []model.DiskPointer{
+		{NodeId: "node1", FileName: "fileName1"},
+		{NodeId: "node2", FileName: "fileName2"},
 	}
-	rr2 := model.ReadResult{
-		Ok:      false,
-		Message: "some message",
-		Caller:  "some caller",
-		Ptrs: []model.DiskPointer{
-			{
-				NodeId:   "node1",
-				FileName: "fileName1",
-			},
-			{
-				NodeId:   "node2",
-				FileName: "fileName2",
-			},
-		},
-		Data: model.RawData{
-			Ptr: model.DiskPointer{
-				NodeId:   "node1",
-				FileName: "fileName1",
-			},
-			Data: []byte{1, 2, 3},
-		},
-		BlockId: "blockId",
+	data1 := model.RawData{
+		Ptr:  model.DiskPointer{NodeId: "node1", FileName: "fileName1"},
+		Data: []byte{1, 2, 3},
 	}
+	data2 := model.RawData{
+		Ptr:  model.DiskPointer{NodeId: "node1", FileName: "fileName1"},
+		Data: []byte{1, 2, 4},
+	}
+	reqId := model.GetBlockId("getBlockId")
+	blockId := model.BlockId("blockId")
+	rr1 := model.NewReadResultOk(caller, ptrs, data1, reqId, blockId)
+	rr2 := model.NewReadResultOk(caller, ptrs, data2, reqId, blockId)
 	if rr1.Equal(&rr2) {
 		t.Error("should not be equal")
-	}
-
-	rr2.Ok = true
-
-	if !rr1.Equal(&rr2) {
-		t.Error("should be equal")
 	}
 
 	bytes1 := rr1.ToBytes()
@@ -119,34 +84,14 @@ func TestReadResult(t *testing.T) {
 }
 
 func TestWriteResult(t *testing.T) {
-	wr1 := model.WriteResult{
-		Ok:      true,
-		Message: "some message",
-		Caller:  "some caller",
-		Ptr: model.DiskPointer{
-			NodeId:   "nodeId",
-			FileName: "fileName",
-		},
-	}
-	wr2 := model.WriteResult{
-		Ok:      true,
-		Message: "some message",
-		Caller:  "some caller 2",
-		Ptr: model.DiskPointer{
-			NodeId:   "nodeId",
-			FileName: "fileName",
-		},
-	}
-
+	caller := model.NodeId("some caller")
+	ptr := model.DiskPointer{NodeId: "nodeId", FileName: "fileName"}
+	reqId1 := model.PutBlockId("reqId1")
+	reqId2 := model.PutBlockId("reqId2")
+	wr1 := model.NewWriteResultOk(ptr, caller, reqId1)
+	wr2 := model.NewWriteResultOk(ptr, caller, reqId2)
 	if wr1.Equal(&wr2) {
 		t.Error("should not be equal")
-		return
-	}
-
-	wr2.Caller = "some caller"
-
-	if !wr1.Equal(&wr2) {
-		t.Error("should be equal")
 		return
 	}
 
@@ -160,36 +105,16 @@ func TestWriteResult(t *testing.T) {
 }
 
 func TestReadRequest(t *testing.T) {
-	rr1 := model.ReadRequest{
-		Caller: "caller1",
-		Ptrs: []model.DiskPointer{
-			{
-				NodeId:   "nodeId1",
-				FileName: "filename1",
-			},
-		},
-		BlockId: "blockId1",
-	}
-	rr2 := model.ReadRequest{
-		Caller: "caller1",
-		Ptrs: []model.DiskPointer{
-			{
-				NodeId:   "nodeId1",
-				FileName: "filename1",
-			},
-		},
-		BlockId: "blockId2",
-	}
+	caller := model.NodeId("caller1")
+	ptrs := []model.DiskPointer{{NodeId: "nodeId1", FileName: "filename1"}}
+	blockId := model.BlockId("blockId1")
+	reqId1 := model.GetBlockId("reqId1")
+	reqId2 := model.GetBlockId("reqId2")
+	rr1 := model.NewReadRequest(caller, ptrs, blockId, reqId1)
+	rr2 := model.NewReadRequest(caller, ptrs, blockId, reqId2)
 
 	if rr1.Equal(&rr2) {
-		t.Error("should not be equal")
-		return
-	}
-
-	rr2.BlockId = "blockId1"
-
-	if !rr1.Equal(&rr2) {
-		t.Error("should be equal")
+		t.Error("should not be equal because of the internal request id")
 		return
 	}
 

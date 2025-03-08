@@ -18,6 +18,7 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 )
 
@@ -56,46 +57,26 @@ func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Data)
+			err := d.path.Save(s.Data())
 			if err == nil {
-				d.outWrites <- model.WriteResult{
-					Ok:     true,
-					Caller: s.Caller,
-					Ptr:    s.Data.Ptr,
-				}
+				wr := model.NewWriteResultOk(s.Data().Ptr, s.Caller(), s.ReqId())
+				chanutil.Send(d.outWrites, wr, "disk: save success")
 			} else {
-				d.outWrites <- model.WriteResult{
-					Ok:      false,
-					Message: err.Error(),
-					Caller:  s.Caller,
-				}
+				wr := model.NewWriteResultErr(err.Error(), s.Caller(), s.ReqId())
+				chanutil.Send(d.outWrites, wr, "disk: save failure")
 			}
 		case r := <-d.inReads:
-			if len(r.Ptrs) == 0 {
-				d.outReads <- model.ReadResult{
-					Ok:      false,
-					Message: "no pointers in read request",
-					Caller:  r.Caller,
-					Ptrs:    r.Ptrs,
-					BlockId: r.BlockId,
-				}
-			}
-			data, err := d.path.Read(r.Ptrs[0])
-			if err == nil {
-				d.outReads <- model.ReadResult{
-					Ok:      true,
-					Caller:  r.Caller,
-					Data:    data,
-					Ptrs:    r.Ptrs[1:],
-					BlockId: r.BlockId,
-				}
+			if len(r.Ptrs()) == 0 {
+				rr := model.NewReadResultErr("no pointers in read request", r.Caller(), r.GetBlockId(), r.BlockId())
+				chanutil.Send(d.outReads, rr, "disk: no pointers in read request")
 			} else {
-				d.outReads <- model.ReadResult{
-					Ok:      false,
-					Message: err.Error(),
-					Caller:  r.Caller,
-					Ptrs:    r.Ptrs[1:],
-					BlockId: r.BlockId,
+				data, err := d.path.Read(r.Ptrs()[0])
+				if err == nil {
+					rr := model.NewReadResultOk(r.Caller(), r.Ptrs()[1:], data, r.GetBlockId(), r.BlockId())
+					chanutil.Send(d.outReads, rr, "disk: read success")
+				} else {
+					rr := model.NewReadResultErr(err.Error(), r.Caller(), r.GetBlockId(), r.BlockId())
+					chanutil.Send(d.outReads, rr, "disk: read failure")
 				}
 			}
 		}

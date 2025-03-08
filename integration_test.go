@@ -21,7 +21,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -214,6 +216,71 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	if strings.Count(uiContents2, nodeAddress2) != 0 {
 		t.Error("should not be connected to yourself")
+		return
+	}
+}
+
+func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
+	webdavAddress1 := "localhost:8080"
+	parallel := 5
+	paths := make([]string, parallel)
+	fileContents := make([]string, parallel)
+	for i := range parallel {
+		paths[i] = "/test" + strconv.Itoa(i) + ".txt"
+		fileContents[i] = "test content " + strconv.Itoa(i)
+	}
+	uiAddress1 := "localhost:8081"
+	nodeAddress1 := "localhost:8082"
+	storagePath1 := "tmp1"
+	os.RemoveAll(storagePath1)
+	os.Mkdir(storagePath1, 0755)
+	defer os.RemoveAll(storagePath1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
+
+	time.Sleep(time.Second)
+
+	var wg sync.WaitGroup
+	for i := range parallel {
+		wg.Add(1)
+		go putFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
+	}
+	wg.Wait()
+
+	wg = sync.WaitGroup{}
+	for i := range parallel {
+		wg.Add(1)
+		go getFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
+	}
+	wg.Wait()
+}
+
+func putFileWg(path string, contents string, wg *sync.WaitGroup, t *testing.T, ctx context.Context, webdavAddress string) {
+	defer wg.Done()
+	resp, ok := putFile(ctx, urlFor(webdavAddress, path), "text/plain", contents, t)
+	if !ok {
+		t.Error("error response", resp.Status)
+		return
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		t.Error("error response", resp.Status)
+		return
+	}
+}
+
+func getFileWg(path string, expectedContents string, wg *sync.WaitGroup, t *testing.T, ctx context.Context, webdavAddress string) {
+	defer wg.Done()
+	fetchedContent, ok := getFile(ctx, urlFor(webdavAddress, path), t)
+	if !ok {
+		t.Error("error getting file", path)
+		return
+	}
+	if fetchedContent != expectedContents {
+		t.Error("for ", path, " unexpected contents:", fetchedContent, ":")
 		return
 	}
 }

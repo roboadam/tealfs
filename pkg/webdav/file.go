@@ -20,6 +20,8 @@ import (
 	"io/fs"
 	"tealfs/pkg/model"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type File struct {
@@ -79,10 +81,12 @@ func (f *File) Close() error {
 func (f *File) Read(p []byte) (n int, err error) {
 	error := f.ensureData()
 	if error != nil {
+		log.Warn("Error reading data for ", f.Name())
 		return 0, error
 	}
 
 	if f.Position >= int64(len(f.Block.Data)) {
+		log.Warn("EOF reading data for ", f.Name())
 		return 0, io.EOF
 	}
 
@@ -148,7 +152,8 @@ func (f *File) Write(p []byte) (n int, err error) {
 		}
 	}
 
-	result := f.FileSystem.pushBlock(f.Block)
+	req := model.NewPutBlockReq(f.Block)
+	result := f.FileSystem.pushBlock(req)
 	if result.Err == nil {
 		err = f.FileSystem.persistFileIndex()
 		if err != nil {
@@ -162,7 +167,8 @@ func (f *File) Write(p []byte) (n int, err error) {
 
 func (f *File) ensureData() error {
 	if !f.HasData {
-		resp := f.FileSystem.fetchBlock(f.Block.Id)
+		req := model.NewGetBlockReq(f.Block.Id)
+		resp := f.FileSystem.fetchBlock(req)
 		if resp.Err == nil {
 			f.Block = resp.Block
 			f.HasData = true

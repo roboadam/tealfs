@@ -16,17 +16,21 @@ package conns
 
 import (
 	"context"
+	"errors"
 	"net"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Conns struct {
 	netConns      map[model.ConnId]net.Conn
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
-	outStatuses   chan<- model.NetConnectionStatus
-	outReceives   chan<- model.ConnsMgrReceive
+	outStatuses   chan model.NetConnectionStatus
+	outReceives   chan model.ConnsMgrReceive
 	inConnectTo   <-chan model.MgrConnsConnectTo
 	inSends       <-chan model.MgrConnsSend
 	Address       string
@@ -36,8 +40,8 @@ type Conns struct {
 }
 
 func NewConns(
-	outStatuses chan<- model.NetConnectionStatus,
-	outReceives chan<- model.ConnsMgrReceive,
+	outStatuses chan model.NetConnectionStatus,
+	outReceives chan model.ConnsMgrReceive,
 	inConnectTo <-chan model.MgrConnsConnectTo,
 	inSends <-chan model.MgrConnsSend,
 	provider ConnectionProvider,
@@ -76,70 +80,66 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 			return
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
-			c.outStatuses <- model.NetConnectionStatus{
+			status := model.NetConnectionStatus{
 				Type: model.Connected,
 				Msg:  "Success",
 				Id:   id,
 			}
+			chanutil.Send(c.outStatuses, status, "conns accepted connection sending success status")
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
-				c.outStatuses <- model.NetConnectionStatus{
+				status := model.NetConnectionStatus{
 					Type: model.Connected,
 					Msg:  "Success",
 					Id:   id,
 				}
+				chanutil.Send(c.outStatuses, status, "conns connected sending success status")
 				go c.consumeData(id)
 			} else {
-				c.outStatuses <- model.NetConnectionStatus{
+				status := model.NetConnectionStatus{
 					Type: model.NotConnected,
 					Msg:  "Failure connecting",
 					Id:   id,
 				}
+				chanutil.Send(c.outStatuses, status, "conns failed to connect sending failure status")
 			}
 		case sendReq := <-c.inSends:
 			_, ok := c.netConns[sendReq.ConnId]
 			if !ok {
-				c.handleSendFailure(sendReq)
+				c.handleSendFailure(sendReq, errors.New("connection not found"))
 			} else {
 				//Todo maybe this should be async
 				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
 				if err != nil {
-					c.handleSendFailure(sendReq)
+					c.handleSendFailure(sendReq, err)
 				}
 			}
 		}
 	}
 }
 
-func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend) {
+func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 	payload := sendReq.Payload
 	switch p := payload.(type) {
 	case *model.ReadRequest:
-		if len(p.Ptrs) > 0 {
-			ptrs := p.Ptrs[1:]
-			rr := model.ReadRequest{
-				Caller:  p.Caller,
-				Ptrs:    ptrs,
-				BlockId: p.BlockId,
-			}
-
-			c.outReceives <- model.ConnsMgrReceive{
+		if len(p.Ptrs()) > 0 {
+			ptrs := p.Ptrs()[1:]
+			rr := model.NewReadRequest(p.Caller(), ptrs, p.BlockId(), p.GetBlockId())
+			cmr := model.ConnsMgrReceive{
 				ConnId:  sendReq.ConnId,
 				Payload: &rr,
 			}
+			chanutil.Send(c.outReceives, cmr, "conns failed to send read request, sending new read request")
 		} else {
-			c.outReceives <- model.ConnsMgrReceive{
-				ConnId: sendReq.ConnId,
-				Payload: &model.ReadResult{
-					Ok:      false,
-					Message: "no pointers in read request",
-					Caller:  p.Caller,
-					BlockId: p.BlockId,
-				},
+			result := model.NewReadResultErr("no pointers in read request", p.Caller(), p.GetBlockId(), p.BlockId())
+			cmr := model.ConnsMgrReceive{
+				ConnId:  sendReq.ConnId,
+				Payload: &result,
 			}
+			chanutil.Send(c.outReceives, cmr, "conns: failed to send read request sent failure status")
 		}
 	}
 }
@@ -149,9 +149,7 @@ func (c *Conns) listen() {
 		conn, err := c.listener.Accept()
 		if err == nil {
 			incomingConnReq := AcceptedConns{netConn: conn}
-			c.acceptedConns <- incomingConnReq
-		} else {
-			return
+			chanutil.Send(c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
 		}
 	}
 }
@@ -165,20 +163,25 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		netConn := c.netConns[conn]
 		bytes, err := tnet.ReadPayload(netConn)
 		if err != nil {
-			_ = netConn.Close()
+			closeErr := netConn.Close()
+			if closeErr != nil {
+				log.Warn("Error closing connection", closeErr)
+			}
 			delete(c.netConns, conn)
-			c.outStatuses <- model.NetConnectionStatus{
+			ncs := model.NetConnectionStatus{
 				Type: model.NotConnected,
 				Msg:  "Connection closed",
 				Id:   conn,
 			}
+			chanutil.Send(c.outStatuses, ncs, "conns connection closed sent status")
 			return
 		}
 		payload := model.ToPayload(bytes)
-		c.outReceives <- model.ConnsMgrReceive{
+		cmr := model.ConnsMgrReceive{
 			ConnId:  conn,
 			Payload: payload,
 		}
+		chanutil.Send(c.outReceives, cmr, "conns received payload sent to connsMgr")
 	}
 }
 

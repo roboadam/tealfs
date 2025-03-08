@@ -19,32 +19,55 @@ import (
 )
 
 type WriteRequest struct {
-	Caller NodeId
-	Data   RawData
+	caller NodeId
+	data   RawData
+	reqId  PutBlockId
 }
+
+func NewWriteRequest(
+	caller NodeId,
+	data RawData,
+	reqId PutBlockId,
+) WriteRequest {
+	return WriteRequest{
+		caller: caller,
+		data:   data,
+		reqId:  reqId,
+	}
+}
+
+func (r *WriteRequest) Caller() NodeId    { return r.caller }
+func (r *WriteRequest) Data() RawData     { return r.data }
+func (r *WriteRequest) ReqId() PutBlockId { return r.reqId }
 
 func (r *WriteRequest) Equal(p Payload) bool {
 	if o, ok := p.(*WriteRequest); ok {
-		if r.Caller != o.Caller {
+		if r.caller != o.caller {
 			return false
 		}
-		return r.Data.Equals(&o.Data)
+		if r.reqId != o.reqId {
+			return false
+		}
+		return r.data.Equals(&o.data)
 	}
 	return false
 }
 
 func (r *WriteRequest) ToBytes() []byte {
-	caller := StringToBytes(string(r.Caller))
-	rawData := r.Data.ToBytes()
-	payload := bytes.Join([][]byte{caller, rawData}, []byte{})
+	caller := StringToBytes(string(r.caller))
+	rawData := r.data.ToBytes()
+	putblockId := StringToBytes(string(r.reqId))
+	payload := bytes.Join([][]byte{caller, rawData, putblockId}, []byte{})
 	return AddType(WriteRequestType, payload)
 }
 
 func ToWriteRequest(raw []byte) *WriteRequest {
 	caller, remainder := StringFromBytes(raw)
-	rawData, _ := ToRawData(remainder)
+	rawData, remainder := ToRawData(remainder)
+	putBlockId, _ := StringFromBytes(remainder)
 	return &WriteRequest{
-		Caller: NodeId(caller),
-		Data:   *rawData,
+		caller: NodeId(caller),
+		data:   *rawData,
+		reqId:  PutBlockId(putBlockId),
 	}
 }

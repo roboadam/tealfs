@@ -21,8 +21,8 @@ import (
 
 func TestPendingBlockWrites(t *testing.T) {
 	pbw := newPendingBlockWrites()
-	blockId1 := model.NewBlockId()
-	blockId2 := model.NewBlockId()
+	blockId1 := model.PutBlockId("putBlockId1")
+	blockId2 := model.PutBlockId("putBlockId2")
 	nodeId := model.NewNodeId()
 	ptr1 := model.DiskPointer{
 		NodeId:   nodeId,
@@ -37,7 +37,7 @@ func TestPendingBlockWrites(t *testing.T) {
 		FileName: "someFile3",
 	}
 
-	result, _ := pbw.resolve(ptr1)
+	result := pbw.resolve(ptr1, blockId1)
 	if result != notTracking {
 		t.Errorf("should be not tracking")
 		return
@@ -47,20 +47,20 @@ func TestPendingBlockWrites(t *testing.T) {
 	pbw.add(blockId1, ptr2)
 	pbw.add(blockId2, ptr3)
 
-	result, blockResult := pbw.resolve(ptr1)
-	if result != notDone || blockResult != blockId1 {
+	result = pbw.resolve(ptr1, blockId1)
+	if result != notDone {
 		t.Errorf("should not be done")
 		return
 	}
 
-	result, blockResult = pbw.resolve(ptr2)
-	if result != done || blockResult != blockId1 {
+	result = pbw.resolve(ptr2, blockId1)
+	if result != done {
 		t.Errorf("should be done")
 		return
 	}
 
-	result, blockResult = pbw.resolve(ptr3)
-	if result != done || blockResult != blockId2 {
+	result = pbw.resolve(ptr3, blockId2)
+	if result != done {
 		t.Errorf("should nbe done")
 		return
 	}

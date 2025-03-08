@@ -20,18 +20,18 @@ import (
 )
 
 type pendingBlockWrites struct {
-	b2ptr map[model.BlockId]set.Set[model.DiskPointer]
-	ptr2b map[model.DiskPointer]model.BlockId
+	b2ptr map[model.PutBlockId]set.Set[model.DiskPointer]
+	ptr2b map[model.DiskPointer]model.PutBlockId
 }
 
 func newPendingBlockWrites() pendingBlockWrites {
 	return pendingBlockWrites{
-		b2ptr: make(map[model.BlockId]set.Set[model.DiskPointer]),
-		ptr2b: make(map[model.DiskPointer]model.BlockId),
+		b2ptr: make(map[model.PutBlockId]set.Set[model.DiskPointer]),
+		ptr2b: make(map[model.DiskPointer]model.PutBlockId),
 	}
 }
 
-func (p *pendingBlockWrites) add(b model.BlockId, ptr model.DiskPointer) {
+func (p *pendingBlockWrites) add(b model.PutBlockId, ptr model.DiskPointer) {
 	if _, exists := p.b2ptr[b]; !exists {
 		p.b2ptr[b] = set.NewSet[model.DiskPointer]()
 	}
@@ -50,21 +50,22 @@ const (
 	notTracking
 )
 
-func (p *pendingBlockWrites) resolve(ptr model.DiskPointer) (resolveResult, model.BlockId) {
-	if b, exists := p.ptr2b[ptr]; exists {
-		s := p.b2ptr[b]
-		s.Remove(ptr)
-		delete(p.ptr2b, ptr)
-		if s.Len() == 0 {
-			delete(p.b2ptr, b)
-			return done, b
+func (p *pendingBlockWrites) resolve(ptr model.DiskPointer, id model.PutBlockId) resolveResult {
+	if ptrs, exists := p.b2ptr[id]; exists {
+		ptrs.Remove(ptr)
+		if ptrs.Len() == 0 {
+			delete(p.b2ptr, id)
+			delete(p.ptr2b, ptr)
+			return done
+		} else {
+			return notDone
 		}
-		return notDone, b
+	} else {
+		return notTracking
 	}
-	return notTracking, ""
 }
 
-func (p *pendingBlockWrites) cancel(b model.BlockId) {
+func (p *pendingBlockWrites) cancel(b model.PutBlockId) {
 	if s, exists := p.b2ptr[b]; exists {
 		for _, ptr := range s.GetValues() {
 			delete(p.ptr2b, ptr)

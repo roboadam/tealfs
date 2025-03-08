@@ -48,16 +48,15 @@ func TestSendData(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest(ctx)
-	expected := model.WriteRequest{
-		Caller: model.NewNodeId(),
-		Data: model.RawData{
-			Ptr: model.DiskPointer{
-				NodeId:   "destNode",
-				FileName: "blockId",
-			},
-			Data: []byte{1, 2, 3},
+	caller := model.NewNodeId()
+	data := model.RawData{
+		Ptr: model.DiskPointer{
+			NodeId:   "destNode",
+			FileName: "blockId",
 		},
+		Data: []byte{1, 2, 3},
 	}
+	expected := model.NewWriteRequest(caller, data, "putBlockId")
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{
 		ConnId:  status.Id,
@@ -80,23 +79,24 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	_, _, outReceives, _, inSend, _ := newConnsTest(ctx)
-	readRequest := model.ReadRequest{
-		Caller: "caller1",
-		Ptrs: []model.DiskPointer{
-			{
-				NodeId:   "nodeId1",
-				FileName: "filename1",
-			},
-			{
-				NodeId:   "nodeId2",
-				FileName: "filename2",
-			},
+	caller := model.NodeId("caller1")
+	ptrs := []model.DiskPointer{
+		{
+			NodeId:   "nodeId1",
+			FileName: "filename1",
 		},
-		BlockId: "blockId1",
+		{
+			NodeId:   "nodeId2",
+			FileName: "filename2",
+		},
 	}
+	blockId := model.BlockId("blockId1")
+	reqId := model.GetBlockId("reqid")
+	request := model.NewReadRequest(caller, ptrs, blockId, reqId)
+
 	inSend <- model.MgrConnsSend{
 		ConnId:  0,
-		Payload: &readRequest,
+		Payload: &request,
 	}
 	outReceive := <-outReceives
 	if outReceive.ConnId != 0 {
@@ -105,11 +105,11 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	}
 	switch p := outReceive.Payload.(type) {
 	case *model.ReadRequest:
-		if p.BlockId != readRequest.BlockId || p.Caller != readRequest.Caller {
+		if p.BlockId() != request.BlockId() || p.Caller() != request.Caller() {
 			t.Error("unexpected read request not equal")
 			return
 		}
-		if len(p.Ptrs) != 1 || p.Ptrs[0] != readRequest.Ptrs[1] {
+		if len(p.Ptrs()) != 1 || p.Ptrs()[0] != request.Ptrs()[1] {
 			t.Error("Expected ptrs to be equal")
 			return
 		}
@@ -125,9 +125,9 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 	_, outStatus, outReceives, inConnectTo, inSend, connProvider := newConnsTest(ctx)
 	status := connectTo("address:123", outStatus, inConnectTo)
 	connProvider.Conn.WriteError = errors.New("some error writing")
-	readRequest := model.ReadRequest{
-		Caller: "caller1",
-		Ptrs: []model.DiskPointer{
+	req := model.NewReadRequest(
+		"caller1",
+		[]model.DiskPointer{
 			{
 				NodeId:   "nodeId1",
 				FileName: "filename1",
@@ -137,11 +137,12 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 				FileName: "filename2",
 			},
 		},
-		BlockId: "blockId1",
-	}
+		"blockId1",
+		"getBlockId1",
+	)
 	inSend <- model.MgrConnsSend{
 		ConnId:  status.Id,
-		Payload: &readRequest,
+		Payload: &req,
 	}
 	outReceive := <-outReceives
 	if outReceive.ConnId != 0 {
@@ -150,11 +151,11 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 	}
 	switch p := outReceive.Payload.(type) {
 	case *model.ReadRequest:
-		if p.BlockId != readRequest.BlockId || p.Caller != readRequest.Caller {
+		if p.BlockId() != req.BlockId() || p.Caller() != req.Caller() {
 			t.Error("unexpected read request not equal")
 			return
 		}
-		if len(p.Ptrs) != 1 || p.Ptrs[0] != readRequest.Ptrs[1] {
+		if len(p.Ptrs()) != 1 || p.Ptrs()[0] != req.Ptrs()[1] {
 			t.Error("Expected ptrs to be equal")
 			return
 		}
