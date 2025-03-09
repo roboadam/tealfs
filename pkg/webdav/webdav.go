@@ -26,25 +26,29 @@ import (
 )
 
 type Webdav struct {
-	webdavMgrGets chan model.GetBlockReq
-	webdavMgrPuts chan model.PutBlockReq
-	mgrWebdavGets chan model.GetBlockResp
-	mgrWebdavPuts chan model.PutBlockResp
-	fileSystem    FileSystem
-	nodeId        model.NodeId
-	pendingReads  map[model.GetBlockId]chan model.GetBlockResp
-	pendingPuts   map[model.PutBlockId]chan model.PutBlockResp
-	lockSystem    webdav.LockSystem
-	bindAddress   string
-	server        *http.Server
+	webdavMgrGets      chan model.GetBlockReq
+	webdavMgrPuts      chan model.PutBlockReq
+	webdavMgrBroadcast chan model.Broadcast
+	mgrWebdavGets      chan model.GetBlockResp
+	mgrWebdavPuts      chan model.PutBlockResp
+	mgrWebdavBroadcast chan model.Broadcast
+	fileSystem         FileSystem
+	nodeId             model.NodeId
+	pendingReads       map[model.GetBlockId]chan model.GetBlockResp
+	pendingPuts        map[model.PutBlockId]chan model.PutBlockResp
+	lockSystem         webdav.LockSystem
+	bindAddress        string
+	server             *http.Server
 }
 
 func New(
 	nodeId model.NodeId,
 	webdavMgrGets chan model.GetBlockReq,
 	webdavMgrPuts chan model.PutBlockReq,
+	webdavMgrBroadcast chan model.Broadcast,
 	mgrWebdavGets chan model.GetBlockResp,
 	mgrWebdavPuts chan model.PutBlockResp,
+	mgrWebdavBroadcast chan model.Broadcast,
 	bindAddress string,
 	ctx context.Context,
 ) Webdav {
