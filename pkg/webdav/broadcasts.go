@@ -23,7 +23,7 @@ type broadcastType uint32
 
 const (
 	upsertFile = iota
-	delteFile
+	deleteFile
 )
 
 type broadcastMessage struct {

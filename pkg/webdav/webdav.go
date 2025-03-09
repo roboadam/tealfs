@@ -105,6 +105,17 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 			} else {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
+		case r := <-w.mgrWebdavBroadcast:
+			msg, err :=  broadcastMessgeFromBytes(r.Msg(), &w.fileSystem)
+			if err == nil {
+				switch msg.bType {
+				case upsertFile:
+					
+				case deleteFile:
+				}
+			} else {
+				log.Warn("Unable to parse incoming broadcast message")
+			}
 		case r := <-w.fileSystem.ReadReqResp:
 			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr")
 			w.pendingReads[r.Req.Id()] = r.Resp

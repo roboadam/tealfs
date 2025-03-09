@@ -24,6 +24,8 @@ func NewBroadcast(msg []byte) Broadcast {
 	return Broadcast{msg: msg}
 }
 
+func (b *Broadcast) Msg() []byte { return b.msg }
+
 func (b *Broadcast) ToBytes() []byte {
 	msg := BytesToBytes(b.msg)
 	return AddType(BroadcastType, msg)

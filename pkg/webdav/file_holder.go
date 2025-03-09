@@ -30,6 +30,10 @@ func (f *FileHolder) AllFiles() []*File {
 	return result
 }
 
+func (f *FileHolder) Upsert(file *File) {
+	
+}
+
 func (f *FileHolder) Add(file *File) {
 	f.byPath[file.Path.toName()] = file
 	f.byBlockId[file.Block.Id] = file
