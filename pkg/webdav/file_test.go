@@ -17,6 +17,7 @@ package webdav_test
 import (
 	"bytes"
 	"io"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
@@ -122,7 +123,13 @@ func TestSeek(t *testing.T) {
 
 func TestSerialize(t *testing.T) {
 	nodeId := model.NewNodeId()
-	fileSystem := webdav.NewFileSystem(nodeId)
+	fileSystem := webdav.NewFileSystem(
+		nodeId,
+		make(chan model.Broadcast),
+		make(chan model.Broadcast),
+		&disk.MockFileOps{},
+		"indexPath",
+	)
 	path, _ := webdav.PathFromName("/hello/world")
 	file := webdav.File{
 		SizeValue: 123,

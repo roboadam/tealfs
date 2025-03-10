@@ -18,16 +18,19 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
 )
 
 func TestMkdir(t *testing.T) {
-	fs := webdav.NewFileSystem(model.NewNodeId())
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mockPushesAndPulls(ctx, &fs)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	c := context.Background()
 	mode := os.ModeDir
 
@@ -51,10 +54,12 @@ func TestMkdir(t *testing.T) {
 }
 
 func TestRemoveAll(t *testing.T) {
-	fs := webdav.NewFileSystem(model.NewNodeId())
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mockPushesAndPulls(ctx, &fs)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	mode := os.ModeDir
 
 	_ = fs.Mkdir(ctx, "/test", mode)
@@ -76,10 +81,12 @@ func TestRemoveAll(t *testing.T) {
 }
 
 func TestRename(t *testing.T) {
-	fs := webdav.NewFileSystem(model.NewNodeId())
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mockPushesAndPulls(ctx, &fs)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	modeDir := os.ModeDir
 
 	createFileAndCheck(t, &fs, "/testFile")
@@ -115,11 +122,13 @@ func TestRename(t *testing.T) {
 }
 
 func TestWriteAndRead(t *testing.T) {
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
 	expectedData := []byte{1, 2, 3, 4, 5}
-	fs := webdav.NewFileSystem(model.NewNodeId())
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mockPushesAndPulls(ctx, &fs)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
 	f, err := fs.OpenFile(context.Background(), "newFile.txt", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {

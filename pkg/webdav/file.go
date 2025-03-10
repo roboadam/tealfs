@@ -155,10 +155,8 @@ func (f *File) Write(p []byte) (n int, err error) {
 	req := model.NewPutBlockReq(f.Block)
 	result := f.FileSystem.pushBlock(req)
 	if result.Err == nil {
-		err = f.FileSystem.persistFileIndex()
-		if err != nil {
-			return 0, err
-		}
+		msg := broadcastMessage{bType: upsertFile, file: *f}
+		f.FileSystem.outBroadcast <- model.NewBroadcast(msg.toBytes())
 		return len(p), nil
 	}
 
