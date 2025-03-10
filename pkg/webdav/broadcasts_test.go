@@ -15,34 +15,39 @@
 package webdav
 
 import (
-	"bytes"
 	"tealfs/pkg/model"
+	"testing"
+	"time"
 )
 
-type broadcastType uint32
-
-const (
-	upsertFile = iota
-	deleteFile
-)
-
-type broadcastMessage struct {
-	bType broadcastType
-	file  File
-}
-
-func (b *broadcastMessage) toBytes() []byte {
-	bType := model.IntToBytes(uint32(b.bType))
-	file := model.BytesToBytes(b.file.ToBytes())
-	return bytes.Join([][]byte{bType, file}, []byte{})
-}
-
-func broadcastMessageFromBytes(raw []byte, fileSystem *FileSystem) (broadcastMessage, error) {
-	bType, remainder := model.IntFromBytes(raw)
-	rawFile, _ := model.BytesFromBytes(remainder)
-	file, _, err := FileFromBytes(rawFile, fileSystem)
-	if err != nil {
-		return broadcastMessage{}, err
+func TestSeralizeBroadcast(t *testing.T) {
+	path, _ := PathFromName("/asdf")
+	msg := broadcastMessage{
+		bType: deleteFile,
+		file: File{
+			SizeValue: 5,
+			ModeValue: 4,
+			Modtime:   time.Now(),
+			Block: model.Block{
+				Id:   "blockid",
+				Type: model.Mirrored,
+			},
+			HasData: true,
+			Path:    path,
+		},
 	}
-	return broadcastMessage{bType: broadcastType(bType), file: file}, nil
+	raw := msg.toBytes()
+	msg2, err := broadcastMessageFromBytes(raw, &FileSystem{})
+	if err != nil {
+		t.Error("error deseralizing")
+		return
+	}
+	if msg2.bType != msg.bType {
+		t.Error("error with btype")
+		return
+	}
+	if msg2.file.Block.Id != msg.file.Block.Id {
+		t.Error("error with block id")
+		return
+	}
 }
