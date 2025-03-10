@@ -222,7 +222,7 @@ func TestTwoNodeCluster(t *testing.T) {
 
 func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
-	parallel := 5
+	parallel := 100
 	paths := make([]string, parallel)
 	fileContents := make([]string, parallel)
 	for i := range parallel {
