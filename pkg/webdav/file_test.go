@@ -122,7 +122,7 @@ func TestSeek(t *testing.T) {
 
 func TestSerialize(t *testing.T) {
 	nodeId := model.NewNodeId()
-	fileSystem := webdav.NewFileSystem(nodeId)
+	fileSystem := webdav.NewFileSystem(nodeId, make(chan model.Broadcast), make(chan model.Broadcast))
 	path, _ := webdav.PathFromName("/hello/world")
 	file := webdav.File{
 		SizeValue: 123,

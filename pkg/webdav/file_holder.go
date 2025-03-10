@@ -31,7 +31,10 @@ func (f *FileHolder) AllFiles() []*File {
 }
 
 func (f *FileHolder) Upsert(file *File) {
-	
+	if oldFile, exists := f.byBlockId[file.Block.Id]; exists {
+		delete(f.byPath, oldFile.Path.toName())
+	}
+	f.Add(file)
 }
 
 func (f *FileHolder) Add(file *File) {

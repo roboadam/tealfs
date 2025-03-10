@@ -28,10 +28,8 @@ import (
 type Webdav struct {
 	webdavMgrGets      chan model.GetBlockReq
 	webdavMgrPuts      chan model.PutBlockReq
-	webdavMgrBroadcast chan model.Broadcast
 	mgrWebdavGets      chan model.GetBlockResp
 	mgrWebdavPuts      chan model.PutBlockResp
-	mgrWebdavBroadcast chan model.Broadcast
 	fileSystem         FileSystem
 	nodeId             model.NodeId
 	pendingReads       map[model.GetBlockId]chan model.GetBlockResp
@@ -57,7 +55,7 @@ func New(
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
-		fileSystem:    NewFileSystem(nodeId),
+		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
@@ -104,17 +102,6 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				delete(w.pendingPuts, r.Id)
 			} else {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
-			}
-		case r := <-w.mgrWebdavBroadcast:
-			msg, err := broadcastMessageFromBytes(r.Msg(), &w.fileSystem)
-			if err == nil {
-				switch msg.bType {
-				case upsertFile:
-
-				case deleteFile:
-				}
-			} else {
-				log.Warn("Unable to parse incoming broadcast message")
 			}
 		case r := <-w.fileSystem.ReadReqResp:
 			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr")

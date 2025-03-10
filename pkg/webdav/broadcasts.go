@@ -27,24 +27,21 @@ const (
 )
 
 type broadcastMessage struct {
-	bType   broadcastType
-	file    File
-	blockId model.BlockId
+	bType broadcastType
+	file  File
 }
 
 func (b *broadcastMessage) toBytes() []byte {
 	bType := model.IntToBytes(uint32(b.bType))
 	file := model.BytesToBytes(b.file.ToBytes())
-	blockId := model.StringToBytes(string(b.blockId))
-	return bytes.Join([][]byte{bType, file, blockId}, []byte{})
+	return bytes.Join([][]byte{bType, file}, []byte{})
 }
 
 func broadcastMessageFromBytes(raw []byte, fileSystem *FileSystem) (broadcastMessage, error) {
 	bType, remainder := model.IntFromBytes(raw)
-	file, remainder, err := FileFromBytes(remainder, fileSystem)
+	file, _, err := FileFromBytes(remainder, fileSystem)
 	if err != nil {
 		return broadcastMessage{}, err
 	}
-	blockId, _ := model.StringFromBytes(remainder)
-	return broadcastMessage{bType: broadcastType(bType), file: file, blockId: model.BlockId(blockId)}, nil
+	return broadcastMessage{bType: broadcastType(bType), file: file}, nil
 }

@@ -21,6 +21,8 @@ import (
 	"os"
 	"tealfs/pkg/model"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type FileSystem struct {
@@ -31,10 +33,16 @@ type FileSystem struct {
 	renameReq    chan renameReq
 	ReadReqResp  chan ReadReqResp
 	WriteReqResp chan WriteReqResp
+	inBroadcast  chan model.Broadcast
+	outBroadcast chan model.Broadcast
 	nodeId       model.NodeId
 }
 
-func NewFileSystem(nodeId model.NodeId) FileSystem {
+func NewFileSystem(
+	nodeId model.NodeId,
+	inBroadcast chan model.Broadcast,
+	outBroadcast chan model.Broadcast,
+) FileSystem {
 	filesystem := FileSystem{
 		fileHolder:   NewFileHolder(),
 		mkdirReq:     make(chan mkdirReq),
@@ -43,6 +51,8 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		renameReq:    make(chan renameReq),
 		ReadReqResp:  make(chan ReadReqResp),
 		WriteReqResp: make(chan WriteReqResp),
+		inBroadcast:  inBroadcast,
+		outBroadcast: outBroadcast,
 		nodeId:       nodeId,
 	}
 	block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
@@ -105,6 +115,19 @@ func (f *FileSystem) run() {
 			req.respChan <- f.removeAll(&req)
 		case req := <-f.renameReq:
 			req.respChan <- f.rename(&req)
+		case r := <-f.inBroadcast:
+			msg, err := broadcastMessageFromBytes(r.Msg(), f)
+			if err == nil {
+				switch msg.bType {
+				case upsertFile:
+					f.fileHolder.Upsert(&msg.file)
+				case deleteFile:
+					f.fileHolder.Delete(&msg.file)
+				}
+			} else {
+				log.Warn("Unable to parse incoming broadcast message")
+			}
+
 		}
 	}
 }
@@ -130,11 +153,6 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 
 func (f *FileSystem) mkdir(req *mkdirReq) error {
 	p, err := PathFromName(req.name)
-	if err != nil {
-		return err
-	}
-
-	err = f.fetchFileIndex()
 	if err != nil {
 		return err
 	}
@@ -169,10 +187,8 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	}
 
 	f.fileHolder.Add(&dir)
-	err = f.persistFileIndex()
-	if err != nil {
-		return err
-	}
+	msg := broadcastMessage{bType: upsertFile, file: dir}
+	f.outBroadcast <- model.NewBroadcast(msg.toBytes())
 
 	return nil
 }
@@ -189,11 +205,6 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 		return err
 	}
 
-	err = f.fetchFileIndex()
-	if err != nil {
-		return err
-	}
-
 	baseFile, exists := f.fileHolder.Get(pathToDelete)
 	if !exists {
 		return errors.New("file does not exist")
@@ -201,39 +212,14 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 	for _, file := range f.fileHolder.AllFiles() {
 		if file.Path.startsWith(pathToDelete) {
 			f.fileHolder.Delete(file)
+			msg := broadcastMessage{bType: deleteFile, file: *file}
+			f.outBroadcast <- model.NewBroadcast(msg.toBytes())
 		}
 	}
 	f.fileHolder.Delete(baseFile)
+	msg := broadcastMessage{bType: deleteFile, file: *baseFile}
+	f.outBroadcast <- model.NewBroadcast(msg.toBytes())
 
-	err = f.persistFileIndex()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (f *FileSystem) fetchFileIndex() error {
-	req := model.NewGetBlockReq("fileIndex")
-	result := f.fetchBlock(req)
-
-	if result.Err != nil {
-		return result.Err
-	}
-
-	return f.fileHolder.UpdateFileHolderFromBytes(result.Block.Data, f)
-}
-
-func (f *FileSystem) persistFileIndex() error {
-	req := model.NewPutBlockReq(model.Block{
-		Id:   "fileIndex",
-		Data: f.fileHolder.ToBytes(),
-	})
-	result := f.pushBlock(req)
-
-	if result.Err != nil {
-		return result.Err
-	}
 	return nil
 }
 
@@ -278,11 +264,6 @@ func (f *FileSystem) rename(req *renameReq) error {
 		return err
 	}
 
-	err = f.fetchFileIndex()
-	if err != nil {
-		return err
-	}
-
 	file, exists := f.fileHolder.Get(oldPath)
 	if !exists {
 		return errors.New("file not found")
@@ -294,17 +275,16 @@ func (f *FileSystem) rename(req *renameReq) error {
 				f.fileHolder.Delete(child)
 				child.Path = child.Path.swapPrefix(oldPath, newPath)
 				f.fileHolder.Add(child)
+				msg := broadcastMessage{bType: upsertFile, file: *child}
+				f.outBroadcast <- model.NewBroadcast(msg.toBytes())
 			}
 		}
 	} else {
 		f.fileHolder.Delete(file)
 		file.Path = newPath
 		f.fileHolder.Add(file)
-	}
-
-	err = f.persistFileIndex()
-	if err != nil {
-		return err
+		msg := broadcastMessage{bType: upsertFile, file: *file}
+		f.outBroadcast <- model.NewBroadcast(msg.toBytes())
 	}
 
 	return nil

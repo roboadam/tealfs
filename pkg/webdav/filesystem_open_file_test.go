@@ -27,12 +27,14 @@ import (
 
 func TestCreateEmptyFile(t *testing.T) {
 	nodeId := model.NewNodeId()
-	fs := webdav.NewFileSystem(nodeId)
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(nodeId, inBroadcast, outBroadcast)
 	name := "/hello-world.txt"
 	bytesInWrite := []byte{6, 5, 4, 3, 2}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mockPushesAndPulls(ctx, &fs)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -69,10 +71,12 @@ func TestCreateEmptyFile(t *testing.T) {
 }
 
 func TestFileNotFound(t *testing.T) {
-	fs := webdav.NewFileSystem(model.NewNodeId())
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mockPushesAndPulls(ctx, &fs)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
 		t.Error("Shouldn't be able to open file", err)
@@ -80,10 +84,12 @@ func TestFileNotFound(t *testing.T) {
 }
 
 func TestOpenRoot(t *testing.T) {
-	filesystem := webdav.NewFileSystem(model.NewNodeId())
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	filesystem := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mockPushesAndPulls(ctx, &filesystem)
+	mockPushesAndPulls(ctx, &filesystem, outBroadcast)
 	root, err := filesystem.OpenFile(context.Background(), "/", os.O_RDONLY, fs.ModeDir)
 	if err != nil {
 		t.Error("Should be able to open root dir", err)
@@ -153,9 +159,24 @@ func handlePushBlockReq(ctx context.Context, reqs chan webdav.WriteReqResp, mux 
 	}
 }
 
-func mockPushesAndPulls(ctx context.Context, fs *webdav.FileSystem) {
+func handleOutBroadcast(ctx context.Context, out chan model.Broadcast) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-out:
+		}
+	}
+}
+
+func mockPushesAndPulls(
+	ctx context.Context,
+	fs *webdav.FileSystem,
+	outBroadcast chan model.Broadcast,
+) {
 	mux := sync.Mutex{}
 	mockStorage := make(map[model.BlockId][]byte)
 	go handleFetchBlockReq(ctx, fs.ReadReqResp, &mux, mockStorage)
 	go handlePushBlockReq(ctx, fs.WriteReqResp, &mux, mockStorage)
+	go handleOutBroadcast(ctx, outBroadcast)
 }
