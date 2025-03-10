@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"os"
 	"sync"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
@@ -29,7 +30,13 @@ func TestCreateEmptyFile(t *testing.T) {
 	nodeId := model.NewNodeId()
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(nodeId, inBroadcast, outBroadcast)
+	fs := webdav.NewFileSystem(
+		nodeId,
+		inBroadcast,
+		outBroadcast,
+		&disk.MockFileOps{},
+		"indexPath",
+	)
 	name := "/hello-world.txt"
 	bytesInWrite := []byte{6, 5, 4, 3, 2}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -73,7 +80,13 @@ func TestCreateEmptyFile(t *testing.T) {
 func TestFileNotFound(t *testing.T) {
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast)
+	fs := webdav.NewFileSystem(
+		model.NewNodeId(),
+		inBroadcast,
+		outBroadcast,
+		&disk.MockFileOps{},
+		"indexPath",
+	)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
@@ -86,7 +99,13 @@ func TestFileNotFound(t *testing.T) {
 func TestOpenRoot(t *testing.T) {
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
-	filesystem := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast)
+	filesystem := webdav.NewFileSystem(
+		model.NewNodeId(),
+		inBroadcast,
+		outBroadcast,
+		&disk.MockFileOps{},
+		"indexPath",
+	)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mockPushesAndPulls(ctx, &filesystem, outBroadcast)

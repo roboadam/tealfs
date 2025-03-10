@@ -19,6 +19,8 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"time"
 
@@ -36,12 +38,16 @@ type FileSystem struct {
 	inBroadcast  chan model.Broadcast
 	outBroadcast chan model.Broadcast
 	nodeId       model.NodeId
+	fileOps      disk.FileOps
+	indexPath    string
 }
 
 func NewFileSystem(
 	nodeId model.NodeId,
 	inBroadcast chan model.Broadcast,
 	outBroadcast chan model.Broadcast,
+	fileOps disk.FileOps,
+	indexPath string,
 ) FileSystem {
 	filesystem := FileSystem{
 		fileHolder:   NewFileHolder(),
@@ -54,6 +60,8 @@ func NewFileSystem(
 		inBroadcast:  inBroadcast,
 		outBroadcast: outBroadcast,
 		nodeId:       nodeId,
+		fileOps:      fileOps,
+		indexPath:    indexPath,
 	}
 	block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
 	root := File{
@@ -67,6 +75,10 @@ func NewFileSystem(
 		FileSystem: &filesystem,
 	}
 	filesystem.fileHolder.Add(&root)
+	err := filesystem.initFileIndex()
+	if err != nil {
+		log.Error("Unable to read fileIndex on startup:", err)
+	}
 	go filesystem.run()
 	return filesystem
 }
@@ -121,6 +133,10 @@ func (f *FileSystem) run() {
 				switch msg.bType {
 				case upsertFile:
 					f.fileHolder.Upsert(&msg.file)
+					err := f.persistFileIndex()
+					if err != nil {
+						log.Error("Unable to persist file index:", err)
+					}
 				case deleteFile:
 					f.fileHolder.Delete(&msg.file)
 				}
@@ -137,6 +153,18 @@ type mkdirReq struct {
 	name     string
 	perm     os.FileMode
 	respChan chan error
+}
+
+func (f *FileSystem) initFileIndex() error {
+	data, err := f.fileOps.ReadFile(filepath.Join(f.indexPath, "fileIndex"))
+	if err != nil {
+		return err
+	}
+	return f.fileHolder.UpdateFileHolderFromBytes(data, f)
+}
+
+func (f *FileSystem) persistFileIndex() error {
+	return f.fileOps.WriteFile(filepath.Join(f.indexPath, "fileIndex"), f.fileHolder.ToBytes())
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {

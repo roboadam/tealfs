@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
@@ -26,7 +27,7 @@ import (
 func TestMkdir(t *testing.T) {
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
@@ -55,7 +56,7 @@ func TestMkdir(t *testing.T) {
 func TestRemoveAll(t *testing.T) {
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
@@ -82,7 +83,7 @@ func TestRemoveAll(t *testing.T) {
 func TestRename(t *testing.T) {
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
@@ -124,7 +125,7 @@ func TestWriteAndRead(t *testing.T) {
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
 	expectedData := []byte{1, 2, 3, 4, 5}
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mockPushesAndPulls(ctx, &fs, outBroadcast)

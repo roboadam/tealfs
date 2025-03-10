@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
@@ -55,6 +56,8 @@ func TestCreateFile(t *testing.T) {
 		mgrWebdavBroadcast,
 		"localhost:7654",
 		ctx,
+		&disk.MockFileOps{},
+		"indexPath",
 	)
 	time.Sleep(1 * time.Second) //FIXME, need a better way to wait for listener to start
 

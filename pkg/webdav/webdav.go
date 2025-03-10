@@ -18,6 +18,7 @@ import (
 	"context"
 	"net/http"
 	"tealfs/pkg/chanutil"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 
 	log "github.com/sirupsen/logrus"
@@ -26,17 +27,17 @@ import (
 )
 
 type Webdav struct {
-	webdavMgrGets      chan model.GetBlockReq
-	webdavMgrPuts      chan model.PutBlockReq
-	mgrWebdavGets      chan model.GetBlockResp
-	mgrWebdavPuts      chan model.PutBlockResp
-	fileSystem         FileSystem
-	nodeId             model.NodeId
-	pendingReads       map[model.GetBlockId]chan model.GetBlockResp
-	pendingPuts        map[model.PutBlockId]chan model.PutBlockResp
-	lockSystem         webdav.LockSystem
-	bindAddress        string
-	server             *http.Server
+	webdavMgrGets chan model.GetBlockReq
+	webdavMgrPuts chan model.PutBlockReq
+	mgrWebdavGets chan model.GetBlockResp
+	mgrWebdavPuts chan model.PutBlockResp
+	fileSystem    FileSystem
+	nodeId        model.NodeId
+	pendingReads  map[model.GetBlockId]chan model.GetBlockResp
+	pendingPuts   map[model.PutBlockId]chan model.PutBlockResp
+	lockSystem    webdav.LockSystem
+	bindAddress   string
+	server        *http.Server
 }
 
 func New(
@@ -49,13 +50,15 @@ func New(
 	mgrWebdavBroadcast chan model.Broadcast,
 	bindAddress string,
 	ctx context.Context,
+	fileOps disk.FileOps,
+	indexPath string,
 ) Webdav {
 	w := Webdav{
 		webdavMgrGets: webdavMgrGets,
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
-		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast),
+		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast, fileOps, indexPath),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
