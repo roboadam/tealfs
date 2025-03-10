@@ -106,11 +106,11 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
 		case r := <-w.mgrWebdavBroadcast:
-			msg, err :=  broadcastMessgeFromBytes(r.Msg(), &w.fileSystem)
+			msg, err := broadcastMessageFromBytes(r.Msg(), &w.fileSystem)
 			if err == nil {
 				switch msg.bType {
 				case upsertFile:
-					
+
 				case deleteFile:
 				}
 			} else {

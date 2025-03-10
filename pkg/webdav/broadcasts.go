@@ -39,7 +39,7 @@ func (b *broadcastMessage) toBytes() []byte {
 	return bytes.Join([][]byte{bType, file, blockId}, []byte{})
 }
 
-func broadcastMessgeFromBytes(raw []byte, fileSystem *FileSystem) (broadcastMessage, error) {
+func broadcastMessageFromBytes(raw []byte, fileSystem *FileSystem) (broadcastMessage, error) {
 	bType, remainder := model.IntFromBytes(raw)
 	file, remainder, err := FileFromBytes(remainder, fileSystem)
 	if err != nil {
