@@ -133,12 +133,12 @@ func (f *FileSystem) run() {
 				switch msg.bType {
 				case upsertFile:
 					f.fileHolder.Upsert(&msg.file)
-					err := f.persistFileIndex()
-					if err != nil {
-						log.Error("Unable to persist file index:", err)
-					}
 				case deleteFile:
 					f.fileHolder.Delete(&msg.file)
+				}
+				err := f.persistFileIndex()
+				if err != nil {
+					log.Error("Unable to persist file index:", err)
 				}
 			} else {
 				log.Warn("Unable to parse incoming broadcast message")
@@ -157,10 +157,21 @@ type mkdirReq struct {
 
 func (f *FileSystem) initFileIndex() error {
 	data, err := f.fileOps.ReadFile(filepath.Join(f.indexPath, "fileIndex"))
-	if err != nil {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 	return f.fileHolder.UpdateFileHolderFromBytes(data, f)
+}
+
+func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType broadcastType) error {
+	err := f.persistFileIndex()
+	if err != nil {
+		log.Error("Error persisting index", err)
+		return err
+	}
+	msg := broadcastMessage{bType: updateType, file: *file}
+	f.outBroadcast <- model.NewBroadcast(msg.toBytes())
+	return nil
 }
 
 func (f *FileSystem) persistFileIndex() error {
@@ -215,8 +226,10 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	}
 
 	f.fileHolder.Add(&dir)
-	msg := broadcastMessage{bType: upsertFile, file: dir}
-	f.outBroadcast <- model.NewBroadcast(msg.toBytes())
+	err = f.persistFileIndexAndBroadcast(&dir, upsertFile)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -240,8 +253,10 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 	for _, file := range f.fileHolder.AllFiles() {
 		if file.Path.startsWith(pathToDelete) {
 			f.fileHolder.Delete(file)
-			msg := broadcastMessage{bType: deleteFile, file: *file}
-			f.outBroadcast <- model.NewBroadcast(msg.toBytes())
+			err = f.persistFileIndexAndBroadcast(file, deleteFile)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	f.fileHolder.Delete(baseFile)

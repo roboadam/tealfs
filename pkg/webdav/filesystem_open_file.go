@@ -112,8 +112,10 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			FileSystem: f,
 		}
 		f.fileHolder.Add(file)
-		msg := broadcastMessage{bType: upsertFile, file: *file}
-		f.outBroadcast <- model.NewBroadcast(msg.toBytes())
+		err := f.persistFileIndexAndBroadcast(file, upsertFile)
+		if err != nil {
+			return openFileResp{err: err}
+		}
 	}
 
 	if append {

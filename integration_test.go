@@ -210,7 +210,7 @@ func TestTwoNodeCluster(t *testing.T) {
 	}
 
 	if strings.Count(uiContents2, nodeAddress1) != 1 {
-		t.Error("should be connected to remote node exactly once")
+		t.Error("should be connected to remote node exactly once, got:", strings.Count(uiContents2, nodeAddress1))
 		return
 	}
 
