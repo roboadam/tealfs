@@ -287,7 +287,7 @@ func getFileWg(path string, expectedContents string, wg *sync.WaitGroup, t *test
 
 func TestTwoNodeOneStorageCluster(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
-	webdavAddress2 := "localhost:9080"
+	webdavAddress2 := "localhost:9080" 
 	path1 := "/test1.txt"
 	path2 := "/test2.txt"
 	uiAddress1 := "localhost:8081"

@@ -130,7 +130,6 @@ func (f *FileSystem) run() {
 			chanutil.Send(req.respChan, f.rename(&req), "filesystem: run rename")
 			req.respChan <- f.rename(&req)
 		case r := <-f.inBroadcast:
-			log.Info("filesystem: run broadcast")
 			msg, err := broadcastMessageFromBytes(r.Msg(), f)
 			if err == nil {
 				switch msg.bType {
@@ -146,7 +145,6 @@ func (f *FileSystem) run() {
 			} else {
 				log.Warn("Unable to parse incoming broadcast message")
 			}
-			log.Info("filesystem: run broadcast done")
 		}
 	}
 }
