@@ -121,14 +121,16 @@ func (f *FileSystem) run() {
 	for {
 		select {
 		case req := <-f.mkdirReq:
-			req.respChan <- f.mkdir(&req)
+			chanutil.Send(req.respChan, f.mkdir(&req), "filesystem: run mkdirreq")
 		case req := <-f.openFileReq:
-			req.respChan <- f.openFile(&req)
+			chanutil.Send(req.respChan, f.openFile(&req), "filesystem: run openfile")
 		case req := <-f.removeAllReq:
-			req.respChan <- f.removeAll(&req)
+			chanutil.Send(req.respChan, f.removeAll(&req), "filesystem: run removeall")
 		case req := <-f.renameReq:
+			chanutil.Send(req.respChan, f.rename(&req), "filesystem: run rename")
 			req.respChan <- f.rename(&req)
 		case r := <-f.inBroadcast:
+			log.Info("filesystem: run broadcast")
 			msg, err := broadcastMessageFromBytes(r.Msg(), f)
 			if err == nil {
 				switch msg.bType {
@@ -144,7 +146,7 @@ func (f *FileSystem) run() {
 			} else {
 				log.Warn("Unable to parse incoming broadcast message")
 			}
-
+			log.Info("filesystem: run broadcast done")
 		}
 	}
 }
