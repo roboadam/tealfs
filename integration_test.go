@@ -26,6 +26,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 func TestOneNodeCluster(t *testing.T) {
@@ -287,15 +289,15 @@ func getFileWg(path string, expectedContents string, wg *sync.WaitGroup, t *test
 
 func TestTwoNodeOneStorageCluster(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
-	webdavAddress2 := "localhost:9080" 
+	webdavAddress2 := "localhost:9080"
 	path1 := "/test1.txt"
 	path2 := "/test2.txt"
 	uiAddress1 := "localhost:8081"
 	uiAddress2 := "localhost:9081"
 	nodeAddress1 := "localhost:8082"
 	nodeAddress2 := "localhost:9082"
-	storagePath1 := "tmp1"
-	storagePath2 := "tmp2"
+	storagePath1 := "xtmp1"
+	storagePath2 := "xtmp2"
 	os.RemoveAll(storagePath1)
 	os.RemoveAll(storagePath2)
 	connectToUrl := "http://" + uiAddress1 + "/connect-to"
@@ -313,7 +315,9 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
 	time.Sleep(time.Second)
 
+	logrus.Info("1")
 	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
+	logrus.Info("2")
 	if !ok {
 		t.Error("error response", resp.Status)
 		return
@@ -326,7 +330,9 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 		return
 	}
 
+	logrus.Info("3a")
 	resp, ok = putFile(ctx, urlFor(webdavAddress1, path1), "text/plain", fileContents1, t)
+	logrus.Info("3")
 	if !ok {
 		t.Error("error response", resp.Status)
 		return
@@ -339,6 +345,7 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	}
 
 	resp, ok = putFile(ctx, urlFor(webdavAddress2, path2), "text/plain", fileContents2, t)
+	logrus.Info("4")
 	if !ok {
 		t.Error("error putting file")
 		return
@@ -351,6 +358,7 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	}
 
 	fetchedContent, ok := getFile(ctx, urlFor(webdavAddress2, path1), t)
+	logrus.Info("5")
 	if !ok {
 		t.Error("error getting file")
 		return
@@ -361,6 +369,7 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	}
 
 	fetchedContent, ok = getFile(ctx, urlFor(webdavAddress1, path2), t)
+	logrus.Info("6")
 	if !ok {
 		t.Error("error getting file")
 		return

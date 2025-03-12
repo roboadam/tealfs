@@ -96,6 +96,7 @@ type ReadReqResp struct {
 
 func (f *FileSystem) fetchBlock(req model.GetBlockReq) model.GetBlockResp {
 	resp := make(chan model.GetBlockResp)
+	chanutil.Send(f.ReadReqResp, ReadReqResp{req, resp}, "filesystem fetchblock")
 	f.ReadReqResp <- ReadReqResp{req, resp}
 	return <-resp
 }
@@ -332,6 +333,7 @@ func (f *FileSystem) rename(req *renameReq) error {
 }
 
 func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
+	log.Info("Stat start")
 	respChan := make(chan openFileResp)
 	f.openFileReq <- openFileReq{
 		ctx:      ctx,
@@ -341,5 +343,6 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 		respChan: respChan,
 	}
 	resp := <-respChan
+	log.Info("Stat end")
 	return resp.file, resp.err
 }
