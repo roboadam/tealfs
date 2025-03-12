@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"time"
@@ -170,7 +171,7 @@ func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType broadca
 		return err
 	}
 	msg := broadcastMessage{bType: updateType, file: *file}
-	f.outBroadcast <- model.NewBroadcast(msg.toBytes())
+	chanutil.Send(f.outBroadcast, model.NewBroadcast(msg.toBytes()), "filesystem: presistFileIndexAndBroadcast")
 	return nil
 }
 
@@ -260,8 +261,7 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 		}
 	}
 	f.fileHolder.Delete(baseFile)
-	msg := broadcastMessage{bType: deleteFile, file: *baseFile}
-	f.outBroadcast <- model.NewBroadcast(msg.toBytes())
+	f.persistFileIndexAndBroadcast(baseFile, deleteFile)
 
 	return nil
 }
@@ -318,16 +318,14 @@ func (f *FileSystem) rename(req *renameReq) error {
 				f.fileHolder.Delete(child)
 				child.Path = child.Path.swapPrefix(oldPath, newPath)
 				f.fileHolder.Add(child)
-				msg := broadcastMessage{bType: upsertFile, file: *child}
-				f.outBroadcast <- model.NewBroadcast(msg.toBytes())
+				f.persistFileIndexAndBroadcast(child, upsertFile)
 			}
 		}
 	} else {
 		f.fileHolder.Delete(file)
 		file.Path = newPath
 		f.fileHolder.Add(file)
-		msg := broadcastMessage{bType: upsertFile, file: *file}
-		f.outBroadcast <- model.NewBroadcast(msg.toBytes())
+		f.persistFileIndexAndBroadcast(file, upsertFile)
 	}
 
 	return nil

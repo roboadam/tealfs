@@ -265,7 +265,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.ReadResult:
 		m.handleDiskReadResult(*p)
 	case *model.Broadcast:
-		m.MgrWebdavBroadcast <- *p
+		chanutil.Send(m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
 	default:
 		panic("Received unknown payload")
 	}
