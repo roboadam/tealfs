@@ -3,6 +3,7 @@ package webdav
 import (
 	"errors"
 	"strings"
+	"sync"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
@@ -13,16 +14,24 @@ type pathValue string
 type FileHolder struct {
 	byPath    map[pathValue]*File
 	byBlockId map[model.BlockId]*File
+	mux       *sync.RWMutex
 }
 
 func NewFileHolder() FileHolder {
 	return FileHolder{
 		byPath:    make(map[pathValue]*File),
 		byBlockId: make(map[model.BlockId]*File),
+		mux:       &sync.RWMutex{},
 	}
 }
 
 func (f *FileHolder) AllFiles() []*File {
+	f.mux.RLock()
+	defer f.mux.Unlock()
+	return f.allFiles()
+}
+
+func (f *FileHolder) allFiles() []*File {
 	result := []*File{}
 	for _, value := range f.byPath {
 		result = append(result, value)
@@ -30,27 +39,54 @@ func (f *FileHolder) AllFiles() []*File {
 	return result
 }
 
+func (f *FileHolder) Upsert(file *File) {
+	f.mux.Lock()
+	defer f.mux.Unlock()
+	if oldFile, exists := f.byBlockId[file.Block.Id]; exists {
+		delete(f.byPath, oldFile.Path.toName())
+	}
+	f.add(file)
+}
+
 func (f *FileHolder) Add(file *File) {
+	f.mux.Lock()
+	defer f.mux.Unlock()
+	f.add(file)
+}
+
+func (f *FileHolder) add(file *File) {
 	f.byPath[file.Path.toName()] = file
 	f.byBlockId[file.Block.Id] = file
 }
 
 func (f *FileHolder) Delete(file *File) {
+	f.mux.Lock()
+	defer f.mux.Unlock()
+	f.delete(file)
+}
+
+func (f *FileHolder) delete(file *File) {
 	delete(f.byPath, file.Path.toName())
 	delete(f.byBlockId, file.Block.Id)
 }
 
 func (f *FileHolder) Exists(p Path) bool {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
 	_, exists := f.byPath[p.toName()]
 	return exists
 }
 
 func (f *FileHolder) Get(p Path) (*File, bool) {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
 	file, exists := f.byPath[p.toName()]
 	return file, exists
 }
 
 func (f *FileHolder) ToBytes() []byte {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
 	result := []byte{}
 	for _, file := range f.byPath {
 		result = append(result, file.ToBytes()...)
@@ -69,11 +105,13 @@ func (f *FileHolder) updateFile(update *File) {
 		delete(f.byPath, oldPath.toName())
 		f.byPath[toUpdate.Path.toName()] = toUpdate
 	} else {
-		f.Add(update)
+		f.add(update)
 	}
 }
 
 func (f *FileHolder) UpdateFileHolderFromBytes(data []byte, fileSystem *FileSystem) error {
+	f.mux.Lock()
+	defer f.mux.Unlock()
 	if len(data) == 0 {
 		return nil
 	}
@@ -88,9 +126,9 @@ func (f *FileHolder) UpdateFileHolderFromBytes(data []byte, fileSystem *FileSyst
 		allBlockIds.Add(file.Block.Id)
 		f.updateFile(&file)
 	}
-	for _, file := range f.AllFiles() {
+	for _, file := range f.allFiles() {
 		if !allBlockIds.Contains(file.Block.Id) {
-			f.Delete(file)
+			f.delete(file)
 		}
 	}
 	return nil

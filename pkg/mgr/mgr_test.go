@@ -19,6 +19,7 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
+	"time"
 
 	"context"
 )
@@ -260,6 +261,60 @@ func TestWebdavPut(t *testing.T) {
 	if meCount == 0 || oneCount == 0 || twoCount == 0 {
 		t.Error("Expected everyone to fetch some data")
 		return
+	}
+}
+
+func TestBroadcast(t *testing.T) {
+	const expectedAddress1 = "some-address:123"
+	const expectedConnectionId1 = 1
+	var expectedNodeId1 = model.NewNodeId()
+	const expectedAddress2 = "some-address2:234"
+	const expectedConnectionId2 = 2
+	var expectedNodeId2 = model.NewNodeId()
+	maxNumberOfWritesInOnePass := 2
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	m := mgrWithConnectedNodes([]connectedNode{
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+	}, maxNumberOfWritesInOnePass, t)
+
+	testMsg := model.NewBroadcast([]byte{1, 2, 3})
+	outMsgCounter := 0
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case w := <-m.MgrConnsSends:
+				if b, ok := w.Payload.(*model.Broadcast); ok {
+					if b.Equal(&testMsg) {
+						outMsgCounter++
+					}
+				}
+			}
+		}
+	}()
+
+	m.WebdavMgrBroadcast <- model.NewBroadcast([]byte{1, 2, 3})
+	time.Sleep(time.Millisecond * 500)
+	if outMsgCounter != 2 {
+		t.Error("Expected 2 messages to go out, got", outMsgCounter)
+		return
+	}
+
+	msg := model.NewBroadcast([]byte{2, 3, 4})
+	m.ConnsMgrReceives <- model.ConnsMgrReceive{
+		ConnId:  expectedConnectionId1,
+		Payload: &msg,
+	}
+
+	forwardedMsg := <- m.MgrWebdavBroadcast
+	if !forwardedMsg.Equal(&msg) {
+		t.Error("Wrong message was forwarded")
 	}
 }
 

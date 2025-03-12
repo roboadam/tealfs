@@ -22,6 +22,7 @@ const (
 	WriteResultType  = uint8(4)
 	ReadRequestType  = uint8(5)
 	ReadResultType   = uint8(6)
+	BroadcastType    = uint8(7)
 )
 
 type Payload interface {
@@ -43,6 +44,8 @@ func ToPayload(data []byte) Payload {
 		return ToReadRequest(payloadData(data))
 	case ReadResultType:
 		return ToReadResult(payloadData(data))
+	case BroadcastType:
+		return ToBroadcast(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}

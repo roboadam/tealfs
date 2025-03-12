@@ -18,6 +18,7 @@ import (
 	"context"
 	"net/http"
 	"tealfs/pkg/chanutil"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 
 	log "github.com/sirupsen/logrus"
@@ -43,17 +44,21 @@ func New(
 	nodeId model.NodeId,
 	webdavMgrGets chan model.GetBlockReq,
 	webdavMgrPuts chan model.PutBlockReq,
+	webdavMgrBroadcast chan model.Broadcast,
 	mgrWebdavGets chan model.GetBlockResp,
 	mgrWebdavPuts chan model.PutBlockResp,
+	mgrWebdavBroadcast chan model.Broadcast,
 	bindAddress string,
 	ctx context.Context,
+	fileOps disk.FileOps,
+	indexPath string,
 ) Webdav {
 	w := Webdav{
 		webdavMgrGets: webdavMgrGets,
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
-		fileSystem:    NewFileSystem(nodeId),
+		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast, fileOps, indexPath),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),

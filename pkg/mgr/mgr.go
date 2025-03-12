@@ -36,6 +36,7 @@ type Mgr struct {
 	DiskMgrWrites      chan model.WriteResult
 	WebdavMgrGets      chan model.GetBlockReq
 	WebdavMgrPuts      chan model.PutBlockReq
+	WebdavMgrBroadcast chan model.Broadcast
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
 	MgrDiskWrites      chan model.WriteRequest
@@ -43,6 +44,7 @@ type Mgr struct {
 	MgrUiStatuses      chan model.UiConnectionStatus
 	MgrWebdavGets      chan model.GetBlockResp
 	MgrWebdavPuts      chan model.PutBlockResp
+	MgrWebdavBroadcast chan model.Broadcast
 
 	nodesAddressMap    map[model.NodeId]string
 	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
@@ -72,6 +74,7 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		DiskMgrReads:       make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:      make(chan model.GetBlockReq, chanSize),
 		WebdavMgrPuts:      make(chan model.PutBlockReq, chanSize),
+		WebdavMgrBroadcast: make(chan model.Broadcast, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
@@ -79,6 +82,7 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.GetBlockResp, chanSize),
 		MgrWebdavPuts:      make(chan model.PutBlockResp, chanSize),
+		MgrWebdavBroadcast: make(chan model.Broadcast),
 		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
 		connAddress:        make(map[model.ConnId]string),
@@ -178,6 +182,8 @@ func (m *Mgr) eventLoop() {
 			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrPuts:
 			m.handleWebdavWriteRequest(r)
+		case r := <-m.WebdavMgrBroadcast:
+			m.handleWebdavMgrBroadcast(r)
 		}
 	}
 }
@@ -258,6 +264,8 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		chanutil.Send(m.MgrDiskReads, *p, "mgr: handleReceives: read request")
 	case *model.ReadResult:
 		m.handleDiskReadResult(*p)
+	case *model.Broadcast:
+		chanutil.Send(m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
 	default:
 		panic("Received unknown payload")
 	}
@@ -397,6 +405,15 @@ func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
 		panic("unknown block type")
 	default:
 		panic("unknown block type")
+	}
+}
+func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
+	for node := range m.nodesAddressMap {
+		if connid, exists := m.nodeConnMap.Get1(node); exists {
+			chanutil.Send(m.MgrConnsSends, model.MgrConnsSend{ConnId: connid, Payload: &b}, "Broadcasting")
+		} else {
+			log.Warn("Unable to broadcast to disconnected node")
+		}
 	}
 }
 

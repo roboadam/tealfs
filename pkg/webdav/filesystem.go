@@ -19,8 +19,13 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"tealfs/pkg/chanutil"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type FileSystem struct {
@@ -31,10 +36,20 @@ type FileSystem struct {
 	renameReq    chan renameReq
 	ReadReqResp  chan ReadReqResp
 	WriteReqResp chan WriteReqResp
+	inBroadcast  chan model.Broadcast
+	outBroadcast chan model.Broadcast
 	nodeId       model.NodeId
+	fileOps      disk.FileOps
+	indexPath    string
 }
 
-func NewFileSystem(nodeId model.NodeId) FileSystem {
+func NewFileSystem(
+	nodeId model.NodeId,
+	inBroadcast chan model.Broadcast,
+	outBroadcast chan model.Broadcast,
+	fileOps disk.FileOps,
+	indexPath string,
+) FileSystem {
 	filesystem := FileSystem{
 		fileHolder:   NewFileHolder(),
 		mkdirReq:     make(chan mkdirReq),
@@ -43,7 +58,11 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		renameReq:    make(chan renameReq),
 		ReadReqResp:  make(chan ReadReqResp),
 		WriteReqResp: make(chan WriteReqResp),
+		inBroadcast:  inBroadcast,
+		outBroadcast: outBroadcast,
 		nodeId:       nodeId,
+		fileOps:      fileOps,
+		indexPath:    indexPath,
 	}
 	block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
 	root := File{
@@ -57,6 +76,10 @@ func NewFileSystem(nodeId model.NodeId) FileSystem {
 		FileSystem: &filesystem,
 	}
 	filesystem.fileHolder.Add(&root)
+	err := filesystem.initFileIndex()
+	if err != nil {
+		log.Error("Unable to read fileIndex on startup:", err)
+	}
 	go filesystem.run()
 	return filesystem
 }
@@ -98,13 +121,30 @@ func (f *FileSystem) run() {
 	for {
 		select {
 		case req := <-f.mkdirReq:
-			req.respChan <- f.mkdir(&req)
+			chanutil.Send(req.respChan, f.mkdir(&req), "filesystem: run mkdirreq")
 		case req := <-f.openFileReq:
-			req.respChan <- f.openFile(&req)
+			chanutil.Send(req.respChan, f.openFile(&req), "filesystem: run openfile")
 		case req := <-f.removeAllReq:
-			req.respChan <- f.removeAll(&req)
+			chanutil.Send(req.respChan, f.removeAll(&req), "filesystem: run removeall")
 		case req := <-f.renameReq:
+			chanutil.Send(req.respChan, f.rename(&req), "filesystem: run rename")
 			req.respChan <- f.rename(&req)
+		case r := <-f.inBroadcast:
+			msg, err := broadcastMessageFromBytes(r.Msg(), f)
+			if err == nil {
+				switch msg.bType {
+				case upsertFile:
+					f.fileHolder.Upsert(&msg.file)
+				case deleteFile:
+					f.fileHolder.Delete(&msg.file)
+				}
+				err := f.persistFileIndex()
+				if err != nil {
+					log.Error("Unable to persist file index:", err)
+				}
+			} else {
+				log.Warn("Unable to parse incoming broadcast message")
+			}
 		}
 	}
 }
@@ -114,6 +154,29 @@ type mkdirReq struct {
 	name     string
 	perm     os.FileMode
 	respChan chan error
+}
+
+func (f *FileSystem) initFileIndex() error {
+	data, err := f.fileOps.ReadFile(filepath.Join(f.indexPath, "fileIndex"))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return f.fileHolder.UpdateFileHolderFromBytes(data, f)
+}
+
+func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType broadcastType) error {
+	err := f.persistFileIndex()
+	if err != nil {
+		log.Error("Error persisting index", err)
+		return err
+	}
+	msg := broadcastMessage{bType: updateType, file: *file}
+	chanutil.Send(f.outBroadcast, model.NewBroadcast(msg.toBytes()), "filesystem: presistFileIndexAndBroadcast")
+	return nil
+}
+
+func (f *FileSystem) persistFileIndex() error {
+	return f.fileOps.WriteFile(filepath.Join(f.indexPath, "fileIndex"), f.fileHolder.ToBytes())
 }
 
 func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
@@ -130,11 +193,6 @@ func (f *FileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) e
 
 func (f *FileSystem) mkdir(req *mkdirReq) error {
 	p, err := PathFromName(req.name)
-	if err != nil {
-		return err
-	}
-
-	err = f.fetchFileIndex()
 	if err != nil {
 		return err
 	}
@@ -169,7 +227,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	}
 
 	f.fileHolder.Add(&dir)
-	err = f.persistFileIndex()
+	err = f.persistFileIndexAndBroadcast(&dir, upsertFile)
 	if err != nil {
 		return err
 	}
@@ -189,11 +247,6 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 		return err
 	}
 
-	err = f.fetchFileIndex()
-	if err != nil {
-		return err
-	}
-
 	baseFile, exists := f.fileHolder.Get(pathToDelete)
 	if !exists {
 		return errors.New("file does not exist")
@@ -201,39 +254,15 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 	for _, file := range f.fileHolder.AllFiles() {
 		if file.Path.startsWith(pathToDelete) {
 			f.fileHolder.Delete(file)
+			err = f.persistFileIndexAndBroadcast(file, deleteFile)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	f.fileHolder.Delete(baseFile)
+	f.persistFileIndexAndBroadcast(baseFile, deleteFile)
 
-	err = f.persistFileIndex()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (f *FileSystem) fetchFileIndex() error {
-	req := model.NewGetBlockReq("fileIndex")
-	result := f.fetchBlock(req)
-
-	if result.Err != nil {
-		return result.Err
-	}
-
-	return f.fileHolder.UpdateFileHolderFromBytes(result.Block.Data, f)
-}
-
-func (f *FileSystem) persistFileIndex() error {
-	req := model.NewPutBlockReq(model.Block{
-		Id:   "fileIndex",
-		Data: f.fileHolder.ToBytes(),
-	})
-	result := f.pushBlock(req)
-
-	if result.Err != nil {
-		return result.Err
-	}
 	return nil
 }
 
@@ -278,11 +307,6 @@ func (f *FileSystem) rename(req *renameReq) error {
 		return err
 	}
 
-	err = f.fetchFileIndex()
-	if err != nil {
-		return err
-	}
-
 	file, exists := f.fileHolder.Get(oldPath)
 	if !exists {
 		return errors.New("file not found")
@@ -294,17 +318,14 @@ func (f *FileSystem) rename(req *renameReq) error {
 				f.fileHolder.Delete(child)
 				child.Path = child.Path.swapPrefix(oldPath, newPath)
 				f.fileHolder.Add(child)
+				f.persistFileIndexAndBroadcast(child, upsertFile)
 			}
 		}
 	} else {
 		f.fileHolder.Delete(file)
 		file.Path = newPath
 		f.fileHolder.Add(file)
-	}
-
-	err = f.persistFileIndex()
-	if err != nil {
-		return err
+		f.persistFileIndexAndBroadcast(file, upsertFile)
 	}
 
 	return nil

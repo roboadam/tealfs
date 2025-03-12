@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
@@ -31,8 +32,11 @@ func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
 	webdavMgrGets := make(chan model.GetBlockReq)
 	webdavMgrPuts := make(chan model.PutBlockReq)
+	webdavMgrBroadcast := make(chan model.Broadcast)
 	mgrWebdavGets := make(chan model.GetBlockResp)
 	mgrWebdavPuts := make(chan model.PutBlockResp)
+	mgrWebdavBroadcast := make(chan model.Broadcast)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -40,8 +44,21 @@ func TestCreateFile(t *testing.T) {
 	mockStorage := make(map[model.BlockId][]byte)
 	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, &mux, mockStorage)
 	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, &mux, mockStorage)
+	go handleOutBroadcast(ctx, webdavMgrBroadcast)
 
-	_ = webdav.New(nodeId, webdavMgrGets, webdavMgrPuts, mgrWebdavGets, mgrWebdavPuts, "localhost:7654", ctx)
+	_ = webdav.New(
+		nodeId,
+		webdavMgrGets,
+		webdavMgrPuts,
+		webdavMgrBroadcast,
+		mgrWebdavGets,
+		mgrWebdavPuts,
+		mgrWebdavBroadcast,
+		"localhost:7654",
+		ctx,
+		&disk.MockFileOps{},
+		"indexPath",
+	)
 	time.Sleep(1 * time.Second) //FIXME, need a better way to wait for listener to start
 
 	_, err := propFind("http://localhost:7654/")

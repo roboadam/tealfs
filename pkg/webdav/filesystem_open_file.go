@@ -79,11 +79,6 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 		return openFileResp{err: err}
 	}
 
-	err = f.fetchFileIndex()
-	if err != nil {
-		return openFileResp{err: err}
-	}
-
 	file, exists := f.fileHolder.Get(path)
 
 	// opening the root directory
@@ -117,7 +112,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			FileSystem: f,
 		}
 		f.fileHolder.Add(file)
-		err = f.persistFileIndex()
+		err := f.persistFileIndexAndBroadcast(file, upsertFile)
 		if err != nil {
 			return openFileResp{err: err}
 		}

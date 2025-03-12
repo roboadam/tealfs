@@ -210,7 +210,7 @@ func TestTwoNodeCluster(t *testing.T) {
 	}
 
 	if strings.Count(uiContents2, nodeAddress1) != 1 {
-		t.Error("should be connected to remote node exactly once")
+		t.Error("should be connected to remote node exactly once, got:", strings.Count(uiContents2, nodeAddress1))
 		return
 	}
 
@@ -222,7 +222,7 @@ func TestTwoNodeCluster(t *testing.T) {
 
 func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
-	parallel := 5
+	parallel := 100
 	paths := make([]string, parallel)
 	fileContents := make([]string, parallel)
 	for i := range parallel {
@@ -287,7 +287,7 @@ func getFileWg(path string, expectedContents string, wg *sync.WaitGroup, t *test
 
 func TestTwoNodeOneStorageCluster(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
-	webdavAddress2 := "localhost:9080"
+	webdavAddress2 := "localhost:9080" 
 	path1 := "/test1.txt"
 	path2 := "/test2.txt"
 	uiAddress1 := "localhost:8081"
