@@ -65,6 +65,7 @@ func TestOneNodeCluster(t *testing.T) {
 		t.Error("unexpected contents got:", fetchedContent, "expected:", fileContents)
 		return
 	}
+	cancel()
 }
 
 func TestTwoNodeCluster(t *testing.T) {
@@ -220,6 +221,8 @@ func TestTwoNodeCluster(t *testing.T) {
 		t.Error("should not be connected to yourself")
 		return
 	}
+	cancel1()
+	cancel2()
 }
 
 func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
@@ -257,6 +260,7 @@ func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
 		go getFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
 	}
 	wg.Wait()
+	cancel()
 }
 
 func putFileWg(path string, contents string, wg *sync.WaitGroup, t *testing.T, ctx context.Context, webdavAddress string) {
@@ -311,7 +315,7 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 0, ctx)
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
 	go startTealFs(storagePath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
 	time.Sleep(time.Second)
 
@@ -378,6 +382,7 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 		t.Error("unexpected contents", fetchedContent)
 		return
 	}
+	cancel()
 }
 
 func getFile(ctx context.Context, url string, t *testing.T) (string, bool) {

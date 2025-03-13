@@ -79,6 +79,7 @@ func (f *File) Close() error {
 }
 
 func (f *File) Read(p []byte) (n int, err error) {
+	log.Info("r1")
 	error := f.ensureData()
 	if error != nil {
 		log.Warn("Error reading data for ", f.Name())

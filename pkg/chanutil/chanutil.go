@@ -13,6 +13,7 @@ func Send[T any](channel chan T, value T, message string) {
 	defer cancel()
 	go checkDone(ctx, message)
 	channel <- value
+	cancel()
 }
 
 func checkDone(ctx context.Context, message string) {

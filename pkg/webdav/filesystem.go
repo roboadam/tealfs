@@ -96,8 +96,7 @@ type ReadReqResp struct {
 
 func (f *FileSystem) fetchBlock(req model.GetBlockReq) model.GetBlockResp {
 	resp := make(chan model.GetBlockResp)
-	chanutil.Send(f.ReadReqResp, ReadReqResp{req, resp}, "filesystem fetchblock")
-	f.ReadReqResp <- ReadReqResp{req, resp}
+	chanutil.Send(f.ReadReqResp, ReadReqResp{req, resp}, "filesystem fetchblock "+string(req.Id()))
 	return <-resp
 }
 
