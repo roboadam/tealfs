@@ -83,7 +83,7 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.GetBlockResp, chanSize),
 		MgrWebdavPuts:      make(chan model.PutBlockResp, chanSize),
-		MgrWebdavBroadcast: make(chan model.Broadcast),
+		MgrWebdavBroadcast: make(chan model.Broadcast, chanSize),
 		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
 		connAddress:        make(map[model.ConnId]string),

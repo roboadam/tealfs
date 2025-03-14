@@ -300,8 +300,8 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	uiAddress2 := "localhost:9081"
 	nodeAddress1 := "localhost:8082"
 	nodeAddress2 := "localhost:9082"
-	storagePath1 := "xtmp1"
-	storagePath2 := "xtmp2"
+	storagePath1 := "tmp1"
+	storagePath2 := "tmp2"
 	os.RemoveAll(storagePath1)
 	os.RemoveAll(storagePath2)
 	connectToUrl := "http://" + uiAddress1 + "/connect-to"
