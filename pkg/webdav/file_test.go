@@ -36,6 +36,7 @@ func TestRead(t *testing.T) {
 			Id:   "",
 			Data: []byte{1, 2, 3, 4, 5, 6},
 		},
+		FileSystem: &webdav.FileSystem},
 	}
 
 	buf := make([]byte, 4)

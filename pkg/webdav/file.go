@@ -79,16 +79,38 @@ func (f *File) Close() error {
 	return nil
 }
 
+type readReq struct {
+	p    []byte
+	f    *File
+	resp chan readResp
+}
+type readResp struct {
+	n   int
+	err error
+}
+
 func (f *File) Read(p []byte) (n int, err error) {
-	error := f.ensureData()
-	if error != nil {
+	req := readReq{
+		p:    p,
+		f:    f,
+		resp: make(chan readResp),
+	}
+	chanutil.Send(f.FileSystem.readReq, req, "read")
+	resp := <-req.resp
+	return resp.n, resp.err
+}
+func read(req readReq) readResp {
+	f := req.f
+	p := req.p
+	err := f.ensureData()
+	if err != nil {
 		log.Warn("Error reading data for ", f.Name())
-		return 0, error
+		return readResp{err: err}
 	}
 
 	if f.Position >= int64(len(f.Block.Data)) {
 		log.Warn("EOF reading data for ", f.Name())
-		return 0, io.EOF
+		return readResp{err: io.EOF}
 	}
 
 	start := f.Position
@@ -100,7 +122,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	copy(p, f.Block.Data[start:end])
 	bytesRead := int(end - start)
 	f.Position += int64(bytesRead)
-	return bytesRead, nil
+	return readResp{n: bytesRead}
 }
 
 func (f *File) Seek(offset int64, whence int) (int64, error) {

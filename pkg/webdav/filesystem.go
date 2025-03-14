@@ -35,6 +35,7 @@ type FileSystem struct {
 	removeAllReq chan removeAllReq
 	renameReq    chan renameReq
 	writeReq     chan writeReq
+	readReq      chan readReq
 	ReadReqResp  chan ReadReqResp
 	WriteReqResp chan WriteReqResp
 	inBroadcast  chan model.Broadcast
@@ -59,6 +60,7 @@ func NewFileSystem(
 		removeAllReq: make(chan removeAllReq),
 		renameReq:    make(chan renameReq),
 		writeReq:     make(chan writeReq),
+		readReq:      make(chan readReq),
 		ReadReqResp:  make(chan ReadReqResp),
 		WriteReqResp: make(chan WriteReqResp),
 		inBroadcast:  inBroadcast,
@@ -135,6 +137,8 @@ func (f *FileSystem) run(ctx context.Context) {
 			chanutil.Send(req.respChan, f.rename(&req), "filesystem: run rename")
 		case req := <-f.writeReq:
 			chanutil.Send(req.resp, write(req), "filesystem: write")
+		case req := <-f.readReq:
+			chanutil.Send(req.resp, read(req), "filesystem: read")
 		case r := <-f.inBroadcast:
 			msg, err := broadcastMessageFromBytes(r.Msg(), f)
 			if err == nil {
