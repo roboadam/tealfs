@@ -121,7 +121,7 @@ func (f *FileSystem) pushBlock(req model.PutBlockReq) model.PutBlockResp {
 func (f *FileSystem) run(ctx context.Context) {
 	for {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			return
 		case req := <-f.mkdirReq:
 			chanutil.Send(req.respChan, f.mkdir(&req), "filesystem: run mkdirreq")
@@ -131,7 +131,6 @@ func (f *FileSystem) run(ctx context.Context) {
 			chanutil.Send(req.respChan, f.removeAll(&req), "filesystem: run removeall")
 		case req := <-f.renameReq:
 			chanutil.Send(req.respChan, f.rename(&req), "filesystem: run rename")
-			req.respChan <- f.rename(&req)
 		case r := <-f.inBroadcast:
 			msg, err := broadcastMessageFromBytes(r.Msg(), f)
 			if err == nil {
@@ -289,12 +288,13 @@ type renameReq struct {
 
 func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string) error {
 	respChan := make(chan error)
-	f.renameReq <- renameReq{
+	req := renameReq{
 		ctx:      ctx,
 		oldName:  oldName,
 		newName:  newName,
 		respChan: respChan,
 	}
+	chanutil.Send(f.renameReq, req, "rename")
 	resp := <-respChan
 	return resp
 

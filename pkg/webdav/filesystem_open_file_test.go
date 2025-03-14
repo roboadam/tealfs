@@ -83,6 +83,7 @@ func TestFileNotFound(t *testing.T) {
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	fs := webdav.NewFileSystem(
 		model.NewNodeId(),
 		inBroadcast,
@@ -95,6 +96,7 @@ func TestFileNotFound(t *testing.T) {
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
 		t.Error("Shouldn't be able to open file", err)
+		return
 	}
 	cancel()
 }

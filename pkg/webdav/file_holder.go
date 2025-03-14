@@ -27,7 +27,7 @@ func NewFileHolder() FileHolder {
 
 func (f *FileHolder) AllFiles() []*File {
 	f.mux.RLock()
-	defer f.mux.Unlock()
+	defer f.mux.RUnlock()
 	return f.allFiles()
 }
 
