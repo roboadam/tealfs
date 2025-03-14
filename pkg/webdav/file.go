@@ -18,6 +18,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"time"
 
@@ -135,10 +136,33 @@ func (f *File) Stat() (fs.FileInfo, error) {
 	return f, nil
 }
 
+type writeReq struct {
+	p    []byte
+	f    *File
+	resp chan writeResp
+}
+type writeResp struct {
+	n   int
+	err error
+}
+
 func (f *File) Write(p []byte) (n int, err error) {
-	error := f.ensureData()
-	if error != nil {
-		return 0, error
+	req := writeReq{
+		p:    p,
+		f:    f,
+		resp: make(chan writeResp),
+	}
+	chanutil.Send(f.FileSystem.writeReq, req, "write")
+	resp := <-req.resp
+	return resp.n, resp.err
+}
+
+func write(wreq writeReq) writeResp {
+	f := wreq.f
+	p := wreq.p
+	err := f.ensureData()
+	if err != nil {
+		return writeResp{err: err}
 	}
 
 	if int(f.Position)+len(p) > len(f.Block.Data) {
@@ -157,12 +181,12 @@ func (f *File) Write(p []byte) (n int, err error) {
 	if result.Err == nil {
 		err := f.FileSystem.persistFileIndexAndBroadcast(f, upsertFile)
 		if err != nil {
-			return len(p), err
+			return writeResp{n: len(p), err: err}
 		}
-		return len(p), nil
+		return writeResp{n: len(p)}
 	}
 
-	return 0, result.Err
+	return writeResp{err: result.Err}
 }
 
 func (f *File) ensureData() error {

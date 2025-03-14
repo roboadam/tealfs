@@ -23,5 +23,5 @@
 go.work
 .vscode/settings.json
 storage/
-.tmp1/
-.tmp2/
+tmp1/
+tmp2/
