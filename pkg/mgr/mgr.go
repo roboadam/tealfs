@@ -170,7 +170,6 @@ func (m *Mgr) eventLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("I'M DONE")
 			return
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)

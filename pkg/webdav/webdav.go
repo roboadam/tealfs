@@ -88,25 +88,18 @@ func (w *Webdav) start(ctx context.Context) {
 }
 
 func (w *Webdav) eventLoop(ctx context.Context) {
-	log.Info("start event loop")
-	defer log.Info("end event loop")
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("shutting down")
 			w.server.Shutdown(context.Background())
-			log.Info("shutting down done")
 			return
 		case r := <-w.mgrWebdavGets:
-			log.Info("w1 start " + r.Id)
 			ch, ok := w.pendingReads[r.Id]
 			if ok {
 				chanutil.Send(ch, r, "webdav: response for pending read to fs")
 				delete(w.pendingReads, r.Id)
 			}
-			log.Info("w1 end " + r.Id)
 		case r := <-w.mgrWebdavPuts:
-			log.Info("w2 start " + r.Id)
 			ch, ok := w.pendingPuts[r.Id]
 			if ok {
 				chanutil.Send(ch, r, "webdav: response for pending write to fs")
@@ -114,17 +107,12 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 			} else {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
-			log.Info("w2 end " + r.Id)
 		case r := <-w.fileSystem.ReadReqResp:
-			log.Info("webdav outgoing read request " + r.Req.Id())
 			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id()))
 			w.pendingReads[r.Req.Id()] = r.Resp
-			log.Info("webdav outgoing read request sent " + r.Req.Id())
 		case r := <-w.fileSystem.WriteReqResp:
-			log.Info("w3 start " + r.Req.Id())
 			chanutil.Send(w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
 			w.pendingPuts[r.Req.Id()] = r.Resp
-			log.Info("w3 end " + r.Req.Id())
 		}
 	}
 }

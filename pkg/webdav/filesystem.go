@@ -335,7 +335,6 @@ func (f *FileSystem) rename(req *renameReq) error {
 }
 
 func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
-	log.Info("Stat start")
 	respChan := make(chan openFileResp)
 	f.openFileReq <- openFileReq{
 		ctx:      ctx,
@@ -345,6 +344,5 @@ func (f *FileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error)
 		respChan: respChan,
 	}
 	resp := <-respChan
-	log.Info("Stat end")
 	return resp.file, resp.err
 }

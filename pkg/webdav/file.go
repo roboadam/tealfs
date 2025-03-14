@@ -79,7 +79,6 @@ func (f *File) Close() error {
 }
 
 func (f *File) Read(p []byte) (n int, err error) {
-	log.Info("r1")
 	error := f.ensureData()
 	if error != nil {
 		log.Warn("Error reading data for ", f.Name())
@@ -137,14 +136,11 @@ func (f *File) Stat() (fs.FileInfo, error) {
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
-	log.Info("f1")
 	error := f.ensureData()
-	log.Info("f2")
 	if error != nil {
 		return 0, error
 	}
 
-	log.Info("f3")
 	if int(f.Position)+len(p) > len(f.Block.Data) {
 		needToGrow := int(f.Position) + len(p) - len(f.Block.Data)
 		newData := make([]byte, needToGrow)
@@ -155,21 +151,16 @@ func (f *File) Write(p []byte) (n int, err error) {
 			f.Position++
 		}
 	}
-	log.Info("f4")
 
 	req := model.NewPutBlockReq(f.Block)
 	result := f.FileSystem.pushBlock(req)
-	log.Info("f5")
 	if result.Err == nil {
-		log.Info("f6")
 		err := f.FileSystem.persistFileIndexAndBroadcast(f, upsertFile)
-		log.Info("f7")
 		if err != nil {
 			return len(p), err
 		}
 		return len(p), nil
 	}
-	log.Info("f8")
 
 	return 0, result.Err
 }
@@ -177,9 +168,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 func (f *File) ensureData() error {
 	if !f.HasData {
 		req := model.NewGetBlockReq(f.Block.Id)
-		log.Info("ensuredata1")
 		resp := f.FileSystem.fetchBlock(req)
-		log.Info("ensuredata2")
 		if resp.Err == nil {
 			f.Block = resp.Block
 			f.HasData = true
