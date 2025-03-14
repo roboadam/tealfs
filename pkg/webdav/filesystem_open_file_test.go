@@ -27,6 +27,8 @@ import (
 )
 
 func TestCreateEmptyFile(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	nodeId := model.NewNodeId()
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
@@ -36,11 +38,10 @@ func TestCreateEmptyFile(t *testing.T) {
 		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
+		ctx,
 	)
 	name := "/hello-world.txt"
 	bytesInWrite := []byte{6, 5, 4, 3, 2}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
@@ -75,28 +76,32 @@ func TestCreateEmptyFile(t *testing.T) {
 		t.Error("wrong number of blocks written. expected", len(bytesInWrite), "got", numWritten)
 		return
 	}
+	cancel()
 }
 
 func TestFileNotFound(t *testing.T) {
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
+	ctx, cancel := context.WithCancel(context.Background())
 	fs := webdav.NewFileSystem(
 		model.NewNodeId(),
 		inBroadcast,
 		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
+		ctx,
 	)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
 		t.Error("Shouldn't be able to open file", err)
 	}
+	cancel()
 }
 
 func TestOpenRoot(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
 	filesystem := webdav.NewFileSystem(
@@ -105,9 +110,8 @@ func TestOpenRoot(t *testing.T) {
 		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
+		ctx,
 	)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	mockPushesAndPulls(ctx, &filesystem, outBroadcast)
 	root, err := filesystem.OpenFile(context.Background(), "/", os.O_RDONLY, fs.ModeDir)
 	if err != nil {
@@ -128,6 +132,7 @@ func TestOpenRoot(t *testing.T) {
 		t.Error("Root should be a dir", err)
 		return
 	}
+	cancel()
 }
 
 func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux *sync.Mutex, data map[model.BlockId][]byte) {

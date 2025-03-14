@@ -16,6 +16,7 @@ package webdav_test
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -122,6 +123,8 @@ func TestSeek(t *testing.T) {
 }
 
 func TestSerialize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	nodeId := model.NewNodeId()
 	fileSystem := webdav.NewFileSystem(
 		nodeId,
@@ -129,6 +132,7 @@ func TestSerialize(t *testing.T) {
 		make(chan model.Broadcast),
 		&disk.MockFileOps{},
 		"indexPath",
+		ctx,
 	)
 	path, _ := webdav.PathFromName("/hello/world")
 	file := webdav.File{
@@ -167,4 +171,5 @@ func TestSerialize(t *testing.T) {
 	if file.ModTime() != fileClone.ModTime() {
 		t.Error("modtime is different", file.ModTime(), fileClone.ModTime())
 	}
+	cancel()
 }

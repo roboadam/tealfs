@@ -15,6 +15,7 @@
 package mgr
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -118,12 +119,12 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 	return model.NodeId(data), nil
 }
 
-func (m *Mgr) Start() error {
+func (m *Mgr) Start(ctx context.Context) error {
 	err := m.loadNodeAddressMap()
 	if err != nil {
 		return err
 	}
-	go m.eventLoop()
+	go m.eventLoop(ctx)
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
 			m.UiMgrConnectTos <- model.UiMgrConnectTo{
@@ -165,9 +166,12 @@ func (m *Mgr) saveNodeAddressMap() error {
 	return nil
 }
 
-func (m *Mgr) eventLoop() {
+func (m *Mgr) eventLoop(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			log.Info("I'M DONE")
+			return
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
 		case r := <-m.ConnsMgrStatuses:

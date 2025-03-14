@@ -49,6 +49,7 @@ func NewFileSystem(
 	outBroadcast chan model.Broadcast,
 	fileOps disk.FileOps,
 	indexPath string,
+	ctx context.Context,
 ) FileSystem {
 	filesystem := FileSystem{
 		fileHolder:   NewFileHolder(),
@@ -80,7 +81,7 @@ func NewFileSystem(
 	if err != nil {
 		log.Error("Unable to read fileIndex on startup:", err)
 	}
-	go filesystem.run()
+	go filesystem.run(ctx)
 	return filesystem
 }
 
@@ -117,9 +118,11 @@ func (f *FileSystem) pushBlock(req model.PutBlockReq) model.PutBlockResp {
 	return <-resp
 }
 
-func (f *FileSystem) run() {
+func (f *FileSystem) run(ctx context.Context) {
 	for {
 		select {
+		case <- ctx.Done():
+			return
 		case req := <-f.mkdirReq:
 			chanutil.Send(req.respChan, f.mkdir(&req), "filesystem: run mkdirreq")
 		case req := <-f.openFileReq:

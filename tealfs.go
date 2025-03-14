@@ -66,6 +66,7 @@ func startTealFs(storagePath string, webdavAddress string, uiAddress string, nod
 		m.MgrDiskReads,
 		m.DiskMgrWrites,
 		m.DiskMgrReads,
+		ctx,
 	)
 	_ = ui.NewUi(m.UiMgrConnectTos, m.MgrUiStatuses, &ui.HttpHtmlOps{}, uiAddress, ctx)
 	_ = webdav.New(
@@ -80,9 +81,8 @@ func startTealFs(storagePath string, webdavAddress string, uiAddress string, nod
 		ctx,
 		&disk.DiskFileOps{},
 		storagePath,
-
 	)
-	err := m.Start()
+	err := m.Start(ctx)
 	if err != nil {
 		return err
 	}

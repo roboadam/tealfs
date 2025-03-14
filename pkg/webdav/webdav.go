@@ -58,7 +58,7 @@ func New(
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
-		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast, fileOps, indexPath),
+		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast, fileOps, indexPath, ctx),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
