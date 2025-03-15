@@ -128,26 +128,37 @@ func (f *FileSystem) pushBlock(req model.PutBlockReq) model.PutBlockResp {
 
 func (f *FileSystem) run(ctx context.Context) {
 	for {
+		log.Info("RUNNING")
 		select {
 		case <-ctx.Done():
+			log.Info("fs1")
 			return
 		case req := <-f.mkdirReq:
+			log.Info("fs2")
 			chanutil.Send(req.respChan, f.mkdir(&req), "filesystem: run mkdirreq")
 		case req := <-f.openFileReq:
+			log.Info("fs3")
 			chanutil.Send(req.respChan, f.openFile(&req), "filesystem: run openfile")
 		case req := <-f.removeAllReq:
+			log.Info("fs4")
 			chanutil.Send(req.respChan, f.removeAll(&req), "filesystem: run removeall")
 		case req := <-f.renameReq:
+			log.Info("fs5")
 			chanutil.Send(req.respChan, f.rename(&req), "filesystem: run rename")
 		case req := <-f.writeReq:
+			log.Info("fs6")
 			chanutil.Send(req.resp, write(req), "filesystem: write")
 		case req := <-f.readReq:
+			log.Info("fs7")
 			chanutil.Send(req.resp, read(req), "filesystem: read")
 		case req := <-f.seekReq:
+			log.Info("fs8")
 			chanutil.Send(req.resp, seek(req), "filesystem: seek")
 		case req := <-f.closeReq:
+			log.Info("fs9")
 			chanutil.Send(req.resp, closeF(req), "filesystem: close")
 		case r := <-f.inBroadcast:
+			log.Info("fs10")
 			msg, err := broadcastMessageFromBytes(r.Msg(), f)
 			if err == nil {
 				switch msg.bType {
@@ -163,6 +174,7 @@ func (f *FileSystem) run(ctx context.Context) {
 			} else {
 				log.Warn("Unable to parse incoming broadcast message")
 			}
+			log.Info("fs10 done")
 		}
 	}
 }

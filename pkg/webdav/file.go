@@ -208,6 +208,7 @@ type writeResp struct {
 }
 
 func (f *File) Write(p []byte) (n int, err error) {
+	log.Info("WRITE:", f.Name())
 	req := writeReq{
 		p:    p,
 		f:    f,
@@ -215,6 +216,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 	}
 	chanutil.Send(f.FileSystem.writeReq, req, "write")
 	resp := <-req.resp
+	log.Info("WRITE FINISHED:", f.Name())
 	return resp.n, resp.err
 }
 

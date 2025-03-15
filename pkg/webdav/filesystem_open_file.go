@@ -19,9 +19,11 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"time"
 
+	// log "github.com/sirupsen/logrus"
 	"golang.org/x/net/webdav"
 )
 
@@ -39,15 +41,18 @@ type openFileResp struct {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
+	//log.Info("OPEN:", name)
 	respChan := make(chan openFileResp)
-	f.openFileReq <- openFileReq{
+	req := openFileReq{
 		ctx:      ctx,
 		name:     name,
 		flag:     flag,
 		perm:     perm,
 		respChan: respChan,
 	}
+	chanutil.Send(f.openFileReq, req, "filesystem_open_file: openFile")
 	resp := <-respChan
+	//log.Info("OPEN DONE:", name)
 	return resp.file, resp.err
 }
 
