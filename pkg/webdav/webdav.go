@@ -52,13 +52,14 @@ func New(
 	ctx context.Context,
 	fileOps disk.FileOps,
 	indexPath string,
+	chansize int,
 ) Webdav {
 	w := Webdav{
 		webdavMgrGets: webdavMgrGets,
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
-		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast, fileOps, indexPath, ctx),
+		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast, fileOps, indexPath, chansize, ctx),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),

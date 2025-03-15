@@ -38,6 +38,7 @@ func TestCreateEmptyFile(t *testing.T) {
 		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
+		0,
 		ctx,
 	)
 	name := "/hello-world.txt"
@@ -90,6 +91,7 @@ func TestFileNotFound(t *testing.T) {
 		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
+		0,
 		ctx,
 	)
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
@@ -112,6 +114,7 @@ func TestOpenRoot(t *testing.T) {
 		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
+		0,
 		ctx,
 	)
 	mockPushesAndPulls(ctx, &filesystem, outBroadcast)

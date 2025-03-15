@@ -181,16 +181,39 @@ func seek(req seekReq) seekResp {
 	return seekResp{pos: f.Position}
 }
 
+type readdirReq struct {
+	f     *File
+	count int
+	resp  chan readdirResp
+}
+type readdirResp struct {
+	infos []fs.FileInfo
+	err   error
+}
+
 func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
+	req := readdirReq{
+		f:     f,
+		count: count,
+		resp:  make(chan readdirResp),
+	}
+	chanutil.Send(f.FileSystem.readdirReq, req, "readdir")
+	resp := <-req.resp
+	return resp.infos, resp.err
+}
+
+func readdir(req readdirReq) readdirResp {
+	f := req.f
+	count := req.count
 	if count < 0 {
-		return nil, errors.New("negative dir count requested")
+		return readdirResp{err: errors.New("negative dir count requested")}
 	}
 	children := f.FileSystem.immediateChildren(f.Path)[count:]
 	result := make([]fs.FileInfo, 0, len(children))
 	for _, child := range children {
 		result = append(result, child)
 	}
-	return result, nil
+	return readdirResp{infos: result}
 }
 
 func (f *File) Stat() (fs.FileInfo, error) {

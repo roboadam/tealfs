@@ -38,6 +38,7 @@ type FileSystem struct {
 	readReq      chan readReq
 	seekReq      chan seekReq
 	closeReq     chan closeReq
+	readdirReq   chan readdirReq
 	ReadReqResp  chan ReadReqResp
 	WriteReqResp chan WriteReqResp
 	inBroadcast  chan model.Broadcast
@@ -53,20 +54,22 @@ func NewFileSystem(
 	outBroadcast chan model.Broadcast,
 	fileOps disk.FileOps,
 	indexPath string,
+	chansize int,
 	ctx context.Context,
 ) FileSystem {
 	filesystem := FileSystem{
 		fileHolder:   NewFileHolder(),
-		mkdirReq:     make(chan mkdirReq),
-		openFileReq:  make(chan openFileReq),
-		removeAllReq: make(chan removeAllReq),
-		renameReq:    make(chan renameReq),
-		writeReq:     make(chan writeReq),
-		readReq:      make(chan readReq),
-		seekReq:      make(chan seekReq),
-		closeReq:     make(chan closeReq),
-		ReadReqResp:  make(chan ReadReqResp),
-		WriteReqResp: make(chan WriteReqResp),
+		mkdirReq:     make(chan mkdirReq, chansize),
+		openFileReq:  make(chan openFileReq, chansize),
+		removeAllReq: make(chan removeAllReq, chansize),
+		renameReq:    make(chan renameReq, chansize),
+		writeReq:     make(chan writeReq, chansize),
+		readReq:      make(chan readReq, chansize),
+		seekReq:      make(chan seekReq, chansize),
+		closeReq:     make(chan closeReq, chansize),
+		readdirReq:   make(chan readdirReq, chansize),
+		ReadReqResp:  make(chan ReadReqResp, chansize),
+		WriteReqResp: make(chan WriteReqResp, chansize),
 		inBroadcast:  inBroadcast,
 		outBroadcast: outBroadcast,
 		nodeId:       nodeId,
@@ -147,6 +150,8 @@ func (f *FileSystem) run(ctx context.Context) {
 			chanutil.Send(req.resp, seek(req), "filesystem: seek")
 		case req := <-f.closeReq:
 			chanutil.Send(req.resp, closeF(req), "filesystem: close")
+		case req := <-f.readdirReq:
+			chanutil.Send(req.resp, readdir(req), "filesystem: readdir")
 		case r := <-f.inBroadcast:
 			msg, err := broadcastMessageFromBytes(r.Msg(), f)
 			if err == nil {

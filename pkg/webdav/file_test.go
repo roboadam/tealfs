@@ -30,7 +30,7 @@ func TestRead(t *testing.T) {
 	defer cancel()
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", ctx)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
 	file := webdav.File{
@@ -86,7 +86,7 @@ func TestSeek(t *testing.T) {
 	defer cancel()
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", ctx)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
 	file := webdav.File{
@@ -148,6 +148,7 @@ func TestSerialize(t *testing.T) {
 		make(chan model.Broadcast),
 		&disk.MockFileOps{},
 		"indexPath",
+		0,
 		ctx,
 	)
 	path, _ := webdav.PathFromName("/hello/world")
