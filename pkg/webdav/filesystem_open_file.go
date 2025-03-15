@@ -23,7 +23,6 @@ import (
 	"tealfs/pkg/model"
 	"time"
 
-	// log "github.com/sirupsen/logrus"
 	"golang.org/x/net/webdav"
 )
 
