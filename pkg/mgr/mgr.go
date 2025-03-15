@@ -52,7 +52,6 @@ type Mgr struct {
 	NodeId             model.NodeId
 	connAddress        map[model.ConnId]string
 	mirrorDistributer  dist.MirrorDistributer
-	xorDistributer     dist.XorDistributer
 	blockType          model.BlockType
 	nodeAddress        string
 	savePath           string
@@ -97,7 +96,6 @@ func NewWithChanSize(
 		connAddress:        make(map[model.ConnId]string),
 		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
 		mirrorDistributer:  dist.NewMirrorDistributer(),
-		xorDistributer:     dist.NewXorDistributer(),
 		blockType:          blockType,
 		nodeAddress:        nodeAddress,
 		savePath:           globalPath,
@@ -105,8 +103,10 @@ func NewWithChanSize(
 		pendingBlockWrites: newPendingBlockWrites(),
 		freeBytes:          freeBytes,
 	}
-	mgr.mirrorDistributer.SetWeight(mgr.NodeId, int(freeBytes))
-	mgr.xorDistributer.SetWeight(mgr.NodeId, int(freeBytes))
+
+	for _, disk := range disks {
+		mgr.mirrorDistributer.SetWeight(mgr.NodeId, disk, int(freeBytes))
+	}
 
 	return &mgr
 }
@@ -368,7 +368,6 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	}
 	m.nodeConnMap.Add(iam.NodeId, c)
 	m.mirrorDistributer.SetWeight(iam.NodeId, int(iam.FreeBytes))
-	m.xorDistributer.SetWeight(iam.NodeId, int(iam.FreeBytes))
 	return nil
 }
 

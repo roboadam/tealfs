@@ -20,17 +20,18 @@ import (
 	"hash/crc32"
 	"maps"
 	"sort"
+	"strings"
 	"tealfs/pkg/model"
 )
 
 type MirrorDistributer struct {
-	weights map[model.NodeId]int
+	weights map[string]int
 	hasher  hash.Hash32
 }
 
 func NewMirrorDistributer() MirrorDistributer {
 	return MirrorDistributer{
-		weights: make(map[model.NodeId]int),
+		weights: make(map[string]int),
 		hasher:  crc32.NewIEEE(),
 	}
 }
@@ -49,9 +50,21 @@ type nodeAndDisk struct {
 	d model.DiskId
 }
 
+func (n nodeAndDisk) string() string {
+	return string(n.n) + "|" + string(n.d)
+}
+
+func fromString(val string) nodeAndDisk {
+	raw := strings.Split(val, "|")
+	return nodeAndDisk{
+		n: model.NodeId(raw[0]),
+		d: model.DiskId(raw[1]),
+	}
+}
+
 func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []nodeAndDisk {
 	if len(d.weights) == 0 {
-		return []model.NodeId{}
+		return []nodeAndDisk{}
 	}
 
 	idb := []byte(id)
@@ -61,7 +74,7 @@ func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []nodeAndDisk {
 	node1 := d.nodeIdForHashAndWeights(intHash, d.weights)
 
 	if len(d.weights) == 1 {
-		return []model.NodeId{node1}
+		return []nodeAndDisk{fromString(node1)}
 	}
 
 	weights2 := maps.Clone(d.weights)
@@ -69,16 +82,16 @@ func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []nodeAndDisk {
 	node2 := d.nodeIdForHashAndWeights(intHash, weights2)
 	delete(weights2, node2)
 
-	result := []model.NodeId{node1, node2}
+	result := []nodeAndDisk{fromString(node1), fromString(node2)}
 
 	for nodeId := range weights2 {
-		result = append(result, nodeId)
+		result = append(result, fromString(nodeId))
 	}
 
 	return result
 }
 
-func (d *MirrorDistributer) nodeIdForHashAndWeights(hash int, weights map[model.NodeId]int) model.NodeId {
+func (d *MirrorDistributer) nodeIdForHashAndWeights(hash int, weights map[string]int) string {
 	total := totalWeight(weights)
 	randomNum := hash % total
 
@@ -93,20 +106,16 @@ func (d *MirrorDistributer) nodeIdForHashAndWeights(hash int, weights map[model.
 	panic("should never get here")
 }
 
-func sortedKeys(m map[model.NodeId]int) []model.NodeId {
+func sortedKeys(m map[string]int) []string {
 	stringKeys := make([]string, len(m))
 	for k := range m {
 		stringKeys = append(stringKeys, string(k))
 	}
 	sort.Strings(stringKeys)
-	keys := make([]model.NodeId, len(stringKeys))
-	for _, k := range stringKeys {
-		keys = append(keys, model.NodeId(k))
-	}
-	return keys
+	return stringKeys
 }
 
-func totalWeight(weights map[model.NodeId]int) int {
+func totalWeight(weights map[string]int) int {
 	total := 0
 	for _, weight := range weights {
 		total += weight
@@ -120,7 +129,9 @@ func (d *MirrorDistributer) checksum(data []byte) []byte {
 	return d.hasher.Sum(nil)
 }
 
-func (d *MirrorDistributer) SetWeight(id model.NodeId, weight int) {
+func (d *MirrorDistributer) SetWeight(node model.NodeId, disk model.DiskId, weight int) {
+	nad := nodeAndDisk{n: node, d: disk}
+	id := nad.string()
 	if weight > 0 {
 		d.weights[id] = weight
 	} else {

@@ -14,13 +14,28 @@
 
 package model
 
-import "bytes"
+import (
+	"bytes"
+	"tealfs/pkg/model"
+)
 
 type IAm struct {
-	NodeId    NodeId
-	Address   string
-	FreeBytes uint32
+	nodeId    NodeId
+	disks     []model.DiskId
+	address   string
+	freeBytes uint32
 }
+
+func NewIam(nodeId NodeId, disks []model.DiskId, address string, freeBytes uint32) IAm {
+	return IAm{
+		nodeId:    nodeId,
+		disks:     disks,
+		address:   address,
+		freeBytes: freeBytes,
+	}
+}
+
+
 
 func (h *IAm) ToBytes() []byte {
 	nodeId := StringToBytes(string(h.NodeId))

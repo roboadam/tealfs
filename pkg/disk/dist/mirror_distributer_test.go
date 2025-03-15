@@ -24,16 +24,19 @@ import (
 func TestMirror(t *testing.T) {
 	d := dist.NewMirrorDistributer()
 	node1 := model.NewNodeId()
+	disk1 := model.DiskId("disk1")
 	node2 := model.NewNodeId()
+	disk2 := model.DiskId("disk2")
 	node3 := model.NewNodeId()
+	disk3 := model.DiskId("disk3")
 	allNodes := set.NewSet[model.NodeId]()
 	allNodes.Add(node1)
 	allNodes.Add(node2)
 	allNodes.Add(node3)
 
-	d.SetWeight(node1, 1)
-	d.SetWeight(node2, 2)
-	d.SetWeight(node3, 4)
+	d.SetWeight(node1, disk1, 1)
+	d.SetWeight(node2, disk2, 2)
+	d.SetWeight(node3, disk3, 4)
 
 	bucket1 := 0
 	bucket2 := 0
@@ -49,30 +52,30 @@ func TestMirror(t *testing.T) {
 			return
 		}
 
-		if !nodes.Contains(ptrs[0].NodeId) {
+		if !nodes.Contains(ptrs[0].NodeId()) {
 			t.Error("missing one of the nodes")
 			return
 		}
-		nodes.Remove(ptrs[0].NodeId)
+		nodes.Remove(ptrs[0].NodeId())
 
-		if !nodes.Contains(ptrs[1].NodeId) {
+		if !nodes.Contains(ptrs[1].NodeId()) {
 			t.Error("missing one of the nodes")
 			return
 		}
 
-		if ptrs[0].NodeId == node1 {
+		if ptrs[0].NodeId() == node1 {
 			bucket1++
-		} else if ptrs[0].NodeId == node2 {
+		} else if ptrs[0].NodeId() == node2 {
 			bucket2++
-		} else if ptrs[0].NodeId == node3 {
+		} else if ptrs[0].NodeId() == node3 {
 			bucket3++
 		}
 
-		if ptrs[1].NodeId == node1 {
+		if ptrs[1].NodeId() == node1 {
 			bucket1++
-		} else if ptrs[1].NodeId == node2 {
+		} else if ptrs[1].NodeId() == node2 {
 			bucket2++
-		} else if ptrs[1].NodeId == node3 {
+		} else if ptrs[1].NodeId() == node3 {
 			bucket3++
 		}
 	}
