@@ -72,11 +72,24 @@ func FileFromBytes(raw []byte, fileSystem *FileSystem) (File, []byte, error) {
 	}, remainder, nil
 }
 
+type closeReq struct {
+	f    *File
+	resp chan closeResp
+}
+type closeResp struct{ err error }
+
 func (f *File) Close() error {
+	req := closeReq{f: f, resp: make(chan closeResp)}
+	chanutil.Send(f.FileSystem.closeReq, req, "close")
+	resp := <-req.resp
+	return resp.err
+}
+func closeF(req closeReq) closeResp {
+	f := req.f
 	f.Position = 0
 	f.Block.Data = []byte{}
 	f.HasData = false
-	return nil
+	return closeResp{}
 }
 
 type readReq struct {
@@ -125,7 +138,33 @@ func read(req readReq) readResp {
 	return readResp{n: bytesRead}
 }
 
+type seekReq struct {
+	offset int64
+	whence int
+	f      *File
+	resp   chan seekResp
+}
+type seekResp struct {
+	pos int64
+	err error
+}
+
 func (f *File) Seek(offset int64, whence int) (int64, error) {
+	req := seekReq{
+		offset: offset,
+		whence: whence,
+		f:      f,
+		resp:   make(chan seekResp),
+	}
+	chanutil.Send(f.FileSystem.seekReq, req, "seek")
+	resp := <-req.resp
+	return resp.pos, resp.err
+}
+
+func seek(req seekReq) seekResp {
+	whence := req.whence
+	offset := req.offset
+	f := req.f
 	newPosition := 0
 	switch whence {
 	case io.SeekStart:
@@ -136,10 +175,10 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		newPosition = int(f.SizeValue + offset)
 	}
 	if newPosition < 0 {
-		return f.Position, errors.New("negative seek")
+		return seekResp{pos: f.Position, err: errors.New("negative seek")}
 	}
 	f.Position = int64(newPosition)
-	return f.Position, nil
+	return seekResp{pos: f.Position}
 }
 
 func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
