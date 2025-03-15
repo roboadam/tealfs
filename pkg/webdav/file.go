@@ -353,7 +353,7 @@ func (f *File) Mode() fs.FileMode {
 }
 func mode(req modeReq) modeResp {
 	f := req.f
-	return f.ModeValue
+	return modeResp{mode: f.ModeValue}
 }
 
 type modtimeReq struct {
@@ -368,7 +368,7 @@ func (f *File) ModTime() time.Time {
 }
 func modtime(req modtimeReq) modtimeResp {
 	f := req.f
-	return f.Modtime
+	return modtimeResp{time: f.Modtime}
 }
 
 type isdirReq struct {
@@ -383,7 +383,7 @@ func (f *File) IsDir() bool {
 }
 func isdir(req isdirReq) isdirResp {
 	f := req.f
-	return f.ModeValue.IsDir()
+	return isdirResp{is: f.ModeValue.IsDir()}
 }
 
 type sysReq struct {
@@ -396,7 +396,6 @@ type sysResp struct {
 
 func (f *File) Sys() any {
 }
-func sys(sysReq) sysResp {
-	f := req.f
-	return nil
+func sys(req sysReq) sysResp {
+	return sysResp{}
 }
