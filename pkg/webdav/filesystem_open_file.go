@@ -41,7 +41,6 @@ type openFileResp struct {
 }
 
 func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	//log.Info("OPEN:", name)
 	respChan := make(chan openFileResp)
 	req := openFileReq{
 		ctx:      ctx,
@@ -52,7 +51,6 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 	}
 	chanutil.Send(f.openFileReq, req, "filesystem_open_file: openFile")
 	resp := <-respChan
-	//log.Info("OPEN DONE:", name)
 	return resp.file, resp.err
 }
 

@@ -91,18 +91,15 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("el1")
 			w.server.Shutdown(context.Background())
 			return
 		case r := <-w.mgrWebdavGets:
-			log.Info("el2")
 			ch, ok := w.pendingReads[r.Id]
 			if ok {
 				chanutil.Send(ch, r, "webdav: response for pending read to fs")
 				delete(w.pendingReads, r.Id)
 			}
 		case r := <-w.mgrWebdavPuts:
-			log.Info("el3")
 			ch, ok := w.pendingPuts[r.Id]
 			if ok {
 				chanutil.Send(ch, r, "webdav: response for pending write to fs")
@@ -111,11 +108,9 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
 		case r := <-w.fileSystem.ReadReqResp:
-			log.Info("el4")
 			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id()))
 			w.pendingReads[r.Req.Id()] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
-			log.Info("el5")
 			chanutil.Send(w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
 			w.pendingPuts[r.Req.Id()] = r.Resp
 		}
