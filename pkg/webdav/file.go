@@ -305,30 +305,98 @@ func (f *File) ensureData() error {
 	return nil
 }
 
+type nameReq struct {
+	f    *File
+	resp chan nameResp
+}
+type nameResp struct {
+	name string
+}
+
 func (f *File) Name() string {
+}
+func name(req nameReq) nameResp {
+	f := req.f
 	name, err := f.Path.head()
 	if err != nil {
-		return ""
+		return nameResp{
+			name: "",
+		}
 	}
-	return string(name)
+	return nameResp{name: string(name)}
+}
+
+type sizeReq struct {
+	f    *File
+	resp chan sizeResp
+}
+type sizeResp struct {
+	size int64
 }
 
 func (f *File) Size() int64 {
-	return f.SizeValue
+}
+func size(req sizeReq) sizeResp {
+	f := req.f
+	return sizeResp{size: f.SizeValue}
+}
+
+type modeReq struct {
+	f    *File
+	resp chan modeResp
+}
+type modeResp struct {
+	mode fs.FileMode
 }
 
 func (f *File) Mode() fs.FileMode {
+}
+func mode(req modeReq) modeResp {
+	f := req.f
 	return f.ModeValue
 }
 
+type modtimeReq struct {
+	f    *File
+	resp chan modtimeResp
+}
+type modtimeResp struct {
+	time time.Time
+}
+
 func (f *File) ModTime() time.Time {
+}
+func modtime(req modtimeReq) modtimeResp {
+	f := req.f
 	return f.Modtime
 }
 
+type isdirReq struct {
+	f    *File
+	resp chan isdirResp
+}
+type isdirResp struct {
+	is bool
+}
+
 func (f *File) IsDir() bool {
+}
+func isdir(req isdirReq) isdirResp {
+	f := req.f
 	return f.ModeValue.IsDir()
 }
 
+type sysReq struct {
+	f    *File
+	resp chan sysResp
+}
+type sysResp struct {
+	whatever any
+}
+
 func (f *File) Sys() any {
+}
+func sys(sysReq) sysResp {
+	f := req.f
 	return nil
 }

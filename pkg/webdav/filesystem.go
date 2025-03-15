@@ -40,6 +40,12 @@ type FileSystem struct {
 	closeReq     chan closeReq
 	readdirReq   chan readdirReq
 	statReq      chan statReq
+	nameReq      chan nameReq
+	sizeReq      chan sizeReq
+	modeReq      chan modeReq
+	modtimeReq   chan modtimeReq
+	isdirReq     chan isdirReq
+	sysReq       chan sysReq
 	ReadReqResp  chan ReadReqResp
 	WriteReqResp chan WriteReqResp
 	inBroadcast  chan model.Broadcast
@@ -70,6 +76,12 @@ func NewFileSystem(
 		closeReq:     make(chan closeReq, chansize),
 		readdirReq:   make(chan readdirReq, chansize),
 		statReq:      make(chan statReq, chansize),
+		nameReq:      make(chan nameReq, chansize),
+		sizeReq:      make(chan sizeReq, chansize),
+		modeReq:      make(chan modeReq, chansize),
+		modtimeReq:   make(chan modtimeReq, chansize),
+		isdirReq:     make(chan isdirReq, chansize),
+		sysReq:       make(chan sysReq, chansize),
 		ReadReqResp:  make(chan ReadReqResp, chansize),
 		WriteReqResp: make(chan WriteReqResp, chansize),
 		inBroadcast:  inBroadcast,
@@ -156,6 +168,18 @@ func (f *FileSystem) run(ctx context.Context) {
 			chanutil.Send(req.resp, readdir(req), "filesystem: readdir")
 		case req := <-f.statReq:
 			chanutil.Send(req.resp, stat(req), "filesystem: stat")
+		case req := <-f.nameReq:
+			chanutil.Send(req.resp, name(req), "filesystem: name")
+		case req := <-f.sizeReq:
+			chanutil.Send(req.resp, size(req), "filesystem: size")
+		case req := <-f.modeReq:
+			chanutil.Send(req.resp, mode(req), "filesystem: mode")
+		case req := <-f.modtimeReq:
+			chanutil.Send(req.resp, modtime(req), "filesystem: modtime")
+		case req := <-f.isdirReq:
+			chanutil.Send(req.resp, isdir(req), "filesystem: isdir")
+		case req := <-f.sysReq:
+			chanutil.Send(req.resp, sys(req), "filesystem: sys")
 		case r := <-f.inBroadcast:
 			msg, err := broadcastMessageFromBytes(r.Msg(), f)
 			if err == nil {
