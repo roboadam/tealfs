@@ -117,12 +117,12 @@ func read(req readReq) readResp {
 	p := req.p
 	err := f.ensureData()
 	if err != nil {
-		log.Warn("Error reading data for ", f.Name())
+		log.Warn("Error reading data for ", f.Path.toName())
 		return readResp{err: err}
 	}
 
 	if f.Position >= int64(len(f.Block.Data)) {
-		log.Warn("EOF reading data for ", f.Name())
+		log.Warn("EOF reading data for ", f.Path.toName())
 		return readResp{err: io.EOF}
 	}
 
@@ -314,6 +314,13 @@ type nameResp struct {
 }
 
 func (f *File) Name() string {
+	req := nameReq{
+		f:    f,
+		resp: make(chan nameResp),
+	}
+	chanutil.Send(f.FileSystem.nameReq, req, "name")
+	resp := <-req.resp
+	return resp.name
 }
 func name(req nameReq) nameResp {
 	f := req.f
@@ -335,6 +342,13 @@ type sizeResp struct {
 }
 
 func (f *File) Size() int64 {
+	req := sizeReq{
+		f:    f,
+		resp: make(chan sizeResp),
+	}
+	chanutil.Send(f.FileSystem.sizeReq, req, "size")
+	resp := <-req.resp
+	return resp.size
 }
 func size(req sizeReq) sizeResp {
 	f := req.f
@@ -350,6 +364,13 @@ type modeResp struct {
 }
 
 func (f *File) Mode() fs.FileMode {
+	req := modeReq{
+		f:    f,
+		resp: make(chan modeResp),
+	}
+	chanutil.Send(f.FileSystem.modeReq, req, "mode")
+	resp := <-req.resp
+	return resp.mode
 }
 func mode(req modeReq) modeResp {
 	f := req.f
@@ -365,6 +386,13 @@ type modtimeResp struct {
 }
 
 func (f *File) ModTime() time.Time {
+	req := modtimeReq{
+		f:    f,
+		resp: make(chan modtimeResp),
+	}
+	chanutil.Send(f.FileSystem.modtimeReq, req, "modtime")
+	resp := <-req.resp
+	return resp.time
 }
 func modtime(req modtimeReq) modtimeResp {
 	f := req.f
@@ -380,6 +408,13 @@ type isdirResp struct {
 }
 
 func (f *File) IsDir() bool {
+	req := isdirReq{
+		f:    f,
+		resp: make(chan isdirResp),
+	}
+	chanutil.Send(f.FileSystem.isdirReq, req, "isdir")
+	resp := <-req.resp
+	return resp.is
 }
 func isdir(req isdirReq) isdirResp {
 	f := req.f
@@ -395,7 +430,14 @@ type sysResp struct {
 }
 
 func (f *File) Sys() any {
+	req := sysReq{
+		f:    f,
+		resp: make(chan sysResp),
+	}
+	chanutil.Send(f.FileSystem.sysReq, req, "sys")
+	resp := <-req.resp
+	return resp.whatever
 }
-func sys(req sysReq) sysResp {
+func sys(_ sysReq) sysResp {
 	return sysResp{}
 }

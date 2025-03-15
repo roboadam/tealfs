@@ -364,7 +364,7 @@ func (f *FileSystem) rename(req *renameReq) error {
 		return errors.New("file not found")
 	}
 
-	if file.IsDir() {
+	if file.ModeValue.IsDir() {
 		for _, child := range f.fileHolder.AllFiles() {
 			if child.Path.startsWith(oldPath) {
 				f.fileHolder.Delete(child)
