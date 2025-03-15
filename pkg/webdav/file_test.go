@@ -26,6 +26,13 @@ import (
 )
 
 func TestRead(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", ctx)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
+
 	file := webdav.File{
 		SizeValue: 6,
 		ModeValue: 0,
@@ -36,7 +43,7 @@ func TestRead(t *testing.T) {
 			Id:   "",
 			Data: []byte{1, 2, 3, 4, 5, 6},
 		},
-		FileSystem: &webdav.FileSystem},
+		FileSystem: &fs,
 	}
 
 	buf := make([]byte, 4)
