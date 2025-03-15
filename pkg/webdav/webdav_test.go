@@ -58,6 +58,7 @@ func TestCreateFile(t *testing.T) {
 		ctx,
 		&disk.MockFileOps{},
 		"indexPath",
+		0,
 	)
 	time.Sleep(1 * time.Second) //FIXME, need a better way to wait for listener to start
 

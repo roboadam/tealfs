@@ -67,7 +67,7 @@ func NewConns(
 	}
 
 	go c.consumeChannels(ctx)
-	go c.listen()
+	go c.listen(ctx)
 
 	return c
 }
@@ -86,7 +86,7 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 				Id:   id,
 			}
 			chanutil.Send(c.outStatuses, status, "conns accepted connection sending success status")
-			go c.consumeData(id)
+			go c.consumeData(id, ctx)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
@@ -97,7 +97,7 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 					Id:   id,
 				}
 				chanutil.Send(c.outStatuses, status, "conns connected sending success status")
-				go c.consumeData(id)
+				go c.consumeData(id, ctx)
 			} else {
 				status := model.NetConnectionStatus{
 					Type: model.NotConnected,
@@ -122,6 +122,7 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 }
 
 func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
+	log.Warn("Error sending ", err)
 	payload := sendReq.Payload
 	switch p := payload.(type) {
 	case *model.ReadRequest:
@@ -144,12 +145,17 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 	}
 }
 
-func (c *Conns) listen() {
+func (c *Conns) listen(ctx context.Context) {
 	for {
-		conn, err := c.listener.Accept()
-		if err == nil {
-			incomingConnReq := AcceptedConns{netConn: conn}
-			chanutil.Send(c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			conn, err := c.listener.Accept()
+			if err == nil {
+				incomingConnReq := AcceptedConns{netConn: conn}
+				chanutil.Send(c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
+			}
 		}
 	}
 }
@@ -158,30 +164,35 @@ type AcceptedConns struct {
 	netConn net.Conn
 }
 
-func (c *Conns) consumeData(conn model.ConnId) {
+func (c *Conns) consumeData(conn model.ConnId, ctx context.Context) {
 	for {
-		netConn := c.netConns[conn]
-		bytes, err := tnet.ReadPayload(netConn)
-		if err != nil {
-			closeErr := netConn.Close()
-			if closeErr != nil {
-				log.Warn("Error closing connection", closeErr)
-			}
-			delete(c.netConns, conn)
-			ncs := model.NetConnectionStatus{
-				Type: model.NotConnected,
-				Msg:  "Connection closed",
-				Id:   conn,
-			}
-			chanutil.Send(c.outStatuses, ncs, "conns connection closed sent status")
+		select {
+		case <-ctx.Done():
 			return
+		default:
+			netConn := c.netConns[conn]
+			bytes, err := tnet.ReadPayload(netConn)
+			if err != nil {
+				closeErr := netConn.Close()
+				if closeErr != nil {
+					log.Warn("Error closing connection", closeErr)
+				}
+				delete(c.netConns, conn)
+				ncs := model.NetConnectionStatus{
+					Type: model.NotConnected,
+					Msg:  "Connection closed",
+					Id:   conn,
+				}
+				chanutil.Send(c.outStatuses, ncs, "conns connection closed sent status")
+				return
+			}
+			payload := model.ToPayload(bytes)
+			cmr := model.ConnsMgrReceive{
+				ConnId:  conn,
+				Payload: payload,
+			}
+			chanutil.Send(c.outReceives, cmr, "conns received payload sent to connsMgr")
 		}
-		payload := model.ToPayload(bytes)
-		cmr := model.ConnsMgrReceive{
-			ConnId:  conn,
-			Payload: payload,
-		}
-		chanutil.Send(c.outReceives, cmr, "conns received payload sent to connsMgr")
 	}
 }
 

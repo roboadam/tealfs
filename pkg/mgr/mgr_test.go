@@ -26,9 +26,11 @@ import (
 
 func TestConnectToMgr(t *testing.T) {
 	const expectedAddress = "some-address:123"
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	m := NewWithChanSize(0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1)
-	err := m.Start()
+	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)
 		return
@@ -43,9 +45,12 @@ func TestConnectToMgr(t *testing.T) {
 	if expectedMessage.Address != expectedAddress {
 		t.Error("Received address", expectedMessage.Address)
 	}
+	cancel()
 }
 
 func TestConnectToSuccess(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()
@@ -56,10 +61,13 @@ func TestConnectToSuccess(t *testing.T) {
 	mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, 0, t)
+	}, 0, t, ctx)
+	cancel()
 }
 
 func TestReceiveSyncNodes(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	const sharedAddress = "some-address:123"
 	const sharedConnectionId = 1
 	var sharedNodeId = model.NewNodeId()
@@ -72,7 +80,7 @@ func TestReceiveSyncNodes(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId},
 		{address: localAddress, conn: localConnectionId, node: localNodeId},
-	}, 0, t)
+	}, 0, t, ctx)
 
 	sn := model.NewSyncNodes()
 	sn.Nodes.Add(struct {
@@ -92,6 +100,7 @@ func TestReceiveSyncNodes(t *testing.T) {
 	if expectedConnectTo.Address != remoteAddress {
 		t.Error("expected to connect to", remoteAddress)
 	}
+	cancel()
 }
 
 func TestWebdavGet(t *testing.T) {
@@ -107,7 +116,7 @@ func TestWebdavGet(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, 0, t)
+	}, 0, t, ctx)
 
 	ids := []model.BlockId{}
 	for range 100 {
@@ -184,6 +193,7 @@ func TestWebdavGet(t *testing.T) {
 		t.Error("Expected everyone to get some data")
 		return
 	}
+	cancel()
 }
 
 func TestWebdavPut(t *testing.T) {
@@ -201,7 +211,7 @@ func TestWebdavPut(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, maxNumberOfWritesInOnePass, t)
+	}, maxNumberOfWritesInOnePass, t, ctx)
 
 	blocks := []model.Block{}
 	for i := range 100 {
@@ -262,6 +272,7 @@ func TestWebdavPut(t *testing.T) {
 		t.Error("Expected everyone to fetch some data")
 		return
 	}
+	cancel()
 }
 
 func TestBroadcast(t *testing.T) {
@@ -279,7 +290,7 @@ func TestBroadcast(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, maxNumberOfWritesInOnePass, t)
+	}, maxNumberOfWritesInOnePass, t, ctx)
 
 	testMsg := model.NewBroadcast([]byte{1, 2, 3})
 	outMsgCounter := 0
@@ -312,10 +323,11 @@ func TestBroadcast(t *testing.T) {
 		Payload: &msg,
 	}
 
-	forwardedMsg := <- m.MgrWebdavBroadcast
+	forwardedMsg := <-m.MgrWebdavBroadcast
 	if !forwardedMsg.Equal(&msg) {
 		t.Error("Wrong message was forwarded")
 	}
+	cancel()
 }
 
 type connectedNode struct {
@@ -324,9 +336,9 @@ type connectedNode struct {
 	node    model.NodeId
 }
 
-func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T) *Mgr {
+func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, ctx context.Context) *Mgr {
 	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1)
-	err := m.Start()
+	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)
 	}

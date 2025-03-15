@@ -63,6 +63,7 @@ func TestOneNodeCluster(t *testing.T) {
 		t.Error("unexpected contents got:", fetchedContent, "expected:", fileContents)
 		return
 	}
+	cancel()
 }
 
 func TestTwoNodeCluster(t *testing.T) {
@@ -218,43 +219,8 @@ func TestTwoNodeCluster(t *testing.T) {
 		t.Error("should not be connected to yourself")
 		return
 	}
-}
-
-func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
-	webdavAddress1 := "localhost:8080"
-	parallel := 100
-	paths := make([]string, parallel)
-	fileContents := make([]string, parallel)
-	for i := range parallel {
-		paths[i] = "/test" + strconv.Itoa(i) + ".txt"
-		fileContents[i] = "test content " + strconv.Itoa(i)
-	}
-	uiAddress1 := "localhost:8081"
-	nodeAddress1 := "localhost:8082"
-	storagePath1 := "tmp1"
-	os.RemoveAll(storagePath1)
-	os.Mkdir(storagePath1, 0755)
-	defer os.RemoveAll(storagePath1)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
-
-	time.Sleep(time.Second)
-
-	var wg sync.WaitGroup
-	for i := range parallel {
-		wg.Add(1)
-		go putFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
-	}
-	wg.Wait()
-
-	wg = sync.WaitGroup{}
-	for i := range parallel {
-		wg.Add(1)
-		go getFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
-	}
-	wg.Wait()
+	cancel1()
+	cancel2()
 }
 
 func putFileWg(path string, contents string, wg *sync.WaitGroup, t *testing.T, ctx context.Context, webdavAddress string) {
@@ -287,7 +253,7 @@ func getFileWg(path string, expectedContents string, wg *sync.WaitGroup, t *test
 
 func TestTwoNodeOneStorageCluster(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
-	webdavAddress2 := "localhost:9080" 
+	webdavAddress2 := "localhost:9080"
 	path1 := "/test1.txt"
 	path2 := "/test2.txt"
 	uiAddress1 := "localhost:8081"
@@ -369,6 +335,45 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 		t.Error("unexpected contents", fetchedContent)
 		return
 	}
+	cancel()
+}
+
+func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
+	webdavAddress1 := "localhost:8080"
+	parallel := 100
+	paths := make([]string, parallel)
+	fileContents := make([]string, parallel)
+	for i := range parallel {
+		paths[i] = "/test" + strconv.Itoa(i) + ".txt"
+		fileContents[i] = "test content " + strconv.Itoa(i)
+	}
+	uiAddress1 := "localhost:8081"
+	nodeAddress1 := "localhost:8082"
+	storagePath1 := "tmp1"
+	os.RemoveAll(storagePath1)
+	os.Mkdir(storagePath1, 0755)
+	defer os.RemoveAll(storagePath1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go startTealFs(storagePath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
+
+	time.Sleep(time.Second)
+
+	var wg sync.WaitGroup
+	for i := range parallel {
+		wg.Add(1)
+		go putFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
+	}
+	wg.Wait()
+
+	wg = sync.WaitGroup{}
+	for i := range parallel {
+		wg.Add(1)
+		go getFileWg(paths[i], fileContents[i], &wg, t, ctx, webdavAddress1)
+	}
+	wg.Wait()
+	cancel()
 }
 
 func getFile(ctx context.Context, url string, t *testing.T) (string, bool) {

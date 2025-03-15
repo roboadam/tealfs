@@ -52,13 +52,14 @@ func New(
 	ctx context.Context,
 	fileOps disk.FileOps,
 	indexPath string,
+	chansize int,
 ) Webdav {
 	w := Webdav{
 		webdavMgrGets: webdavMgrGets,
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
-		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast, fileOps, indexPath),
+		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast, fileOps, indexPath, chansize, ctx),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
@@ -92,6 +93,7 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			w.server.Shutdown(context.Background())
+			return
 		case r := <-w.mgrWebdavGets:
 			ch, ok := w.pendingReads[r.Id]
 			if ok {
@@ -107,7 +109,7 @@ func (w *Webdav) eventLoop(ctx context.Context) {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
 		case r := <-w.fileSystem.ReadReqResp:
-			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr")
+			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id()))
 			w.pendingReads[r.Req.Id()] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
 			chanutil.Send(w.webdavMgrPuts, r.Req, "webdav: write request to mgr")

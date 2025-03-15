@@ -15,6 +15,8 @@
 package webdav_test
 
 import (
+	"context"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/webdav"
 	"testing"
@@ -22,21 +24,30 @@ import (
 )
 
 func TestSerializeFileHolder(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
+
 	path1, _ := webdav.PathFromName("/hello/world")
 	path2, _ := webdav.PathFromName("/hello/planet")
 	file1 := webdav.File{
-		SizeValue: 1,
-		ModeValue: 2,
-		Modtime:   time.Unix(12345, 0),
-		Block:     model.Block{Id: model.NewBlockId()},
-		Path:      path1,
+		SizeValue:  1,
+		ModeValue:  2,
+		Modtime:    time.Unix(12345, 0),
+		Block:      model.Block{Id: model.NewBlockId()},
+		Path:       path1,
+		FileSystem: &fs,
 	}
 	file2 := webdav.File{
-		SizeValue: 3,
-		ModeValue: 4,
-		Modtime:   time.Unix(67890, 0),
-		Block:     model.Block{Id: model.NewBlockId()},
-		Path:      path2,
+		SizeValue:  3,
+		ModeValue:  4,
+		Modtime:    time.Unix(67890, 0),
+		Block:      model.Block{Id: model.NewBlockId()},
+		Path:       path2,
+		FileSystem: &fs,
 	}
 
 	fh := webdav.NewFileHolder()
@@ -45,7 +56,7 @@ func TestSerializeFileHolder(t *testing.T) {
 
 	fhAsBytes := fh.ToBytes()
 	fh2 := webdav.NewFileHolder()
-	err := fh2.UpdateFileHolderFromBytes(fhAsBytes, &webdav.FileSystem{})
+	err := fh2.UpdateFileHolderFromBytes(fhAsBytes, &fs)
 
 	if err != nil {
 		t.Error("error deserializing fileHolder")

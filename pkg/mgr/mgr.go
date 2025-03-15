@@ -15,6 +15,7 @@
 package mgr
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -82,7 +83,7 @@ func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps 
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.GetBlockResp, chanSize),
 		MgrWebdavPuts:      make(chan model.PutBlockResp, chanSize),
-		MgrWebdavBroadcast: make(chan model.Broadcast),
+		MgrWebdavBroadcast: make(chan model.Broadcast, chanSize),
 		nodesAddressMap:    make(map[model.NodeId]string),
 		NodeId:             nodeId,
 		connAddress:        make(map[model.ConnId]string),
@@ -118,12 +119,12 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 	return model.NodeId(data), nil
 }
 
-func (m *Mgr) Start() error {
+func (m *Mgr) Start(ctx context.Context) error {
 	err := m.loadNodeAddressMap()
 	if err != nil {
 		return err
 	}
-	go m.eventLoop()
+	go m.eventLoop(ctx)
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
 			m.UiMgrConnectTos <- model.UiMgrConnectTo{
@@ -165,9 +166,11 @@ func (m *Mgr) saveNodeAddressMap() error {
 	return nil
 }
 
-func (m *Mgr) eventLoop() {
+func (m *Mgr) eventLoop(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
 		case r := <-m.ConnsMgrStatuses:

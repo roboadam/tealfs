@@ -25,10 +25,10 @@ import (
 )
 
 func TestMkdir(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
-	ctx, cancel := context.WithCancel(context.Background())
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
 	defer cancel()
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	c := context.Background()
@@ -51,14 +51,15 @@ func TestMkdir(t *testing.T) {
 		t.Error("shouldn't have been able to open this one")
 		return
 	}
+	cancel()
 }
 
 func TestRemoveAll(t *testing.T) {
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	mode := os.ModeDir
 
@@ -78,14 +79,15 @@ func TestRemoveAll(t *testing.T) {
 		t.Error("should have been able to delete this one")
 		return
 	}
+	cancel()
 }
 
 func TestRename(t *testing.T) {
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	modeDir := os.ModeDir
 
@@ -119,15 +121,16 @@ func TestRename(t *testing.T) {
 	fileExists(t, &fs, "/test/newDirName/apple")
 	dirExists(t, &fs, "/test/newDirName/test2")
 	fileExists(t, &fs, "/test/newDirName/test2/pear")
+	cancel()
 }
 
 func TestWriteAndRead(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	inBroadcast := make(chan model.Broadcast)
 	outBroadcast := make(chan model.Broadcast)
 	expectedData := []byte{1, 2, 3, 4, 5}
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath")
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
 	f, err := fs.OpenFile(context.Background(), "newFile.txt", os.O_RDWR|os.O_CREATE, 0666)
@@ -185,6 +188,7 @@ func TestWriteAndRead(t *testing.T) {
 		t.Error("error closing opened file")
 		return
 	}
+	cancel()
 }
 
 func fileExists(t *testing.T, fs *webdav.FileSystem, name string) {

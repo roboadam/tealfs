@@ -15,6 +15,7 @@
 package disk
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"path/filepath"
@@ -27,11 +28,14 @@ type Path struct {
 	ops FileOps
 }
 
-func New(path Path, id model.NodeId,
+func New(
+	path Path, id model.NodeId,
 	mgrDiskWrites chan model.WriteRequest,
 	mgrDiskReads chan model.ReadRequest,
 	diskMgrWrites chan model.WriteResult,
-	diskMgrReads chan model.ReadResult) Disk {
+	diskMgrReads chan model.ReadResult,
+	ctx context.Context,
+) Disk {
 	p := Disk{
 		path:      path,
 		id:        id,
@@ -40,7 +44,7 @@ func New(path Path, id model.NodeId,
 		outReads:  diskMgrReads,
 		outWrites: diskMgrWrites,
 	}
-	go p.consumeChannels()
+	go p.consumeChannels(ctx)
 	return p
 }
 
@@ -53,9 +57,11 @@ type Disk struct {
 	inReads   chan model.ReadRequest
 }
 
-func (d *Disk) consumeChannels() {
+func (d *Disk) consumeChannels(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case s := <-d.inWrites:
 			err := d.path.Save(s.Data())
 			if err == nil {

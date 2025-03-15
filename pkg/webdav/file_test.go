@@ -16,6 +16,7 @@ package webdav_test
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -25,6 +26,13 @@ import (
 )
 
 func TestRead(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
+
 	file := webdav.File{
 		SizeValue: 6,
 		ModeValue: 0,
@@ -35,6 +43,7 @@ func TestRead(t *testing.T) {
 			Id:   "",
 			Data: []byte{1, 2, 3, 4, 5, 6},
 		},
+		FileSystem: &fs,
 	}
 
 	buf := make([]byte, 4)
@@ -73,6 +82,13 @@ func TestRead(t *testing.T) {
 }
 
 func TestSeek(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
+
 	file := webdav.File{
 		SizeValue: 5,
 		ModeValue: 0,
@@ -82,6 +98,7 @@ func TestSeek(t *testing.T) {
 			Id:   "",
 			Data: []byte{1, 2, 3, 4, 5},
 		},
+		FileSystem: &fs,
 	}
 
 	result, err := file.Seek(3, io.SeekStart)
@@ -122,6 +139,8 @@ func TestSeek(t *testing.T) {
 }
 
 func TestSerialize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	nodeId := model.NewNodeId()
 	fileSystem := webdav.NewFileSystem(
 		nodeId,
@@ -129,6 +148,8 @@ func TestSerialize(t *testing.T) {
 		make(chan model.Broadcast),
 		&disk.MockFileOps{},
 		"indexPath",
+		0,
+		ctx,
 	)
 	path, _ := webdav.PathFromName("/hello/world")
 	file := webdav.File{
@@ -167,4 +188,5 @@ func TestSerialize(t *testing.T) {
 	if file.ModTime() != fileClone.ModTime() {
 		t.Error("modtime is different", file.ModTime(), fileClone.ModTime())
 	}
+	cancel()
 }
