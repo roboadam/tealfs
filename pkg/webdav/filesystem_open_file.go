@@ -52,7 +52,6 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 }
 
 func (f *FileSystem) openFile(req *openFileReq) openFileResp {
-
 	rw := (os.O_RDWR & req.flag) != 0
 	wo := (os.O_WRONLY & req.flag) != 0
 	ro := false
