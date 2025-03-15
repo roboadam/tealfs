@@ -40,8 +40,8 @@ type Mgr struct {
 	WebdavMgrBroadcast chan model.Broadcast
 	MgrConnsConnectTos chan model.MgrConnsConnectTo
 	MgrConnsSends      chan model.MgrConnsSend
-	MgrDiskWrites      chan model.WriteRequest
-	MgrDiskReads       chan model.ReadRequest
+	MgrDiskWrites      map[model.DiskId]chan model.WriteRequest
+	MgrDiskReads       map[model.DiskId]chan model.ReadRequest
 	MgrUiStatuses      chan model.UiConnectionStatus
 	MgrWebdavGets      chan model.GetBlockResp
 	MgrWebdavPuts      chan model.PutBlockResp
@@ -61,7 +61,14 @@ type Mgr struct {
 	freeBytes          uint32
 }
 
-func NewWithChanSize(chanSize int, nodeAddress string, savePath string, fileOps disk.FileOps, blockType model.BlockType, freeBytes uint32) *Mgr {
+func NewWithChanSize(
+	chanSize int,
+	nodeAddress string,
+	savePath string,
+	fileOps disk.FileOps,
+	blockType model.BlockType,
+	freeBytes uint32,
+) *Mgr {
 	nodeId, err := readNodeId(savePath, fileOps)
 	if err != nil {
 		panic(err)
