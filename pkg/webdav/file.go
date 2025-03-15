@@ -216,8 +216,26 @@ func readdir(req readdirReq) readdirResp {
 	return readdirResp{infos: result}
 }
 
+type statReq struct {
+	f    *File
+	resp chan statResp
+}
+type statResp struct {
+	info fs.FileInfo
+	err  error
+}
+
 func (f *File) Stat() (fs.FileInfo, error) {
-	return f, nil
+	req := statReq{
+		f:    f,
+		resp: make(chan statResp),
+	}
+	chanutil.Send(f.FileSystem.statReq, req, "stat")
+	resp := <-req.resp
+	return resp.info, resp.err
+}
+func stat(req statReq) statResp {
+	return statResp{info: req.f}
 }
 
 type writeReq struct {
