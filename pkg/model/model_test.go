@@ -56,15 +56,15 @@ func TestSyncNodes(t *testing.T) {
 func TestReadResult(t *testing.T) {
 	caller := model.NodeId("some caller")
 	ptrs := []model.DiskPointer{
-		{NodeId: "node1", FileName: "fileName1"},
-		{NodeId: "node2", FileName: "fileName2"},
+		model.NewDiskPointer("node1", "disk1", "fileName1"),
+		model.NewDiskPointer("node2", "disk2", "fileName2"),
 	}
 	data1 := model.RawData{
-		Ptr:  model.DiskPointer{NodeId: "node1", FileName: "fileName1"},
+		Ptr:  ptrs[0],
 		Data: []byte{1, 2, 3},
 	}
 	data2 := model.RawData{
-		Ptr:  model.DiskPointer{NodeId: "node1", FileName: "fileName1"},
+		Ptr:  ptrs[0],
 		Data: []byte{1, 2, 4},
 	}
 	reqId := model.GetBlockId("getBlockId")
@@ -85,7 +85,7 @@ func TestReadResult(t *testing.T) {
 
 func TestWriteResult(t *testing.T) {
 	caller := model.NodeId("some caller")
-	ptr := model.DiskPointer{NodeId: "nodeId", FileName: "fileName"}
+	ptr := model.NewDiskPointer("nodeId", "disk1", "fileName")
 	reqId1 := model.PutBlockId("reqId1")
 	reqId2 := model.PutBlockId("reqId2")
 	wr1 := model.NewWriteResultOk(ptr, caller, reqId1)
@@ -106,7 +106,7 @@ func TestWriteResult(t *testing.T) {
 
 func TestReadRequest(t *testing.T) {
 	caller := model.NodeId("caller1")
-	ptrs := []model.DiskPointer{{NodeId: "nodeId1", FileName: "filename1"}}
+	ptrs := []model.DiskPointer{model.NewDiskPointer("nodeId1", "disk2", "filename1")}
 	blockId := model.BlockId("blockId1")
 	reqId1 := model.GetBlockId("reqId1")
 	reqId2 := model.GetBlockId("reqId2")

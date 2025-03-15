@@ -64,12 +64,13 @@ type Mgr struct {
 func NewWithChanSize(
 	chanSize int,
 	nodeAddress string,
-	savePath string,
+	globalPath string,
 	fileOps disk.FileOps,
 	blockType model.BlockType,
 	freeBytes uint32,
+	disks []model.DiskId,
 ) *Mgr {
-	nodeId, err := readNodeId(savePath, fileOps)
+	nodeId, err := readNodeId(globalPath, fileOps)
 	if err != nil {
 		panic(err)
 	}
@@ -85,8 +86,8 @@ func NewWithChanSize(
 		WebdavMgrBroadcast: make(chan model.Broadcast, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
-		MgrDiskWrites:      make(chan model.WriteRequest, chanSize),
-		MgrDiskReads:       make(chan model.ReadRequest, chanSize),
+		MgrDiskWrites:      diskWriteChans(disks),
+		MgrDiskReads:       diskReadChans(disks),
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.GetBlockResp, chanSize),
 		MgrWebdavPuts:      make(chan model.PutBlockResp, chanSize),
@@ -99,7 +100,7 @@ func NewWithChanSize(
 		xorDistributer:     dist.NewXorDistributer(),
 		blockType:          blockType,
 		nodeAddress:        nodeAddress,
-		savePath:           savePath,
+		savePath:           globalPath,
 		fileOps:            fileOps,
 		pendingBlockWrites: newPendingBlockWrites(),
 		freeBytes:          freeBytes,
@@ -108,6 +109,22 @@ func NewWithChanSize(
 	mgr.xorDistributer.SetWeight(mgr.NodeId, int(freeBytes))
 
 	return &mgr
+}
+
+func diskWriteChans(ids []model.DiskId) map[model.DiskId]chan model.WriteRequest {
+	return diskChans[model.WriteRequest](ids)
+}
+
+func diskReadChans(ids []model.DiskId) map[model.DiskId]chan model.ReadRequest {
+	return diskChans[model.ReadRequest](ids)
+}
+
+func diskChans[V any](ids []model.DiskId) map[model.DiskId]chan V {
+	result := make(map[model.DiskId]chan V)
+	for _, id := range ids {
+		result[id] = make(chan V)
+	}
+	return result
 }
 
 func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
@@ -258,7 +275,9 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.WriteRequest:
 		caller, ok := m.nodeConnMap.Get2(i.ConnId)
 		if ok {
-			chanutil.Send(m.MgrDiskWrites, *p, "mgr: handleReceives: write request")
+			ptr := p.Data().Ptr
+			disk := ptr.Disk()
+			chanutil.Send(m.MgrDiskWrites[disk], *p, "mgr: handleReceives: write request")
 		} else {
 			payload := model.NewWriteResultErr("connection error", caller, p.ReqId())
 			mcs := model.MgrConnsSend{
@@ -271,7 +290,11 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.WriteResult:
 		m.handleDiskWriteResult(*p)
 	case *model.ReadRequest:
-		chanutil.Send(m.MgrDiskReads, *p, "mgr: handleReceives: read request")
+		if len(p.Ptrs()) == 0 {
+			log.Error("No pointers to read from")
+		} else {
+			chanutil.Send(m.MgrDiskReads[p.Ptrs()[0].Disk()], *p, "mgr: handleReceives: read request")
+		}
 	case *model.ReadResult:
 		m.handleDiskReadResult(*p)
 	case *model.Broadcast:
@@ -388,10 +411,11 @@ func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, reqId model.GetBlockId, bloc
 	if len(ptrs) == 0 {
 		return
 	}
-	n := ptrs[0].NodeId
+	n := ptrs[0].NodeId()
+	disk := ptrs[0].Disk()
 	rr := model.NewReadRequest(m.NodeId, ptrs, blockId, reqId)
 	if m.NodeId == n {
-		chanutil.Send(m.MgrDiskReads, rr, "mgr: readDiskPtr: local")
+		chanutil.Send(m.MgrDiskReads[disk], rr, "mgr: readDiskPtr: local")
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
 		if ok {
@@ -436,10 +460,10 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 			Ptr:  ptr,
 		}
 		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
-		if ptr.NodeId == m.NodeId {
-			chanutil.Send(m.MgrDiskWrites, writeRequest, "mgr: handleMirroredWriteRequest: local")
+		if ptr.NodeId() == m.NodeId {
+			chanutil.Send(m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
 		} else {
-			c, ok := m.nodeConnMap.Get1(ptr.NodeId)
+			c, ok := m.nodeConnMap.Get1(ptr.NodeId())
 			if ok {
 				mcs := model.MgrConnsSend{ConnId: c, Payload: &writeRequest}
 				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleMirroredWriteRequest: remote")

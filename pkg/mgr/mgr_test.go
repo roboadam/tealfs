@@ -29,7 +29,7 @@ func TestConnectToMgr(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m := NewWithChanSize(0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1)
+	m := NewWithChanSize(0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1, []model.DiskId{"disk1"})
 	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)
@@ -57,11 +57,12 @@ func TestConnectToSuccess(t *testing.T) {
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = model.NewNodeId()
+	disks := []model.DiskId{"disk1"}
 
 	mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, 0, t, ctx)
+	}, 0, t, disks, ctx)
 	cancel()
 }
 
@@ -76,11 +77,12 @@ func TestReceiveSyncNodes(t *testing.T) {
 	var localNodeId = model.NewNodeId()
 	const remoteAddress = "some-address3:345"
 	var remoteNodeId = model.NewNodeId()
+	disks := []model.DiskId{"disk1"}
 
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId},
 		{address: localAddress, conn: localConnectionId, node: localNodeId},
-	}, 0, t, ctx)
+	}, 0, t, disks, ctx)
 
 	sn := model.NewSyncNodes()
 	sn.Nodes.Add(struct {
@@ -110,13 +112,14 @@ func TestWebdavGet(t *testing.T) {
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = model.NewNodeId()
+	disks := []model.DiskId{"disk1"}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, 0, t, ctx)
+	}, 0, t, disks, ctx)
 
 	ids := []model.BlockId{}
 	for range 100 {
@@ -133,7 +136,7 @@ func TestWebdavGet(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case r := <-m.MgrDiskReads:
+			case r := <-m.MgrDiskReads[disks[0]]:
 				atomic.AddInt32(&meCount, 1)
 				caller := m.NodeId
 				ptrs := r.Ptrs()[1:]
@@ -204,6 +207,7 @@ func TestWebdavPut(t *testing.T) {
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = model.NewNodeId()
 	maxNumberOfWritesInOnePass := 2
+	disks := []model.DiskId{"disk1"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -211,7 +215,7 @@ func TestWebdavPut(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, maxNumberOfWritesInOnePass, t, ctx)
+	}, maxNumberOfWritesInOnePass, t, disks, ctx)
 
 	blocks := []model.Block{}
 	for i := range 100 {
@@ -232,7 +236,7 @@ func TestWebdavPut(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case w := <-m.MgrDiskWrites:
+			case w := <-m.MgrDiskWrites[disks[0]]:
 				atomic.AddInt32(&meCount, 1)
 				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
 			}
@@ -283,6 +287,7 @@ func TestBroadcast(t *testing.T) {
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = model.NewNodeId()
 	maxNumberOfWritesInOnePass := 2
+	disks := []model.DiskId{"disk1"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -290,7 +295,7 @@ func TestBroadcast(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
-	}, maxNumberOfWritesInOnePass, t, ctx)
+	}, maxNumberOfWritesInOnePass, t, disks, ctx)
 
 	testMsg := model.NewBroadcast([]byte{1, 2, 3})
 	outMsgCounter := 0
@@ -336,8 +341,8 @@ type connectedNode struct {
 	node    model.NodeId
 }
 
-func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, ctx context.Context) *Mgr {
-	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1)
+func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, disks []model.DiskId, ctx context.Context) *Mgr {
+	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1, disks)
 	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)

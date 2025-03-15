@@ -39,12 +39,17 @@ func (d *MirrorDistributer) PointersForId(id model.BlockId) []model.DiskPointer 
 	nodeIds := d.generateNodeIds(id)
 	data := []model.DiskPointer{}
 	for _, nodeId := range nodeIds {
-		data = append(data, model.DiskPointer{NodeId: nodeId, FileName: string(id)})
+		data = append(data, model.NewDiskPointer(nodeId.n, nodeId.d, string(id)))
 	}
 	return data
 }
 
-func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []model.NodeId {
+type nodeAndDisk struct {
+	n model.NodeId
+	d model.DiskId
+}
+
+func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []nodeAndDisk {
 	if len(d.weights) == 0 {
 		return []model.NodeId{}
 	}

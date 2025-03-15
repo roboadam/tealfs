@@ -90,12 +90,12 @@ func (d *Disk) consumeChannels(ctx context.Context) {
 }
 
 func (p *Path) Save(rawData model.RawData) error {
-	filePath := filepath.Join(p.raw, rawData.Ptr.FileName)
+	filePath := filepath.Join(p.raw, rawData.Ptr.FileName())
 	return p.ops.WriteFile(filePath, rawData.Data)
 }
 
 func (p *Path) Read(ptr model.DiskPointer) (model.RawData, error) {
-	filePath := filepath.Join(p.raw, ptr.FileName)
+	filePath := filepath.Join(p.raw, ptr.FileName())
 	result, err := p.ops.ReadFile(filePath)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
 		return model.RawData{Ptr: ptr, Data: []byte{}}, nil
