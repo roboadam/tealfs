@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/mgr"
@@ -31,20 +32,21 @@ import (
 
 func main() {
 	log.SetLevel(log.TraceLevel)
-	if len(os.Args) < 6 {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address> <node address> <free bytes>")
+	if len(os.Args) < 7 {
+		fmt.Fprintln(os.Stderr, os.Args[0], "<config path> <disk paths> <webdav address> <ui address> <node address> <free bytes>")
 		os.Exit(1)
 	}
 
-	val, err := strconv.ParseUint(os.Args[5], 10, 32)
+	val, err := strconv.ParseUint(os.Args[6], 10, 32)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<storage path> <webdav address> <ui address> <node address> <free bytes>")
+		fmt.Fprintln(os.Stderr, os.Args[0], "<config path> <disk paths> <webdav address> <ui address> <node address> <free bytes>")
 		os.Exit(1)
 	}
 
 	freeBytes := uint32(val)
+	disks := strings.Split(os.Args[2], ",")
 
-	_ = startTealFs(os.Args[1], os.Args[2], os.Args[3], os.Args[4], freeBytes, context.Background())
+	_ = startTealFs(os.Args[1], disks, os.Args[3], os.Args[4], os.Args[5], freeBytes, context.Background())
 }
 
 func startTealFs(globalPath string, disks []string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
@@ -60,15 +62,19 @@ func startTealFs(globalPath string, disks []string, webdavAddress string, uiAddr
 		m.NodeId,
 		ctx,
 	)
-	p := disk.NewPath(globalPath, &disk.DiskFileOps{})
-	_ = disk.New(p,
-		model.NewNodeId(),
-		m.MgrDiskWrites,
-		m.MgrDiskReads,
-		m.DiskMgrWrites,
-		m.DiskMgrReads,
-		ctx,
-	)
+	for _, diskId := range m.Disks() {
+		writeChan := m.MgrDiskWrites[diskId]
+		readChan := m.MgrDiskReads[diskId]
+		p := disk.NewPath(globalPath, &disk.DiskFileOps{})
+		_ = disk.New(p,
+			model.NewNodeId(),
+			writeChan,
+			readChan,
+			m.DiskMgrWrites,
+			m.DiskMgrReads,
+			ctx,
+		)
+	}
 	_ = ui.NewUi(m.UiMgrConnectTos, m.MgrUiStatuses, &ui.HttpHtmlOps{}, uiAddress, ctx)
 	_ = webdav.New(
 		m.NodeId,

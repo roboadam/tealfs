@@ -29,7 +29,15 @@ func TestConnectToMgr(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m := NewWithChanSize(0, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1, []model.DiskId{"disk1"})
+	m := NewWithChanSize(
+		0,
+		"dummyAddress",
+		"dummyPath",
+		&disk.MockFileOps{},
+		model.Mirrored,
+		1,
+		[]string{"path1"},
+	)
 	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)
@@ -59,7 +67,7 @@ func TestConnectToSuccess(t *testing.T) {
 	const expectedConnectionId2 = 2
 	disks2 := []model.DiskId{"disk2"}
 	var expectedNodeId2 = model.NewNodeId()
-	disks := []model.DiskId{"disk"}
+	disks := []string{"disk"}
 
 	mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
@@ -81,7 +89,7 @@ func TestReceiveSyncNodes(t *testing.T) {
 	var localNodeId = model.NewNodeId()
 	const remoteAddress = "some-address3:345"
 	var remoteNodeId = model.NewNodeId()
-	disks := []model.DiskId{"disk"}
+	disks := []string{"disk"}
 
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId, disks: disks1},
@@ -118,7 +126,7 @@ func TestWebdavGet(t *testing.T) {
 	const expectedConnectionId2 = 2
 	disks2 := []model.DiskId{"disk2"}
 	var expectedNodeId2 = model.NewNodeId()
-	disks := []model.DiskId{"disk"}
+	disks := []string{"disk"}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -142,7 +150,7 @@ func TestWebdavGet(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case r := <-m.MgrDiskReads[disks[0]]:
+			case r := <-m.MgrDiskReads[m.Disks()[0]]:
 				atomic.AddInt32(&meCount, 1)
 				caller := m.NodeId
 				ptrs := r.Ptrs()[1:]
@@ -215,7 +223,7 @@ func TestWebdavPut(t *testing.T) {
 	disks2 := []model.DiskId{"disk2"}
 	var expectedNodeId2 = model.NewNodeId()
 	maxNumberOfWritesInOnePass := 2
-	disks := []model.DiskId{"disk"}
+	paths := []string{"path"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -223,7 +231,7 @@ func TestWebdavPut(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
-	}, maxNumberOfWritesInOnePass, t, disks, ctx)
+	}, maxNumberOfWritesInOnePass, t, paths, ctx)
 
 	blocks := []model.Block{}
 	for i := range 100 {
@@ -244,7 +252,7 @@ func TestWebdavPut(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case w := <-m.MgrDiskWrites[disks[0]]:
+			case w := <-m.MgrDiskWrites[m.Disks()[0]]:
 				atomic.AddInt32(&meCount, 1)
 				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
 			}
@@ -297,7 +305,7 @@ func TestBroadcast(t *testing.T) {
 	disks2 := []model.DiskId{"disk2"}
 	var expectedNodeId2 = model.NewNodeId()
 	maxNumberOfWritesInOnePass := 2
-	disks := []model.DiskId{"disk"}
+	paths := []string{"path1"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -305,7 +313,7 @@ func TestBroadcast(t *testing.T) {
 	m := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
-	}, maxNumberOfWritesInOnePass, t, disks, ctx)
+	}, maxNumberOfWritesInOnePass, t, paths, ctx)
 
 	testMsg := model.NewBroadcast([]byte{1, 2, 3})
 	outMsgCounter := 0
@@ -352,8 +360,8 @@ type connectedNode struct {
 	disks   []model.DiskId
 }
 
-func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, disks []model.DiskId, ctx context.Context) *Mgr {
-	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1, disks)
+func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, paths []string, ctx context.Context) *Mgr {
+	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1, paths)
 	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)

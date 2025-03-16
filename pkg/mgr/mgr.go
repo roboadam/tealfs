@@ -184,9 +184,6 @@ func (m *Mgr) loadSettings(diskPaths []string) error {
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	if err != nil {
-		return err
-	}
 	if len(data) > 0 {
 		err = json.Unmarshal(data, &m.nodesAddressMap)
 		if err != nil {
@@ -408,7 +405,7 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	return nil
 }
 
-func (m *Mgr) disksSlice() []model.DiskId {
+func (m *Mgr) Disks() []model.DiskId {
 	disks := []model.DiskId{}
 	for disk := range m.disks {
 		disks = append(disks, disk)
@@ -419,7 +416,7 @@ func (m *Mgr) disksSlice() []model.DiskId {
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
-		iam := model.NewIam(m.NodeId, m.disksSlice(), m.nodeAddress, m.freeBytes)
+		iam := model.NewIam(m.NodeId, m.Disks(), m.nodeAddress, m.freeBytes)
 		mcs := model.MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &iam,
