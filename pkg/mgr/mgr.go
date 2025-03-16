@@ -58,6 +58,7 @@ type Mgr struct {
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
 	freeBytes          uint32
+	disks              []model.DiskId
 }
 
 func NewWithChanSize(
@@ -102,6 +103,7 @@ func NewWithChanSize(
 		fileOps:            fileOps,
 		pendingBlockWrites: newPendingBlockWrites(),
 		freeBytes:          freeBytes,
+		disks:              disks,
 	}
 
 	for _, disk := range disks {
@@ -242,11 +244,11 @@ func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
-		m.connAddress[i.ConnId] = p.Address
+		m.connAddress[i.ConnId] = p.Address()
 		status := model.UiConnectionStatus{
 			Type:          model.Connected,
-			RemoteAddress: p.Address,
-			Id:            p.NodeId,
+			RemoteAddress: p.Address(),
+			Id:            p.Node(),
 		}
 		chanutil.Send(m.MgrUiStatuses, status, "mgr: handleReceives: ui status")
 		_ = m.addNodeToCluster(*p, i.ConnId)
@@ -361,26 +363,25 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 }
 
 func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
-	m.nodesAddressMap[iam.NodeId] = iam.Address
+	m.nodesAddressMap[iam.Node()] = iam.Address()
 	err := m.saveNodeAddressMap()
 	if err != nil {
 		return err
 	}
-	m.nodeConnMap.Add(iam.NodeId, c)
-	m.mirrorDistributer.SetWeight(iam.NodeId, int(iam.FreeBytes))
+	m.nodeConnMap.Add(iam.Node(), c)
+	for _, disk := range iam.Disks() {
+		m.mirrorDistributer.SetWeight(iam.Node(), disk, int(iam.FreeBytes()))
+	}
 	return nil
 }
 
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
+		iam := model.NewIam(m.NodeId, m.disks, m.nodeAddress, m.freeBytes)
 		mcs := model.MgrConnsSend{
-			ConnId: cs.Id,
-			Payload: &model.IAm{
-				NodeId:    m.NodeId,
-				Address:   m.nodeAddress,
-				FreeBytes: m.freeBytes,
-			},
+			ConnId:  cs.Id,
+			Payload: &iam,
 		}
 		chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleNetConnectedStatus: connected")
 	case model.NotConnected:

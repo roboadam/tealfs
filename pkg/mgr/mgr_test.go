@@ -54,14 +54,16 @@ func TestConnectToSuccess(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()
+	disks1 := []model.DiskId{"disk1"}
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
+	disks2 := []model.DiskId{"disk2"}
 	var expectedNodeId2 = model.NewNodeId()
-	disks := []model.DiskId{"disk1"}
+	disks := []model.DiskId{"disk"}
 
 	mgrWithConnectedNodes([]connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, 0, t, disks, ctx)
 	cancel()
 }
@@ -71,17 +73,19 @@ func TestReceiveSyncNodes(t *testing.T) {
 	defer cancel()
 	const sharedAddress = "some-address:123"
 	const sharedConnectionId = 1
+	disks1 := []model.DiskId{"disk1"}
 	var sharedNodeId = model.NewNodeId()
 	const localAddress = "some-address2:234"
 	const localConnectionId = 2
+	disks2 := []model.DiskId{"disk2"}
 	var localNodeId = model.NewNodeId()
 	const remoteAddress = "some-address3:345"
 	var remoteNodeId = model.NewNodeId()
-	disks := []model.DiskId{"disk1"}
+	disks := []model.DiskId{"disk"}
 
 	m := mgrWithConnectedNodes([]connectedNode{
-		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId},
-		{address: localAddress, conn: localConnectionId, node: localNodeId},
+		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId, disks: disks1},
+		{address: localAddress, conn: localConnectionId, node: localNodeId, disks: disks2},
 	}, 0, t, disks, ctx)
 
 	sn := model.NewSyncNodes()
@@ -108,17 +112,19 @@ func TestReceiveSyncNodes(t *testing.T) {
 func TestWebdavGet(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
+	disks1 := []model.DiskId{"disk1"}
 	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
+	disks2 := []model.DiskId{"disk2"}
 	var expectedNodeId2 = model.NewNodeId()
-	disks := []model.DiskId{"disk1"}
+	disks := []model.DiskId{"disk"}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	m := mgrWithConnectedNodes([]connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, 0, t, disks, ctx)
 
 	ids := []model.BlockId{}
@@ -202,19 +208,21 @@ func TestWebdavGet(t *testing.T) {
 func TestWebdavPut(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
+	disks1 := []model.DiskId{"disk1"}
 	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
+	disks2 := []model.DiskId{"disk2"}
 	var expectedNodeId2 = model.NewNodeId()
 	maxNumberOfWritesInOnePass := 2
-	disks := []model.DiskId{"disk1"}
+	disks := []model.DiskId{"disk"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	m := mgrWithConnectedNodes([]connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, maxNumberOfWritesInOnePass, t, disks, ctx)
 
 	blocks := []model.Block{}
@@ -282,19 +290,21 @@ func TestWebdavPut(t *testing.T) {
 func TestBroadcast(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
+	disks1 := []model.DiskId{"disk1"}
 	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
+	disks2 := []model.DiskId{"disk2"}
 	var expectedNodeId2 = model.NewNodeId()
 	maxNumberOfWritesInOnePass := 2
-	disks := []model.DiskId{"disk1"}
+	disks := []model.DiskId{"disk"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	m := mgrWithConnectedNodes([]connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2},
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, maxNumberOfWritesInOnePass, t, disks, ctx)
 
 	testMsg := model.NewBroadcast([]byte{1, 2, 3})
@@ -339,6 +349,7 @@ type connectedNode struct {
 	address string
 	conn    model.ConnId
 	node    model.NodeId
+	disks   []model.DiskId
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, disks []model.DiskId, ctx context.Context) *Mgr {
@@ -364,7 +375,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, di
 		payload := expectedIam.Payload
 		switch p := payload.(type) {
 		case *model.IAm:
-			if p.NodeId != m.NodeId {
+			if p.Node() != m.NodeId {
 				t.Error("Unexpected nodeId")
 				panic("Unexpected nodeId")
 			}
@@ -379,11 +390,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, di
 
 		// Send a message to Mgr indicating the newly
 		// connected node has sent us an Iam payload
-		iamPayload := model.IAm{
-			NodeId:    n.node,
-			Address:   n.address,
-			FreeBytes: 1,
-		}
+		iamPayload := model.NewIam(n.node, n.disks, n.address, 1)
 		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId:  n.conn,
 			Payload: &iamPayload,
