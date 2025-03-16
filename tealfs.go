@@ -47,9 +47,9 @@ func main() {
 	_ = startTealFs(os.Args[1], os.Args[2], os.Args[3], os.Args[4], freeBytes, context.Background())
 }
 
-func startTealFs(storagePath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
+func startTealFs(globalPath string, disks []string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
 	chansize := 0
-	m := mgr.NewWithChanSize(chansize, nodeAddress, storagePath, &disk.DiskFileOps{}, model.Mirrored, freeBytes)
+	m := mgr.NewWithChanSize(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, disks)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
@@ -60,7 +60,7 @@ func startTealFs(storagePath string, webdavAddress string, uiAddress string, nod
 		m.NodeId,
 		ctx,
 	)
-	p := disk.NewPath(storagePath, &disk.DiskFileOps{})
+	p := disk.NewPath(globalPath, &disk.DiskFileOps{})
 	_ = disk.New(p,
 		model.NewNodeId(),
 		m.MgrDiskWrites,
@@ -81,7 +81,7 @@ func startTealFs(storagePath string, webdavAddress string, uiAddress string, nod
 		webdavAddress,
 		ctx,
 		&disk.DiskFileOps{},
-		storagePath,
+		globalPath,
 		chansize,
 	)
 	err := m.Start(ctx)

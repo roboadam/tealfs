@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"tealfs/pkg/chanutil"
@@ -26,6 +27,7 @@ import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -58,7 +60,7 @@ type Mgr struct {
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
 	freeBytes          uint32
-	disks              []model.DiskId
+	disks              map[model.DiskId]string
 }
 
 func NewWithChanSize(
@@ -68,7 +70,7 @@ func NewWithChanSize(
 	fileOps disk.FileOps,
 	blockType model.BlockType,
 	freeBytes uint32,
-	disks []model.DiskId,
+	disks []string,
 ) *Mgr {
 	nodeId, err := readNodeId(globalPath, fileOps)
 	if err != nil {
@@ -86,8 +88,6 @@ func NewWithChanSize(
 		WebdavMgrBroadcast: make(chan model.Broadcast, chanSize),
 		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
-		MgrDiskWrites:      diskWriteChans(disks),
-		MgrDiskReads:       diskReadChans(disks),
 		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavGets:      make(chan model.GetBlockResp, chanSize),
 		MgrWebdavPuts:      make(chan model.PutBlockResp, chanSize),
@@ -103,27 +103,34 @@ func NewWithChanSize(
 		fileOps:            fileOps,
 		pendingBlockWrites: newPendingBlockWrites(),
 		freeBytes:          freeBytes,
-		disks:              disks,
+		disks:              make(map[model.DiskId]string),
 	}
 
-	for _, disk := range disks {
+	err = mgr.loadSettings(disks)
+	if err != nil {
+		panic("Unable to load settings")
+	}
+	mgr.MgrDiskWrites = diskWriteChans(mgr.disks)
+	mgr.MgrDiskReads = diskReadChans(mgr.disks)
+
+	for disk := range mgr.disks {
 		mgr.mirrorDistributer.SetWeight(mgr.NodeId, disk, int(freeBytes))
 	}
 
 	return &mgr
 }
 
-func diskWriteChans(ids []model.DiskId) map[model.DiskId]chan model.WriteRequest {
+func diskWriteChans(ids map[model.DiskId]string) map[model.DiskId]chan model.WriteRequest {
 	return diskChans[model.WriteRequest](ids)
 }
 
-func diskReadChans(ids []model.DiskId) map[model.DiskId]chan model.ReadRequest {
+func diskReadChans(ids map[model.DiskId]string) map[model.DiskId]chan model.ReadRequest {
 	return diskChans[model.ReadRequest](ids)
 }
 
-func diskChans[V any](ids []model.DiskId) map[model.DiskId]chan V {
+func diskChans[V any](ids map[model.DiskId]string) map[model.DiskId]chan V {
 	result := make(map[model.DiskId]chan V)
-	for _, id := range ids {
+	for id := range ids {
 		result[id] = make(chan V)
 	}
 	return result
@@ -146,10 +153,6 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 }
 
 func (m *Mgr) Start(ctx context.Context) error {
-	err := m.loadNodeAddressMap()
-	if err != nil {
-		return err
-	}
 	go m.eventLoop(ctx)
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
@@ -161,16 +164,36 @@ func (m *Mgr) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m *Mgr) loadNodeAddressMap() error {
-	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
-	if err != nil {
-		return nil // TODO, this should only be for file not found, not other errors
-	}
-	if len(data) == 0 {
-		return nil
+func (m *Mgr) loadSettings(diskPaths []string) error {
+	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "disks.json"))
+	if errors.Is(err, fs.ErrNotExist) {
+		for _, path := range diskPaths {
+			id := model.DiskId(uuid.New().String())
+			m.disks[id] = path
+		}
+	} else if err != nil {
+		return err
+	} else {
+		err = json.Unmarshal(data, &m.disks)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = json.Unmarshal(data, &m.nodesAddressMap)
+	data, err = m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if len(data) > 0 {
+		err = json.Unmarshal(data, &m.nodesAddressMap)
+		if err != nil {
+			return err
+		}
+	}
+	err = m.saveSettings()
 	if err != nil {
 		return err
 	}
@@ -178,8 +201,18 @@ func (m *Mgr) loadNodeAddressMap() error {
 	return nil
 }
 
-func (m *Mgr) saveNodeAddressMap() error {
-	data, err := json.Marshal(m.nodesAddressMap)
+func (m *Mgr) saveSettings() error {
+	data, err := json.Marshal(m.disks)
+	if err != nil {
+		return err
+	}
+
+	err = m.fileOps.WriteFile(filepath.Join(m.savePath, "disks.json"), data)
+	if err != nil {
+		return err
+	}
+
+	data, err = json.Marshal(m.nodesAddressMap)
 	if err != nil {
 		return err
 	}
@@ -364,7 +397,7 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 
 func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	m.nodesAddressMap[iam.Node()] = iam.Address()
-	err := m.saveNodeAddressMap()
+	err := m.saveSettings()
 	if err != nil {
 		return err
 	}
@@ -375,10 +408,18 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	return nil
 }
 
+func (m *Mgr) disksSlice() []model.DiskId {
+	disks := []model.DiskId{}
+	for disk := range m.disks {
+		disks = append(disks, disk)
+	}
+	return disks
+}
+
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
-		iam := model.NewIam(m.NodeId, m.disks, m.nodeAddress, m.freeBytes)
+		iam := model.NewIam(m.NodeId, m.disksSlice(), m.nodeAddress, m.freeBytes)
 		mcs := model.MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &iam,
