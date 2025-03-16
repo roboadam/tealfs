@@ -265,18 +265,27 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	nodeAddress2 := "localhost:9082"
 	configPath1 := "tmp1"
 	configPath2 := "tmp2"
-	diskPaths1 := []string{configPath1}
-	diskPaths2 := []string{configPath2}
+	diskPaths1 := []string{}
+	diskPaths2 := []string{"tmp3", "tmp4", "tmp5"}
 	os.RemoveAll(configPath1)
 	os.RemoveAll(configPath2)
+	os.RemoveAll(diskPaths2[0])
+	os.RemoveAll(diskPaths2[1])
+	os.RemoveAll(diskPaths2[2])
 	connectToUrl := "http://" + uiAddress1 + "/connect-to"
 	fileContents1 := "test content 1"
 	fileContents2 := "test content 2"
 	connectToContents := "hostAndPort=" + url.QueryEscape(nodeAddress2)
 	os.Mkdir(configPath1, 0755)
-	defer os.RemoveAll(configPath1)
+	// defer os.RemoveAll(configPath1)
 	os.Mkdir(configPath2, 0755)
-	defer os.RemoveAll(configPath2)
+	// defer os.RemoveAll(configPath2)
+	os.Mkdir(diskPaths2[0], 0755)
+	// defer os.RemoveAll(diskPaths2[0])
+	os.Mkdir(diskPaths2[1], 0755)
+	// defer os.RemoveAll(diskPaths2[1])
+	os.Mkdir(diskPaths2[2], 0755)
+	// defer os.RemoveAll(diskPaths2[2])
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

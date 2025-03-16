@@ -150,7 +150,7 @@ func TestWebdavGet(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case r := <-m.MgrDiskReads[m.Disks()[0]]:
+			case r := <-m.MgrDiskReads[m.DiskIds()[0]]:
 				atomic.AddInt32(&meCount, 1)
 				caller := m.NodeId
 				ptrs := r.Ptrs()[1:]
@@ -252,7 +252,7 @@ func TestWebdavPut(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case w := <-m.MgrDiskWrites[m.Disks()[0]]:
+			case w := <-m.MgrDiskWrites[m.DiskIds()[0]]:
 				atomic.AddInt32(&meCount, 1)
 				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
 			}

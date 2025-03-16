@@ -405,7 +405,7 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	return nil
 }
 
-func (m *Mgr) Disks() []model.DiskId {
+func (m *Mgr) DiskIds() []model.DiskId {
 	disks := []model.DiskId{}
 	for disk := range m.disks {
 		disks = append(disks, disk)
@@ -413,10 +413,14 @@ func (m *Mgr) Disks() []model.DiskId {
 	return disks
 }
 
+func (m *Mgr) Disks() map[model.DiskId]string {
+	return m.disks
+}
+
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
-		iam := model.NewIam(m.NodeId, m.Disks(), m.nodeAddress, m.freeBytes)
+		iam := model.NewIam(m.NodeId, m.DiskIds(), m.nodeAddress, m.freeBytes)
 		mcs := model.MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &iam,
@@ -433,7 +437,7 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 }
 
 func (m *Mgr) handleWebdavGets(req model.GetBlockReq) {
-	ptrs := m.mirrorDistributer.PointersForId(req.BlockId)
+	ptrs := m.mirrorDistributer.ReadPointersForId(req.BlockId)
 	if len(ptrs) == 0 {
 		resp := model.GetBlockResp{
 			Id:  req.Id(),
@@ -490,8 +494,8 @@ func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
 }
 
 func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
-	ptrs := m.mirrorDistributer.PointersForId(b.Block.Id)
-	for _, ptr := range ptrs {
+	ptrs := m.mirrorDistributer.WritePointersForId(b.Block.Id)
+	for _, ptr := range ptrs[:2] {
 		m.pendingBlockWrites.add(b.Id(), ptr)
 		data := model.RawData{
 			Data: b.Block.Data,

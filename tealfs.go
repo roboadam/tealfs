@@ -62,10 +62,10 @@ func startTealFs(globalPath string, disks []string, webdavAddress string, uiAddr
 		m.NodeId,
 		ctx,
 	)
-	for _, diskId := range m.Disks() {
+	for _, diskId := range m.DiskIds() {
 		writeChan := m.MgrDiskWrites[diskId]
 		readChan := m.MgrDiskReads[diskId]
-		p := disk.NewPath(globalPath, &disk.DiskFileOps{})
+		p := disk.NewPath(m.Disks()[diskId], &disk.DiskFileOps{})
 		_ = disk.New(p,
 			model.NewNodeId(),
 			writeChan,

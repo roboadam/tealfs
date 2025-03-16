@@ -36,7 +36,15 @@ func NewMirrorDistributer() MirrorDistributer {
 	}
 }
 
-func (d *MirrorDistributer) PointersForId(id model.BlockId) []model.DiskPointer {
+func (d *MirrorDistributer) WritePointersForId(id model.BlockId) []model.DiskPointer {
+	ptrs := d.ReadPointersForId(id)
+	if len(ptrs) < 2 {
+		return ptrs
+	}
+	return ptrs[:2]
+}
+
+func (d *MirrorDistributer) ReadPointersForId(id model.BlockId) []model.DiskPointer {
 	nodeIds := d.generateNodeIds(id)
 	data := []model.DiskPointer{}
 	for _, nodeId := range nodeIds {

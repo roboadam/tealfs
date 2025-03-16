@@ -45,7 +45,7 @@ func TestMirror(t *testing.T) {
 	for range 100 {
 		nodes := allNodes.Clone()
 		blockId := model.NewBlockId()
-		ptrs := d.PointersForId(blockId)
+		ptrs := d.ReadPointersForId(blockId)
 
 		if len(ptrs) != 3 {
 			t.Error("should have 3 main data nodes had", len(ptrs))
