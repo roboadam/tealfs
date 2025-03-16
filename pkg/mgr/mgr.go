@@ -495,7 +495,7 @@ func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
 
 func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 	ptrs := m.mirrorDistributer.WritePointersForId(b.Block.Id)
-	for _, ptr := range ptrs[:2] {
+	for _, ptr := range ptrs {
 		m.pendingBlockWrites.add(b.Id(), ptr)
 		data := model.RawData{
 			Data: b.Block.Data,
