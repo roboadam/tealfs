@@ -15,6 +15,7 @@
 package mgr
 
 import (
+	"fmt"
 	"sync/atomic"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -150,7 +151,7 @@ func TestWebdavGet(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case r := <-m.MgrDiskReads[m.DiskIds()[0]]:
+			case r := <-m.MgrDiskReads[m.DiskIds[0]]:
 				atomic.AddInt32(&meCount, 1)
 				caller := m.NodeId
 				ptrs := r.Ptrs()[1:]
@@ -214,23 +215,23 @@ func TestWebdavGet(t *testing.T) {
 }
 
 func TestWebdavPut(t *testing.T) {
+	paths := []string{"path1", "path2"}
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	disks1 := []model.DiskId{"disk1"}
+	disks12 := []model.DiskId{"disk1", "disk2"}
 	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	disks2 := []model.DiskId{"disk2"}
+	disks34 := []model.DiskId{"disk3", "disk4"}
 	var expectedNodeId2 = model.NewNodeId()
 	maxNumberOfWritesInOnePass := 2
-	paths := []string{"path"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	m := mgrWithConnectedNodes([]connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
+		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks12},
+		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks34},
 	}, maxNumberOfWritesInOnePass, t, paths, ctx)
 
 	blocks := []model.Block{}
@@ -243,17 +244,31 @@ func TestWebdavPut(t *testing.T) {
 		blocks = append(blocks, block)
 	}
 
-	meCount := int32(0)
+	me1Count := int32(0)
+	me2Count := int32(0)
 	oneCount := int32(0)
 	twoCount := int32(0)
+	threeCount := int32(0)
+	fourCount := int32(0)
 
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case w := <-m.MgrDiskWrites[m.DiskIds()[0]]:
-				atomic.AddInt32(&meCount, 1)
+			case w := <-m.MgrDiskWrites[m.DiskIds[0]]:
+				atomic.AddInt32(&me1Count, 1)
+				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
+			}
+		}
+	}()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case w := <-m.MgrDiskWrites[m.DiskIds[1]]:
+				atomic.AddInt32(&me2Count, 1)
 				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
 			}
 		}
@@ -265,14 +280,19 @@ func TestWebdavPut(t *testing.T) {
 			case <-ctx.Done():
 				return
 			case s := <-m.MgrConnsSends:
-				if s.ConnId == expectedConnectionId1 {
-					atomic.AddInt32(&oneCount, 1)
-				} else if s.ConnId == expectedConnectionId2 {
-					atomic.AddInt32(&twoCount, 1)
-				}
-
 				switch request := s.Payload.(type) {
 				case *model.WriteRequest:
+					ptr := request.Data().Ptr
+					if ptr.Disk() == disks12[0] {
+						atomic.AddInt32(&oneCount, 1)
+					} else if ptr.Disk() == disks12[1] {
+						atomic.AddInt32(&twoCount, 1)
+					} else if ptr.Disk() == disks34[0] {
+						atomic.AddInt32(&threeCount, 1)
+					} else if ptr.Disk() == disks34[1] {
+						atomic.AddInt32(&fourCount, 1)
+					}
+
 					result := model.NewWriteResultOk(request.Data().Ptr, request.Caller(), request.ReqId())
 					m.ConnsMgrReceives <- model.ConnsMgrReceive{
 						ConnId:  s.ConnId,
@@ -288,8 +308,13 @@ func TestWebdavPut(t *testing.T) {
 		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
 		<-m.MgrWebdavPuts
 	}
-	if meCount == 0 || oneCount == 0 || twoCount == 0 {
-		t.Error("Expected everyone to fetch some data")
+	if me1Count == 0 || me2Count == 0 || oneCount == 0 || twoCount == 0 || threeCount == 0 || fourCount == 0 {
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", me1Count))
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", me2Count))
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", oneCount))
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", twoCount))
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", threeCount))
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fourCount))
 		return
 	}
 	cancel()

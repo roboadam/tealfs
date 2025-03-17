@@ -61,6 +61,7 @@ type Mgr struct {
 	pendingBlockWrites pendingBlockWrites
 	freeBytes          uint32
 	disks              map[model.DiskId]string
+	DiskIds            []model.DiskId
 }
 
 func NewWithChanSize(
@@ -104,6 +105,7 @@ func NewWithChanSize(
 		pendingBlockWrites: newPendingBlockWrites(),
 		freeBytes:          freeBytes,
 		disks:              make(map[model.DiskId]string),
+		DiskIds:            []model.DiskId{},
 	}
 
 	err = mgr.loadSettings(disks)
@@ -114,6 +116,7 @@ func NewWithChanSize(
 	mgr.MgrDiskReads = diskReadChans(mgr.disks)
 
 	for disk := range mgr.disks {
+		mgr.DiskIds = append(mgr.DiskIds, disk)
 		mgr.mirrorDistributer.SetWeight(mgr.NodeId, disk, int(freeBytes))
 	}
 
@@ -405,14 +408,6 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	return nil
 }
 
-func (m *Mgr) DiskIds() []model.DiskId {
-	disks := []model.DiskId{}
-	for disk := range m.disks {
-		disks = append(disks, disk)
-	}
-	return disks
-}
-
 func (m *Mgr) Disks() map[model.DiskId]string {
 	return m.disks
 }
@@ -420,7 +415,7 @@ func (m *Mgr) Disks() map[model.DiskId]string {
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
-		iam := model.NewIam(m.NodeId, m.DiskIds(), m.nodeAddress, m.freeBytes)
+		iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
 		mcs := model.MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &iam,
@@ -503,7 +498,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 		}
 		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
 		if ptr.NodeId() == m.NodeId {
-			chanutil.Send(m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
+			chanutil.Send(m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local "+m.disks[ptr.Disk()]+" "+string(ptr.Disk()))
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId())
 			if ok {
