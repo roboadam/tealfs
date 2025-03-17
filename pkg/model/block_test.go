@@ -20,10 +20,11 @@ import (
 )
 
 func TestDiskPtr(t *testing.T) {
-	ptr := model.DiskPointer{
-		NodeId:   model.NodeId("nodeId"),
-		FileName: "fileName",
-	}
+	ptr := model.NewDiskPointer(
+		model.NodeId("nodeId"),
+		model.DiskId("diskId"),
+		"fileName",
+	)
 	raw := ptr.ToBytes()
 	newPtr, remainder := model.ToDiskPointer(raw)
 	if !ptr.Equals(newPtr) {

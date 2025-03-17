@@ -78,3 +78,5 @@ func NewNodeId() NodeId {
 	idValue := uuid.New()
 	return NodeId(idValue.String())
 }
+
+type DiskId string

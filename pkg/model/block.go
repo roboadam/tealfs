@@ -58,30 +58,49 @@ func (b *RawData) Equals(o *RawData) bool {
 }
 
 type DiskPointer struct {
-	NodeId   NodeId
-	FileName string
+	nodeId   NodeId
+	disk     DiskId
+	fileName string
+}
+
+func (d *DiskPointer) NodeId() NodeId   { return d.nodeId }
+func (d *DiskPointer) Disk() DiskId     { return d.disk }
+func (d *DiskPointer) FileName() string { return d.fileName }
+
+func NewDiskPointer(nodeId NodeId, disk DiskId, fileName string) DiskPointer {
+	return DiskPointer{
+		nodeId:   nodeId,
+		disk:     disk,
+		fileName: fileName,
+	}
 }
 
 func (d *DiskPointer) ToBytes() []byte {
-	value := StringToBytes(string(d.NodeId))
-	value = append(value, StringToBytes(d.FileName)...)
-	return value
+	node := StringToBytes(string(d.nodeId))
+	disk := StringToBytes(string(d.disk))
+	fileName := StringToBytes(d.fileName)
+	return bytes.Join([][]byte{node, disk, fileName}, []byte{})
 }
 
 func ToDiskPointer(data []byte) (*DiskPointer, []byte) {
 	rawId, remainder := StringFromBytes(data)
+	disk, remainder := StringFromBytes(remainder)
 	rawFileName, remainder := StringFromBytes(remainder)
 	return &DiskPointer{
-		NodeId:   NodeId(rawId),
-		FileName: rawFileName,
+		nodeId:   NodeId(rawId),
+		disk:     DiskId(disk),
+		fileName: rawFileName,
 	}, remainder
 }
 
 func (d *DiskPointer) Equals(o *DiskPointer) bool {
-	if d.NodeId != o.NodeId {
+	if d.nodeId != o.nodeId {
 		return false
 	}
-	if d.FileName != o.FileName {
+	if d.disk != o.disk {
+		return false
+	}
+	if d.fileName != o.fileName {
 		return false
 	}
 	return true

@@ -22,10 +22,7 @@ import (
 func TestWriteRequest(t *testing.T) {
 	caller := model.NodeId("caller1")
 	data := model.RawData{
-		Ptr: model.DiskPointer{
-			NodeId:   "node1",
-			FileName: "fileName1",
-		},
+		Ptr:  model.NewDiskPointer("node1", "disk1", "fileName1"),
 		Data: []byte{0x01, 0x02, 0x03},
 	}
 	wr := model.NewWriteRequest(caller, data, "putBlockId")

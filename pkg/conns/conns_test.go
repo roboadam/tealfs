@@ -50,10 +50,7 @@ func TestSendData(t *testing.T) {
 	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest(ctx)
 	caller := model.NewNodeId()
 	data := model.RawData{
-		Ptr: model.DiskPointer{
-			NodeId:   "destNode",
-			FileName: "blockId",
-		},
+		Ptr:  model.NewDiskPointer("destNode", "disk1", "blockId"),
 		Data: []byte{1, 2, 3},
 	}
 	expected := model.NewWriteRequest(caller, data, "putBlockId")
@@ -81,14 +78,8 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	_, _, outReceives, _, inSend, _ := newConnsTest(ctx)
 	caller := model.NodeId("caller1")
 	ptrs := []model.DiskPointer{
-		{
-			NodeId:   "nodeId1",
-			FileName: "filename1",
-		},
-		{
-			NodeId:   "nodeId2",
-			FileName: "filename2",
-		},
+		model.NewDiskPointer("nodeId1", "disk1", "filename1"),
+		model.NewDiskPointer("nodeId2", "disk2", "filename2"),
 	}
 	blockId := model.BlockId("blockId1")
 	reqId := model.GetBlockId("reqid")
@@ -128,14 +119,8 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 	req := model.NewReadRequest(
 		"caller1",
 		[]model.DiskPointer{
-			{
-				NodeId:   "nodeId1",
-				FileName: "filename1",
-			},
-			{
-				NodeId:   "nodeId2",
-				FileName: "filename2",
-			},
+			model.NewDiskPointer("nodeId1", "disk1", "filename1"),
+			model.NewDiskPointer("nodeId2", "disk2", "filename2"),
 		},
 		"blockId1",
 		"getBlockId1",
@@ -199,11 +184,9 @@ func TestGetData(t *testing.T) {
 	defer cancel()
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest(ctx)
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
-	payload := &model.IAm{
-		NodeId:    "nodeId",
-		Address:   "localAddress:123",
-		FreeBytes: 1,
-	}
+	disks := []model.DiskId{"disk1"}
+	iam := model.NewIam("nodeId", disks, "localAddress:123", 1)
+	payload := &iam
 	dataReceived := payload.ToBytes()
 	length := lenAsBytes(dataReceived)
 	provider.Conn.dataToRead <- length
