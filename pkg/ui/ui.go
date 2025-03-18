@@ -98,30 +98,6 @@ func (ui *Ui) htmlStatus(divId string) string {
 
 func (ui *Ui) handleRoot() {
 	ui.ops.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		html := `
-			<!DOCTYPE html>
-			<html>
-			<head>
-				<title>TealFS recon-work</title>
-				<link rel="stylesheet" href="https://unpkg.com/mvp.css@1.12/mvp.css" /> 
-				<script src="https://unpkg.com/htmx.org@1.9.2"></script>
-			</head>
-			<body>
-			    <main>
-					<h1>TealFS</h1>
-					<p>Input the host and port of a node to add</p>
-					<form hx-put="/connect-to">
-						<label for="textbox">Host and port:</label>
-						<input type="text" id="hostAndPort" name="hostAndPort">
-						<input type="submit" value="Connect">
-					</form>
-					` + ui.htmlStatus("status") + `
-				</main>
-			</body>
-			</html>
-		`
-
-		// Write the HTML content to the response writer
-		_, _ = fmt.Fprintf(w, "%s", html)
+		templ(w, ui.htmlStatus("status"))
 	})
 }
