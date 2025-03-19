@@ -97,7 +97,8 @@ func (ui *Ui) htmlStatus(divId string) string {
 }
 
 func (ui *Ui) handleRoot() {
+	tmpl := initTemplates()
 	ui.ops.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		templ(w, ui.htmlStatus("status"))
+		index(w, ui.htmlStatus("status"), tmpl)
 	})
 }

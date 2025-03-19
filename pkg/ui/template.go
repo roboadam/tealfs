@@ -3,25 +3,26 @@ package ui
 import (
 	"embed"
 	"html/template"
-	"log"
 	"net/http"
 )
 
 //go:embed templates/*.html
 var templateFS embed.FS
 
-func templ(w http.ResponseWriter, status string ) {
-
+func initTemplates() *template.Template {
 	tmpl, err := template.ParseFS(templateFS, "templates/*.html")
 	if err != nil {
-		log.Fatalf("Error parsing templates: %v", err)
+		panic(err)
 	}
-	data := struct {
-		Status string
-	}{
-		Status: status,
+	return tmpl
+}
+
+func (ui *Ui) index(w http.ResponseWriter, tmpl *template.Template) {
+	status := []struct {
+		Status  string
+		Address string
 	}
-	err = tmpl.ExecuteTemplate(w, "index.html", data)
+	err := tmpl.ExecuteTemplate(w, "index.html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

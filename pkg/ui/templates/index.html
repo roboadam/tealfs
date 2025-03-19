@@ -14,6 +14,11 @@
 			<input type="text" id="hostAndPort" name="hostAndPort">
 			<input type="submit" value="Connect">
 		</form>
+		<ul>
+			{{ range $key, $status := . }}
+			<li><strong>{{$status.}}</strong>: {{ $person.Name }}, Age: {{ $person.Age }}</li>
+			{{ end }}
+		</ul>
 		{{.Status}}
 	</main>
 </body>
