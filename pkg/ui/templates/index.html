@@ -18,7 +18,7 @@
 			<input type="submit" value="Connect">
 		</form>
 		</p>
-		<div hx-get="/connection-status" hx-trigger="load" id="status-target"></div>
+		<div hx-get="/connection-status" hx-trigger="load, every 2s" id="status-target"></div>
 	</main>
 </body>
 

@@ -37,7 +37,6 @@ func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnecti
 		statuses:   statuses,
 		ops:        ops,
 	}
-	ui.registerHttpHandlers()
 	ui.handleRoot()
 	ui.start(bindAddr, ctx)
 	return &ui
@@ -66,7 +65,14 @@ func (ui *Ui) saveStatus(status model.UiConnectionStatus) {
 	ui.statuses[status.Id] = status
 }
 
-func (ui *Ui) registerHttpHandlers() {
+func (ui *Ui) handleRoot() {
+	tmpl := initTemplates()
+	ui.ops.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		ui.index(w, tmpl)
+	})
+	ui.ops.HandleFunc("/connection-status", func(w http.ResponseWriter, r *http.Request) {
+		ui.connectionStatus(w, tmpl)
+	})
 	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -74,15 +80,6 @@ func (ui *Ui) registerHttpHandlers() {
 		}
 		hostAndPort := r.FormValue("hostAndPort")
 		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
-	})
-}
-
-func (ui *Ui) handleRoot() {
-	tmpl := initTemplates()
-	ui.ops.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		ui.index(w, tmpl)
-	})
-	ui.ops.HandleFunc("/connection-status", func(w http.ResponseWriter, r *http.Request) {
 		ui.connectionStatus(w, tmpl)
 	})
 }
