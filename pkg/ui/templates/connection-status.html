@@ -1,0 +1,15 @@
+
+<table>
+	<thead>
+		<tr>
+			<th>Status</th>
+			<th>Address</th>
+		</tr>
+	</thead>
+	{{ range . }}
+	<tr>
+		<th>{{.Status}}</th>
+		<th>{{.Address}}</th>
+	</tr>
+	{{ end }}
+</table>

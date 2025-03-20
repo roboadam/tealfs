@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>TealFS</title>
+	<link rel="stylesheet" href="https://unpkg.com/mvp.css"> 
+	<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+
+<body>
+	<main>
+		<h1>TealFS</h1>
+		<p>Input the host and port of a node to add</p>
+		<p>
+		<form hx-put="/connect-to" hx-target="#status-target">
+			<label for="textbox">Host and port:</label>
+			<input type="text" id="hostAndPort" name="hostAndPort">
+			<input type="submit" value="Connect">
+		</form>
+		</p>
+		<div hx-get="/connection-status" hx-trigger="load, every 2s" id="status-target"></div>
+	</main>
+</body>
+
+</html>
