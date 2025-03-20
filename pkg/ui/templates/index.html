@@ -14,12 +14,12 @@
 			<input type="text" id="hostAndPort" name="hostAndPort">
 			<input type="submit" value="Connect">
 		</form>
-		<ul>
-			{{ range $key, $status := . }}
-			<li><strong>{{$status.}}</strong>: {{ $person.Name }}, Age: {{ $person.Age }}</li>
+		<table>
+			<thead><tr><th>Status</th><th>Address</th></tr></thead>
+			{{ range . }}
+			<tr><th>{{.Status}}</th><th>{{.Address}}</th>
 			{{ end }}
 		</ul>
-		{{.Status}}
 	</main>
 </body>
 </html>

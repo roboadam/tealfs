@@ -4,6 +4,8 @@ import (
 	"embed"
 	"html/template"
 	"net/http"
+	"sort"
+	"tealfs/pkg/model"
 )
 
 //go:embed templates/*.html
@@ -18,12 +20,36 @@ func initTemplates() *template.Template {
 }
 
 func (ui *Ui) index(w http.ResponseWriter, tmpl *template.Template) {
+
 	status := []struct {
 		Status  string
 		Address string
+	}{}
+	for _, value := range ui.statuses {
+		status = append(status, struct {
+			Status  string
+			Address string
+		}{Status: statusToString(value.Type), Address: value.RemoteAddress})
 	}
-	err := tmpl.ExecuteTemplate(w, "index.html", data)
+	sort.Slice(status, func(i, j int) bool {
+		if status[i].Status == status[j].Status {
+			return status[i].Address < status[j].Address
+		}
+		return status[i].Status < status[j].Status
+	})
+	err := tmpl.ExecuteTemplate(w, "index.html", status)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func statusToString(status model.ConnectedStatus) string {
+	switch status {
+	case model.Connected:
+		return "Connected"
+	case model.NotConnected:
+		return "Disconnected"
+	default:
+		return "Unknown"
 	}
 }

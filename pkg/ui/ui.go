@@ -16,9 +16,7 @@ package ui
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 	"tealfs/pkg/model"
 )
@@ -79,26 +77,9 @@ func (ui *Ui) registerHttpHandlers() {
 	})
 }
 
-func (ui *Ui) htmlStatus(divId string) string {
-	var builder strings.Builder
-	builder.WriteString(`<div id="`)
-	builder.WriteString(divId)
-	builder.WriteString(`">`)
-	ui.sMux.Lock()
-	for _, value := range ui.statuses {
-		builder.WriteString(string(value.RemoteAddress))
-		builder.WriteString(" ")
-		builder.WriteString(fmt.Sprint(value.Type))
-		builder.WriteString("<br />")
-	}
-	ui.sMux.Unlock()
-	builder.WriteString("</div>")
-	return builder.String()
-}
-
 func (ui *Ui) handleRoot() {
 	tmpl := initTemplates()
 	ui.ops.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		index(w, ui.htmlStatus("status"), tmpl)
+		ui.index(w, tmpl)
 	})
 }
