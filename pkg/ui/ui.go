@@ -82,4 +82,7 @@ func (ui *Ui) handleRoot() {
 	ui.ops.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ui.index(w, tmpl)
 	})
+	ui.ops.HandleFunc("/connection-status", func(w http.ResponseWriter, r *http.Request) {
+		ui.connectionStatus(w, tmpl)
+	})
 }

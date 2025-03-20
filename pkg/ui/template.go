@@ -18,8 +18,14 @@ func initTemplates() *template.Template {
 	}
 	return tmpl
 }
-
 func (ui *Ui) index(w http.ResponseWriter, tmpl *template.Template) {
+	err := tmpl.ExecuteTemplate(w, "index.html", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (ui *Ui) connectionStatus(w http.ResponseWriter, tmpl *template.Template) {
 
 	status := []struct {
 		Status  string
@@ -37,7 +43,7 @@ func (ui *Ui) index(w http.ResponseWriter, tmpl *template.Template) {
 		}
 		return status[i].Status < status[j].Status
 	})
-	err := tmpl.ExecuteTemplate(w, "index.html", status)
+	err := tmpl.ExecuteTemplate(w, "connection-status.html", status)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
