@@ -3,8 +3,30 @@
 
 <head>
 	<title>TealFS</title>
-	<link rel="stylesheet" href="https://unpkg.com/mvp.css"> 
-	<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+	<link rel="stylesheet" href="https://unpkg.com/mvp.css">
+	<script src="https://unpkg.com/htmx.org@2.0.4"></script>he contents of another div is replaced with the response of
+	the
+	<style>
+		.spinner {
+			display: none;
+			width: 20px;
+			height: 20px;
+			border: 3px solid rgba(0, 0, 0, 0.3);
+			border-radius: 50%;
+			border-top-color: black;
+			animation: spin 1s linear infinite;
+		}
+
+		@keyframes spin {
+			from {
+				transform: rotate(0deg);
+			}
+
+			to {
+				transform: rotate(360deg);
+			}
+		}
+	</style>
 </head>
 
 <body>
@@ -12,7 +34,12 @@
 		<h1>TealFS</h1>
 		<p>Input the host and port of a node to add</p>
 		<p>
-		<form hx-put="/connect-to" hx-target="#status-target">
+		<form 
+			hx-put="/connect-to" 
+			hx-target="#status-target" 
+			hx-indicator="#spinner" 
+			hx-on::after-settle="if (event.detail.successful) this.reset()"
+		>
 			<label for="textbox">Host and port:</label>
 			<input type="text" id="hostAndPort" name="hostAndPort">
 			<input type="submit" value="Connect">
