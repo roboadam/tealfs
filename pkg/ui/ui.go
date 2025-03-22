@@ -74,12 +74,14 @@ func (ui *Ui) handleRoot() {
 		ui.connectionStatus(w, tmpl)
 	})
 	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut {
+		if r.Method == http.MethodGet {
+			ui.connectToGet(w, tmpl)
+		} else if r.Method == http.MethodPut {
+			hostAndPort := r.FormValue("hostAndPort")
+			ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
+			ui.connectionStatus(w, tmpl)
+		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-			return
 		}
-		hostAndPort := r.FormValue("hostAndPort")
-		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
-		ui.connectionStatus(w, tmpl)
 	})
 }

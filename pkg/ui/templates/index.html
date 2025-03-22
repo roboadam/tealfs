@@ -11,17 +11,7 @@
 	<main>
 		<h1>TealFS</h1>
 		<p>Input the host and port of a node to add</p>
-		<p>
-		<form 
-			hx-put="/connect-to" 
-			hx-target="#status-target" 
-			hx-on::after-request="if(event.detail.successful) this.reset()"
-		>
-			<label for="textbox">Host and port:</label>
-			<input type="text" id="hostAndPort" name="hostAndPort">
-			<input type="submit" value="Connect">
-		</form>
-		</p>
+		<div hx-get="/connect-to" hx-trigger="load" id="connect-to"></div>
 		<div hx-get="/connection-status" hx-trigger="load, every 2s" id="status-target"></div>
 	</main>
 </body>

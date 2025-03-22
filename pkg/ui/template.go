@@ -25,6 +25,13 @@ func (ui *Ui) index(w http.ResponseWriter, tmpl *template.Template) {
 	}
 }
 
+func (ui *Ui) connectToGet(w http.ResponseWriter, tmpl *template.Template) {
+	err := tmpl.ExecuteTemplate(w, "connect-to.html", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (ui *Ui) connectionStatus(w http.ResponseWriter, tmpl *template.Template) {
 
 	status := []struct {
