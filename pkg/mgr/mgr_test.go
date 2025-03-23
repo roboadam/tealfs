@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"context"
+
+	"github.com/sirupsen/logrus"
 )
 
 func TestConnectToMgr(t *testing.T) {
@@ -43,7 +45,7 @@ func TestConnectToMgr(t *testing.T) {
 		t.Error("Error starting", err)
 		return
 	}
-	m.UiMgrDisk <- model.UiMgrDisk{Path: "path1", Node: m.NodeId}
+	m.UiMgrDisk <- model.UiMgrDisk{Path: "path1", Node: m.NodeId, FreeBytes: 1}
 
 	m.UiMgrConnectTos <- model.UiMgrConnectTo{
 		Address: expectedAddress,
@@ -310,10 +312,15 @@ func TestWebdavPut(t *testing.T) {
 		}
 	}()
 
+	logrus.Info("put1")
 	for _, block := range blocks {
+		logrus.Info("put2")
 		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
+		logrus.Info("put3")
 		<-m.MgrWebdavPuts
+		logrus.Info("put4")
 	}
+	logrus.Info("put5")
 	if me1Count == 0 || me2Count == 0 || oneCount == 0 || twoCount == 0 || threeCount == 0 || fourCount == 0 {
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", me1Count))
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", me2Count))
@@ -398,7 +405,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, pa
 		t.Error("Error starting", err)
 	}
 	for _, path := range paths {
-		m.UiMgrDisk <- model.UiMgrDisk{Path: path, Node: m.NodeId}
+		m.UiMgrDisk <- model.UiMgrDisk{Path: path, Node: m.NodeId, FreeBytes: 1}
 	}
 	var nodesInCluster []connectedNode
 
@@ -439,6 +446,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, pa
 		}
 
 		<-m.MgrUiConnectionStatuses
+		<-m.MgrUiDiskStatuses
 
 		nodesInCluster = append(nodesInCluster, n)
 		var payloadsFromMgr []model.MgrConnsSend
@@ -456,6 +464,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, pa
 		}
 	}
 
+	logrus.Info("Done Connecting")
 	return m
 }
 

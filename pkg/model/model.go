@@ -92,6 +92,7 @@ type MgrDiskSave struct {
 type UiMgrDisk struct {
 	Path string
 	Node NodeId
+	FreeBytes int
 }
 
 type UiMgrConnectTo struct {

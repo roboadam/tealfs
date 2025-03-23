@@ -82,7 +82,7 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 		model.NewDiskPointer("nodeId2", "disk2", "filename2"),
 	}
 	blockId := model.BlockId("blockId1")
-	reqId := model.GetBlockId("reqid")
+	reqId := model.GetBlockId("reqId")
 	request := model.NewReadRequest(caller, ptrs, blockId, reqId)
 
 	inSend <- model.MgrConnsSend{
