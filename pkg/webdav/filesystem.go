@@ -122,7 +122,7 @@ type ReadReqResp struct {
 
 func (f *FileSystem) fetchBlock(req model.GetBlockReq) model.GetBlockResp {
 	resp := make(chan model.GetBlockResp)
-	chanutil.Send(f.ReadReqResp, ReadReqResp{req, resp}, "filesystem fetchblock "+string(req.Id()))
+	chanutil.Send(f.ReadReqResp, ReadReqResp{req, resp}, "filesystem fetchBlock "+string(req.Id()))
 	return <-resp
 }
 
@@ -149,11 +149,11 @@ func (f *FileSystem) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case req := <-f.mkdirReq:
-			chanutil.Send(req.respChan, f.mkdir(&req), "filesystem: run mkdirreq")
+			chanutil.Send(req.respChan, f.mkdir(&req), "filesystem: run mkdirReq")
 		case req := <-f.openFileReq:
-			chanutil.Send(req.respChan, f.openFile(&req), "filesystem: run openfile")
+			chanutil.Send(req.respChan, f.openFile(&req), "filesystem: run openFile")
 		case req := <-f.removeAllReq:
-			chanutil.Send(req.respChan, f.removeAll(&req), "filesystem: run removeall")
+			chanutil.Send(req.respChan, f.removeAll(&req), "filesystem: run removeAll")
 		case req := <-f.renameReq:
 			chanutil.Send(req.respChan, f.rename(&req), "filesystem: run rename")
 		case req := <-f.writeReq:
@@ -222,7 +222,7 @@ func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType broadca
 		return err
 	}
 	msg := broadcastMessage{bType: updateType, file: *file}
-	chanutil.Send(f.outBroadcast, model.NewBroadcast(msg.toBytes()), "filesystem: presistFileIndexAndBroadcast")
+	chanutil.Send(f.outBroadcast, model.NewBroadcast(msg.toBytes()), "filesystem: persistFileIndexAndBroadcast")
 	return nil
 }
 

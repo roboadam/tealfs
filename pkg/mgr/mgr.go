@@ -63,7 +63,7 @@ type Mgr struct {
 	pendingBlockWrites pendingBlockWrites
 	freeBytes          uint32
 	disks              map[model.DiskId]string
-	DiskIds            []model.DiskId
+	DiskIds            []model.DiskIdPath
 }
 
 func NewWithChanSize(
@@ -319,6 +319,15 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		}
 		chanutil.Send(m.MgrUiConnectionStatuses, status, "mgr: handleReceives: ui status")
 		_ = m.addNodeToCluster(*p, i.ConnId)
+		for _, d := range p.Disks() {
+			m.MgrUiDiskStatuses <- model.UiDiskStatus{
+				Localness:     model.Remote,
+				Availableness: model.Available,
+				Node:          p.Node(),
+				Id:            d,
+				// Path:          ,
+			}
+		}
 		syncNodes := m.syncNodesPayloadToSend()
 		for n := range m.nodesAddressMap {
 			connId, ok := m.nodeConnMap.Get1(n)

@@ -20,12 +20,12 @@ import (
 
 type IAm struct {
 	nodeId    NodeId
-	disks     []DiskId
+	disks     []DiskIdPath
 	address   string
 	freeBytes uint32
 }
 
-func NewIam(nodeId NodeId, disks []DiskId, address string, freeBytes uint32) IAm {
+func NewIam(nodeId NodeId, disks []DiskIdPath, address string, freeBytes uint32) IAm {
 	return IAm{
 		nodeId:    nodeId,
 		disks:     disks,
@@ -34,21 +34,27 @@ func NewIam(nodeId NodeId, disks []DiskId, address string, freeBytes uint32) IAm
 	}
 }
 
-func (i *IAm) Node() NodeId      { return i.nodeId }
-func (i *IAm) Disks() []DiskId   { return i.disks }
-func (i *IAm) Address() string   { return i.address }
-func (i *IAm) FreeBytes() uint32 { return i.freeBytes }
+func (i *IAm) Node() NodeId        { return i.nodeId }
+func (i *IAm) Disks() []DiskIdPath { return i.disks }
+func (i *IAm) Address() string     { return i.address }
+func (i *IAm) FreeBytes() uint32   { return i.freeBytes }
 
 func (h *IAm) ToBytes() []byte {
 	nodeId := StringToBytes(string(h.nodeId))
 	disksLen := IntToBytes(uint32(len(h.disks)))
 	diskBytes := []byte{}
 	for _, disk := range h.disks {
-		diskBytes = append(diskBytes, StringToBytes(string(disk))...)
+		diskBytes = append(diskBytes, disk.ToBytes()...)
 	}
 	address := StringToBytes(h.address)
 	freeByes := IntToBytes(h.freeBytes)
 	return AddType(IAmType, bytes.Join([][]byte{nodeId, disksLen, diskBytes, address, freeByes}, []byte{}))
+}
+
+func (d DiskIdPath) ToBytes() []byte {
+	id := StringToBytes(string(d.Id))
+	path := StringToBytes(d.Path)
+	return bytes.Join([][]byte{id, path}, []byte{})
 }
 
 func (h *IAm) Equal(p Payload) bool {
@@ -75,15 +81,20 @@ func (h *IAm) Equal(p Payload) bool {
 	return false
 }
 
+func ToDiskIdPath(data []byte) (DiskIdPath, []byte) {
+	id, remainder := StringFromBytes(data)
+	path, remainder := StringFromBytes(remainder)
+	return DiskIdPath{Id: DiskId(id), Path: path}, remainder
+}
+
 func ToHello(data []byte) *IAm {
 	rawId, remainder := StringFromBytes(data)
 	diskLen, remainder := IntFromBytes(remainder)
-	disks := []DiskId{}
+	disks := []DiskIdPath{}
 	for range diskLen {
-		var diskStr string
-		diskStr, remainder = StringFromBytes(remainder)
-		disk := DiskId(diskStr)
-		disks = append(disks, disk)
+		var d DiskIdPath
+		d, remainder = ToDiskIdPath(remainder)
+		disks = append(disks, d)
 	}
 	rawAddress, remainder := StringFromBytes(remainder)
 	rawFreeBytes, _ := IntFromBytes(remainder)
