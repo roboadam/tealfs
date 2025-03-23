@@ -37,13 +37,13 @@ func TestConnectToMgr(t *testing.T) {
 		&disk.MockFileOps{},
 		model.Mirrored,
 		1,
-		[]string{"path1"},
 	)
 	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)
 		return
 	}
+	m.UiMgrDisk <- model.UiMgrDisk{Path: "path1", Node: m.NodeId}
 
 	m.UiMgrConnectTos <- model.UiMgrConnectTo{
 		Address: expectedAddress,
@@ -63,10 +63,10 @@ func TestConnectToSuccess(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()
-	disks1 := []model.DiskId{"disk1"}
+	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path"}}
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	disks2 := []model.DiskId{"disk2"}
+	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path"}}
 	var expectedNodeId2 = model.NewNodeId()
 	disks := []string{"disk"}
 
@@ -82,11 +82,11 @@ func TestReceiveSyncNodes(t *testing.T) {
 	defer cancel()
 	const sharedAddress = "some-address:123"
 	const sharedConnectionId = 1
-	disks1 := []model.DiskId{"disk1"}
+	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path"}}
 	var sharedNodeId = model.NewNodeId()
 	const localAddress = "some-address2:234"
 	const localConnectionId = 2
-	disks2 := []model.DiskId{"disk2"}
+	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path"}}
 	var localNodeId = model.NewNodeId()
 	const remoteAddress = "some-address3:345"
 	var remoteNodeId = model.NewNodeId()
@@ -121,11 +121,11 @@ func TestReceiveSyncNodes(t *testing.T) {
 func TestWebdavGet(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	disks1 := []model.DiskId{"disk1"}
+	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path"}}
 	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	disks2 := []model.DiskId{"disk2"}
+	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path"}}
 	var expectedNodeId2 = model.NewNodeId()
 	disks := []string{"disk"}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -151,7 +151,7 @@ func TestWebdavGet(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case r := <-m.MgrDiskReads[m.DiskIds[0]]:
+			case r := <-m.MgrDiskReads[m.DiskIds[0].Id]:
 				atomic.AddInt32(&meCount, 1)
 				caller := m.NodeId
 				ptrs := r.Ptrs()[1:]
@@ -218,11 +218,17 @@ func TestWebdavPut(t *testing.T) {
 	paths := []string{"path1", "path2"}
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	disks12 := []model.DiskId{"disk1", "disk2"}
+	disks12 := []model.DiskIdPath{
+		{Id: model.DiskId("disk1"), Path: "disk1path"},
+		{Id: model.DiskId("disk2"), Path: "disk2path"},
+	}
 	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	disks34 := []model.DiskId{"disk3", "disk4"}
+	disks34 := []model.DiskIdPath{
+		{Id: model.DiskId("disk3"), Path: "disk3path"},
+		{Id: model.DiskId("disk4"), Path: "disk4path"},
+	}
 	var expectedNodeId2 = model.NewNodeId()
 	maxNumberOfWritesInOnePass := 2
 
@@ -256,7 +262,7 @@ func TestWebdavPut(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case w := <-m.MgrDiskWrites[m.DiskIds[0]]:
+			case w := <-m.MgrDiskWrites[m.DiskIds[0].Id]:
 				atomic.AddInt32(&me1Count, 1)
 				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
 			}
@@ -267,7 +273,7 @@ func TestWebdavPut(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				return
-			case w := <-m.MgrDiskWrites[m.DiskIds[1]]:
+			case w := <-m.MgrDiskWrites[m.DiskIds[1].Id]:
 				atomic.AddInt32(&me2Count, 1)
 				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
 			}
@@ -283,13 +289,13 @@ func TestWebdavPut(t *testing.T) {
 				switch request := s.Payload.(type) {
 				case *model.WriteRequest:
 					ptr := request.Data().Ptr
-					if ptr.Disk() == disks12[0] {
+					if ptr.Disk() == disks12[0].Id {
 						atomic.AddInt32(&oneCount, 1)
-					} else if ptr.Disk() == disks12[1] {
+					} else if ptr.Disk() == disks12[1].Id {
 						atomic.AddInt32(&twoCount, 1)
-					} else if ptr.Disk() == disks34[0] {
+					} else if ptr.Disk() == disks34[0].Id {
 						atomic.AddInt32(&threeCount, 1)
-					} else if ptr.Disk() == disks34[1] {
+					} else if ptr.Disk() == disks34[1].Id {
 						atomic.AddInt32(&fourCount, 1)
 					}
 
@@ -323,11 +329,11 @@ func TestWebdavPut(t *testing.T) {
 func TestBroadcast(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	disks1 := []model.DiskId{"disk1"}
+	disks1 := []model.DiskIdPath{{Id: "disk1", Path: "disk1path"}}
 	var expectedNodeId1 = model.NewNodeId()
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	disks2 := []model.DiskId{"disk2"}
+	disks2 := []model.DiskIdPath{{Id: "disk2", Path: "disk2path"}}
 	var expectedNodeId2 = model.NewNodeId()
 	maxNumberOfWritesInOnePass := 2
 	paths := []string{"path1"}
@@ -382,14 +388,17 @@ type connectedNode struct {
 	address string
 	conn    model.ConnId
 	node    model.NodeId
-	disks   []model.DiskId
+	disks   []model.DiskIdPath
 }
 
 func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, paths []string, ctx context.Context) *Mgr {
-	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1, paths)
+	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1)
 	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)
+	}
+	for _, path := range paths {
+		m.UiMgrDisk <- model.UiMgrDisk{Path: path, Node: m.NodeId}
 	}
 	var nodesInCluster []connectedNode
 

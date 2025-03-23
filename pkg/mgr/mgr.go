@@ -62,7 +62,6 @@ type Mgr struct {
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
 	freeBytes          uint32
-	disks              map[model.DiskId]string
 	DiskIds            []model.DiskIdPath
 }
 
@@ -107,37 +106,35 @@ func NewWithChanSize(
 		fileOps:                 fileOps,
 		pendingBlockWrites:      newPendingBlockWrites(),
 		freeBytes:               freeBytes,
-		disks:                   make(map[model.DiskId]string),
-		DiskIds:                 []model.DiskId{},
+		DiskIds:                 []model.DiskIdPath{},
 	}
 
 	err = mgr.loadSettings()
 	if err != nil {
 		panic("Unable to load settings")
 	}
-	mgr.MgrDiskWrites = diskWriteChans(mgr.disks)
-	mgr.MgrDiskReads = diskReadChans(mgr.disks)
+	mgr.MgrDiskWrites = diskWriteChans(mgr.DiskIds)
+	mgr.MgrDiskReads = diskReadChans(mgr.DiskIds)
 
-	for disk := range mgr.disks {
-		mgr.DiskIds = append(mgr.DiskIds, disk)
-		mgr.mirrorDistributer.SetWeight(mgr.NodeId, disk, int(freeBytes))
+	for _, disk := range mgr.DiskIds {
+		mgr.mirrorDistributer.SetWeight(mgr.NodeId, disk.Id, int(freeBytes))
 	}
 
 	return &mgr
 }
 
-func diskWriteChans(ids map[model.DiskId]string) map[model.DiskId]chan model.WriteRequest {
+func diskWriteChans(ids []model.DiskIdPath) map[model.DiskId]chan model.WriteRequest {
 	return diskChans[model.WriteRequest](ids)
 }
 
-func diskReadChans(ids map[model.DiskId]string) map[model.DiskId]chan model.ReadRequest {
+func diskReadChans(ids []model.DiskIdPath) map[model.DiskId]chan model.ReadRequest {
 	return diskChans[model.ReadRequest](ids)
 }
 
-func diskChans[V any](ids map[model.DiskId]string) map[model.DiskId]chan V {
+func diskChans[V any](ids []model.DiskIdPath) map[model.DiskId]chan V {
 	result := make(map[model.DiskId]chan V)
-	for id := range ids {
-		result[id] = make(chan V)
+	for _, id := range ids {
+		result[id.Id] = make(chan V)
 	}
 	return result
 }
@@ -172,13 +169,15 @@ func (m *Mgr) Start(ctx context.Context) error {
 
 func (m *Mgr) loadSettings() error {
 	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "disks.json"))
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
-	} else {
-		err = json.Unmarshal(data, &m.disks)
+	if err == nil {
+		err = json.Unmarshal(data, &m.DiskIds)
 		if err != nil {
 			return err
 		}
+	} else if errors.Is(err, fs.ErrNotExist) {
+		m.DiskIds = []model.DiskIdPath{}
+	} else {
+		return err
 	}
 
 	data, err = m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
@@ -200,7 +199,7 @@ func (m *Mgr) loadSettings() error {
 }
 
 func (m *Mgr) saveSettings() error {
-	data, err := json.Marshal(m.disks)
+	data, err := json.Marshal(m.DiskIds)
 	if err != nil {
 		return err
 	}
@@ -261,7 +260,7 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 	if i.Node == m.NodeId {
 		id := model.DiskId(uuid.New().String())
-		m.disks[id] = i.Path
+		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path})
 
 		m.MgrDiskWrites[id] = make(chan model.WriteRequest)
 		m.MgrDiskReads[id] = make(chan model.ReadRequest)
@@ -269,7 +268,7 @@ func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 		writeChan := m.MgrDiskWrites[id]
 		readChan := m.MgrDiskReads[id]
 
-		p := disk.NewPath(m.disks[id], &disk.DiskFileOps{})
+		p := disk.NewPath(i.Path, &disk.DiskFileOps{})
 		_ = disk.New(p,
 			model.NewNodeId(),
 			writeChan,
@@ -324,8 +323,8 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 				Localness:     model.Remote,
 				Availableness: model.Available,
 				Node:          p.Node(),
-				Id:            d,
-				// Path:          ,
+				Id:            d.Id,
+				Path:          d.Path,
 			}
 		}
 		syncNodes := m.syncNodesPayloadToSend()
@@ -446,13 +445,9 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	}
 	m.nodeConnMap.Add(iam.Node(), c)
 	for _, disk := range iam.Disks() {
-		m.mirrorDistributer.SetWeight(iam.Node(), disk, int(iam.FreeBytes()))
+		m.mirrorDistributer.SetWeight(iam.Node(), disk.Id, int(iam.FreeBytes()))
 	}
 	return nil
-}
-
-func (m *Mgr) Disks() map[model.DiskId]string {
-	return m.disks
 }
 
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
@@ -541,7 +536,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 		}
 		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
 		if ptr.NodeId() == m.NodeId {
-			chanutil.Send(m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local "+m.disks[ptr.Disk()]+" "+string(ptr.Disk()))
+			chanutil.Send(m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId())
 			if ok {
