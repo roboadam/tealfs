@@ -429,7 +429,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, pa
 			Payload: &iamPayload,
 		}
 
-		<-m.MgrUiStatuses
+		<-m.MgrUiConnectionStatuses
 
 		nodesInCluster = append(nodesInCluster, n)
 		var payloadsFromMgr []model.MgrConnsSend

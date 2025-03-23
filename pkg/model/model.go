@@ -26,6 +26,27 @@ type UiConnectionStatus struct {
 	Msg           string
 	Id            NodeId
 }
+type UiDiskStatus struct {
+	Localness     Localness
+	Availableness DiskAvailableness
+	Node          NodeId
+	Id            DiskId
+	Path          string
+}
+type Localness int
+
+const (
+	Local Localness = iota
+	Remote
+)
+
+type DiskAvailableness int
+
+const (
+	Available DiskAvailableness = iota
+	Unavailable
+	Removed
+)
 
 type NetConnectionStatus struct {
 	Type ConnectedStatus
@@ -66,6 +87,11 @@ type ConnsMgrReceive struct {
 type MgrDiskSave struct {
 	Hash hash.Hash
 	Data []byte
+}
+
+type UiMgrDisk struct {
+	Path string
+	Node NodeId
 }
 
 type UiMgrConnectTo struct {

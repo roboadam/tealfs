@@ -32,22 +32,24 @@ import (
 )
 
 type Mgr struct {
-	UiMgrConnectTos    chan model.UiMgrConnectTo
-	ConnsMgrStatuses   chan model.NetConnectionStatus
-	ConnsMgrReceives   chan model.ConnsMgrReceive
-	DiskMgrReads       chan model.ReadResult
-	DiskMgrWrites      chan model.WriteResult
-	WebdavMgrGets      chan model.GetBlockReq
-	WebdavMgrPuts      chan model.PutBlockReq
-	WebdavMgrBroadcast chan model.Broadcast
-	MgrConnsConnectTos chan model.MgrConnsConnectTo
-	MgrConnsSends      chan model.MgrConnsSend
-	MgrDiskWrites      map[model.DiskId]chan model.WriteRequest
-	MgrDiskReads       map[model.DiskId]chan model.ReadRequest
-	MgrUiStatuses      chan model.UiConnectionStatus
-	MgrWebdavGets      chan model.GetBlockResp
-	MgrWebdavPuts      chan model.PutBlockResp
-	MgrWebdavBroadcast chan model.Broadcast
+	UiMgrConnectTos         chan model.UiMgrConnectTo
+	UiMgrDisk               chan model.UiMgrDisk
+	ConnsMgrStatuses        chan model.NetConnectionStatus
+	ConnsMgrReceives        chan model.ConnsMgrReceive
+	DiskMgrReads            chan model.ReadResult
+	DiskMgrWrites           chan model.WriteResult
+	WebdavMgrGets           chan model.GetBlockReq
+	WebdavMgrPuts           chan model.PutBlockReq
+	WebdavMgrBroadcast      chan model.Broadcast
+	MgrConnsConnectTos      chan model.MgrConnsConnectTo
+	MgrConnsSends           chan model.MgrConnsSend
+	MgrDiskWrites           map[model.DiskId]chan model.WriteRequest
+	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
+	MgrUiConnectionStatuses chan model.UiConnectionStatus
+	MgrUiDiskStatuses       chan model.UiDiskStatus
+	MgrWebdavGets           chan model.GetBlockResp
+	MgrWebdavPuts           chan model.PutBlockResp
+	MgrWebdavBroadcast      chan model.Broadcast
 
 	nodesAddressMap    map[model.NodeId]string
 	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
@@ -71,7 +73,6 @@ func NewWithChanSize(
 	fileOps disk.FileOps,
 	blockType model.BlockType,
 	freeBytes uint32,
-	disks []string,
 ) *Mgr {
 	nodeId, err := readNodeId(globalPath, fileOps)
 	if err != nil {
@@ -79,36 +80,38 @@ func NewWithChanSize(
 	}
 
 	mgr := Mgr{
-		UiMgrConnectTos:    make(chan model.UiMgrConnectTo, chanSize),
-		ConnsMgrStatuses:   make(chan model.NetConnectionStatus, chanSize),
-		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
-		DiskMgrWrites:      make(chan model.WriteResult),
-		DiskMgrReads:       make(chan model.ReadResult, chanSize),
-		WebdavMgrGets:      make(chan model.GetBlockReq, chanSize),
-		WebdavMgrPuts:      make(chan model.PutBlockReq, chanSize),
-		WebdavMgrBroadcast: make(chan model.Broadcast, chanSize),
-		MgrConnsConnectTos: make(chan model.MgrConnsConnectTo, chanSize),
-		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
-		MgrUiStatuses:      make(chan model.UiConnectionStatus, chanSize),
-		MgrWebdavGets:      make(chan model.GetBlockResp, chanSize),
-		MgrWebdavPuts:      make(chan model.PutBlockResp, chanSize),
-		MgrWebdavBroadcast: make(chan model.Broadcast, chanSize),
-		nodesAddressMap:    make(map[model.NodeId]string),
-		NodeId:             nodeId,
-		connAddress:        make(map[model.ConnId]string),
-		nodeConnMap:        set.NewBimap[model.NodeId, model.ConnId](),
-		mirrorDistributer:  dist.NewMirrorDistributer(),
-		blockType:          blockType,
-		nodeAddress:        nodeAddress,
-		savePath:           globalPath,
-		fileOps:            fileOps,
-		pendingBlockWrites: newPendingBlockWrites(),
-		freeBytes:          freeBytes,
-		disks:              make(map[model.DiskId]string),
-		DiskIds:            []model.DiskId{},
+		UiMgrConnectTos:         make(chan model.UiMgrConnectTo, chanSize),
+		UiMgrDisk:               make(chan model.UiMgrDisk),
+		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
+		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
+		DiskMgrWrites:           make(chan model.WriteResult),
+		DiskMgrReads:            make(chan model.ReadResult, chanSize),
+		WebdavMgrGets:           make(chan model.GetBlockReq, chanSize),
+		WebdavMgrPuts:           make(chan model.PutBlockReq, chanSize),
+		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
+		MgrConnsConnectTos:      make(chan model.MgrConnsConnectTo, chanSize),
+		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
+		MgrUiConnectionStatuses: make(chan model.UiConnectionStatus, chanSize),
+		MgrUiDiskStatuses:       make(chan model.UiDiskStatus, chanSize),
+		MgrWebdavGets:           make(chan model.GetBlockResp, chanSize),
+		MgrWebdavPuts:           make(chan model.PutBlockResp, chanSize),
+		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
+		nodesAddressMap:         make(map[model.NodeId]string),
+		NodeId:                  nodeId,
+		connAddress:             make(map[model.ConnId]string),
+		nodeConnMap:             set.NewBimap[model.NodeId, model.ConnId](),
+		mirrorDistributer:       dist.NewMirrorDistributer(),
+		blockType:               blockType,
+		nodeAddress:             nodeAddress,
+		savePath:                globalPath,
+		fileOps:                 fileOps,
+		pendingBlockWrites:      newPendingBlockWrites(),
+		freeBytes:               freeBytes,
+		disks:                   make(map[model.DiskId]string),
+		DiskIds:                 []model.DiskId{},
 	}
 
-	err = mgr.loadSettings(disks)
+	err = mgr.loadSettings()
 	if err != nil {
 		panic("Unable to load settings")
 	}
@@ -167,14 +170,9 @@ func (m *Mgr) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m *Mgr) loadSettings(diskPaths []string) error {
+func (m *Mgr) loadSettings() error {
 	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "disks.json"))
-	if errors.Is(err, fs.ErrNotExist) {
-		for _, path := range diskPaths {
-			id := model.DiskId(uuid.New().String())
-			m.disks[id] = path
-		}
-	} else if err != nil {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	} else {
 		err = json.Unmarshal(data, &m.disks)
@@ -232,6 +230,8 @@ func (m *Mgr) eventLoop(ctx context.Context) {
 			return
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
+		case r := <-m.UiMgrDisk:
+			m.handleDiskReq(r, ctx)
 		case r := <-m.ConnsMgrStatuses:
 			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
@@ -256,6 +256,40 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 		model.MgrConnsConnectTo{Address: string(i.Address)},
 		"mgr: handleConnectToReq",
 	)
+}
+
+func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
+	if i.Node == m.NodeId {
+		id := model.DiskId(uuid.New().String())
+		m.disks[id] = i.Path
+
+		m.MgrDiskWrites[id] = make(chan model.WriteRequest)
+		m.MgrDiskReads[id] = make(chan model.ReadRequest)
+
+		writeChan := m.MgrDiskWrites[id]
+		readChan := m.MgrDiskReads[id]
+
+		p := disk.NewPath(m.disks[id], &disk.DiskFileOps{})
+		_ = disk.New(p,
+			model.NewNodeId(),
+			writeChan,
+			readChan,
+			m.DiskMgrWrites,
+			m.DiskMgrReads,
+			ctx,
+		)
+
+		for node := range m.nodesAddressMap {
+			if conn, exist := m.nodeConnMap.Get1(node); exist {
+				iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
+				mcs := model.MgrConnsSend{
+					ConnId:  conn,
+					Payload: &iam,
+				}
+				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
+			}
+		}
+	}
 }
 
 func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
@@ -283,7 +317,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			RemoteAddress: p.Address(),
 			Id:            p.Node(),
 		}
-		chanutil.Send(m.MgrUiStatuses, status, "mgr: handleReceives: ui status")
+		chanutil.Send(m.MgrUiConnectionStatuses, status, "mgr: handleReceives: ui status")
 		_ = m.addNodeToCluster(*p, i.ConnId)
 		syncNodes := m.syncNodesPayloadToSend()
 		for n := range m.nodesAddressMap {
@@ -480,8 +514,8 @@ func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
 }
 func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
 	for node := range m.nodesAddressMap {
-		if connid, exists := m.nodeConnMap.Get1(node); exists {
-			chanutil.Send(m.MgrConnsSends, model.MgrConnsSend{ConnId: connid, Payload: &b}, "Broadcasting")
+		if connId, exists := m.nodeConnMap.Get1(node); exists {
+			chanutil.Send(m.MgrConnsSends, model.MgrConnsSend{ConnId: connId, Payload: &b}, "Broadcasting")
 		} else {
 			log.Warn("Unable to broadcast to disconnected node")
 		}
