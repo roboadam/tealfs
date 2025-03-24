@@ -17,6 +17,7 @@ package mgr
 import (
 	"fmt"
 	"sync/atomic"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
@@ -261,23 +262,31 @@ func TestWebdavPut(t *testing.T) {
 
 	go func() {
 		for {
+			logrus.Info("writing to the disk ", m.DiskIds[0].Id)
 			select {
 			case <-ctx.Done():
+				logrus.Info("done1!!!")
 				return
 			case w := <-m.MgrDiskWrites[m.DiskIds[0].Id]:
 				atomic.AddInt32(&me1Count, 1)
-				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
+				logrus.Info("disk1 try")
+				chanutil.Send(m.DiskMgrWrites, model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId()), "me1")
+				logrus.Info("disk1 result")
 			}
 		}
 	}()
 	go func() {
 		for {
+			logrus.Info("writing to the disk ", m.DiskIds[1].Id)
 			select {
 			case <-ctx.Done():
+				logrus.Info("done2!!!")
 				return
 			case w := <-m.MgrDiskWrites[m.DiskIds[1].Id]:
 				atomic.AddInt32(&me2Count, 1)
-				m.DiskMgrWrites <- model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId())
+				logrus.Info("disk2 try")
+				chanutil.Send(m.DiskMgrWrites, model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId()), "me2")
+				logrus.Info("disk2 result")
 			}
 		}
 	}()
@@ -302,19 +311,18 @@ func TestWebdavPut(t *testing.T) {
 					}
 
 					result := model.NewWriteResultOk(request.Data().Ptr, request.Caller(), request.ReqId())
-					m.ConnsMgrReceives <- model.ConnsMgrReceive{
-						ConnId:  s.ConnId,
-						Payload: &result,
-					}
+					chanutil.Send(m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
 				}
 
 			}
 		}
 	}()
 
+	time.Sleep(time.Second)
+
 	logrus.Info("put1")
-	for _, block := range blocks {
-		logrus.Info("put2")
+	for i, block := range blocks {
+		logrus.Info("put2 - ", i)
 		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
 		logrus.Info("put3")
 		<-m.MgrWebdavPuts
@@ -446,7 +454,9 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, pa
 		}
 
 		<-m.MgrUiConnectionStatuses
-		<-m.MgrUiDiskStatuses
+		for range n.disks {
+			<-m.MgrUiDiskStatuses
+		}
 
 		nodesInCluster = append(nodesInCluster, n)
 		var payloadsFromMgr []model.MgrConnsSend
