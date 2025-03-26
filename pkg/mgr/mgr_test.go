@@ -268,8 +268,8 @@ func TestWebdavPut(t *testing.T) {
 				logrus.Info("done1!!!")
 				return
 			case w := <-m.MgrDiskWrites[m.DiskIds[0].Id]:
-				atomic.AddInt32(&me1Count, 1)
 				logrus.Info("disk1 try")
+				atomic.AddInt32(&me1Count, 1)
 				chanutil.Send(m.DiskMgrWrites, model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId()), "me1")
 				logrus.Info("disk1 result")
 			}
@@ -283,8 +283,8 @@ func TestWebdavPut(t *testing.T) {
 				logrus.Info("done2!!!")
 				return
 			case w := <-m.MgrDiskWrites[m.DiskIds[1].Id]:
-				atomic.AddInt32(&me2Count, 1)
 				logrus.Info("disk2 try")
+				atomic.AddInt32(&me2Count, 1)
 				chanutil.Send(m.DiskMgrWrites, model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId()), "me2")
 				logrus.Info("disk2 result")
 			}

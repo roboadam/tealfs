@@ -541,6 +541,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 		if ptr.NodeId() == m.NodeId {
 			log.Info("mgr: writing to local disk id ", ptr.Disk())
 			chanutil.Send(m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
+			log.Info("mgr: done writing to local disk id ", ptr.Disk())
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId())
 			if ok {
