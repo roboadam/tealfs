@@ -262,7 +262,7 @@ func TestWebdavPut(t *testing.T) {
 
 	go func() {
 		for {
-			logrus.Info("writing to the disk ", m.DiskIds[0].Id)
+			logrus.Info("selecting on disk1 writes ", m.DiskIds[0].Id)
 			select {
 			case <-ctx.Done():
 				logrus.Info("done1!!!")
@@ -277,7 +277,7 @@ func TestWebdavPut(t *testing.T) {
 	}()
 	go func() {
 		for {
-			logrus.Info("writing to the disk ", m.DiskIds[1].Id)
+			logrus.Info("selecting on disk2 writes ", m.DiskIds[1].Id)
 			select {
 			case <-ctx.Done():
 				logrus.Info("done2!!!")

@@ -43,8 +43,8 @@ type Mgr struct {
 	WebdavMgrBroadcast      chan model.Broadcast
 	MgrConnsConnectTos      chan model.MgrConnsConnectTo
 	MgrConnsSends           chan model.MgrConnsSend
-	MgrDiskWrites           *map[model.DiskId]chan model.WriteRequest
-	MgrDiskReads            *map[model.DiskId]chan model.ReadRequest
+	MgrDiskWrites           map[model.DiskId]chan model.WriteRequest
+	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
 	MgrUiConnectionStatuses chan model.UiConnectionStatus
 	MgrUiDiskStatuses       chan model.UiDiskStatus
 	MgrWebdavGets           chan model.GetBlockResp
@@ -113,8 +113,8 @@ func NewWithChanSize(
 	if err != nil {
 		panic("Unable to load settings")
 	}
-	*mgr.MgrDiskWrites = diskWriteChans(mgr.DiskIds)
-	*mgr.MgrDiskReads = diskReadChans(mgr.DiskIds)
+	mgr.MgrDiskWrites = diskWriteChans(mgr.DiskIds)
+	mgr.MgrDiskReads = diskReadChans(mgr.DiskIds)
 
 	for _, disk := range mgr.DiskIds {
 		mgr.mirrorDistributer.SetWeight(mgr.NodeId, disk.Id, int(freeBytes))
