@@ -24,6 +24,8 @@ import (
 type Ui struct {
 	connToReq  chan model.UiMgrConnectTo
 	connToResp chan model.UiConnectionStatus
+	addDiskReq chan model.UiMgrDisk
+	
 	statuses   map[model.NodeId]model.UiConnectionStatus
 	sMux       sync.Mutex
 	ops        HtmlOps
