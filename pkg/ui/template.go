@@ -56,6 +56,63 @@ func (ui *Ui) connectionStatus(w http.ResponseWriter, tmpl *template.Template) {
 	}
 }
 
+func (ui *Ui) diskStatus(w http.ResponseWriter, tmpl *template.Template) {
+
+	local := []struct {
+		Status string
+		Path   string
+	}{}
+	remote := []struct {
+		Status string
+		Path   string
+		Node   string
+	}{}
+	for _, value := range ui.diskStatuses {
+		status := availablenessToString(value.Availableness)
+		switch value.Localness {
+		case model.Local:
+			val := struct {
+				Status string
+				Path   string
+			}{Status: status, Path: value.Path}
+			local = append(local, val)
+		case model.Remote:
+			val := struct {
+				Status string
+				Path   string
+				Node   string
+			}{Status: status, Path: value.Path, Node: string(value.Node)}
+			remote = append(remote, val)
+		default:
+			panic("Unknown Localness")
+		}
+	}
+	sort.Slice(local, func(i, j int) bool {
+		if local[i].Status == local[j].Status {
+			return local[i].Path < local[j].Path
+		}
+		return local[i].Status < local[j].Status
+	})
+	sort.Slice(remote, func(i, j int) bool {
+		if remote[i].Status == remote[j].Status {
+			if remote[i].Node == remote[j].Node {
+				return local[i].Path < local[j].Path
+			} else {
+				return remote[i].Node < remote[j].Node
+			}
+		}
+		return local[i].Status < local[j].Status
+	})
+	data := struct {
+		Local  any
+		Remote any
+	}{Local: local, Remote: remote}
+	err := tmpl.ExecuteTemplate(w, "disk-status.html", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func statusToString(status model.ConnectedStatus) string {
 	switch status {
 	case model.Connected:
@@ -64,5 +121,16 @@ func statusToString(status model.ConnectedStatus) string {
 		return "Disconnected"
 	default:
 		return "Unknown"
+	}
+}
+
+func availablenessToString(status model.DiskAvailableness) string {
+	switch status {
+	case model.Available:
+		return "Available"
+	case model.Unavailable:
+		return "Unavailable"
+	default:
+		panic("Unknown availableness")
 	}
 }

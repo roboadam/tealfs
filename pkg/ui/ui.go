@@ -22,22 +22,36 @@ import (
 )
 
 type Ui struct {
-	connToReq  chan model.UiMgrConnectTo
-	connToResp chan model.UiConnectionStatus
-	addDiskReq chan model.UiMgrDisk
-	
-	statuses   map[model.NodeId]model.UiConnectionStatus
-	sMux       sync.Mutex
-	ops        HtmlOps
+	connToReq   chan model.UiMgrConnectTo
+	connToResp  chan model.UiConnectionStatus
+	addDiskReq  chan model.UiMgrDisk
+	addDiskResp chan model.UiDiskStatus
+
+	statuses     map[model.NodeId]model.UiConnectionStatus
+	diskStatuses map[model.DiskId]model.UiDiskStatus
+	sMux         sync.Mutex
+	ops          HtmlOps
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string, ctx context.Context) *Ui {
+func NewUi(
+	connToReq chan model.UiMgrConnectTo,
+	connToResp chan model.UiConnectionStatus,
+	addDiskReq chan model.UiMgrDisk,
+	addDiskResp chan model.UiDiskStatus,
+	ops HtmlOps,
+	bindAddr string,
+	ctx context.Context,
+) *Ui {
 	statuses := make(map[model.NodeId]model.UiConnectionStatus)
+	diskStatuses := make(map[model.DiskId]model.UiDiskStatus)
 	ui := Ui{
-		connToReq:  connToReq,
-		connToResp: connToResp,
-		statuses:   statuses,
-		ops:        ops,
+		connToReq:    connToReq,
+		connToResp:   connToResp,
+		addDiskReq:   addDiskReq,
+		addDiskResp:  addDiskResp,
+		statuses:     statuses,
+		diskStatuses: diskStatuses,
+		ops:          ops,
 	}
 	ui.handleRoot()
 	ui.start(bindAddr, ctx)
@@ -57,6 +71,8 @@ func (ui *Ui) handleMessages(ctx context.Context) {
 			return
 		case status := <-ui.connToResp:
 			ui.saveStatus(status)
+		case diskStatus := <-ui.addDiskResp:
+			ui.saveDiskStatus(diskStatus)
 		}
 	}
 }
@@ -67,6 +83,12 @@ func (ui *Ui) saveStatus(status model.UiConnectionStatus) {
 	ui.statuses[status.Id] = status
 }
 
+func (ui *Ui) saveDiskStatus(status model.UiDiskStatus) {
+	ui.sMux.Lock()
+	defer ui.sMux.Unlock()
+	ui.diskStatuses[status.Id] = status
+}
+
 func (ui *Ui) handleRoot() {
 	tmpl := initTemplates()
 	ui.ops.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +96,9 @@ func (ui *Ui) handleRoot() {
 	})
 	ui.ops.HandleFunc("/connection-status", func(w http.ResponseWriter, r *http.Request) {
 		ui.connectionStatus(w, tmpl)
+	})
+	ui.ops.HandleFunc("/disk-status", func(w http.ResponseWriter, r *http.Request) {
+		ui.diskStatus(w, tmpl)
 	})
 	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
