@@ -268,7 +268,7 @@ func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 		writeChan := m.MgrDiskWrites[id]
 		readChan := m.MgrDiskReads[id]
 
-		p := disk.NewPath(i.Path, &disk.DiskFileOps{})
+		p := disk.NewPath(i.Path, m.fileOps)
 		_ = disk.New(p,
 			model.NewNodeId(),
 			writeChan,
@@ -539,9 +539,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 		}
 		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
 		if ptr.NodeId() == m.NodeId {
-			log.Info("mgr: writing to local disk id ", ptr.Disk())
 			chanutil.Send(m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
-			log.Info("mgr: done writing to local disk id ", ptr.Disk())
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId())
 			if ok {

@@ -95,7 +95,7 @@ func TestReceiveSyncNodes(t *testing.T) {
 	var remoteNodeId = model.NewNodeId()
 	disks := []string{"disk"}
 
-	m := mgrWithConnectedNodes([]connectedNode{
+	m, _ := mgrWithConnectedNodes([]connectedNode{
 		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId, disks: disks1},
 		{address: localAddress, conn: localConnectionId, node: localNodeId, disks: disks2},
 	}, 0, t, disks, ctx)
@@ -134,7 +134,7 @@ func TestWebdavGet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m := mgrWithConnectedNodes([]connectedNode{
+	m, _ := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, 0, t, disks, ctx)
@@ -238,7 +238,7 @@ func TestWebdavPut(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m := mgrWithConnectedNodes([]connectedNode{
+	m, fileOps := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks12},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks34},
 	}, maxNumberOfWritesInOnePass, t, paths, ctx)
@@ -253,43 +253,10 @@ func TestWebdavPut(t *testing.T) {
 		blocks = append(blocks, block)
 	}
 
-	me1Count := int32(0)
-	me2Count := int32(0)
 	oneCount := int32(0)
 	twoCount := int32(0)
 	threeCount := int32(0)
 	fourCount := int32(0)
-
-	go func() {
-		for {
-			logrus.Info("selecting on disk1 writes ", m.DiskIds[0].Id)
-			select {
-			case <-ctx.Done():
-				logrus.Info("done1!!!")
-				return
-			case w := <-m.MgrDiskWrites[m.DiskIds[0].Id]:
-				logrus.Info("disk1 try")
-				atomic.AddInt32(&me1Count, 1)
-				chanutil.Send(m.DiskMgrWrites, model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId()), "me1")
-				logrus.Info("disk1 result")
-			}
-		}
-	}()
-	go func() {
-		for {
-			logrus.Info("selecting on disk2 writes ", m.DiskIds[1].Id)
-			select {
-			case <-ctx.Done():
-				logrus.Info("done2!!!")
-				return
-			case w := <-m.MgrDiskWrites[m.DiskIds[1].Id]:
-				logrus.Info("disk2 try")
-				atomic.AddInt32(&me2Count, 1)
-				chanutil.Send(m.DiskMgrWrites, model.NewWriteResultOk(w.Data().Ptr, m.NodeId, w.ReqId()), "me2")
-				logrus.Info("disk2 result")
-			}
-		}
-	}()
 
 	go func() {
 		for {
@@ -320,18 +287,12 @@ func TestWebdavPut(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	logrus.Info("put1")
-	for i, block := range blocks {
-		logrus.Info("put2 - ", i)
+	for _, block := range blocks {
 		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
-		logrus.Info("put3")
 		<-m.MgrWebdavPuts
-		logrus.Info("put4")
 	}
-	logrus.Info("put5")
-	if me1Count == 0 || me2Count == 0 || oneCount == 0 || twoCount == 0 || threeCount == 0 || fourCount == 0 {
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", me1Count))
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", me2Count))
+	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 || threeCount == 0 || fourCount == 0 {
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fileOps.WriteCount))
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", oneCount))
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", twoCount))
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", threeCount))
@@ -356,7 +317,7 @@ func TestBroadcast(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m := mgrWithConnectedNodes([]connectedNode{
+	m, _ := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, maxNumberOfWritesInOnePass, t, paths, ctx)
@@ -406,8 +367,9 @@ type connectedNode struct {
 	disks   []model.DiskIdPath
 }
 
-func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, paths []string, ctx context.Context) *Mgr {
-	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &disk.MockFileOps{}, model.Mirrored, 1)
+func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, paths []string, ctx context.Context) (*Mgr, *disk.MockFileOps) {
+	fileOps := disk.MockFileOps{}
+	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1)
 	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)
@@ -475,7 +437,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, pa
 	}
 
 	logrus.Info("Done Connecting")
-	return m
+	return m, &fileOps
 }
 
 func assertAllPayloadsSyncNodes(t *testing.T, mcs []model.MgrConnsSend) []connIdAndSyncNodes {

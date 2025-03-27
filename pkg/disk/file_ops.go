@@ -14,7 +14,10 @@
 
 package disk
 
-import "os"
+import (
+	"os"
+	"sync"
+)
 
 type FileOps interface {
 	ReadFile(name string) ([]byte, error)
@@ -34,10 +37,14 @@ func (d *DiskFileOps) WriteFile(name string, data []byte) error {
 type MockFileOps struct {
 	ReadError  error
 	WriteError error
+	WriteCount int
 	mockFS     map[string][]byte
+	mux        sync.Mutex
 }
 
 func (m *MockFileOps) ReadFile(name string) ([]byte, error) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
 	if m.ReadError != nil {
 		return nil, m.ReadError
 	}
@@ -51,6 +58,8 @@ func (m *MockFileOps) ReadFile(name string) ([]byte, error) {
 }
 
 func (m *MockFileOps) WriteFile(name string, data []byte) error {
+	m.mux.Lock()
+	defer m.mux.Unlock()
 	if m.WriteError != nil {
 		return m.WriteError
 	}
@@ -58,5 +67,6 @@ func (m *MockFileOps) WriteFile(name string, data []byte) error {
 		m.mockFS = make(map[string][]byte)
 	}
 	m.mockFS[name] = data
+	m.WriteCount++
 	return nil
 }
