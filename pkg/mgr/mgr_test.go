@@ -134,7 +134,7 @@ func TestWebdavGet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m, _ := mgrWithConnectedNodes([]connectedNode{
+	m, fileOps := mgrWithConnectedNodes([]connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, 0, t, disks, ctx)
@@ -145,30 +145,8 @@ func TestWebdavGet(t *testing.T) {
 		ids = append(ids, blockId)
 	}
 
-	meCount := int32(0)
 	oneCount := int32(0)
 	twoCount := int32(0)
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case r := <-m.MgrDiskReads[m.DiskIds[0].Id]:
-				atomic.AddInt32(&meCount, 1)
-				caller := m.NodeId
-				ptrs := r.Ptrs()[1:]
-				data := model.RawData{
-					Ptr:  r.Ptrs()[0],
-					Data: []byte{1, 2, 3},
-				}
-				reqId := r.GetBlockId()
-				blockId := r.BlockId()
-
-				m.DiskMgrReads <- model.NewReadResultOk(caller, ptrs, data, reqId, blockId)
-			}
-		}
-	}()
 
 	go func() {
 		for {
@@ -210,7 +188,7 @@ func TestWebdavGet(t *testing.T) {
 			t.Error("Expected", blockId, "got", w.Block.Id)
 		}
 	}
-	if meCount == 0 || oneCount == 0 || twoCount == 0 {
+	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 {
 		t.Error("Expected everyone to get some data")
 		return
 	}
