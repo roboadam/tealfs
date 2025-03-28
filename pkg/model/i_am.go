@@ -54,7 +54,8 @@ func (h *IAm) ToBytes() []byte {
 func (d DiskIdPath) ToBytes() []byte {
 	id := StringToBytes(string(d.Id))
 	path := StringToBytes(d.Path)
-	return bytes.Join([][]byte{id, path}, []byte{})
+	nodeId := StringToBytes(string(d.Id))
+	return bytes.Join([][]byte{id, path, nodeId}, []byte{})
 }
 
 func (h *IAm) Equal(p Payload) bool {
@@ -84,7 +85,8 @@ func (h *IAm) Equal(p Payload) bool {
 func ToDiskIdPath(data []byte) (DiskIdPath, []byte) {
 	id, remainder := StringFromBytes(data)
 	path, remainder := StringFromBytes(remainder)
-	return DiskIdPath{Id: DiskId(id), Path: path}, remainder
+	nodeId, remainder := StringFromBytes(remainder)
+	return DiskIdPath{Id: DiskId(id), Path: path, Node: NodeId(nodeId)}, remainder
 }
 
 func ToHello(data []byte) *IAm {

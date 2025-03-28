@@ -85,12 +85,12 @@ func TestReceiveSyncNodes(t *testing.T) {
 	defer cancel()
 	const sharedAddress = "some-address:123"
 	const sharedConnectionId = 1
-	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path"}}
 	var sharedNodeId = model.NewNodeId()
+	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path", Node: sharedNodeId}}
 	const localAddress = "some-address2:234"
 	const localConnectionId = 2
-	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path"}}
 	var localNodeId = model.NewNodeId()
+	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path", Node: localNodeId}}
 	const remoteAddress = "some-address3:345"
 	var remoteNodeId = model.NewNodeId()
 	disks := []string{"disk"}
@@ -124,12 +124,12 @@ func TestReceiveSyncNodes(t *testing.T) {
 func TestWebdavGet(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path"}}
 	var expectedNodeId1 = model.NewNodeId()
+	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path", Node: expectedNodeId1}}
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path"}}
 	var expectedNodeId2 = model.NewNodeId()
+	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path", Node: expectedNodeId2}}
 	disks := []string{"disk"}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -199,18 +199,18 @@ func TestWebdavPut(t *testing.T) {
 	paths := []string{"path1", "path2"}
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	disks12 := []model.DiskIdPath{
-		{Id: model.DiskId("disk1"), Path: "disk1path"},
-		{Id: model.DiskId("disk2"), Path: "disk2path"},
-	}
 	var expectedNodeId1 = model.NewNodeId()
+	disks12 := []model.DiskIdPath{
+		{Id: model.DiskId("disk1"), Path: "disk1path", Node: expectedNodeId1},
+		{Id: model.DiskId("disk2"), Path: "disk2path", Node: expectedNodeId1},
+	}
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	disks34 := []model.DiskIdPath{
-		{Id: model.DiskId("disk3"), Path: "disk3path"},
-		{Id: model.DiskId("disk4"), Path: "disk4path"},
-	}
 	var expectedNodeId2 = model.NewNodeId()
+	disks34 := []model.DiskIdPath{
+		{Id: model.DiskId("disk3"), Path: "disk3path", Node: expectedNodeId2},
+		{Id: model.DiskId("disk4"), Path: "disk4path", Node: expectedNodeId2},
+	}
 	maxNumberOfWritesInOnePass := 2
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -283,12 +283,12 @@ func TestWebdavPut(t *testing.T) {
 func TestBroadcast(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
-	disks1 := []model.DiskIdPath{{Id: "disk1", Path: "disk1path"}}
 	var expectedNodeId1 = model.NewNodeId()
+	disks1 := []model.DiskIdPath{{Id: "disk1", Path: "disk1path", Node: expectedNodeId1}}
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	disks2 := []model.DiskIdPath{{Id: "disk2", Path: "disk2path"}}
 	var expectedNodeId2 = model.NewNodeId()
+	disks2 := []model.DiskIdPath{{Id: "disk2", Path: "disk2path", Node: expectedNodeId2}}
 	maxNumberOfWritesInOnePass := 2
 	paths := []string{"path1"}
 
