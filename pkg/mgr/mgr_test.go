@@ -66,11 +66,11 @@ func TestConnectToSuccess(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()
-	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path"}}
+	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path", Node: expectedNodeId1}}
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
-	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path"}}
 	var expectedNodeId2 = model.NewNodeId()
+	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path", Node: expectedNodeId2}}
 	disks := []string{"disk"}
 
 	mgrWithConnectedNodes([]connectedNode{

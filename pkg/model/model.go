@@ -90,8 +90,8 @@ type MgrDiskSave struct {
 }
 
 type UiMgrDisk struct {
-	Path string
-	Node NodeId
+	Path      string
+	Node      NodeId
 	FreeBytes int
 }
 
@@ -111,4 +111,5 @@ type DiskId string
 type DiskIdPath struct {
 	Id   DiskId
 	Path string
+	Node NodeId
 }

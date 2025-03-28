@@ -18,7 +18,9 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
+	log "github.com/sirupsen/logrus"
 )
 
 type Ui struct {
@@ -119,11 +121,13 @@ func (ui *Ui) handleRoot() {
 			ui.addDiskGet(w, tmpl)
 		} else if r.Method == http.MethodPut {
 			diskPath := r.FormValue("diskPath")
-			ui.addDiskReq <- model.UiMgrDisk{
+			req := model.UiMgrDisk{
 				Path:      diskPath,
 				Node:      ui.nodeId,
 				FreeBytes: 1,
 			}
+			chanutil.Send(ui.addDiskReq, req, "ui: add disk req")
+			log.Info("Send add disk request")
 			ui.connectionStatus(w, tmpl)
 		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)

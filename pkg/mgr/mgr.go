@@ -111,7 +111,7 @@ func NewWithChanSize(
 
 	err = mgr.loadSettings()
 	if err != nil {
-		panic("Unable to load settings")
+		panic("Unable to load settings " + err.Error())
 	}
 	mgr.MgrDiskWrites = diskWriteChans(mgr.DiskIds)
 	mgr.MgrDiskReads = diskReadChans(mgr.DiskIds)
@@ -180,6 +180,18 @@ func (m *Mgr) loadSettings() error {
 		return err
 	}
 
+	for _, disk := range m.DiskIds {
+		localness := model.Local
+		if m.NodeId != di
+		req := model.UiDiskStatus{
+			Localness:     0,
+			Availableness: 0,
+			Node:          "",
+			Id:            "",
+			Path:          "",
+		}
+	}
+
 	data, err = m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
@@ -230,6 +242,7 @@ func (m *Mgr) eventLoop(ctx context.Context) {
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
 		case r := <-m.UiMgrDisk:
+			log.Info("mgr: received ui add disk req")
 			m.handleDiskReq(r, ctx)
 		case r := <-m.ConnsMgrStatuses:
 			m.handleNetConnectedStatus(r)
@@ -260,7 +273,7 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 	if i.Node == m.NodeId {
 		id := model.DiskId(uuid.New().String())
-		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path})
+		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path, Node: m.NodeId})
 
 		m.MgrDiskWrites[id] = make(chan model.WriteRequest)
 		m.MgrDiskReads[id] = make(chan model.ReadRequest)
@@ -279,6 +292,20 @@ func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 		)
 
 		m.mirrorDistributer.SetWeight(m.NodeId, id, i.FreeBytes)
+
+		status := model.UiDiskStatus{
+			Localness:     model.Local,
+			Availableness: model.Available,
+			Node:          m.NodeId,
+			Id:            id,
+			Path:          i.Path,
+		}
+		chanutil.Send(m.MgrUiDiskStatuses, status, "mgr: added local disk")
+		err := m.saveSettings()
+		if err != nil {
+			panic("error saving disk settings")
+		}
+		log.Info("send disk status back to ui")
 
 		for node := range m.nodesAddressMap {
 			if conn, exist := m.nodeConnMap.Get1(node); exist {
