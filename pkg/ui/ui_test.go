@@ -98,10 +98,12 @@ func waitForWrittenData(handler func() string, values []string) {
 func NewUi(ctx context.Context) (*ui.Ui, chan model.UiMgrConnectTo, chan model.UiConnectionStatus, *ui.MockHtmlOps) {
 	connToReq := make(chan model.UiMgrConnectTo)
 	connToResp := make(chan model.UiConnectionStatus)
+	diskAddReq := make(chan model.UiMgrDisk)
+	diskStatus := make(chan model.UiDiskStatus)
 	ops := ui.MockHtmlOps{
 		BindAddr: "mockBindAddr:123",
 		Handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
 	}
-	u := ui.NewUi(connToReq, connToResp, &ops, "address", ctx)
+	u := ui.NewUi(connToReq, connToResp, diskAddReq, diskStatus, &ops, "nodeId", "address", ctx)
 	return u, connToReq, connToResp, &ops
 }

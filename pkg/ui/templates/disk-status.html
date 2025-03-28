@@ -1,0 +1,33 @@
+<h2>Local Disks</h2>
+<table>
+	<thead>
+		<tr>
+			<th>Status</th>
+			<th>Path</th>
+		</tr>
+	</thead>
+	{{ range .Local }}
+	<tr>
+		<th>{{.Status}}</th>
+		<th>{{.Path}}</th>
+	</tr>
+	{{ end }}
+</table>
+
+<h2>Remote Disks</h2>
+<table>
+	<thead>
+		<tr>
+			<th>Status</th>
+			<th>Path</th>
+		</tr>
+	</thead>
+	{{ range .Remote }}
+	<tr>
+		<th>{{.Status}}</th>
+		<th>{{.Path}}</th>
+		<th>{{.Node}}</th>
+	</tr>
+	{{ end }}
+</table>
+

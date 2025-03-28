@@ -31,6 +31,7 @@ type Ui struct {
 	diskStatuses map[model.DiskId]model.UiDiskStatus
 	sMux         sync.Mutex
 	ops          HtmlOps
+	nodeId       model.NodeId
 }
 
 func NewUi(
@@ -39,6 +40,7 @@ func NewUi(
 	addDiskReq chan model.UiMgrDisk,
 	addDiskResp chan model.UiDiskStatus,
 	ops HtmlOps,
+	nodeId model.NodeId,
 	bindAddr string,
 	ctx context.Context,
 ) *Ui {
@@ -52,6 +54,7 @@ func NewUi(
 		statuses:     statuses,
 		diskStatuses: diskStatuses,
 		ops:          ops,
+		nodeId:       nodeId,
 	}
 	ui.handleRoot()
 	ui.start(bindAddr, ctx)
@@ -106,6 +109,21 @@ func (ui *Ui) handleRoot() {
 		} else if r.Method == http.MethodPut {
 			hostAndPort := r.FormValue("hostAndPort")
 			ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
+			ui.connectionStatus(w, tmpl)
+		} else {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		}
+	})
+	ui.ops.HandleFunc("/add-disk", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			ui.addDiskGet(w, tmpl)
+		} else if r.Method == http.MethodPut {
+			diskPath := r.FormValue("diskPath")
+			ui.addDiskReq <- model.UiMgrDisk{
+				Path:      diskPath,
+				Node:      ui.nodeId,
+				FreeBytes: 1,
+			}
 			ui.connectionStatus(w, tmpl)
 		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)

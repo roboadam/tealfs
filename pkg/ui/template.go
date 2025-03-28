@@ -32,6 +32,13 @@ func (ui *Ui) connectToGet(w http.ResponseWriter, tmpl *template.Template) {
 	}
 }
 
+func (ui *Ui) addDiskGet(w http.ResponseWriter, tmpl *template.Template) {
+	err := tmpl.ExecuteTemplate(w, "add-disk.html", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (ui *Ui) connectionStatus(w http.ResponseWriter, tmpl *template.Template) {
 
 	status := []struct {
