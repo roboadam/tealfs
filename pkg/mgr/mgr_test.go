@@ -46,7 +46,6 @@ func TestConnectToMgr(t *testing.T) {
 		t.Error("Error starting", err)
 		return
 	}
-	m.UiMgrDisk <- model.UiMgrDisk{Path: "path1", Node: m.NodeId, FreeBytes: 1}
 
 	m.UiMgrConnectTos <- model.UiMgrConnectTo{
 		Address: expectedAddress,
@@ -354,6 +353,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, pa
 	}
 	for _, path := range paths {
 		m.UiMgrDisk <- model.UiMgrDisk{Path: path, Node: m.NodeId, FreeBytes: 1}
+		<-m.MgrUiDiskStatuses
 	}
 	var nodesInCluster []connectedNode
 

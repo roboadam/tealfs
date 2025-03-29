@@ -74,7 +74,7 @@ func TestStatus(t *testing.T) {
 	}
 
 	waitForWrittenData(func() string {
-		ops.Handlers["/"](&mockResponseWriter, &request)
+		ops.Handlers["/connection-status"](&mockResponseWriter, &request)
 		return mockResponseWriter.WrittenData
 	}, []string{"1234", "5678"})
 }

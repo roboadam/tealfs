@@ -322,6 +322,8 @@ func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
 			}
 		}
+	} else {
+		
 	}
 }
 

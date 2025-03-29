@@ -77,7 +77,7 @@ func (m *MockResponseWriter) Header() http.Header {
 }
 
 func (m *MockResponseWriter) Write(data []byte) (int, error) {
-	m.WrittenData = string(data)
+	m.WrittenData += string(data)
 	return len(data), nil
 }
 
