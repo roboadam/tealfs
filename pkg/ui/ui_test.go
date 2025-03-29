@@ -98,7 +98,7 @@ func waitForWrittenData(handler func() string, values []string) {
 func NewUi(ctx context.Context) (*ui.Ui, chan model.UiMgrConnectTo, chan model.UiConnectionStatus, *ui.MockHtmlOps) {
 	connToReq := make(chan model.UiMgrConnectTo)
 	connToResp := make(chan model.UiConnectionStatus)
-	diskAddReq := make(chan model.UiMgrDisk)
+	diskAddReq := make(chan model.DiskInfo)
 	diskStatus := make(chan model.UiDiskStatus)
 	ops := ui.MockHtmlOps{
 		BindAddr: "mockBindAddr:123",

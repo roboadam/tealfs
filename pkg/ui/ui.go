@@ -25,7 +25,7 @@ import (
 type Ui struct {
 	connToReq   chan model.UiMgrConnectTo
 	connToResp  chan model.UiConnectionStatus
-	addDiskReq  chan model.UiMgrDisk
+	addDiskReq  chan model.DiskInfo
 	addDiskResp chan model.UiDiskStatus
 
 	statuses     map[model.NodeId]model.UiConnectionStatus
@@ -38,7 +38,7 @@ type Ui struct {
 func NewUi(
 	connToReq chan model.UiMgrConnectTo,
 	connToResp chan model.UiConnectionStatus,
-	addDiskReq chan model.UiMgrDisk,
+	addDiskReq chan model.DiskInfo,
 	addDiskResp chan model.UiDiskStatus,
 	ops HtmlOps,
 	nodeId model.NodeId,
@@ -120,11 +120,7 @@ func (ui *Ui) handleRoot() {
 			ui.addDiskGet(w, tmpl)
 		} else if r.Method == http.MethodPut {
 			diskPath := r.FormValue("diskPath")
-			req := model.UiMgrDisk{
-				Path:      diskPath,
-				Node:      ui.nodeId,
-				FreeBytes: 1,
-			}
+			req := model.NewDiskInfo(diskPath, ui.nodeId, 1)
 			chanutil.Send(ui.addDiskReq, req, "ui: add disk req")
 			ui.connectionStatus(w, tmpl)
 		} else {

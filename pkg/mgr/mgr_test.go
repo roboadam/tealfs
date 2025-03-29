@@ -352,7 +352,7 @@ func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, pa
 		t.Error("Error starting", err)
 	}
 	for _, path := range paths {
-		m.UiMgrDisk <- model.UiMgrDisk{Path: path, Node: m.NodeId, FreeBytes: 1}
+		m.UiMgrDisk <- model.NewDiskInfo(path, m.NodeId, 1)
 		<-m.MgrUiDiskStatuses
 	}
 	var nodesInCluster []connectedNode

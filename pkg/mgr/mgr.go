@@ -33,7 +33,7 @@ import (
 
 type Mgr struct {
 	UiMgrConnectTos         chan model.UiMgrConnectTo
-	UiMgrDisk               chan model.UiMgrDisk
+	UiMgrDisk               chan model.DiskInfo
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
 	DiskMgrReads            chan model.ReadResult
@@ -80,7 +80,7 @@ func NewWithChanSize(
 
 	mgr := Mgr{
 		UiMgrConnectTos:         make(chan model.UiMgrConnectTo, chanSize),
-		UiMgrDisk:               make(chan model.UiMgrDisk),
+		UiMgrDisk:               make(chan model.DiskInfo),
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrWrites:           make(chan model.WriteResult),
@@ -276,10 +276,10 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 	)
 }
 
-func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
-	if i.Node == m.NodeId {
+func (m *Mgr) handleDiskReq(i model.DiskInfo, ctx context.Context) {
+	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
-		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path, Node: m.NodeId})
+		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
 
 		m.MgrDiskWrites[id] = make(chan model.WriteRequest)
 		m.MgrDiskReads[id] = make(chan model.ReadRequest)
@@ -287,7 +287,7 @@ func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 		writeChan := m.MgrDiskWrites[id]
 		readChan := m.MgrDiskReads[id]
 
-		p := disk.NewPath(i.Path, m.fileOps)
+		p := disk.NewPath(i.Path(), m.fileOps)
 		_ = disk.New(p,
 			model.NewNodeId(),
 			writeChan,
@@ -297,14 +297,14 @@ func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 			ctx,
 		)
 
-		m.mirrorDistributer.SetWeight(m.NodeId, id, i.FreeBytes)
+		m.mirrorDistributer.SetWeight(m.NodeId, id, i.FreeBytes())
 
 		status := model.UiDiskStatus{
 			Localness:     model.Local,
 			Availableness: model.Available,
 			Node:          m.NodeId,
 			Id:            id,
-			Path:          i.Path,
+			Path:          i.Path(),
 		}
 		chanutil.Send(m.MgrUiDiskStatuses, status, "mgr: added local disk")
 		err := m.saveSettings()
@@ -323,7 +323,7 @@ func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 			}
 		}
 	} else {
-		
+
 	}
 }
 

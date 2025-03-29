@@ -89,10 +89,26 @@ type MgrDiskSave struct {
 	Data []byte
 }
 
-type UiMgrDisk struct {
-	Path      string
-	Node      NodeId
-	FreeBytes int
+type DiskInfo struct {
+	path      string
+	node      NodeId
+	freeBytes int
+}
+
+func (d *DiskInfo) Path() string   { return d.path }
+func (d *DiskInfo) Node() NodeId   { return d.node }
+func (d *DiskInfo) FreeBytes() int { return d.freeBytes }
+
+func NewDiskInfo(
+	path string,
+	node NodeId,
+	freeBytes int,
+) DiskInfo {
+	return DiskInfo{
+		path:      path,
+		node:      node,
+		freeBytes: freeBytes,
+	}
 }
 
 type UiMgrConnectTo struct {
