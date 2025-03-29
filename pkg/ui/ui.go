@@ -25,7 +25,7 @@ import (
 type Ui struct {
 	connToReq   chan model.UiMgrConnectTo
 	connToResp  chan model.UiConnectionStatus
-	addDiskReq  chan model.DiskInfo
+	addDiskReq  chan model.AddDiskReq
 	addDiskResp chan model.UiDiskStatus
 
 	statuses     map[model.NodeId]model.UiConnectionStatus
@@ -38,7 +38,7 @@ type Ui struct {
 func NewUi(
 	connToReq chan model.UiMgrConnectTo,
 	connToResp chan model.UiConnectionStatus,
-	addDiskReq chan model.DiskInfo,
+	addDiskReq chan model.AddDiskReq,
 	addDiskResp chan model.UiDiskStatus,
 	ops HtmlOps,
 	nodeId model.NodeId,

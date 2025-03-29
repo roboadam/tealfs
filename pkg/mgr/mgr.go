@@ -33,7 +33,7 @@ import (
 
 type Mgr struct {
 	UiMgrConnectTos         chan model.UiMgrConnectTo
-	UiMgrDisk               chan model.DiskInfo
+	UiMgrDisk               chan model.AddDiskReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
 	DiskMgrReads            chan model.ReadResult
@@ -80,7 +80,7 @@ func NewWithChanSize(
 
 	mgr := Mgr{
 		UiMgrConnectTos:         make(chan model.UiMgrConnectTo, chanSize),
-		UiMgrDisk:               make(chan model.DiskInfo),
+		UiMgrDisk:               make(chan model.AddDiskReq),
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrWrites:           make(chan model.WriteResult),
@@ -276,7 +276,7 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 	)
 }
 
-func (m *Mgr) handleDiskReq(i model.DiskInfo, ctx context.Context) {
+func (m *Mgr) handleDiskReq(i model.AddDiskReq, ctx context.Context) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})

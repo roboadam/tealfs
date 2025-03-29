@@ -23,6 +23,7 @@ const (
 	ReadRequestType  = uint8(5)
 	ReadResultType   = uint8(6)
 	BroadcastType    = uint8(7)
+	AddDiskRequest   = uint8(8)
 )
 
 type Payload interface {

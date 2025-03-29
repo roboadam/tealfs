@@ -89,22 +89,34 @@ type MgrDiskSave struct {
 	Data []byte
 }
 
-type DiskInfo struct {
+type AddDiskReq struct {
 	path      string
 	node      NodeId
 	freeBytes int
 }
 
-func (d *DiskInfo) Path() string   { return d.path }
-func (d *DiskInfo) Node() NodeId   { return d.node }
-func (d *DiskInfo) FreeBytes() int { return d.freeBytes }
+func ToAddDiskReq(data []byte) *AddDiskReq {
+	panic
+}
+
+func (a *AddDiskReq) ToBytes() []byte {
+	panic("")
+}
+
+func (a *AddDiskReq) Equal(_ Payload) bool {
+	panic("not implemented") // TODO: Implement
+}
+
+func (a *AddDiskReq) Path() string   { return d.path }
+func (a *AddDiskReq) Node() NodeId   { return d.node }
+func (a *AddDiskReq) FreeBytes() int { return d.freeBytes }
 
 func NewDiskInfo(
 	path string,
 	node NodeId,
 	freeBytes int,
-) DiskInfo {
-	return DiskInfo{
+) AddDiskReq {
+	return AddDiskReq{
 		path:      path,
 		node:      node,
 		freeBytes: freeBytes,
