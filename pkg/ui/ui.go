@@ -20,7 +20,6 @@ import (
 	"sync"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
-	log "github.com/sirupsen/logrus"
 )
 
 type Ui struct {
@@ -127,7 +126,6 @@ func (ui *Ui) handleRoot() {
 				FreeBytes: 1,
 			}
 			chanutil.Send(ui.addDiskReq, req, "ui: add disk req")
-			log.Info("Send add disk request")
 			ui.connectionStatus(w, tmpl)
 		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)

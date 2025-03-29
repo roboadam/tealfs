@@ -109,10 +109,12 @@ func NewWithChanSize(
 		DiskIds:                 []model.DiskIdPath{},
 	}
 
-	err = mgr.loadSettings()
-	if err != nil {
-		panic("Unable to load settings " + err.Error())
-	}
+	go func() {
+		err = mgr.loadSettings()
+		if err != nil {
+			panic("Unable to load settings " + err.Error())
+		}
+	}()
 	mgr.MgrDiskWrites = diskWriteChans(mgr.DiskIds)
 	mgr.MgrDiskReads = diskReadChans(mgr.DiskIds)
 
@@ -247,7 +249,6 @@ func (m *Mgr) eventLoop(ctx context.Context) {
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
 		case r := <-m.UiMgrDisk:
-			log.Info("mgr: received ui add disk req")
 			m.handleDiskReq(r, ctx)
 		case r := <-m.ConnsMgrStatuses:
 			m.handleNetConnectedStatus(r)
@@ -310,7 +311,6 @@ func (m *Mgr) handleDiskReq(i model.UiMgrDisk, ctx context.Context) {
 		if err != nil {
 			panic("error saving disk settings")
 		}
-		log.Info("send disk status back to ui")
 
 		for node := range m.nodesAddressMap {
 			if conn, exist := m.nodeConnMap.Get1(node); exist {
