@@ -15,6 +15,7 @@
 package model
 
 import (
+	"bytes"
 	"hash"
 
 	"github.com/google/uuid"
@@ -96,20 +97,39 @@ type AddDiskReq struct {
 }
 
 func ToAddDiskReq(data []byte) *AddDiskReq {
-	panic
+	path, remainder := StringFromBytes(data)
+	node, remainder := StringFromBytes(remainder)
+	freeBytes, _ := IntFromBytes(remainder)
+	return &AddDiskReq{
+		path:      path,
+		node:      NodeId(node),
+		freeBytes: int(freeBytes),
+	}
 }
 
 func (a *AddDiskReq) ToBytes() []byte {
-	panic("")
+	path := StringToBytes(a.path)
+	node := StringToBytes(string(a.node))
+	freeBytes := IntToBytes(uint32(a.freeBytes))
+	return AddType(AddDiskRequest, bytes.Join([][]byte{path, node, freeBytes}, []byte{}))
 }
 
-func (a *AddDiskReq) Equal(_ Payload) bool {
-	panic("not implemented") // TODO: Implement
+func (a *AddDiskReq) Equal(p Payload) bool {
+	if o, ok := p.(*AddDiskReq); ok {
+		if a.path != o.path {
+			return false
+		}
+		if a.node != o.node {
+			return false
+		}
+		return a.freeBytes == o.freeBytes
+	}
+	return false
 }
 
-func (a *AddDiskReq) Path() string   { return d.path }
-func (a *AddDiskReq) Node() NodeId   { return d.node }
-func (a *AddDiskReq) FreeBytes() int { return d.freeBytes }
+func (a *AddDiskReq) Path() string   { return a.path }
+func (a *AddDiskReq) Node() NodeId   { return a.node }
+func (a *AddDiskReq) FreeBytes() int { return a.freeBytes }
 
 func NewDiskInfo(
 	path string,

@@ -47,6 +47,8 @@ func ToPayload(data []byte) Payload {
 		return ToReadResult(payloadData(data))
 	case BroadcastType:
 		return ToBroadcast(payloadData(data))
+	case AddDiskRequest:
+		return ToAddDiskReq(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}

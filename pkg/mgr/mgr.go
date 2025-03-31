@@ -249,11 +249,11 @@ func (m *Mgr) eventLoop(ctx context.Context) {
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
 		case r := <-m.UiMgrDisk:
-			m.handleDiskReq(r, ctx)
+			m.handleAddDiskReq(r, ctx)
 		case r := <-m.ConnsMgrStatuses:
 			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
-			m.handleReceives(r)
+			m.handleReceives(r, ctx)
 		case r := <-m.DiskMgrReads:
 			m.handleDiskReadResult(r)
 		case r := <-m.DiskMgrWrites:
@@ -276,7 +276,7 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 	)
 }
 
-func (m *Mgr) handleDiskReq(i model.AddDiskReq, ctx context.Context) {
+func (m *Mgr) handleAddDiskReq(i model.AddDiskReq, ctx context.Context) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
@@ -323,7 +323,9 @@ func (m *Mgr) handleDiskReq(i model.AddDiskReq, ctx context.Context) {
 			}
 		}
 	} else {
-
+		if conn, exists := m.nodeConnMap.Get1(i.Node()); exists {
+			chanutil.Send(m.MgrConnsSends, model.MgrConnsSend{ConnId: conn, Payload: &i}, "send add disk to node")
+		}
 	}
 }
 
@@ -343,7 +345,7 @@ func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 	return result
 }
 
-func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
+func (m *Mgr) handleReceives(i model.ConnsMgrReceive, ctx context.Context) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
 		m.connAddress[i.ConnId] = p.Address()
@@ -413,6 +415,8 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		m.handleDiskReadResult(*p)
 	case *model.Broadcast:
 		chanutil.Send(m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
+	case *model.AddDiskReq:
+		m.handleAddDiskReq(*p, ctx)
 	default:
 		panic("Received unknown payload")
 	}
