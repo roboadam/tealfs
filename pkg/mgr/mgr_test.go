@@ -40,6 +40,7 @@ func TestConnectToMgr(t *testing.T) {
 		&disk.MockFileOps{},
 		model.Mirrored,
 		1,
+		ctx,
 	)
 	err := m.Start(ctx)
 	if err != nil {
@@ -346,13 +347,13 @@ type connectedNode struct {
 
 func mgrWithConnectedNodes(nodes []connectedNode, chanSize int, t *testing.T, paths []string, ctx context.Context) (*Mgr, *disk.MockFileOps) {
 	fileOps := disk.MockFileOps{}
-	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1)
+	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1, ctx)
 	err := m.Start(ctx)
 	if err != nil {
 		t.Error("Error starting", err)
 	}
 	for _, path := range paths {
-		m.UiMgrDisk <- model.NewDiskInfo(path, m.NodeId, 1)
+		m.UiMgrDisk <- model.NewAddDiskReq(path, m.NodeId, 1)
 		<-m.MgrUiDiskStatuses
 	}
 	var nodesInCluster []connectedNode

@@ -120,7 +120,7 @@ func (ui *Ui) handleRoot() {
 			ui.addDiskGet(w, tmpl)
 		} else if r.Method == http.MethodPut {
 			diskPath := r.FormValue("diskPath")
-			req := model.NewDiskInfo(diskPath, ui.nodeId, 1)
+			req := model.NewAddDiskReq(diskPath, ui.nodeId, 1)
 			chanutil.Send(ui.addDiskReq, req, "ui: add disk req")
 			ui.connectionStatus(w, tmpl)
 		} else {

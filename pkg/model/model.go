@@ -131,7 +131,7 @@ func (a *AddDiskReq) Path() string   { return a.path }
 func (a *AddDiskReq) Node() NodeId   { return a.node }
 func (a *AddDiskReq) FreeBytes() int { return a.freeBytes }
 
-func NewDiskInfo(
+func NewAddDiskReq(
 	path string,
 	node NodeId,
 	freeBytes int,

@@ -72,6 +72,7 @@ func NewWithChanSize(
 	fileOps disk.FileOps,
 	blockType model.BlockType,
 	freeBytes uint32,
+	ctx context.Context,
 ) *Mgr {
 	nodeId, err := readNodeId(globalPath, fileOps)
 	if err != nil {
@@ -110,7 +111,7 @@ func NewWithChanSize(
 	}
 
 	go func() {
-		err = mgr.loadSettings()
+		err = mgr.loadSettings(ctx)
 		if err != nil {
 			panic("Unable to load settings " + err.Error())
 		}
@@ -169,7 +170,16 @@ func (m *Mgr) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m *Mgr) loadSettings() error {
+func (m *Mgr) hasDiskId(id model.DiskId) bool {
+	for _, d := range m.DiskIds {
+		if d.Id == id {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Mgr) loadSettings(ctx context.Context) error {
 	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "disks.json"))
 	if err == nil {
 		err = json.Unmarshal(data, &m.DiskIds)
@@ -183,9 +193,15 @@ func (m *Mgr) loadSettings() error {
 	}
 
 	for _, disk := range m.DiskIds {
-		localness := model.Local
-		availableness := model.Available
-		if m.NodeId != disk.Node {
+		var localness model.Localness
+		var availableness model.DiskAvailableness
+		if m.NodeId == disk.Node {
+			localness = model.Local
+			availableness = model.Available
+			if !m.hasDiskId(disk.Id) {
+				m.handleAddDiskReq(model.NewAddDiskReq(disk.Path, disk.Node, 1), ctx)
+			}
+		} else {
 			localness = model.Remote
 			availableness = model.Unavailable
 		}
