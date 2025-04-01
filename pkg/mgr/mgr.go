@@ -119,10 +119,6 @@ func NewWithChanSize(
 	mgr.MgrDiskWrites = diskWriteChans(mgr.DiskIds)
 	mgr.MgrDiskReads = diskReadChans(mgr.DiskIds)
 
-	for _, disk := range mgr.DiskIds {
-		mgr.mirrorDistributer.SetWeight(mgr.NodeId, disk.Id, int(freeBytes))
-	}
-
 	return &mgr
 }
 
