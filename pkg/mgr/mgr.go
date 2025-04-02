@@ -189,26 +189,20 @@ func (m *Mgr) loadSettings(ctx context.Context) error {
 	}
 
 	for _, disk := range m.DiskIds {
-		var localness model.Localness
-		var availableness model.DiskAvailableness
 		if m.NodeId == disk.Node {
-			localness = model.Local
-			availableness = model.Available
 			if !m.hasDiskId(disk.Id) {
 				m.handleAddDiskReq(model.NewAddDiskReq(disk.Path, disk.Node, 1), ctx)
 			}
 		} else {
-			localness = model.Remote
-			availableness = model.Unavailable
+			req := model.UiDiskStatus{
+				Localness:     model.Remote,
+				Availableness: model.Unavailable,
+				Node:          disk.Node,
+				Id:            disk.Id,
+				Path:          disk.Path,
+			}
+			chanutil.Send(m.MgrUiDiskStatuses, req, "mgr: loadSettings")
 		}
-		req := model.UiDiskStatus{
-			Localness:     localness,
-			Availableness: availableness,
-			Node:          disk.Node,
-			Id:            disk.Id,
-			Path:          disk.Path,
-		}
-		chanutil.Send(m.MgrUiDiskStatuses, req, "mgr: loadSettings")
 	}
 
 	data, err = m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
