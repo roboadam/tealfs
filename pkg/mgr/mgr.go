@@ -190,9 +190,7 @@ func (m *Mgr) loadSettings(ctx context.Context) error {
 
 	for _, disk := range m.DiskIds {
 		if m.NodeId == disk.Node {
-			if !m.hasDiskId(disk.Id) {
-				m.handleAddDiskReq(model.NewAddDiskReq(disk.Path, disk.Node, 1), ctx)
-			}
+			m.handleAddDiskReq(model.NewAddDiskReq(disk.Path, disk.Node, 1), ctx)
 		} else {
 			req := model.UiDiskStatus{
 				Localness:     model.Remote,
