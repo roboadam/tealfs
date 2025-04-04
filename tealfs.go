@@ -44,7 +44,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.SetLevel(log.TraceLevel)
 	if len(os.Args) < 5 {
 		fmt.Fprintln(os.Stderr, os.Args[0], "<webdav address> <ui address> <node address> <free bytes>")
 		os.Exit(1)
@@ -62,6 +61,7 @@ func main() {
 }
 
 func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
+	log.SetLevel(log.DebugLevel)
 	chansize := 0
 	m := mgr.NewWithChanSize(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, ctx)
 	_ = conns.NewConns(

@@ -191,7 +191,7 @@ func (c *Conns) consumeData(conn model.ConnId, ctx context.Context) {
 				ConnId:  conn,
 				Payload: payload,
 			}
-			chanutil.Send(c.outReceives, cmr, "conns received payload sent to connsMgr")
+			chanutil.Send(c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 		}
 	}
 }
