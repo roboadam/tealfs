@@ -271,8 +271,11 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	nodeAddress2 := "localhost:9082"
 	configPath1 := "tmp1"
 	configPath2 := "tmp2"
-	// diskPaths1 := []string{}
 	diskPaths2 := []string{"tmp3", "tmp4", "tmp5"}
+	diskPathContents3 := "diskPath=" + url.QueryEscape(diskPaths2[0])
+	diskPathContents4 := "diskPath=" + url.QueryEscape(diskPaths2[1])
+	diskPathContents5 := "diskPath=" + url.QueryEscape(diskPaths2[2])
+	addDiskToUrl2 := "http://" + uiAddress2 + "/add-disk"
 	os.RemoveAll(configPath1)
 	os.RemoveAll(configPath2)
 	os.RemoveAll(diskPaths2[0])
@@ -297,6 +300,10 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 
 	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, 0, ctx)
 	go startTealFs(configPath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+	time.Sleep(time.Second)
+	submitForm(ctx, t, addDiskToUrl2, diskPathContents3)
+	submitForm(ctx, t, addDiskToUrl2, diskPathContents4)
+	submitForm(ctx, t, addDiskToUrl2, diskPathContents5)
 	time.Sleep(time.Second)
 
 	resp, ok := putFile(ctx, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
