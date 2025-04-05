@@ -81,8 +81,6 @@ func TestTwoNodeCluster(t *testing.T) {
 	nodeAddress2 := "localhost:9082"
 	configPath1 := "tmp1"
 	configPath2 := "tmp2"
-	// diskPaths1 := []string{configPath1}
-	// diskPaths2 := []string{configPath2}
 	os.RemoveAll(configPath1)
 	os.RemoveAll(configPath2)
 	connectToUrl := "http://" + uiAddress1 + "/connect-to"
@@ -94,16 +92,14 @@ func TestTwoNodeCluster(t *testing.T) {
 	diskPathContents1 := "diskPath=" + url.QueryEscape(configPath1)
 	diskPathContents2 := "diskPath=" + url.QueryEscape(configPath2)
 	os.Mkdir(configPath1, 0755)
-	defer os.RemoveAll(configPath1)
+	// defer os.RemoveAll(configPath1)
 	os.Mkdir(configPath2, 0755)
-	defer os.RemoveAll(configPath2)
+	// defer os.RemoveAll(configPath2)
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	defer cancel1()
 	defer cancel2()
 
-	// go startTealFs(configPath1, diskPaths1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx1)
-	// go startTealFs(configPath2, diskPaths2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx2)
 	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx1)
 	go startTealFs(configPath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx2)
 
@@ -200,7 +196,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	uiContents1, ok := getFile(ctx1, urlFor(uiAddress1, "/"), t)
+	uiContents1, ok := getFile(ctx1, urlFor(uiAddress1, "/connection-status"), t)
 	if !ok {
 		t.Error("error getting ui contents")
 		return
@@ -217,7 +213,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	uiContents2, ok := getFile(ctx2, urlFor(uiAddress2, "/"), t)
+	uiContents2, ok := getFile(ctx2, urlFor(uiAddress2, "/connection-status"), t)
 	if !ok {
 		t.Error("error getting ui contents")
 		return
@@ -374,6 +370,8 @@ func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
 	uiAddress1 := "localhost:8081"
 	nodeAddress1 := "localhost:8082"
 	configPath1 := "tmp1"
+	addDiskToUrl := "http://" + uiAddress1 + "/add-disk"
+	diskPathContents := "diskPath=" + url.QueryEscape(configPath1)
 	os.RemoveAll(configPath1)
 	os.Mkdir(configPath1, 0755)
 	defer os.RemoveAll(configPath1)
@@ -382,7 +380,9 @@ func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
 
 	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 500)
+	submitForm(ctx, t, addDiskToUrl, diskPathContents)
+	time.Sleep(time.Millisecond * 500)
 
 	var wg sync.WaitGroup
 	for i := range parallel {

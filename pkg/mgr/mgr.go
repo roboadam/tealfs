@@ -26,7 +26,6 @@ import (
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
-	"time"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -167,17 +166,19 @@ func (m *Mgr) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m *Mgr) hasDiskId(id model.DiskId) bool {
-	for _, d := range m.DiskIds {
-		if d.Id == id {
-			return true
+func (m *Mgr) loadSettings(ctx context.Context) error {
+	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if len(data) > 0 {
+		err = json.Unmarshal(data, &m.nodesAddressMap)
+		if err != nil {
+			return err
 		}
 	}
-	return false
-}
 
-func (m *Mgr) loadSettings(ctx context.Context) error {
-	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "disks.json"))
+	data, err = m.fileOps.ReadFile(filepath.Join(m.savePath, "disks.json"))
 	if err == nil {
 		err = json.Unmarshal(data, &m.DiskIds)
 		if err != nil {
@@ -204,16 +205,6 @@ func (m *Mgr) loadSettings(ctx context.Context) error {
 		}
 	}
 
-	data, err = m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
-	}
-	if len(data) > 0 {
-		err = json.Unmarshal(data, &m.nodesAddressMap)
-		if err != nil {
-			return err
-		}
-	}
 	err = m.saveSettings()
 	if err != nil {
 		return err
@@ -248,47 +239,27 @@ func (m *Mgr) saveSettings() error {
 
 func (m *Mgr) eventLoop(ctx context.Context) {
 	for {
-		log.Debug("LOOP " + m.NodeId)
-		time.Sleep(time.Millisecond * 500)
 		select {
 		case <-ctx.Done():
 			return
 		case r := <-m.UiMgrConnectTos:
-			log.Debug("ctr1" + m.NodeId)
 			m.handleConnectToReq(r)
-			log.Debug("ctr2" + m.NodeId)
 		case r := <-m.UiMgrDisk:
-			log.Debug("addDisk1" + m.NodeId)
 			m.handleAddDiskReq(r, ctx)
-			log.Debug("addDisk2" + m.NodeId)
 		case r := <-m.ConnsMgrStatuses:
-			log.Debug("connStat1" + m.NodeId)
 			m.handleNetConnectedStatus(r)
-			log.Debug("connStat2" + m.NodeId)
 		case r := <-m.ConnsMgrReceives:
-			log.Debug("rec1" + m.NodeId)
 			m.handleReceives(r, ctx)
-			log.Debug("rec2" + m.NodeId)
 		case r := <-m.DiskMgrReads:
-			log.Debug("readRes1" + m.NodeId)
 			m.handleDiskReadResult(r)
-			log.Debug("readRes2" + m.NodeId)
 		case r := <-m.DiskMgrWrites:
-			log.Debug("writeRes1" + m.NodeId)
 			m.handleDiskWriteResult(r)
-			log.Debug("writeRes2" + m.NodeId)
 		case r := <-m.WebdavMgrGets:
-			log.Debug("gets1" + m.NodeId)
 			m.handleWebdavGets(r)
-			log.Debug("gets2" + m.NodeId)
 		case r := <-m.WebdavMgrPuts:
-			log.Debug("writeReq1" + m.NodeId)
 			m.handleWebdavWriteRequest(r)
-			log.Debug("writeReq2" + m.NodeId)
 		case r := <-m.WebdavMgrBroadcast:
-			log.Debug("broadcast1" + m.NodeId)
 			m.handleWebdavMgrBroadcast(r)
-			log.Debug("broadcast2" + m.NodeId)
 		}
 	}
 }

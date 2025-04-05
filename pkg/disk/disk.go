@@ -21,8 +21,6 @@ import (
 	"path/filepath"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
-
-	"github.com/sirupsen/logrus"
 )
 
 type Path struct {
@@ -46,7 +44,6 @@ func New(
 		outReads:  diskMgrReads,
 		outWrites: diskMgrWrites,
 	}
-	logrus.Info("running disk for node " + string(id) + " path:" + path.raw)
 	go p.consumeChannels(ctx)
 	return p
 }
