@@ -171,7 +171,7 @@ func (c *Conns) consumeData(conn model.ConnId, ctx context.Context) {
 			return
 		default:
 			netConn := c.netConns[conn]
-			bytes, err := tnet.ReadPayload(netConn)
+			bytes, err := tnet.ReadPayload(ctx, netConn)
 			if err != nil {
 				closeErr := netConn.Close()
 				if closeErr != nil {
@@ -184,6 +184,7 @@ func (c *Conns) consumeData(conn model.ConnId, ctx context.Context) {
 					Id:   conn,
 				}
 				chanutil.Send(c.outStatuses, ncs, "conns connection closed sent status")
+				log.Error("EXITING CONSUME DATA")
 				return
 			}
 			payload := model.ToPayload(bytes)

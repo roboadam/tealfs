@@ -16,7 +16,6 @@ package disk_test
 
 import (
 	"bytes"
-	"context"
 	"io/fs"
 	"path/filepath"
 	"tealfs/pkg/disk"
@@ -25,9 +24,8 @@ import (
 )
 
 func TestWriteData(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	f, path, nodeId, mgrDiskWrites, _, diskMgrWrites, _, _ := newDiskService(ctx)
+	f, path, nodeId, mgrDiskWrites, _, diskMgrWrites, _, d := newDiskService()
+	defer d.Stop()
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
@@ -54,13 +52,11 @@ func TestWriteData(t *testing.T) {
 		t.Error("Written path is wrong", err)
 		return
 	}
-	cancel()
 }
 
 func TestReadData(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	f, path, _, _, mgrDiskReads, _, diskMgrReads, _ := newDiskService(ctx)
+	f, path, _, _, mgrDiskReads, _, diskMgrReads, d := newDiskService()
+	defer d.Stop()
 	blockId := model.NewBlockId()
 	caller := model.NewNodeId()
 	data := []byte{0, 1, 2, 3, 4, 5}
@@ -82,13 +78,11 @@ func TestReadData(t *testing.T) {
 		t.Error("Read data is wrong")
 		return
 	}
-	cancel()
 }
 
 func TestReadNewFile(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	f, path, _, _, mgrDiskReads, _, diskMgrReads, _ := newDiskService(ctx)
+	f, path, _, _, mgrDiskReads, _, diskMgrReads, d := newDiskService()
+	defer d.Stop()
 	blockId := model.NewBlockId()
 	caller := model.NewNodeId()
 	data := []byte{0, 1, 2, 3, 4, 5}
@@ -111,10 +105,9 @@ func TestReadNewFile(t *testing.T) {
 		t.Error("Written data is wrong")
 		return
 	}
-	cancel()
 }
 
-func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
+func newDiskService() (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
 	f := disk.MockFileOps{}
 	path := disk.NewPath("/some/fake/path", &f)
 	id := model.NewNodeId()
@@ -122,6 +115,6 @@ func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.No
 	mgrDiskReads := make(chan model.ReadRequest)
 	diskMgrWrites := make(chan model.WriteResult)
 	diskMgrReads := make(chan model.ReadResult)
-	d := disk.New(path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, ctx)
+	d := disk.New(path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads)
 	return &f, path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, d
 }

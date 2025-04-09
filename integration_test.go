@@ -26,6 +26,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 func TestOneNodeCluster(t *testing.T) {
@@ -168,6 +170,7 @@ func TestTwoNodeCluster(t *testing.T) {
 	}
 
 	cancel1()
+	logrus.Error("RESTARTING!!!!")
 	time.Sleep(time.Second)
 	ctx1, cancel1 = context.WithCancel(context.Background())
 	defer cancel1()

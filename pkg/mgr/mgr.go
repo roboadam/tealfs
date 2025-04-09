@@ -63,6 +63,9 @@ type Mgr struct {
 	pendingBlockWrites pendingBlockWrites
 	freeBytes          uint32
 	DiskIds            []model.DiskIdPath
+	disks              []disk.Disk
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 func NewWithChanSize(
@@ -72,8 +75,8 @@ func NewWithChanSize(
 	fileOps disk.FileOps,
 	blockType model.BlockType,
 	freeBytes uint32,
-	ctx context.Context,
 ) *Mgr {
+	ctx, cancel := context.WithCancel(context.Background())
 	nodeId, err := readNodeId(globalPath, fileOps)
 	if err != nil {
 		panic(err)
@@ -108,16 +111,20 @@ func NewWithChanSize(
 		pendingBlockWrites:      newPendingBlockWrites(),
 		freeBytes:               freeBytes,
 		DiskIds:                 []model.DiskIdPath{},
+		disks:                   []disk.Disk{},
+		ctx:                     ctx,
+		cancel:                  cancel,
 	}
 
 	go func() {
-		err = mgr.loadSettings(ctx)
+		err = mgr.loadSettings()
 		if err != nil {
 			panic("Unable to load settings " + err.Error())
 		}
 	}()
 	mgr.MgrDiskWrites = diskWriteChans(mgr.DiskIds)
 	mgr.MgrDiskReads = diskReadChans(mgr.DiskIds)
+	mgr.start()
 
 	return &mgr
 }
@@ -154,8 +161,8 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 	return model.NodeId(data), nil
 }
 
-func (m *Mgr) Start(ctx context.Context) error {
-	go m.eventLoop(ctx)
+func (m *Mgr) start() {
+	go m.eventLoop()
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
 			m.UiMgrConnectTos <- model.UiMgrConnectTo{
@@ -163,10 +170,16 @@ func (m *Mgr) Start(ctx context.Context) error {
 			}
 		}
 	}
-	return nil
 }
 
-func (m *Mgr) loadSettings(ctx context.Context) error {
+func (m *Mgr) Stop() {
+	for _, d := range m.disks {
+		d.Stop()
+	}
+	m.cancel()
+}
+
+func (m *Mgr) loadSettings() error {
 	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
@@ -192,7 +205,7 @@ func (m *Mgr) loadSettings(ctx context.Context) error {
 
 	for _, disk := range m.DiskIds {
 		if m.NodeId == disk.Node {
-			m.handleAddDiskReq(model.NewAddDiskReq(disk.Path, disk.Node, 1), ctx)
+			m.handleAddDiskReq(model.NewAddDiskReq(disk.Path, disk.Node, 1))
 		} else {
 			req := model.UiDiskStatus{
 				Localness:     model.Remote,
@@ -237,19 +250,19 @@ func (m *Mgr) saveSettings() error {
 	return nil
 }
 
-func (m *Mgr) eventLoop(ctx context.Context) {
+func (m *Mgr) eventLoop() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-m.ctx.Done():
 			return
 		case r := <-m.UiMgrConnectTos:
 			m.handleConnectToReq(r)
 		case r := <-m.UiMgrDisk:
-			m.handleAddDiskReq(r, ctx)
+			m.handleAddDiskReq(r)
 		case r := <-m.ConnsMgrStatuses:
 			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
-			m.handleReceives(r, ctx)
+			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
 			m.handleDiskReadResult(r)
 		case r := <-m.DiskMgrWrites:
@@ -272,7 +285,7 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 	)
 }
 
-func (m *Mgr) handleAddDiskReq(i model.AddDiskReq, ctx context.Context) {
+func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
@@ -284,14 +297,14 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq, ctx context.Context) {
 		readChan := m.MgrDiskReads[id]
 
 		p := disk.NewPath(i.Path(), m.fileOps)
-		_ = disk.New(p,
+		d := disk.New(p,
 			model.NewNodeId(),
 			writeChan,
 			readChan,
 			m.DiskMgrWrites,
 			m.DiskMgrReads,
-			ctx,
 		)
+		m.disks = append(m.disks, d)
 
 		m.mirrorDistributer.SetWeight(m.NodeId, id, i.FreeBytes())
 
@@ -341,7 +354,7 @@ func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 	return result
 }
 
-func (m *Mgr) handleReceives(i model.ConnsMgrReceive, ctx context.Context) {
+func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
 		m.connAddress[i.ConnId] = p.Address()
@@ -412,7 +425,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive, ctx context.Context) {
 	case *model.Broadcast:
 		chanutil.Send(m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
 	case *model.AddDiskReq:
-		m.handleAddDiskReq(*p, ctx)
+		m.handleAddDiskReq(*p)
 	default:
 		panic("Received unknown payload")
 	}
