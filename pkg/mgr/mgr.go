@@ -124,7 +124,7 @@ func NewWithChanSize(
 	}()
 	mgr.MgrDiskWrites = diskWriteChans(mgr.DiskIds)
 	mgr.MgrDiskReads = diskReadChans(mgr.DiskIds)
-	mgr.start()
+	go mgr.start()
 
 	return &mgr
 }
@@ -165,9 +165,7 @@ func (m *Mgr) start() {
 	go m.eventLoop()
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
-			m.UiMgrConnectTos <- model.UiMgrConnectTo{
-				Address: address,
-			}
+			chanutil.Send(m.UiMgrConnectTos, model.UiMgrConnectTo{Address: address}, "mgr: init connect to")
 		}
 	}
 }
