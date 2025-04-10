@@ -37,6 +37,7 @@ type Conns struct {
 	provider      ConnectionProvider
 	nodeId        model.NodeId
 	listener      net.Listener
+	ctx           context.Context
 }
 
 func NewConns(
@@ -47,7 +48,8 @@ func NewConns(
 	provider ConnectionProvider,
 	address string,
 	nodeId model.NodeId,
-	ctx context.Context) Conns {
+	ctx context.Context,
+) Conns {
 
 	listener, err := provider.GetListener(address)
 	if err != nil {
@@ -64,18 +66,35 @@ func NewConns(
 		provider:      provider,
 		nodeId:        nodeId,
 		listener:      listener,
+		ctx:           ctx,
 	}
 
-	go c.consumeChannels(ctx)
-	go c.listen(ctx)
+	go c.consumeChannels()
+	go c.listen()
+	go c.stopOnDone()
 
 	return c
 }
 
-func (c *Conns) consumeChannels(ctx context.Context) {
+func (c *Conns) stopOnDone() {
+	<-c.ctx.Done()
+	err := c.listener.Close()
+	if err != nil {
+		log.Warn("error closing listener")
+	}
+	for connId := range c.netConns {
+		conn := c.netConns[connId]
+		err := conn.Close()
+		if err != nil {
+			log.Warn("error closing connection")
+		}
+	}
+}
+
+func (c *Conns) consumeChannels() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-c.ctx.Done():
 			c.listener.Close()
 			return
 		case acceptedConn := <-c.acceptedConns:
@@ -86,7 +105,7 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 				Id:   id,
 			}
 			chanutil.Send(c.outStatuses, status, "conns accepted connection sending success status")
-			go c.consumeData(id, ctx)
+			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
@@ -97,7 +116,7 @@ func (c *Conns) consumeChannels(ctx context.Context) {
 					Id:   id,
 				}
 				chanutil.Send(c.outStatuses, status, "conns connected sending success status")
-				go c.consumeData(id, ctx)
+				go c.consumeData(id)
 			} else {
 				status := model.NetConnectionStatus{
 					Type: model.NotConnected,
@@ -145,10 +164,10 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 	}
 }
 
-func (c *Conns) listen(ctx context.Context) {
+func (c *Conns) listen() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-c.ctx.Done():
 			return
 		default:
 			conn, err := c.listener.Accept()
@@ -164,14 +183,14 @@ type AcceptedConns struct {
 	netConn net.Conn
 }
 
-func (c *Conns) consumeData(conn model.ConnId, ctx context.Context) {
+func (c *Conns) consumeData(conn model.ConnId) {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-c.ctx.Done():
 			return
 		default:
 			netConn := c.netConns[conn]
-			bytes, err := tnet.ReadPayload(ctx, netConn)
+			bytes, err := tnet.ReadPayload(netConn)
 			if err != nil {
 				closeErr := netConn.Close()
 				if closeErr != nil {

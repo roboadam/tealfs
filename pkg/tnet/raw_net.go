@@ -15,18 +15,17 @@
 package tnet
 
 import (
-	"context"
 	"encoding/binary"
 	"net"
 )
 
-func ReadPayload(ctx context.Context, conn net.Conn) ([]byte, error) {
-	rawLen, err := ReadBytes(ctx, conn, 4)
+func ReadPayload(conn net.Conn) ([]byte, error) {
+	rawLen, err := ReadBytes(conn, 4)
 	if err != nil {
 		return nil, err
 	}
 	size := binary.BigEndian.Uint32(rawLen)
-	a, b := ReadBytes(ctx, conn, size)
+	a, b := ReadBytes(conn, size)
 	return a, b
 }
 
@@ -45,12 +44,12 @@ func SendPayload(conn net.Conn, data []byte) error {
 	return nil
 }
 
-func ReadBytes(ctx context.Context, conn net.Conn, length uint32) ([]byte, error) {
+func ReadBytes(conn net.Conn, length uint32) ([]byte, error) {
 	buf := make([]byte, length)
 	offset := uint32(0)
 
 	for offset < length {
-		numBytes, err := readWithContext(ctx, conn, buf[offset:])
+		numBytes, err := conn.Read(buf[offset:])
 		if err != nil {
 			return nil, err
 		}
@@ -70,25 +69,4 @@ func SendBytes(conn net.Conn, data []byte) error {
 		bytesWritten += numBytes
 	}
 	return nil
-}
-
-func readWithContext(ctx context.Context, conn net.Conn, buf []byte) (int, error) {
-	done := make(chan struct{})
-	defer close(done)
-
-	go func() {
-		select {
-		case <-ctx.Done():
-			conn.Close()
-			// conn.SetReadDeadline(time.Now())
-		case <-done:
-		}
-	}()
-
-	n, err := conn.Read(buf)
-	if ctx.Err() != nil {
-		return n, ctx.Err()
-	}
-
-	return n, err
 }
