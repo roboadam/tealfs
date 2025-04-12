@@ -121,8 +121,8 @@ func NewWithChanSize(
 		if err != nil {
 			panic("Unable to load settings " + err.Error())
 		}
-		diskChans[model.WriteRequest](mgr.MgrDiskWrites, mgr.DiskIds)
-		diskChans[model.ReadRequest](mgr.MgrDiskReads, mgr.DiskIds)
+		diskChans(mgr.MgrDiskWrites, mgr.DiskIds)
+		diskChans(mgr.MgrDiskReads, mgr.DiskIds)
 		mgr.start()
 	}()
 
