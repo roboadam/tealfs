@@ -93,6 +93,8 @@ func NewWithChanSize(
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
 		MgrConnsConnectTos:      make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
+		MgrDiskWrites:           make(map[model.DiskId]chan model.WriteRequest),
+		MgrDiskReads:            make(map[model.DiskId]chan model.ReadRequest),
 		MgrUiConnectionStatuses: make(chan model.UiConnectionStatus, chanSize),
 		MgrUiDiskStatuses:       make(chan model.UiDiskStatus, chanSize),
 		MgrWebdavGets:           make(chan model.GetBlockResp, chanSize),
@@ -119,28 +121,18 @@ func NewWithChanSize(
 		if err != nil {
 			panic("Unable to load settings " + err.Error())
 		}
+		diskChans[model.WriteRequest](mgr.MgrDiskWrites, mgr.DiskIds)
+		diskChans[model.ReadRequest](mgr.MgrDiskReads, mgr.DiskIds)
+		mgr.start()
 	}()
-	mgr.MgrDiskWrites = diskWriteChans(mgr.DiskIds)
-	mgr.MgrDiskReads = diskReadChans(mgr.DiskIds)
-	go mgr.start()
 
 	return &mgr
 }
 
-func diskWriteChans(ids []model.DiskIdPath) map[model.DiskId]chan model.WriteRequest {
-	return diskChans[model.WriteRequest](ids)
-}
-
-func diskReadChans(ids []model.DiskIdPath) map[model.DiskId]chan model.ReadRequest {
-	return diskChans[model.ReadRequest](ids)
-}
-
-func diskChans[V any](ids []model.DiskIdPath) map[model.DiskId]chan V {
-	result := make(map[model.DiskId]chan V)
+func diskChans[V any](target map[model.DiskId]chan V, ids []model.DiskIdPath) {
 	for _, id := range ids {
-		result[id.Id] = make(chan V)
+		target[id.Id] = make(chan V)
 	}
-	return result
 }
 
 func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
@@ -279,6 +271,7 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
+		log.Info("Adding disk ", i.Path(), " to "+m.NodeId)
 
 		m.MgrDiskWrites[id] = make(chan model.WriteRequest)
 		m.MgrDiskReads[id] = make(chan model.ReadRequest)
