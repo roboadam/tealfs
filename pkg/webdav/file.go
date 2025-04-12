@@ -15,7 +15,6 @@
 package webdav
 
 import (
-	"context"
 	"errors"
 	"io"
 	"io/fs"
@@ -35,7 +34,6 @@ type File struct {
 	HasData    bool
 	Path       Path
 	FileSystem *FileSystem
-	Ctx        context.Context
 }
 
 func (f *File) ToBytes() []byte {
@@ -82,7 +80,7 @@ type closeResp struct{ err error }
 
 func (f *File) Close() error {
 	req := closeReq{f: f, resp: make(chan closeResp)}
-	chanutil.Send(f.ctx, f.FileSystem.closeReq, req, "close")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.closeReq, req, "close")
 	resp := <-req.resp
 	return resp.err
 }
@@ -110,7 +108,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 		f:    f,
 		resp: make(chan readResp),
 	}
-	chanutil.Send(f.FileSystem.readReq, req, "read")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.readReq, req, "read")
 	resp := <-req.resp
 	return resp.n, resp.err
 }
@@ -158,7 +156,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		f:      f,
 		resp:   make(chan seekResp),
 	}
-	chanutil.Send(f.FileSystem.seekReq, req, "seek")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.seekReq, req, "seek")
 	resp := <-req.resp
 	return resp.pos, resp.err
 }
@@ -199,7 +197,7 @@ func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
 		count: count,
 		resp:  make(chan readdirResp),
 	}
-	chanutil.Send(f.FileSystem.readdirReq, req, "readdir")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.readdirReq, req, "readdir")
 	resp := <-req.resp
 	return resp.infos, resp.err
 }
