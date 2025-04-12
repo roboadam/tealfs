@@ -46,7 +46,7 @@ type DiskAvailableness int
 const (
 	Available DiskAvailableness = iota
 	Unavailable
-	Removed
+	Unknown
 )
 
 type NetConnectionStatus struct {

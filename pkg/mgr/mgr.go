@@ -121,18 +121,10 @@ func NewWithChanSize(
 		if err != nil {
 			panic("Unable to load settings " + err.Error())
 		}
-		diskChans(mgr.MgrDiskWrites, mgr.DiskIds)
-		diskChans(mgr.MgrDiskReads, mgr.DiskIds)
 		mgr.start()
 	}()
 
 	return &mgr
-}
-
-func diskChans[V any](target map[model.DiskId]chan V, ids []model.DiskIdPath) {
-	for _, id := range ids {
-		target[id.Id] = make(chan V)
-	}
 }
 
 func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
@@ -158,6 +150,62 @@ func (m *Mgr) start() {
 			chanutil.Send(m.ctx, m.UiMgrConnectTos, model.UiMgrConnectTo{Address: address}, "mgr: init connect to")
 		}
 	}
+}
+
+/********/
+func (m *Mgr) createDiskChannels(diskId model.DiskId) {
+	if _, ok := m.MgrDiskReads[diskId]; !ok {
+		m.MgrDiskReads = make(map[model.DiskId]chan model.ReadRequest)
+	}
+	m.MgrDiskReads[diskId] = make(chan model.ReadRequest)
+	if _, ok := m.MgrDiskWrites[diskId]; !ok {
+		m.MgrDiskWrites = make(map[model.DiskId]chan model.WriteRequest)
+	}
+	m.MgrDiskWrites[diskId] = make(chan model.WriteRequest)
+}
+
+func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
+	for _, disk := range m.disks {
+		if disk.Id() == id {
+			return false
+		}
+	}
+	p := disk.NewPath(path, m.fileOps)
+	d := disk.New(
+		p,
+		m.NodeId,
+		id,
+		m.MgrDiskWrites[id],
+		m.MgrDiskReads[id],
+		m.DiskMgrWrites,
+		m.DiskMgrReads,
+		m.ctx,
+	)
+	m.disks = append(m.disks, d)
+	return true
+}
+
+func (m *Mgr) markLocalDiskAvailable(id model.DiskId, path string, size int) {
+	m.mirrorDistributer.SetWeight(m.NodeId, id, size)
+	status := model.UiDiskStatus{
+		Localness:     model.Local,
+		Availableness: model.Available,
+		Node:          m.NodeId,
+		Id:            id,
+		Path:          path,
+	}
+	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: local disk available")
+}
+
+func (m *Mgr) markRemoteDiskUnknown(id model.DiskId, node model.NodeId, path string, size int) {
+	status := model.UiDiskStatus{
+		Localness:     model.Remote,
+		Availableness: model.Unknown,
+		Node:          node,
+		Id:            id,
+		Path:          path,
+	}
+	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: remote disk unknown")
 }
 
 func (m *Mgr) loadSettings() error {
@@ -269,46 +317,12 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 
 func (m *Mgr) syncDisksAndIds() {
 	for _, diskIdPath := range m.DiskIds {
-		if _, ok := m.MgrDiskWrites[diskIdPath.Id]; !ok {
-			m.MgrDiskWrites[diskIdPath.Id] = make(chan model.WriteRequest)
-		}
-		if _, ok := m.MgrDiskReads[diskIdPath.Id]; !ok {
-			m.MgrDiskReads[diskIdPath.Id] = make(chan model.ReadRequest)
-		}
-
-		hasDisk := false
-		for _, disk := range m.disks {
-			if disk.Id() == diskIdPath.Id {
-				hasDisk = true
-				break
-			}
-		}
-		if !hasDisk {
-			p := disk.NewPath(diskIdPath.Path, m.fileOps)
-			d := disk.New(
-				p,
-				m.NodeId,
-				diskIdPath.Id,
-				m.MgrDiskWrites[diskIdPath.Id],
-				m.MgrDiskReads[diskIdPath.Id],
-				m.DiskMgrWrites,
-				m.DiskMgrReads,
-				m.ctx,
-			)
-			m.disks = append(m.disks, d)
-
-			//m.mirrorDistributer.SetWeight(m.NodeId, diskIdPath.Id, i.FreeBytes())
-			m.mirrorDistributer.SetWeight(m.NodeId, diskIdPath.Id, 1)
-
-			status := model.UiDiskStatus{
-				Localness:     model.Local,
-				Availableness: model.Available,
-				Node:          m.NodeId,
-				Id:            diskIdPath.Id,
-				Path:          diskIdPath.Path,
-			}
-			chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: synced local disk")
-
+		if diskIdPath.Node == m.NodeId {
+			m.createDiskChannels(diskIdPath.Id)
+			m.createLocalDisk(diskIdPath.Id, diskIdPath.Path)
+			m.markLocalDiskAvailable(diskIdPath.Id, diskIdPath.Path, 1)
+		} else {
+			m.markRemoteDiskUnknown(diskIdPath.Id, diskIdPath.Node, diskIdPath.Path, 1)
 		}
 	}
 }
