@@ -184,10 +184,10 @@ func (m *Mgr) loadSettings() error {
 		return err
 	}
 
+	m.syncDisksAndIds()
+
 	for _, disk := range m.DiskIds {
-		if m.NodeId == disk.Node {
-			m.handleAddDiskReq(model.NewAddDiskReq(disk.Path, disk.Node, 1))
-		} else {
+		if m.NodeId != disk.Node {
 			req := model.UiDiskStatus{
 				Localness:     model.Remote,
 				Availableness: model.Unavailable,
@@ -267,39 +267,57 @@ func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 	)
 }
 
+func (m *Mgr) syncDisksAndIds() {
+	for _, diskIdPath := range m.DiskIds {
+		if _, ok := m.MgrDiskWrites[diskIdPath.Id]; !ok {
+			m.MgrDiskWrites[diskIdPath.Id] = make(chan model.WriteRequest)
+		}
+		if _, ok := m.MgrDiskReads[diskIdPath.Id]; !ok {
+			m.MgrDiskReads[diskIdPath.Id] = make(chan model.ReadRequest)
+		}
+
+		hasDisk := false
+		for _, disk := range m.disks {
+			if disk.Id() == diskIdPath.Id {
+				hasDisk = true
+				break
+			}
+		}
+		if !hasDisk {
+			p := disk.NewPath(diskIdPath.Path, m.fileOps)
+			d := disk.New(
+				p,
+				m.NodeId,
+				diskIdPath.Id,
+				m.MgrDiskWrites[diskIdPath.Id],
+				m.MgrDiskReads[diskIdPath.Id],
+				m.DiskMgrWrites,
+				m.DiskMgrReads,
+				m.ctx,
+			)
+			m.disks = append(m.disks, d)
+
+			//m.mirrorDistributer.SetWeight(m.NodeId, diskIdPath.Id, i.FreeBytes())
+			m.mirrorDistributer.SetWeight(m.NodeId, diskIdPath.Id, 1)
+
+			status := model.UiDiskStatus{
+				Localness:     model.Local,
+				Availableness: model.Available,
+				Node:          m.NodeId,
+				Id:            diskIdPath.Id,
+				Path:          diskIdPath.Path,
+			}
+			chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: synced local disk")
+
+		}
+	}
+}
+
 func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
-		log.Info("Adding disk ", i.Path(), " to "+m.NodeId)
-
-		m.MgrDiskWrites[id] = make(chan model.WriteRequest)
-		m.MgrDiskReads[id] = make(chan model.ReadRequest)
-
-		writeChan := m.MgrDiskWrites[id]
-		readChan := m.MgrDiskReads[id]
-
-		p := disk.NewPath(i.Path(), m.fileOps)
-		d := disk.New(p,
-			model.NewNodeId(),
-			writeChan,
-			readChan,
-			m.DiskMgrWrites,
-			m.DiskMgrReads,
-			m.ctx,
-		)
-		m.disks = append(m.disks, d)
-
-		m.mirrorDistributer.SetWeight(m.NodeId, id, i.FreeBytes())
-
-		status := model.UiDiskStatus{
-			Localness:     model.Local,
-			Availableness: model.Available,
-			Node:          m.NodeId,
-			Id:            id,
-			Path:          i.Path(),
-		}
-		chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: added local disk")
+		m.syncDisksAndIds()
 		err := m.saveSettings()
 		if err != nil {
 			panic("error saving disk settings")

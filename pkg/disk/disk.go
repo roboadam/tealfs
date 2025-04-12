@@ -29,7 +29,9 @@ type Path struct {
 }
 
 func New(
-	path Path, id model.NodeId,
+	path Path,
+	id model.NodeId,
+	diskId model.DiskId,
 	mgrDiskWrites chan model.WriteRequest,
 	mgrDiskReads chan model.ReadRequest,
 	diskMgrWrites chan model.WriteResult,
@@ -52,12 +54,15 @@ func New(
 type Disk struct {
 	path      Path
 	id        model.NodeId
+	diskId    model.DiskId
 	outReads  chan model.ReadResult
 	outWrites chan model.WriteResult
 	inWrites  chan model.WriteRequest
 	inReads   chan model.ReadRequest
 	ctx       context.Context
 }
+
+func (d *Disk) Id() model.DiskId { return d.diskId }
 
 func (d *Disk) consumeChannels() {
 	for {
