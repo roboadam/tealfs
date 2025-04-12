@@ -163,7 +163,7 @@ func (m *Mgr) start() {
 	go m.eventLoop()
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
-			chanutil.Send(m.UiMgrConnectTos, model.UiMgrConnectTo{Address: address}, "mgr: init connect to")
+			chanutil.Send(m.ctx, m.UiMgrConnectTos, model.UiMgrConnectTo{Address: address}, "mgr: init connect to")
 		}
 	}
 }
@@ -203,7 +203,7 @@ func (m *Mgr) loadSettings() error {
 				Id:            disk.Id,
 				Path:          disk.Path,
 			}
-			chanutil.Send(m.MgrUiDiskStatuses, req, "mgr: loadSettings")
+			chanutil.Send(m.ctx, m.MgrUiDiskStatuses, req, "mgr: loadSettings")
 		}
 	}
 
@@ -268,6 +268,7 @@ func (m *Mgr) eventLoop() {
 
 func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
 	chanutil.Send(
+		m.ctx,
 		m.MgrConnsConnectTos,
 		model.MgrConnsConnectTo{Address: string(i.Address)},
 		"mgr: handleConnectToReq",
@@ -305,7 +306,7 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 			Id:            id,
 			Path:          i.Path(),
 		}
-		chanutil.Send(m.MgrUiDiskStatuses, status, "mgr: added local disk")
+		chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: added local disk")
 		err := m.saveSettings()
 		if err != nil {
 			panic("error saving disk settings")
@@ -318,12 +319,12 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 					ConnId:  conn,
 					Payload: &iam,
 				}
-				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
+				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
 			}
 		}
 	} else {
 		if conn, exists := m.nodeConnMap.Get1(i.Node()); exists {
-			chanutil.Send(m.MgrConnsSends, model.MgrConnsSend{ConnId: conn, Payload: &i}, "send add disk to node")
+			chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: conn, Payload: &i}, "send add disk to node")
 		}
 	}
 }
@@ -353,7 +354,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			RemoteAddress: p.Address(),
 			Id:            p.Node(),
 		}
-		chanutil.Send(m.MgrUiConnectionStatuses, status, "mgr: handleReceives: ui status")
+		chanutil.Send(m.ctx, m.MgrUiConnectionStatuses, status, "mgr: handleReceives: ui status")
 		_ = m.addNodeToCluster(*p, i.ConnId)
 		for _, d := range p.Disks() {
 			diskStatus := model.UiDiskStatus{
@@ -363,7 +364,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 				Id:            d.Id,
 				Path:          d.Path,
 			}
-			chanutil.Send(m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")
+			chanutil.Send(m.ctx, m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")
 		}
 		syncNodes := m.syncNodesPayloadToSend()
 		for n := range m.nodesAddressMap {
@@ -373,7 +374,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 					ConnId:  connId,
 					Payload: &syncNodes,
 				}
-				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleReceives: sync nodes")
+				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleReceives: sync nodes")
 			}
 		}
 	case *model.SyncNodes:
@@ -384,7 +385,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		for _, n := range missing.GetValues() {
 			address := p.AddressForNode(n)
 			mct := model.MgrConnsConnectTo{Address: address}
-			chanutil.Send(m.MgrConnsConnectTos, mct, "mgr: handleReceives: connect to")
+			chanutil.Send(m.ctx, m.MgrConnsConnectTos, mct, "mgr: handleReceives: connect to")
 
 		}
 	case *model.WriteRequest:
@@ -392,14 +393,14 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		if ok {
 			ptr := p.Data().Ptr
 			disk := ptr.Disk()
-			chanutil.Send(m.MgrDiskWrites[disk], *p, "mgr: handleReceives: write request")
+			chanutil.Send(m.ctx, m.MgrDiskWrites[disk], *p, "mgr: handleReceives: write request")
 		} else {
 			payload := model.NewWriteResultErr("connection error", caller, p.ReqId())
 			mcs := model.MgrConnsSend{
 				ConnId:  i.ConnId,
 				Payload: &payload,
 			}
-			chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleReceives: write result conn error")
+			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleReceives: write result conn error")
 		}
 
 	case *model.WriteResult:
@@ -408,12 +409,12 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		if len(p.Ptrs()) == 0 {
 			log.Error("No pointers to read from")
 		} else {
-			chanutil.Send(m.MgrDiskReads[p.Ptrs()[0].Disk()], *p, "mgr: handleReceives: read request")
+			chanutil.Send(m.ctx, m.MgrDiskReads[p.Ptrs()[0].Disk()], *p, "mgr: handleReceives: read request")
 		}
 	case *model.ReadResult:
 		m.handleDiskReadResult(*p)
 	case *model.Broadcast:
-		chanutil.Send(m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
+		chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
 	case *model.AddDiskReq:
 		m.handleAddDiskReq(*p)
 	default:
@@ -435,7 +436,7 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 				Id:  r.ReqId(),
 				Err: err,
 			}
-			chanutil.Send(m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
+			chanutil.Send(m.ctx, m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
 		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller())
@@ -444,7 +445,7 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 				ConnId:  c,
 				Payload: &r,
 			}
-			chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleDiskWriteResult: sending to caller")
+			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskWriteResult: sending to caller")
 		} else {
 			panic("not connected")
 		}
@@ -462,12 +463,12 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 					Data: r.Data().Data,
 				},
 			}
-			chanutil.Send(m.MgrWebdavGets, br, "mgr: handleDiskReadResult: to local webdav")
+			chanutil.Send(m.ctx, m.MgrWebdavGets, br, "mgr: handleDiskReadResult: to local webdav")
 		} else {
 			c, ok := m.nodeConnMap.Get1(r.Caller())
 			if ok {
 				mcs := model.MgrConnsSend{ConnId: c, Payload: &r}
-				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleDiskReadResult: to remote webdav")
+				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReadResult: to remote webdav")
 			} else {
 				log.Warn("handleDiskReadResult: not connected")
 			}
@@ -498,13 +499,13 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 			ConnId:  cs.Id,
 			Payload: &iam,
 		}
-		chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleNetConnectedStatus: connected")
+		chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleNetConnectedStatus: connected")
 	case model.NotConnected:
 		address := m.connAddress[cs.Id]
 		delete(m.connAddress, cs.Id)
 		// Todo: need a mechanism to back off
 		ct := model.MgrConnsConnectTo{Address: address}
-		chanutil.Send(m.MgrConnsConnectTos, ct, "mgr: handleNetConnectedStatus: not connected")
+		chanutil.Send(m.ctx, m.MgrConnsConnectTos, ct, "mgr: handleNetConnectedStatus: not connected")
 		// Todo: reflect this in the ui
 	}
 }
@@ -516,7 +517,7 @@ func (m *Mgr) handleWebdavGets(req model.GetBlockReq) {
 			Id:  req.Id(),
 			Err: errors.New("not found"),
 		}
-		chanutil.Send(m.MgrWebdavGets, resp, "mgr: handleWebdavGets: not found")
+		chanutil.Send(m.ctx, m.MgrWebdavGets, resp, "mgr: handleWebdavGets: not found")
 	} else {
 		m.readDiskPtr(ptrs, req.Id(), req.BlockId)
 	}
@@ -530,18 +531,18 @@ func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, reqId model.GetBlockId, bloc
 	disk := ptrs[0].Disk()
 	rr := model.NewReadRequest(m.NodeId, ptrs, blockId, reqId)
 	if m.NodeId == n {
-		chanutil.Send(m.MgrDiskReads[disk], rr, "mgr: readDiskPtr: local")
+		chanutil.Send(m.ctx, m.MgrDiskReads[disk], rr, "mgr: readDiskPtr: local")
 	} else {
 		c, ok := m.nodeConnMap.Get1(n)
 		if ok {
 			mcs := model.MgrConnsSend{ConnId: c, Payload: &rr}
-			chanutil.Send(m.MgrConnsSends, mcs, "mgr: readDiskPtr: remote")
+			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: readDiskPtr: remote")
 		} else {
 			resp := model.GetBlockResp{
 				Id:  reqId,
 				Err: errors.New("not connected"),
 			}
-			chanutil.Send(m.MgrWebdavGets, resp, "mgr: readDiskPtr: not connected")
+			chanutil.Send(m.ctx, m.MgrWebdavGets, resp, "mgr: readDiskPtr: not connected")
 		}
 	}
 }
@@ -559,7 +560,7 @@ func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
 func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
 	for node := range m.nodesAddressMap {
 		if connId, exists := m.nodeConnMap.Get1(node); exists {
-			chanutil.Send(m.MgrConnsSends, model.MgrConnsSend{ConnId: connId, Payload: &b}, "Broadcasting")
+			chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: connId, Payload: &b}, "Broadcasting")
 		} else {
 			log.Warn("Unable to broadcast to disconnected node")
 		}
@@ -576,16 +577,16 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 		}
 		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
 		if ptr.NodeId() == m.NodeId {
-			chanutil.Send(m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
+			chanutil.Send(m.ctx, m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId())
 			if ok {
 				mcs := model.MgrConnsSend{ConnId: c, Payload: &writeRequest}
-				chanutil.Send(m.MgrConnsSends, mcs, "mgr: handleMirroredWriteRequest: remote")
+				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleMirroredWriteRequest: remote")
 			} else {
 				m.pendingBlockWrites.cancel(b.Id())
 				bir := model.PutBlockResp{Id: b.Id(), Err: errors.New("not connected")}
-				chanutil.Send(m.MgrWebdavPuts, bir, "mgr: handleMirroredWriteRequest: not connected")
+				chanutil.Send(m.ctx, m.MgrWebdavPuts, bir, "mgr: handleMirroredWriteRequest: not connected")
 				return
 			}
 		}

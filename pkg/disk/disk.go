@@ -68,23 +68,23 @@ func (d *Disk) consumeChannels() {
 			err := d.path.Save(s.Data())
 			if err == nil {
 				wr := model.NewWriteResultOk(s.Data().Ptr, s.Caller(), s.ReqId())
-				chanutil.Send(d.outWrites, wr, "disk: save success")
+				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save success")
 			} else {
 				wr := model.NewWriteResultErr(err.Error(), s.Caller(), s.ReqId())
-				chanutil.Send(d.outWrites, wr, "disk: save failure")
+				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save failure")
 			}
 		case r := <-d.inReads:
 			if len(r.Ptrs()) == 0 {
 				rr := model.NewReadResultErr("no pointers in read request", r.Caller(), r.GetBlockId(), r.BlockId())
-				chanutil.Send(d.outReads, rr, "disk: no pointers in read request")
+				chanutil.Send(d.ctx, d.outReads, rr, "disk: no pointers in read request")
 			} else {
 				data, err := d.path.Read(r.Ptrs()[0])
 				if err == nil {
 					rr := model.NewReadResultOk(r.Caller(), r.Ptrs()[1:], data, r.GetBlockId(), r.BlockId())
-					chanutil.Send(d.outReads, rr, "disk: read success")
+					chanutil.Send(d.ctx, d.outReads, rr, "disk: read success")
 				} else {
 					rr := model.NewReadResultErr(err.Error(), r.Caller(), r.GetBlockId(), r.BlockId())
-					chanutil.Send(d.outReads, rr, "disk: read failure")
+					chanutil.Send(d.ctx, d.outReads, rr, "disk: read failure")
 				}
 			}
 		}

@@ -15,6 +15,7 @@
 package webdav
 
 import (
+	"context"
 	"errors"
 	"io"
 	"io/fs"
@@ -34,6 +35,7 @@ type File struct {
 	HasData    bool
 	Path       Path
 	FileSystem *FileSystem
+	Ctx        context.Context
 }
 
 func (f *File) ToBytes() []byte {
@@ -80,7 +82,7 @@ type closeResp struct{ err error }
 
 func (f *File) Close() error {
 	req := closeReq{f: f, resp: make(chan closeResp)}
-	chanutil.Send(f.FileSystem.closeReq, req, "close")
+	chanutil.Send(f.ctx, f.FileSystem.closeReq, req, "close")
 	resp := <-req.resp
 	return resp.err
 }

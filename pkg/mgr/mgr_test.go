@@ -248,7 +248,7 @@ func TestWebdavPut(t *testing.T) {
 					}
 
 					result := model.NewWriteResultOk(request.Data().Ptr, request.Caller(), request.ReqId())
-					chanutil.Send(m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
+					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
 				}
 
 			}
