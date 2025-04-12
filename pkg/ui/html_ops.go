@@ -15,7 +15,6 @@
 package ui
 
 import (
-	"context"
 	"net/http"
 )
 
@@ -35,7 +34,7 @@ func NewHttpHtmlOps() *HttpHtmlOps {
 }
 
 func (h *HttpHtmlOps) Shutdown() error {
-	return h.srv.Shutdown(context.Background())
+	return h.srv.Close()
 }
 
 func (h *HttpHtmlOps) ListenAndServe(addr string) error {

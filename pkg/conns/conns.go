@@ -123,7 +123,9 @@ func (c *Conns) consumeChannels() {
 					Msg:  "Failure connecting",
 					Id:   id,
 				}
-				chanutil.Send(c.outStatuses, status, "conns failed to connect sending failure status")
+				if c.ctx.Err() == nil {
+					chanutil.Send(c.outStatuses, status, "conns failed to connect sending failure status")
+				}
 			}
 		case sendReq := <-c.inSends:
 			_, ok := c.netConns[sendReq.ConnId]
@@ -202,7 +204,9 @@ func (c *Conns) consumeData(conn model.ConnId) {
 					Msg:  "Connection closed",
 					Id:   conn,
 				}
-				chanutil.Send(c.outStatuses, ncs, "conns connection closed sent status")
+				if c.ctx.Err() == nil {
+					chanutil.Send(c.outStatuses, ncs, "conns connection closed sent status")
+				}
 				log.Error("EXITING CONSUME DATA")
 				return
 			}

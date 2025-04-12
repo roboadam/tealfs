@@ -38,6 +38,7 @@ type Webdav struct {
 	lockSystem    webdav.LockSystem
 	bindAddress   string
 	server        *http.Server
+	ctx           context.Context
 }
 
 func New(
@@ -65,13 +66,14 @@ func New(
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
 		lockSystem:    webdav.NewMemLS(),
 		bindAddress:   bindAddress,
+		ctx:           ctx,
 	}
-	w.start(ctx)
+	w.start()
 	return w
 }
 
-func (w *Webdav) start(ctx context.Context) {
-	go w.eventLoop(ctx)
+func (w *Webdav) start() {
+	go w.eventLoop()
 
 	handler := &webdav.Handler{
 		Prefix:     "/",
@@ -88,11 +90,11 @@ func (w *Webdav) start(ctx context.Context) {
 	go w.server.ListenAndServe()
 }
 
-func (w *Webdav) eventLoop(ctx context.Context) {
+func (w *Webdav) eventLoop() {
 	for {
 		select {
-		case <-ctx.Done():
-			w.server.Shutdown(context.Background())
+		case <-w.ctx.Done():
+			w.server.Close()
 			return
 		case r := <-w.mgrWebdavGets:
 			ch, ok := w.pendingReads[r.Id]
