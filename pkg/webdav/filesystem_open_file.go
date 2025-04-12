@@ -48,7 +48,7 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		perm:     perm,
 		respChan: respChan,
 	}
-	chanutil.Send(f.openFileReq, req, "filesystem_open_file: openFile")
+	chanutil.Send(f.Ctx, f.openFileReq, req, "filesystem_open_file: openFile")
 	resp := <-respChan
 	return resp.file, resp.err
 }

@@ -230,7 +230,7 @@ func (f *File) Stat() (fs.FileInfo, error) {
 		f:    f,
 		resp: make(chan statResp),
 	}
-	chanutil.Send(f.FileSystem.statReq, req, "stat")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.statReq, req, "stat")
 	resp := <-req.resp
 	return resp.info, resp.err
 }
@@ -254,7 +254,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 		f:    f,
 		resp: make(chan writeResp),
 	}
-	chanutil.Send(f.FileSystem.writeReq, req, "write")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.writeReq, req, "write")
 	resp := <-req.resp
 	return resp.n, resp.err
 }
@@ -318,7 +318,7 @@ func (f *File) Name() string {
 		f:    f,
 		resp: make(chan nameResp),
 	}
-	chanutil.Send(f.FileSystem.nameReq, req, "name")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.nameReq, req, "name")
 	resp := <-req.resp
 	return resp.name
 }
@@ -346,7 +346,7 @@ func (f *File) Size() int64 {
 		f:    f,
 		resp: make(chan sizeResp),
 	}
-	chanutil.Send(f.FileSystem.sizeReq, req, "size")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.sizeReq, req, "size")
 	resp := <-req.resp
 	return resp.size
 }
@@ -368,7 +368,7 @@ func (f *File) Mode() fs.FileMode {
 		f:    f,
 		resp: make(chan modeResp),
 	}
-	chanutil.Send(f.FileSystem.modeReq, req, "mode")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.modeReq, req, "mode")
 	resp := <-req.resp
 	return resp.mode
 }
@@ -390,7 +390,7 @@ func (f *File) ModTime() time.Time {
 		f:    f,
 		resp: make(chan modtimeResp),
 	}
-	chanutil.Send(f.FileSystem.modtimeReq, req, "modtime")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.modtimeReq, req, "modtime")
 	resp := <-req.resp
 	return resp.time
 }
@@ -412,7 +412,7 @@ func (f *File) IsDir() bool {
 		f:    f,
 		resp: make(chan isdirResp),
 	}
-	chanutil.Send(f.FileSystem.isdirReq, req, "isdir")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.isdirReq, req, "isdir")
 	resp := <-req.resp
 	return resp.is
 }
@@ -434,7 +434,7 @@ func (f *File) Sys() any {
 		f:    f,
 		resp: make(chan sysResp),
 	}
-	chanutil.Send(f.FileSystem.sysReq, req, "sys")
+	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.sysReq, req, "sys")
 	resp := <-req.resp
 	return resp.whatever
 }
