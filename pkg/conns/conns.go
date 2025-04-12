@@ -189,8 +189,10 @@ func (c *Conns) consumeData(conn model.ConnId) {
 	for {
 		select {
 		case <-c.ctx.Done():
+			log.Error("CONSUME DATA 1")
 			return
 		default:
+			log.Error("CONSUME DATA 2")
 			netConn := c.netConns[conn]
 			bytes, err := tnet.ReadPayload(netConn)
 			if err != nil {
@@ -207,7 +209,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				if c.ctx.Err() == nil {
 					chanutil.Send(c.outStatuses, ncs, "conns connection closed sent status")
 				}
-				log.Error("EXITING CONSUME DATA")
+				log.Error("CONSUME DATA 3")
 				return
 			}
 			payload := model.ToPayload(bytes)
@@ -216,6 +218,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				Payload: payload,
 			}
 			chanutil.Send(c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
+			log.Error("CONSUME DATA 4")
 		}
 	}
 }
