@@ -34,8 +34,8 @@ func New(
 	mgrDiskReads chan model.ReadRequest,
 	diskMgrWrites chan model.WriteResult,
 	diskMgrReads chan model.ReadResult,
+	ctx context.Context,
 ) Disk {
-	ctx, cancel := context.WithCancel(context.Background())
 	p := Disk{
 		path:      path,
 		id:        id,
@@ -44,7 +44,6 @@ func New(
 		outReads:  diskMgrReads,
 		outWrites: diskMgrWrites,
 		ctx:       ctx,
-		cancel:    cancel,
 	}
 	go p.consumeChannels()
 	return p
@@ -58,11 +57,6 @@ type Disk struct {
 	inWrites  chan model.WriteRequest
 	inReads   chan model.ReadRequest
 	ctx       context.Context
-	cancel    context.CancelFunc
-}
-
-func (d *Disk) Stop() {
-	d.cancel()
 }
 
 func (d *Disk) consumeChannels() {

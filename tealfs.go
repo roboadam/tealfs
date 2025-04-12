@@ -63,7 +63,7 @@ func main() {
 func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
 	log.SetLevel(log.DebugLevel)
 	chansize := 0
-	m := mgr.NewWithChanSize(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes)
+	m := mgr.NewWithChanSize(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, ctx)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
@@ -99,6 +99,5 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		chansize,
 	)
 	<-ctx.Done()
-	m.Stop()
 	return nil
 }

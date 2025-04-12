@@ -65,7 +65,6 @@ type Mgr struct {
 	DiskIds            []model.DiskIdPath
 	disks              []disk.Disk
 	ctx                context.Context
-	cancel             context.CancelFunc
 }
 
 func NewWithChanSize(
@@ -75,8 +74,8 @@ func NewWithChanSize(
 	fileOps disk.FileOps,
 	blockType model.BlockType,
 	freeBytes uint32,
+	ctx context.Context,
 ) *Mgr {
-	ctx, cancel := context.WithCancel(context.Background())
 	nodeId, err := readNodeId(globalPath, fileOps)
 	if err != nil {
 		panic(err)
@@ -113,7 +112,6 @@ func NewWithChanSize(
 		DiskIds:                 []model.DiskIdPath{},
 		disks:                   []disk.Disk{},
 		ctx:                     ctx,
-		cancel:                  cancel,
 	}
 
 	go func() {
@@ -168,13 +166,6 @@ func (m *Mgr) start() {
 			chanutil.Send(m.UiMgrConnectTos, model.UiMgrConnectTo{Address: address}, "mgr: init connect to")
 		}
 	}
-}
-
-func (m *Mgr) Stop() {
-	for _, d := range m.disks {
-		d.Stop()
-	}
-	m.cancel()
 }
 
 func (m *Mgr) loadSettings() error {
@@ -301,6 +292,7 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 			readChan,
 			m.DiskMgrWrites,
 			m.DiskMgrReads,
+			m.ctx,
 		)
 		m.disks = append(m.disks, d)
 
