@@ -88,8 +88,8 @@ func TestTwoNodeCluster(t *testing.T) {
 	connectToUrl := "http://" + uiAddress1 + "/connect-to"
 	addDiskToUrl1 := "http://" + uiAddress1 + "/add-disk"
 	addDiskToUrl2 := "http://" + uiAddress2 + "/add-disk"
-	fileContents1 := "test content 1"
-	fileContents2 := "test content 2"
+	fileContents1 := "test two node cluster 1"
+	fileContents2 := "test two node cluster 2"
 	connectToContents := "hostAndPort=" + url.QueryEscape(nodeAddress2)
 	diskPathContents1 := "diskPath=" + url.QueryEscape(configPath1)
 	diskPathContents2 := "diskPath=" + url.QueryEscape(configPath2)

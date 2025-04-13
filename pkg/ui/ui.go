@@ -33,6 +33,7 @@ type Ui struct {
 	sMux         sync.Mutex
 	ops          HtmlOps
 	nodeId       model.NodeId
+	ctx          context.Context
 }
 
 func NewUi(
@@ -56,21 +57,22 @@ func NewUi(
 		diskStatuses: diskStatuses,
 		ops:          ops,
 		nodeId:       nodeId,
+		ctx:          ctx,
 	}
 	ui.handleRoot()
-	ui.start(bindAddr, ctx)
+	ui.start(bindAddr)
 	return &ui
 }
 
-func (ui *Ui) start(bindAddr string, ctx context.Context) {
-	go ui.handleMessages(ctx)
+func (ui *Ui) start(bindAddr string) {
+	go ui.handleMessages()
 	go ui.ops.ListenAndServe(bindAddr)
 }
 
-func (ui *Ui) handleMessages(ctx context.Context) {
+func (ui *Ui) handleMessages() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-ui.ctx.Done():
 			ui.ops.Shutdown()
 			return
 		case status := <-ui.connToResp:
@@ -121,7 +123,7 @@ func (ui *Ui) handleRoot() {
 		} else if r.Method == http.MethodPut {
 			diskPath := r.FormValue("diskPath")
 			req := model.NewAddDiskReq(diskPath, ui.nodeId, 1)
-			chanutil.Send(ui.addDiskReq, req, "ui: add disk req")
+			chanutil.Send(ui.ctx, ui.addDiskReq, req, "ui: add disk req")
 			ui.connectionStatus(w, tmpl)
 		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)

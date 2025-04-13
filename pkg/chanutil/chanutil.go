@@ -8,12 +8,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Send[T any](channel chan T, value T, message string) {
-	ctx, cancel := context.WithCancel(context.Background())
+func Send[T any](ctx context.Context, channel chan T, value T, message string) {
+	checkDoneCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go checkDone(ctx, message)
-	channel <- value
-	cancel()
+	go checkDone(checkDoneCtx, message)
+	select {
+	case <-ctx.Done():
+		return
+	case channel <- value:
+	}
 }
 
 func checkDone(ctx context.Context, message string) {
@@ -23,11 +26,11 @@ func checkDone(ctx context.Context, message string) {
 		select {
 		case <-ctx.Done():
 			if timedOut {
-				log.Error("SND:SUC:", uuid, ":", message)
+				log.Info("SND:SUC:", uuid, ":", message)
 			}
 			return
 		case <-time.After(time.Second * 5):
-			log.Error("SND:TIM:", uuid, ":", message)
+			log.Warn("SND:TIM:", uuid, ":", message)
 			timedOut = true
 		}
 	}

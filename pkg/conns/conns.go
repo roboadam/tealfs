@@ -104,7 +104,7 @@ func (c *Conns) consumeChannels() {
 				Msg:  "Success",
 				Id:   id,
 			}
-			chanutil.Send(c.outStatuses, status, "conns accepted connection sending success status")
+			chanutil.Send(c.ctx, c.outStatuses, status, "conns accepted connection sending success status")
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			// Todo: this needs to be non blocking
@@ -115,7 +115,7 @@ func (c *Conns) consumeChannels() {
 					Msg:  "Success",
 					Id:   id,
 				}
-				chanutil.Send(c.outStatuses, status, "conns connected sending success status")
+				chanutil.Send(c.ctx, c.outStatuses, status, "conns connected sending success status")
 				go c.consumeData(id)
 			} else {
 				status := model.NetConnectionStatus{
@@ -123,9 +123,7 @@ func (c *Conns) consumeChannels() {
 					Msg:  "Failure connecting",
 					Id:   id,
 				}
-				if c.ctx.Err() == nil {
-					chanutil.Send(c.outStatuses, status, "conns failed to connect sending failure status")
-				}
+				chanutil.Send(c.ctx, c.outStatuses, status, "conns failed to connect sending failure status")
 			}
 		case sendReq := <-c.inSends:
 			_, ok := c.netConns[sendReq.ConnId]
@@ -154,14 +152,14 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 				ConnId:  sendReq.ConnId,
 				Payload: &rr,
 			}
-			chanutil.Send(c.outReceives, cmr, "conns failed to send read request, sending new read request")
+			chanutil.Send(c.ctx, c.outReceives, cmr, "conns failed to send read request, sending new read request")
 		} else {
 			result := model.NewReadResultErr("no pointers in read request", p.Caller(), p.GetBlockId(), p.BlockId())
 			cmr := model.ConnsMgrReceive{
 				ConnId:  sendReq.ConnId,
 				Payload: &result,
 			}
-			chanutil.Send(c.outReceives, cmr, "conns: failed to send read request sent failure status")
+			chanutil.Send(c.ctx, c.outReceives, cmr, "conns: failed to send read request sent failure status")
 		}
 	}
 }
@@ -175,7 +173,7 @@ func (c *Conns) listen() {
 			conn, err := c.listener.Accept()
 			if err == nil {
 				incomingConnReq := AcceptedConns{netConn: conn}
-				chanutil.Send(c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
+				chanutil.Send(c.ctx, c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
 			}
 		}
 	}
@@ -206,10 +204,8 @@ func (c *Conns) consumeData(conn model.ConnId) {
 					Msg:  "Connection closed",
 					Id:   conn,
 				}
-				if c.ctx.Err() == nil {
-					chanutil.Send(c.outStatuses, ncs, "conns connection closed sent status")
-				}
-				log.Error("CONSUME DATA 3")
+				chanutil.Send(c.ctx, c.outStatuses, ncs, "conns connection closed sent status")
+				log.Error("EXITING CONSUME DATA")
 				return
 			}
 			payload := model.ToPayload(bytes)
@@ -217,8 +213,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				ConnId:  conn,
 				Payload: payload,
 			}
-			chanutil.Send(c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
-			log.Error("CONSUME DATA 4")
+			chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 		}
 	}
 }
