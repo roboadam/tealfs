@@ -21,8 +21,6 @@ import (
 	"path/filepath"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
-
-	"github.com/sirupsen/logrus"
 )
 
 type Path struct {
@@ -40,7 +38,6 @@ func New(
 	diskMgrReads chan model.ReadResult,
 	ctx context.Context,
 ) Disk {
-	logrus.Info("CREATING DISK " + diskId)
 	p := Disk{
 		path:      path,
 		id:        id,

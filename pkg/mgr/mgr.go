@@ -152,7 +152,6 @@ func (m *Mgr) start() {
 	}
 }
 
-/********/
 func (m *Mgr) createDiskChannels(diskId model.DiskId) {
 	if _, ok := m.MgrDiskReads[diskId]; !ok {
 		m.MgrDiskReads[diskId] = make(chan model.ReadRequest)
@@ -232,24 +231,6 @@ func (m *Mgr) loadSettings() error {
 
 	m.syncDisksAndIds()
 
-	for _, disk := range m.DiskIds {
-		if m.NodeId != disk.Node {
-			req := model.UiDiskStatus{
-				Localness:     model.Remote,
-				Availableness: model.Unavailable,
-				Node:          disk.Node,
-				Id:            disk.Id,
-				Path:          disk.Path,
-			}
-			chanutil.Send(m.ctx, m.MgrUiDiskStatuses, req, "mgr: loadSettings")
-		}
-	}
-
-	err = m.saveSettings()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -328,7 +309,6 @@ func (m *Mgr) syncDisksAndIds() {
 func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
-		log.Info(id)
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
 		m.syncDisksAndIds()
 		err := m.saveSettings()
@@ -601,9 +581,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 		}
 		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
 		if ptr.NodeId() == m.NodeId {
-			log.Info("1 sending to ", ptr.Disk())
 			chanutil.Send(m.ctx, m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
-			log.Info("2 sending to ", ptr.Disk())
 		} else {
 			c, ok := m.nodeConnMap.Get1(ptr.NodeId())
 			if ok {

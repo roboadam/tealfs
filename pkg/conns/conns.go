@@ -187,10 +187,8 @@ func (c *Conns) consumeData(conn model.ConnId) {
 	for {
 		select {
 		case <-c.ctx.Done():
-			log.Error("CONSUME DATA 1")
 			return
 		default:
-			log.Error("CONSUME DATA 2")
 			netConn := c.netConns[conn]
 			bytes, err := tnet.ReadPayload(netConn)
 			if err != nil {
@@ -205,7 +203,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 					Id:   conn,
 				}
 				chanutil.Send(c.ctx, c.outStatuses, ncs, "conns connection closed sent status")
-				log.Error("EXITING CONSUME DATA")
 				return
 			}
 			payload := model.ToPayload(bytes)
