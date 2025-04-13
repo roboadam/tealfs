@@ -155,13 +155,11 @@ func (m *Mgr) start() {
 /********/
 func (m *Mgr) createDiskChannels(diskId model.DiskId) {
 	if _, ok := m.MgrDiskReads[diskId]; !ok {
-		m.MgrDiskReads = make(map[model.DiskId]chan model.ReadRequest)
+		m.MgrDiskReads[diskId] = make(chan model.ReadRequest)
 	}
-	m.MgrDiskReads[diskId] = make(chan model.ReadRequest)
 	if _, ok := m.MgrDiskWrites[diskId]; !ok {
-		m.MgrDiskWrites = make(map[model.DiskId]chan model.WriteRequest)
+		m.MgrDiskWrites[diskId] = make(chan model.WriteRequest)
 	}
-	m.MgrDiskWrites[diskId] = make(chan model.WriteRequest)
 }
 
 func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
@@ -330,6 +328,7 @@ func (m *Mgr) syncDisksAndIds() {
 func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
+		log.Info(id)
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
 		m.syncDisksAndIds()
 		err := m.saveSettings()
