@@ -84,6 +84,7 @@ func (c *Conns) stopOnDone() {
 	}
 	for connId := range c.netConns {
 		conn := c.netConns[connId]
+		log.Info("Closing 2 connection for " + c.nodeId)
 		err := conn.Close()
 		if err != nil {
 			log.Warn("error closing connection")
@@ -192,6 +193,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			netConn := c.netConns[conn]
 			bytes, err := tnet.ReadPayload(netConn)
 			if err != nil {
+				log.Info("Closing 1 connection for " + c.nodeId)
 				closeErr := netConn.Close()
 				if closeErr != nil {
 					log.Warn("Error closing connection", closeErr)
