@@ -38,6 +38,7 @@ type Webdav struct {
 	lockSystem    webdav.LockSystem
 	bindAddress   string
 	server        *http.Server
+	ctx           context.Context
 }
 
 func New(
@@ -65,13 +66,14 @@ func New(
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
 		lockSystem:    webdav.NewMemLS(),
 		bindAddress:   bindAddress,
+		ctx:           ctx,
 	}
-	w.start(ctx)
+	w.start()
 	return w
 }
 
-func (w *Webdav) start(ctx context.Context) {
-	go w.eventLoop(ctx)
+func (w *Webdav) start() {
+	go w.eventLoop()
 
 	handler := &webdav.Handler{
 		Prefix:     "/",
@@ -88,31 +90,31 @@ func (w *Webdav) start(ctx context.Context) {
 	go w.server.ListenAndServe()
 }
 
-func (w *Webdav) eventLoop(ctx context.Context) {
+func (w *Webdav) eventLoop() {
 	for {
 		select {
-		case <-ctx.Done():
-			w.server.Shutdown(context.Background())
+		case <-w.ctx.Done():
+			w.server.Close()
 			return
 		case r := <-w.mgrWebdavGets:
 			ch, ok := w.pendingReads[r.Id]
 			if ok {
-				chanutil.Send(ch, r, "webdav: response for pending read to fs")
+				chanutil.Send(w.ctx, ch, r, "webdav: response for pending read to fs")
 				delete(w.pendingReads, r.Id)
 			}
 		case r := <-w.mgrWebdavPuts:
 			ch, ok := w.pendingPuts[r.Id]
 			if ok {
-				chanutil.Send(ch, r, "webdav: response for pending write to fs")
+				chanutil.Send(w.ctx, ch, r, "webdav: response for pending write to fs")
 				delete(w.pendingPuts, r.Id)
 			} else {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
 		case r := <-w.fileSystem.ReadReqResp:
-			chanutil.Send(w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id()))
+			chanutil.Send(w.ctx, w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id()))
 			w.pendingReads[r.Req.Id()] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
-			chanutil.Send(w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
+			chanutil.Send(w.ctx, w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
 			w.pendingPuts[r.Req.Id()] = r.Resp
 		}
 	}

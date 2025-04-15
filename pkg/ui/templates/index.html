@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>TealFS</title>
+	<link rel="stylesheet" href="https://unpkg.com/mvp.css">
+	<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+
+<body>
+	<main>
+		<h1>TealFS</h1>
+		<p>Input the host and port of a node to add</p>
+		<div hx-get="/connect-to" hx-trigger="load" id="connect-to"></div>
+		<div hx-get="/connection-status" hx-trigger="load, every 2s" id="status-target"></div>
+		<div hx-get="/add-disk" hx-trigger="load" id="connect-to"></div>
+		<div hx-get="/disk-status" hx-trigger="load, every 2s" id="status-target"></div>
+	</main>
+</body>
+
+</html>

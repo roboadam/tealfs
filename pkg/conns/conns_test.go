@@ -82,7 +82,7 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 		model.NewDiskPointer("nodeId2", "disk2", "filename2"),
 	}
 	blockId := model.BlockId("blockId1")
-	reqId := model.GetBlockId("reqid")
+	reqId := model.GetBlockId("reqId")
 	request := model.NewReadRequest(caller, ptrs, blockId, reqId)
 
 	inSend <- model.MgrConnsSend{
@@ -184,7 +184,7 @@ func TestGetData(t *testing.T) {
 	defer cancel()
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest(ctx)
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
-	disks := []model.DiskId{"disk1"}
+	disks := []model.DiskIdPath{{Id: "disk1", Path: "disk1path", Node: "node1"}}
 	iam := model.NewIam("nodeId", disks, "localAddress:123", 1)
 	payload := &iam
 	dataReceived := payload.ToBytes()

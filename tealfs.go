@@ -16,10 +16,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strconv"
-	"strings"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/mgr"
@@ -31,27 +33,37 @@ import (
 )
 
 func main() {
-	log.SetLevel(log.TraceLevel)
-	if len(os.Args) < 7 {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<config path> <disk paths> <webdav address> <ui address> <node address> <free bytes>")
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		fmt.Println("Error getting user config directory:", err)
+		return
+	}
+	configDir = filepath.Join(configDir, "tealfs")
+	if err = os.Mkdir(configDir, 0700); err != nil && !errors.Is(err, fs.ErrExist) {
+		fmt.Printf("unable to create config directory: {%s}. error: %s\n", configDir, err)
 		os.Exit(1)
 	}
 
-	val, err := strconv.ParseUint(os.Args[6], 10, 32)
+	if len(os.Args) < 5 {
+		fmt.Fprintln(os.Stderr, os.Args[0], "<webdav address> <ui address> <node address> <free bytes>")
+		os.Exit(1)
+	}
+
+	val, err := strconv.ParseUint(os.Args[4], 10, 32)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<config path> <disk paths> <webdav address> <ui address> <node address> <free bytes>")
+		fmt.Fprintln(os.Stderr, os.Args[0], "<webdav address> <ui address> <node address> <free bytes>")
 		os.Exit(1)
 	}
 
 	freeBytes := uint32(val)
-	disks := strings.Split(os.Args[2], ",")
 
-	_ = startTealFs(os.Args[1], disks, os.Args[3], os.Args[4], os.Args[5], freeBytes, context.Background())
+	_ = startTealFs(configDir, os.Args[1], os.Args[2], os.Args[3], freeBytes, context.Background())
 }
 
-func startTealFs(globalPath string, disks []string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
+func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
+	log.SetLevel(log.DebugLevel)
 	chansize := 0
-	m := mgr.NewWithChanSize(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, disks)
+	m := mgr.NewWithChanSize(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, ctx)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
@@ -62,20 +74,16 @@ func startTealFs(globalPath string, disks []string, webdavAddress string, uiAddr
 		m.NodeId,
 		ctx,
 	)
-	for _, diskId := range m.DiskIds {
-		writeChan := m.MgrDiskWrites[diskId]
-		readChan := m.MgrDiskReads[diskId]
-		p := disk.NewPath(m.Disks()[diskId], &disk.DiskFileOps{})
-		_ = disk.New(p,
-			model.NewNodeId(),
-			writeChan,
-			readChan,
-			m.DiskMgrWrites,
-			m.DiskMgrReads,
-			ctx,
-		)
-	}
-	_ = ui.NewUi(m.UiMgrConnectTos, m.MgrUiStatuses, &ui.HttpHtmlOps{}, uiAddress, ctx)
+	_ = ui.NewUi(
+		m.UiMgrConnectTos,
+		m.MgrUiConnectionStatuses,
+		m.UiMgrDisk,
+		m.MgrUiDiskStatuses,
+		&ui.HttpHtmlOps{},
+		m.NodeId,
+		uiAddress,
+		ctx,
+	)
 	_ = webdav.New(
 		m.NodeId,
 		m.WebdavMgrGets,
@@ -90,10 +98,6 @@ func startTealFs(globalPath string, disks []string, webdavAddress string, uiAddr
 		globalPath,
 		chansize,
 	)
-	err := m.Start(ctx)
-	if err != nil {
-		return err
-	}
 	<-ctx.Done()
 	return nil
 }

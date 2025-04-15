@@ -23,6 +23,7 @@ const (
 	ReadRequestType  = uint8(5)
 	ReadResultType   = uint8(6)
 	BroadcastType    = uint8(7)
+	AddDiskRequest   = uint8(8)
 )
 
 type Payload interface {
@@ -46,6 +47,8 @@ func ToPayload(data []byte) Payload {
 		return ToReadResult(payloadData(data))
 	case BroadcastType:
 		return ToBroadcast(payloadData(data))
+	case AddDiskRequest:
+		return ToAddDiskReq(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}

@@ -16,48 +16,69 @@ package ui
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"strings"
 	"sync"
+	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 )
 
 type Ui struct {
-	connToReq  chan model.UiMgrConnectTo
-	connToResp chan model.UiConnectionStatus
-	statuses   map[model.NodeId]model.UiConnectionStatus
-	sMux       sync.Mutex
-	ops        HtmlOps
+	connToReq   chan model.UiMgrConnectTo
+	connToResp  chan model.UiConnectionStatus
+	addDiskReq  chan model.AddDiskReq
+	addDiskResp chan model.UiDiskStatus
+
+	statuses     map[model.NodeId]model.UiConnectionStatus
+	diskStatuses map[model.DiskId]model.UiDiskStatus
+	sMux         sync.Mutex
+	ops          HtmlOps
+	nodeId       model.NodeId
+	ctx          context.Context
 }
 
-func NewUi(connToReq chan model.UiMgrConnectTo, connToResp chan model.UiConnectionStatus, ops HtmlOps, bindAddr string, ctx context.Context) *Ui {
+func NewUi(
+	connToReq chan model.UiMgrConnectTo,
+	connToResp chan model.UiConnectionStatus,
+	addDiskReq chan model.AddDiskReq,
+	addDiskResp chan model.UiDiskStatus,
+	ops HtmlOps,
+	nodeId model.NodeId,
+	bindAddr string,
+	ctx context.Context,
+) *Ui {
 	statuses := make(map[model.NodeId]model.UiConnectionStatus)
+	diskStatuses := make(map[model.DiskId]model.UiDiskStatus)
 	ui := Ui{
-		connToReq:  connToReq,
-		connToResp: connToResp,
-		statuses:   statuses,
-		ops:        ops,
+		connToReq:    connToReq,
+		connToResp:   connToResp,
+		addDiskReq:   addDiskReq,
+		addDiskResp:  addDiskResp,
+		statuses:     statuses,
+		diskStatuses: diskStatuses,
+		ops:          ops,
+		nodeId:       nodeId,
+		ctx:          ctx,
 	}
-	ui.registerHttpHandlers()
 	ui.handleRoot()
-	ui.start(bindAddr, ctx)
+	ui.start(bindAddr)
 	return &ui
 }
 
-func (ui *Ui) start(bindAddr string, ctx context.Context) {
-	go ui.handleMessages(ctx)
+func (ui *Ui) start(bindAddr string) {
+	go ui.handleMessages()
 	go ui.ops.ListenAndServe(bindAddr)
 }
 
-func (ui *Ui) handleMessages(ctx context.Context) {
+func (ui *Ui) handleMessages() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-ui.ctx.Done():
 			ui.ops.Shutdown()
 			return
 		case status := <-ui.connToResp:
 			ui.saveStatus(status)
+		case diskStatus := <-ui.addDiskResp:
+			ui.saveDiskStatus(diskStatus)
 		}
 	}
 }
@@ -68,60 +89,44 @@ func (ui *Ui) saveStatus(status model.UiConnectionStatus) {
 	ui.statuses[status.Id] = status
 }
 
-func (ui *Ui) registerHttpHandlers() {
-	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-			return
-		}
-		hostAndPort := r.FormValue("hostAndPort")
-		ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
-	})
-}
-
-func (ui *Ui) htmlStatus(divId string) string {
-	var builder strings.Builder
-	builder.WriteString(`<div id="`)
-	builder.WriteString(divId)
-	builder.WriteString(`">`)
+func (ui *Ui) saveDiskStatus(status model.UiDiskStatus) {
 	ui.sMux.Lock()
-	for _, value := range ui.statuses {
-		builder.WriteString(string(value.RemoteAddress))
-		builder.WriteString(" ")
-		builder.WriteString(fmt.Sprint(value.Type))
-		builder.WriteString("<br />")
-	}
-	ui.sMux.Unlock()
-	builder.WriteString("</div>")
-	return builder.String()
+	defer ui.sMux.Unlock()
+	ui.diskStatuses[status.Id] = status
 }
 
 func (ui *Ui) handleRoot() {
+	tmpl := initTemplates()
 	ui.ops.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		html := `
-			<!DOCTYPE html>
-			<html>
-			<head>
-				<title>TealFS recon-work</title>
-				<link rel="stylesheet" href="https://unpkg.com/mvp.css@1.12/mvp.css" /> 
-				<script src="https://unpkg.com/htmx.org@1.9.2"></script>
-			</head>
-			<body>
-			    <main>
-					<h1>TealFS</h1>
-					<p>Input the host and port of a node to add</p>
-					<form hx-put="/connect-to">
-						<label for="textbox">Host and port:</label>
-						<input type="text" id="hostAndPort" name="hostAndPort">
-						<input type="submit" value="Connect">
-					</form>
-					` + ui.htmlStatus("status") + `
-				</main>
-			</body>
-			</html>
-		`
-
-		// Write the HTML content to the response writer
-		_, _ = fmt.Fprintf(w, "%s", html)
+		ui.index(w, tmpl)
+	})
+	ui.ops.HandleFunc("/connection-status", func(w http.ResponseWriter, r *http.Request) {
+		ui.connectionStatus(w, tmpl)
+	})
+	ui.ops.HandleFunc("/disk-status", func(w http.ResponseWriter, r *http.Request) {
+		ui.diskStatus(w, tmpl)
+	})
+	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			ui.connectToGet(w, tmpl)
+		} else if r.Method == http.MethodPut {
+			hostAndPort := r.FormValue("hostAndPort")
+			ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
+			ui.connectionStatus(w, tmpl)
+		} else {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		}
+	})
+	ui.ops.HandleFunc("/add-disk", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			ui.addDiskGet(w, tmpl)
+		} else if r.Method == http.MethodPut {
+			diskPath := r.FormValue("diskPath")
+			req := model.NewAddDiskReq(diskPath, ui.nodeId, 1)
+			chanutil.Send(ui.ctx, ui.addDiskReq, req, "ui: add disk req")
+			ui.connectionStatus(w, tmpl)
+		} else {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		}
 	})
 }

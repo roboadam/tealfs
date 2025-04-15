@@ -22,6 +22,8 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestWriteData(t *testing.T) {
@@ -54,7 +56,6 @@ func TestWriteData(t *testing.T) {
 		t.Error("Written path is wrong", err)
 		return
 	}
-	cancel()
 }
 
 func TestReadData(t *testing.T) {
@@ -82,7 +83,6 @@ func TestReadData(t *testing.T) {
 		t.Error("Read data is wrong")
 		return
 	}
-	cancel()
 }
 
 func TestReadNewFile(t *testing.T) {
@@ -111,17 +111,17 @@ func TestReadNewFile(t *testing.T) {
 		t.Error("Written data is wrong")
 		return
 	}
-	cancel()
 }
 
 func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
 	f := disk.MockFileOps{}
 	path := disk.NewPath("/some/fake/path", &f)
 	id := model.NewNodeId()
+	diskId := model.DiskId(uuid.New().String())
 	mgrDiskWrites := make(chan model.WriteRequest)
 	mgrDiskReads := make(chan model.ReadRequest)
 	diskMgrWrites := make(chan model.WriteResult)
 	diskMgrReads := make(chan model.ReadResult)
-	d := disk.New(path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, ctx)
+	d := disk.New(path, id, diskId, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, ctx)
 	return &f, path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, d
 }
