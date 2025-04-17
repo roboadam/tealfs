@@ -84,7 +84,6 @@ func (c *Conns) stopOnDone() {
 	}
 	for connId := range c.netConns {
 		conn := c.netConns[connId]
-		log.Info("Closing 2 connection for " + c.nodeId)
 		err := conn.Close()
 		if err != nil {
 			log.Warn("error closing connection")
@@ -124,7 +123,6 @@ func (c *Conns) consumeChannels() {
 					Msg:  "Failure connecting",
 					Id:   id,
 				}
-				log.Info("SENDING NOT CONNECTED 1")
 				chanutil.Send(c.ctx, c.outStatuses, status, "conns failed to connect sending failure status")
 			}
 		case sendReq := <-c.inSends:
@@ -194,7 +192,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			netConn := c.netConns[conn]
 			bytes, err := tnet.ReadPayload(netConn)
 			if err != nil {
-				log.Info("Closing 1 connection for " + c.nodeId)
 				closeErr := netConn.Close()
 				if closeErr != nil {
 					log.Warn("Error closing connection", closeErr)
@@ -205,7 +202,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 					Msg:  "Connection closed",
 					Id:   conn,
 				}
-				log.Info("SENDING NOT CONNECTED 2")
 				chanutil.Send(c.ctx, c.outStatuses, ncs, "conns connection closed sent status")
 				return
 			}
