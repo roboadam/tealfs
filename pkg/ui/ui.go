@@ -20,6 +20,7 @@ import (
 	"sync"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type Ui struct {
@@ -30,6 +31,7 @@ type Ui struct {
 
 	statuses     map[model.NodeId]model.UiConnectionStatus
 	diskStatuses map[model.DiskId]model.UiDiskStatus
+	remotes      set.Set[model.NodeId]
 	sMux         sync.Mutex
 	ops          HtmlOps
 	nodeId       model.NodeId
@@ -55,6 +57,7 @@ func NewUi(
 		addDiskResp:  addDiskResp,
 		statuses:     statuses,
 		diskStatuses: diskStatuses,
+		remotes:      set.NewSet[model.NodeId](),
 		ops:          ops,
 		nodeId:       nodeId,
 		ctx:          ctx,
@@ -87,6 +90,11 @@ func (ui *Ui) saveStatus(status model.UiConnectionStatus) {
 	ui.sMux.Lock()
 	defer ui.sMux.Unlock()
 	ui.statuses[status.Id] = status
+	if status.Type == model.Connected {
+		ui.remotes.Add(status.Id)
+	} else {
+		ui.remotes.Remove(status.Id)
+	}
 }
 
 func (ui *Ui) saveDiskStatus(status model.UiDiskStatus) {
@@ -119,10 +127,11 @@ func (ui *Ui) handleRoot() {
 	})
 	ui.ops.HandleFunc("/add-disk", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			ui.addDiskGet(w, tmpl)
+			ui.addDiskGet(w, tmpl, ui.remotes.GetValues(), ui.nodeId)
 		} else if r.Method == http.MethodPut {
 			diskPath := r.FormValue("diskPath")
-			req := model.NewAddDiskReq(diskPath, ui.nodeId, 1)
+			node := r.FormValue("node")
+			req := model.NewAddDiskReq(diskPath, model.NodeId(node), 1)
 			chanutil.Send(ui.ctx, ui.addDiskReq, req, "ui: add disk req")
 			ui.connectionStatus(w, tmpl)
 		} else {

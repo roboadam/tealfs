@@ -32,8 +32,27 @@ func (ui *Ui) connectToGet(w http.ResponseWriter, tmpl *template.Template) {
 	}
 }
 
-func (ui *Ui) addDiskGet(w http.ResponseWriter, tmpl *template.Template) {
-	err := tmpl.ExecuteTemplate(w, "add-disk.html", nil)
+func (ui *Ui) addDiskGet(
+	w http.ResponseWriter,
+	tmpl *template.Template,
+	remotes []model.NodeId,
+	local model.NodeId,
+) {
+	nodeData := []struct {
+		Id   string
+		Name string
+	}{}
+	nodeData = append(nodeData, struct {
+		Id   string
+		Name string
+	}{Id: string(local), Name: "local"})
+	for _, remote := range remotes {
+		nodeData = append(nodeData, struct {
+			Id   string
+			Name string
+		}{Id: string(remote), Name: string(remote)})
+	}
+	err := tmpl.ExecuteTemplate(w, "add-disk.html", nodeData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

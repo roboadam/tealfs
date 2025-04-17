@@ -1,4 +1,10 @@
 <form hx-put="/add-disk" hx-target="#status-target" hx-on::after-request="if(event.detail.successful) this.reset()">
+    <label for="node">Node:</label>
+    <select id="node" name="node">
+	{{ range . }}
+		<option value="{{.Id}}">{{.Name}}</th>
+	{{ end }}
+    </select>
     <label for="textbox">Disk path:</label>
     <input type="text" id="diskPath" name="diskPath">
     <input type="submit" value="Add">
