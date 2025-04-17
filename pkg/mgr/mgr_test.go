@@ -24,8 +24,6 @@ import (
 	"time"
 
 	"context"
-
-	"github.com/sirupsen/logrus"
 )
 
 func TestConnectToMgr(t *testing.T) {
@@ -402,7 +400,6 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 		}
 	}
 
-	logrus.Info("Done Connecting")
 	return m, &fileOps
 }
 
