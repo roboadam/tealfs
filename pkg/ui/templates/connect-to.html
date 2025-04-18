@@ -1,3 +1,4 @@
+<h2>Connect To</h2>
 <form hx-put="/connect-to" hx-target="#status-target" hx-on::after-request="if(event.detail.successful) this.reset()">
     <label for="textbox">Host and port:</label>
     <input type="text" id="hostAndPort" name="hostAndPort">

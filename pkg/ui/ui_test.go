@@ -51,6 +51,32 @@ func TestConnectTo(t *testing.T) {
 	}
 }
 
+func TestAddDiskGet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, _, connToResp, ops := NewUi(ctx)
+	mockResponseWriter := ui.MockResponseWriter{}
+	request := http.Request{Method: http.MethodGet}
+	nodeId1 := model.NewNodeId()
+	nodeId2 := model.NewNodeId()
+
+	connToResp <- model.UiConnectionStatus{
+		Type:          model.Connected,
+		RemoteAddress: "1234",
+		Id:            nodeId1,
+	}
+	connToResp <- model.UiConnectionStatus{
+		Type:          model.Connected,
+		RemoteAddress: "5678",
+		Id:            nodeId2,
+	}
+
+	waitForWrittenData(func() string {
+		ops.Handlers["/add-disk"](&mockResponseWriter, &request)
+		return mockResponseWriter.WrittenData
+	}, []string{"local", string(nodeId1), string(nodeId2)})
+}
+
 func TestStatus(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
