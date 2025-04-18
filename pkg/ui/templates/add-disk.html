@@ -1,3 +1,4 @@
+<h2>Add Disk</h2>
 <form hx-put="/add-disk" hx-target="#status-target" hx-on::after-request="if(event.detail.successful) this.reset()">
     <label for="node">Node:</label>
     <select id="node" name="node">

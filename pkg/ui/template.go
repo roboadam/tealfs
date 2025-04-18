@@ -122,7 +122,7 @@ func (ui *Ui) diskStatus(w http.ResponseWriter, tmpl *template.Template) {
 	sort.Slice(remote, func(i, j int) bool {
 		if remote[i].Status == remote[j].Status {
 			if remote[i].Node == remote[j].Node {
-				return local[i].Path < local[j].Path
+				return remote[i].Path < remote[j].Path
 			} else {
 				return remote[i].Node < remote[j].Node
 			}
