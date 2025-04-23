@@ -184,6 +184,13 @@ type AcceptedConns struct {
 }
 
 func (c *Conns) consumeData(conn model.ConnId) {
+	ncs := model.NetConnectionStatus{
+		Type: model.NotConnected,
+		Msg:  "Connection closed",
+		Id:   conn,
+	}
+	defer chanutil.Send(c.ctx, c.outStatuses, ncs, "conns connection closed sent status")
+
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -197,12 +204,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 					log.Warn("Error closing connection", closeErr)
 				}
 				delete(c.netConns, conn)
-				ncs := model.NetConnectionStatus{
-					Type: model.NotConnected,
-					Msg:  "Connection closed",
-					Id:   conn,
-				}
-				chanutil.Send(c.ctx, c.outStatuses, ncs, "conns connection closed sent status")
 				return
 			}
 			payload := model.ToPayload(bytes)
