@@ -505,8 +505,15 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 		}
 		chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleNetConnectedStatus: connected")
 	case model.NotConnected:
+		address := m.connAddress[cs.Id]
+		id, _ := m.nodeConnMap.Get2(cs.Id)
 		delete(m.connAddress, cs.Id)
-		// Todo: reflect this in the ui
+		m.MgrUiConnectionStatuses <- model.UiConnectionStatus{
+			Type:          model.NotConnected,
+			RemoteAddress: address,
+			Msg:           "Disconnected",
+			Id:            id,
+		}
 		// Todo: Need to periodically try to reconnect to unconnected nodes
 	}
 }
