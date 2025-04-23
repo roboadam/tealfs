@@ -190,6 +190,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		Id:   conn,
 	}
 	defer chanutil.Send(c.ctx, c.outStatuses, ncs, "conns connection closed sent status")
+	defer log.Error("WTF")
 
 	for {
 		select {
