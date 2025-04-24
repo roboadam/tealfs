@@ -54,7 +54,7 @@ type Mgr struct {
 	nodesAddressMap    map[model.NodeId]string
 	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
 	NodeId             model.NodeId
-	connAddress        map[model.ConnId]string
+	connAddress        set.Bimap[model.ConnId, string]
 	mirrorDistributer  dist.MirrorDistributer
 	blockType          model.BlockType
 	nodeAddress        string
@@ -102,7 +102,7 @@ func NewWithChanSize(
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodesAddressMap:         make(map[model.NodeId]string),
 		NodeId:                  nodeId,
-		connAddress:             make(map[model.ConnId]string),
+		connAddress:             set.NewBimap[model.ConnId, string](),
 		nodeConnMap:             set.NewBimap[model.NodeId, model.ConnId](),
 		mirrorDistributer:       dist.NewMirrorDistributer(),
 		blockType:               blockType,
@@ -286,12 +286,14 @@ func (m *Mgr) eventLoop() {
 }
 
 func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
-	chanutil.Send(
-		m.ctx,
-		m.MgrConnsConnectTos,
-		model.MgrConnsConnectTo{Address: string(i.Address)},
-		"mgr: handleConnectToReq",
-	)
+	if _, ok := m.connAddress.Get2(i.Address); !ok {
+		chanutil.Send(
+			m.ctx,
+			m.MgrConnsConnectTos,
+			model.MgrConnsConnectTo{Address: string(i.Address)},
+			"mgr: handleConnectToReq",
+		)
+	}
 }
 
 func (m *Mgr) syncDisksAndIds() {
@@ -338,7 +340,7 @@ func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 	for node := range m.nodesAddressMap {
 		connId, success := m.nodeConnMap.Get1(node)
 		if success {
-			if address, ok := m.connAddress[connId]; ok {
+			if address, ok := m.connAddress.Get1(connId); ok {
 				result.Nodes.Add(struct {
 					Node    model.NodeId
 					Address string
@@ -352,7 +354,7 @@ func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
-		m.connAddress[i.ConnId] = p.Address()
+		m.connAddress.Add(i.ConnId, p.Address())
 		status := model.UiConnectionStatus{
 			Type:          model.Connected,
 			RemoteAddress: p.Address(),
@@ -505,9 +507,10 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 		}
 		chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleNetConnectedStatus: connected")
 	case model.NotConnected:
-		address := m.connAddress[cs.Id]
+		log.Info("Got not connected status [" + cs.Msg + "]")
+		address, _ := m.connAddress.Get1(cs.Id)
 		id, _ := m.nodeConnMap.Get2(cs.Id)
-		delete(m.connAddress, cs.Id)
+		m.connAddress.Remove1(cs.Id)
 		m.MgrUiConnectionStatuses <- model.UiConnectionStatus{
 			Type:          model.NotConnected,
 			RemoteAddress: address,

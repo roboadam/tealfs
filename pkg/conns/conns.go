@@ -117,13 +117,6 @@ func (c *Conns) consumeChannels() {
 				}
 				chanutil.Send(c.ctx, c.outStatuses, status, "conns connected sending success status")
 				go c.consumeData(id)
-			} else {
-				status := model.NetConnectionStatus{
-					Type: model.NotConnected,
-					Msg:  "Failure connecting",
-					Id:   id,
-				}
-				chanutil.Send(c.ctx, c.outStatuses, status, "conns failed to connect sending failure status")
 			}
 		case sendReq := <-c.inSends:
 			_, ok := c.netConns[sendReq.ConnId]
@@ -190,7 +183,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		Id:   conn,
 	}
 	defer chanutil.Send(c.ctx, c.outStatuses, ncs, "conns connection closed sent status")
-	defer log.Error("WTF")
 
 	for {
 		select {
