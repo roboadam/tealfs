@@ -21,6 +21,8 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Ui struct {
@@ -90,6 +92,7 @@ func (ui *Ui) saveStatus(status model.UiConnectionStatus) {
 	ui.sMux.Lock()
 	defer ui.sMux.Unlock()
 	ui.statuses[status.Id] = status
+	logrus.Info("Setting status " + string(status.Id) + " to " + statusToString(status.Type))
 	if status.Type == model.Connected {
 		ui.remotes.Add(status.Id)
 	} else {
