@@ -507,7 +507,6 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 		}
 		chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleNetConnectedStatus: connected")
 	case model.NotConnected:
-		log.Info("Got not connected status [" + cs.Msg + "]")
 		address, _ := m.connAddress.Get1(cs.Id)
 		id, _ := m.nodeConnMap.Get2(cs.Id)
 		m.connAddress.Remove1(cs.Id)
