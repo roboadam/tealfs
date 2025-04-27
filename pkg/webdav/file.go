@@ -25,13 +25,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const BytesPerBlock = 1_048_576
+
 type File struct {
 	SizeValue  int64
 	ModeValue  fs.FileMode
 	Modtime    time.Time
 	Position   int64
-	Block      model.Block
-	HasData    bool
+	Block      []model.Block
+	HasData    []bool
 	Path       Path
 	FileSystem *FileSystem
 }
@@ -40,7 +42,10 @@ func (f *File) ToBytes() []byte {
 	value := model.IntToBytes(uint32(f.SizeValue))
 	value = append(value, model.IntToBytes(uint32(f.ModeValue))...)
 	value = append(value, model.IntToBytes(uint32(f.Modtime.Unix()))...)
-	value = append(value, model.StringToBytes(string(f.Block.Id))...)
+	value = append(value, model.IntToBytes(uint32(len(f.Block)))...)
+	for _, b := range f.Block {
+		value = append(value, model.StringToBytes(string(b.Id))...)
+	}
 	value = append(value, model.StringToBytes(string(f.Path.toName()))...)
 	return value
 }
@@ -49,7 +54,15 @@ func FileFromBytes(raw []byte, fileSystem *FileSystem) (File, []byte, error) {
 	size, remainder := model.IntFromBytes(raw)
 	mode, remainder := model.IntFromBytes(remainder)
 	modtimeRaw, remainder := model.IntFromBytes(remainder)
-	blockId, remainder := model.StringFromBytes(remainder)
+	blockLen, remainder := model.IntFromBytes(remainder)
+	blocks := make([]model.Block, blockLen)
+	for i := range blockLen {
+		var blockId string
+		blockId, remainder = model.StringFromBytes(remainder)
+		blocks[i].Id = model.BlockId(blockId)
+		blocks[i].Data = []byte{}
+		blocks[i].Type = model.Mirrored
+	}
 	rawPath, remainder := model.StringFromBytes(remainder)
 
 	path, err := PathFromName(rawPath)
@@ -58,15 +71,12 @@ func FileFromBytes(raw []byte, fileSystem *FileSystem) (File, []byte, error) {
 	}
 	modTime := time.Unix(int64(modtimeRaw), 0)
 	return File{
-		SizeValue: int64(size),
-		ModeValue: fs.FileMode(mode),
-		Modtime:   modTime,
-		Position:  0,
-		Block: model.Block{
-			Id:   model.BlockId(blockId),
-			Data: []byte{},
-		},
-		HasData:    false,
+		SizeValue:  int64(size),
+		ModeValue:  fs.FileMode(mode),
+		Modtime:    modTime,
+		Position:   0,
+		Block:      blocks,
+		HasData:    make([]bool, blockLen),
 		Path:       path,
 		FileSystem: fileSystem,
 	}, remainder, nil
@@ -87,8 +97,10 @@ func (f *File) Close() error {
 func closeF(req closeReq) closeResp {
 	f := req.f
 	f.Position = 0
-	f.Block.Data = []byte{}
-	f.HasData = false
+	for i := range len(f.Block) {
+		f.Block[i].Data = []byte{}
+		f.HasData[i] = false
+	}
 	return closeResp{}
 }
 
@@ -112,6 +124,20 @@ func (f *File) Read(p []byte) (n int, err error) {
 	resp := <-req.resp
 	return resp.n, resp.err
 }
+
+func (f *File) eof() bool {
+	return f.isPositionEof(f.Position)
+}
+
+func (f *File) isPositionEof(position int64) bool {
+	currentBlock := int(position / BytesPerBlock)
+	if currentBlock >= len(f.Block) {
+		return true
+	}
+	remainder := position - int64(currentBlock)*BytesPerBlock
+	return int(remainder) >= len(f.Block[currentBlock].Data)
+}
+
 func read(req readReq) readResp {
 	f := req.f
 	p := req.p
@@ -121,14 +147,14 @@ func read(req readReq) readResp {
 		return readResp{err: err}
 	}
 
-	if f.Position >= int64(len(f.Block.Data)) {
+	if f.eof() {
 		log.Warn("EOF reading data for ", f.Path.toName())
 		return readResp{err: io.EOF}
 	}
 
 	start := f.Position
 	end := f.Position + int64(len(p))
-	if end > int64(len(f.Block.Data)) {
+	if f.isPositionEof(end) {
 		end = int64(len(f.Block.Data))
 	}
 
@@ -292,12 +318,13 @@ func write(wreq writeReq) writeResp {
 }
 
 func (f *File) ensureData() error {
-	if !f.HasData {
-		req := model.NewGetBlockReq(f.Block.Id)
+	currentBlockIndex := f.Position / BytesPerBlock
+	if !f.HasData[currentBlockIndex] {
+		req := model.NewGetBlockReq(f.Block[currentBlockIndex].Id)
 		resp := f.FileSystem.fetchBlock(req)
 		if resp.Err == nil {
-			f.Block = resp.Block
-			f.HasData = true
+			f.Block[currentBlockIndex] = resp.Block
+			f.HasData[currentBlockIndex] = true
 		} else {
 			return resp.Err
 		}
