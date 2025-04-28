@@ -130,12 +130,7 @@ func (f *File) eof() bool {
 }
 
 func (f *File) isPositionEof(position int64) bool {
-	currentBlock := int(position / BytesPerBlock)
-	if currentBlock >= len(f.Block) {
-		return true
-	}
-	remainder := position - int64(currentBlock)*BytesPerBlock
-	return int(remainder) >= len(f.Block[currentBlock].Data)
+	return position >= f.SizeValue
 }
 
 func read(req readReq) readResp {
@@ -155,10 +150,16 @@ func read(req readReq) readResp {
 	start := f.Position
 	end := f.Position + int64(len(p))
 	if f.isPositionEof(end) {
-		end = int64(len(f.Block.Data))
+		end = f.SizeValue
 	}
-
-	copy(p, f.Block.Data[start:end])
+	firstIndex := start / BytesPerBlock
+	lastIndex := end / BytesPerBlock
+	blockCount := 0
+	for i := firstIndex; i < lastIndex; i++ {
+		copy(p[blockCount*BytesPerBlock:], f.Block[i].Data)
+		blockCount++
+		bytesRead +=
+	}
 	bytesRead := int(end - start)
 	f.Position += int64(bytesRead)
 	return readResp{n: bytesRead}
