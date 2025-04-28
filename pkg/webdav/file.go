@@ -131,6 +131,12 @@ func (f *File) eof() bool {
 
 func (f *File) isPositionEof(position int64) bool {
 	return position >= f.SizeValue
+} 
+
+func positionToBlockIndexAndOffset(position int64) (int, int64) {
+	index := int(position / BytesPerBlock)
+	offset := position - index * BytesPerBlock
+	return index, offset
 }
 
 func read(req readReq) readResp {
@@ -152,6 +158,16 @@ func read(req readReq) readResp {
 	if f.isPositionEof(end) {
 		end = f.SizeValue
 	}
+
+	// Phase 1: identify the blocks we need locally
+	// Phase 2: load those blocks
+	// Phase 3a: if within one block
+	//           return data[block][offsetStart:offsetEnd]
+	// Phase 3b: if in adjacent blocks
+	//           return data[blockStart][offsetStart:] + data[blockEnd][:offsetEnd]
+	// Phase 3c: if in non-adjacent blocks
+	//           return data[blockStart][offsetStart:] + ... + data[blocksInMiddle] + ... + data[blockEnd][:offsetEnd]
+
 	firstIndex := start / BytesPerBlock
 	lastIndex := end / BytesPerBlock
 	blockCount := 0
