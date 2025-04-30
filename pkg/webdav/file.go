@@ -131,11 +131,11 @@ func (f *File) eof() bool {
 
 func (f *File) isPositionEof(position int64) bool {
 	return position >= f.SizeValue
-} 
+}
 
 func positionToBlockIndexAndOffset(position int64) (int, int64) {
 	index := int(position / BytesPerBlock)
-	offset := position - index * BytesPerBlock
+	offset := position - int64(index*BytesPerBlock)
 	return index, offset
 }
 
@@ -160,22 +160,28 @@ func read(req readReq) readResp {
 	}
 
 	// Phase 1: identify the blocks we need locally
-	// Phase 2: load those blocks
-	// Phase 3a: if within one block
-	//           return data[block][offsetStart:offsetEnd]
-	// Phase 3b: if in adjacent blocks
-	//           return data[blockStart][offsetStart:] + data[blockEnd][:offsetEnd]
-	// Phase 3c: if in non-adjacent blocks
-	//           return data[blockStart][offsetStart:] + ... + data[blocksInMiddle] + ... + data[blockEnd][:offsetEnd]
+	firstIndex, firstOffset := positionToBlockIndexAndOffset(start)
+	lastIndex, lastOffset := positionToBlockIndexAndOffset(end)
 
-	firstIndex := start / BytesPerBlock
-	lastIndex := end / BytesPerBlock
-	blockCount := 0
-	for i := firstIndex; i < lastIndex; i++ {
-		copy(p[blockCount*BytesPerBlock:], f.Block[i].Data)
-		blockCount++
-		bytesRead +=
+	// Phase 2: load those blocks
+	for i := firstIndex; i <= lastIndex; i++ {
+		f.ensureDataForIndex(i)
 	}
+
+	if firstIndex == lastIndex {
+		// Phase 3a: if within one block
+		//           return data[block][offsetStart:offsetEnd]
+		copy(p, f.Block[firstIndex].Data[firstOffset:lastOffset])
+	} else {
+		// Phase 3b: if in non-adjacent blocks
+		//           return data[blockStart][offsetStart:] + ... + data[blocksInMiddle] + ... + data[blockEnd][:offsetEnd]
+		copy(p, f.Block[firstIndex].Data[firstOffset:])
+		for i := firstIndex + 1; i < lastIndex; i++ {
+			copy(p, f.Block[i].Data)
+		}
+		copy(p, f.Block[lastIndex].Data[:lastOffset])
+	}
+
 	bytesRead := int(end - start)
 	f.Position += int64(bytesRead)
 	return readResp{n: bytesRead}
@@ -302,6 +308,12 @@ func (f *File) Write(p []byte) (n int, err error) {
 	return resp.n, resp.err
 }
 
+func (f *File)growFile(byteCount int64) {
+	if byteCount > 0 {
+
+	}
+}
+
 func write(wreq writeReq) writeResp {
 	f := wreq.f
 	p := wreq.p
@@ -310,11 +322,15 @@ func write(wreq writeReq) writeResp {
 		return writeResp{err: err}
 	}
 
-	if int(f.Position)+len(p) > len(f.Block.Data) {
-		needToGrow := int(f.Position) + len(p) - len(f.Block.Data)
-		newData := make([]byte, needToGrow)
-		f.Block.Data = append(f.Block.Data, newData...)
-		f.SizeValue = int64(len(f.Block.Data))
+	if f.Position+int64(len(p)) > f.SizeValue {
+		needToGrow := int(f.Position) + len(p) - int(f.SizeValue)
+		lastIndex := len(f.Block) - 1
+		spaceLeftInLastBlock := BytesPerBlock - len(f.Block[lastIndex].Data)
+		if needToGrow < spaceLeftInLastBlock {
+			newData := make([]byte, needToGrow)
+			f.Block[lastIndex].Data = append(f.Block[lastIndex].Data, newData...)
+			f.SizeValue += int64(needToGrow)
+		}
 		for _, b := range p {
 			f.Block.Data[f.Position] = b
 			f.Position++
@@ -335,13 +351,17 @@ func write(wreq writeReq) writeResp {
 }
 
 func (f *File) ensureData() error {
-	currentBlockIndex := f.Position / BytesPerBlock
-	if !f.HasData[currentBlockIndex] {
-		req := model.NewGetBlockReq(f.Block[currentBlockIndex].Id)
+	currentBlockIndex := int(f.Position / BytesPerBlock)
+	return f.ensureDataForIndex(currentBlockIndex)
+}
+
+func (f *File) ensureDataForIndex(index int) error {
+	if !f.HasData[index] {
+		req := model.NewGetBlockReq(f.Block[index].Id)
 		resp := f.FileSystem.fetchBlock(req)
 		if resp.Err == nil {
-			f.Block[currentBlockIndex] = resp.Block
-			f.HasData[currentBlockIndex] = true
+			f.Block[index] = resp.Block
+			f.HasData[index] = true
 		} else {
 			return resp.Err
 		}
