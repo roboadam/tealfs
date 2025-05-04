@@ -165,7 +165,10 @@ func read(req readReq) readResp {
 
 	// Phase 2: load those blocks
 	for i := firstIndex; i <= lastIndex; i++ {
-		f.ensureDataForIndex(i)
+		err := f.ensureDataForIndex(i)
+		if err != nil {
+			return readResp{err: err}
+		}
 	}
 
 	if firstIndex == lastIndex {
@@ -308,7 +311,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 	return resp.n, resp.err
 }
 
-func (f *File)growFile(byteCount int64) {
+func (f *File) growFile(byteCount int64) {
 	if byteCount > 0 {
 
 	}
@@ -317,11 +320,43 @@ func (f *File)growFile(byteCount int64) {
 func write(wreq writeReq) writeResp {
 	f := wreq.f
 	p := wreq.p
-	err := f.ensureData()
-	if err != nil {
-		return writeResp{err: err}
+
+	start := f.Position
+	end := f.Position + int64(len(p))
+
+	// Phase 1: identify the blocks we need locally
+	firstIndex, firstOffset := positionToBlockIndexAndOffset(start)
+	lastIndex, lastOffset := positionToBlockIndexAndOffset(end)
+
+	// Phase 2: create blocks
+
+	// Phase 3: load those blocks
+	for i := firstIndex; i <= lastIndex; i++ {
+		err := f.ensureDataForIndex(i)
+		if err != nil {
+			return writeResp{err: err}
+		}
 	}
 
+	if firstIndex == lastIndex {
+		// Phase 3a: if within one block
+		//           return data[block][offsetStart:offsetEnd]
+		copy(p, f.Block[firstIndex].Data[firstOffset:lastOffset])
+	} else {
+		// Phase 3b: if in non-adjacent blocks
+		//           return data[blockStart][offsetStart:] + ... + data[blocksInMiddle] + ... + data[blockEnd][:offsetEnd]
+		copy(p, f.Block[firstIndex].Data[firstOffset:])
+		for i := firstIndex + 1; i < lastIndex; i++ {
+			copy(p, f.Block[i].Data)
+		}
+		copy(p, f.Block[lastIndex].Data[:lastOffset])
+	}
+
+	bytesRead := int(end - start)
+	f.Position += int64(bytesRead)
+	// return readResp{n: bytesRead}
+
+	/**** Old Code ****/
 	if f.Position+int64(len(p)) > f.SizeValue {
 		needToGrow := int(f.Position) + len(p) - int(f.SizeValue)
 		lastIndex := len(f.Block) - 1
@@ -348,6 +383,7 @@ func write(wreq writeReq) writeResp {
 	}
 
 	return writeResp{err: result.Err}
+	/**** Old Code ****/
 }
 
 func (f *File) ensureData() error {
