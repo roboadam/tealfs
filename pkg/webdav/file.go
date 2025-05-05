@@ -178,11 +178,15 @@ func read(req readReq) readResp {
 	} else {
 		// Phase 3b: if in non-adjacent blocks
 		//           return data[blockStart][offsetStart:] + ... + data[blocksInMiddle] + ... + data[blockEnd][:offsetEnd]
-		copy(p, f.Block[firstIndex].Data[firstOffset:])
+		bytesRead := 0
+		src := f.Block[firstIndex].Data[firstOffset:]
+		copy(p, src)
+		bytesRead += len(src)
 		for i := firstIndex + 1; i < lastIndex; i++ {
-			copy(p, f.Block[i].Data)
+			copy(p[bytesRead:], f.Block[i].Data)
+			bytesRead += BytesPerBlock
 		}
-		copy(p, f.Block[lastIndex].Data[:lastOffset])
+		copy(p[bytesRead:], f.Block[lastIndex].Data[:lastOffset])
 	}
 
 	bytesRead := int(end - start)
@@ -329,6 +333,16 @@ func write(wreq writeReq) writeResp {
 	lastIndex, lastOffset := positionToBlockIndexAndOffset(end)
 
 	// Phase 2: create blocks
+	if lastIndex >= len(f.Block) {
+		numBlocksToCreate := lastIndex - len(f.Block) + 1
+		for range numBlocksToCreate {
+			f.Block = append(f.Block, model.Block{
+				Id:   model.NewBlockId(),
+				Type: model.Mirrored,
+				Data: []byte{},
+			})
+		}
+	}
 
 	// Phase 3: load those blocks
 	for i := firstIndex; i <= lastIndex; i++ {
@@ -339,17 +353,21 @@ func write(wreq writeReq) writeResp {
 	}
 
 	if firstIndex == lastIndex {
-		// Phase 3a: if within one block
+		// Phase 4a: if within one block
 		//           return data[block][offsetStart:offsetEnd]
 		copy(p, f.Block[firstIndex].Data[firstOffset:lastOffset])
 	} else {
-		// Phase 3b: if in non-adjacent blocks
+		// Phase 4b: if in non-adjacent blocks
 		//           return data[blockStart][offsetStart:] + ... + data[blocksInMiddle] + ... + data[blockEnd][:offsetEnd]
-		copy(p, f.Block[firstIndex].Data[firstOffset:])
+		bytesRead := 0
+		src := f.Block[firstIndex].Data[firstOffset:]
+		copy(p, src)
+		bytesRead += len(src)
 		for i := firstIndex + 1; i < lastIndex; i++ {
-			copy(p, f.Block[i].Data)
+			copy(p[bytesRead:], f.Block[i].Data)
+			bytesRead += BytesPerBlock
 		}
-		copy(p, f.Block[lastIndex].Data[:lastOffset])
+		copy(p[bytesRead:], f.Block[lastIndex].Data[:lastOffset])
 	}
 
 	bytesRead := int(end - start)
