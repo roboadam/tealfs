@@ -330,7 +330,7 @@ func write(wreq writeReq) writeResp {
 
 	// Phase 1: identify the blocks we need locally
 	firstIndex, firstOffset := positionToBlockIndexAndOffset(start)
-	lastIndex, lastOffset := positionToBlockIndexAndOffset(end)
+	lastIndex, _ := positionToBlockIndexAndOffset(end)
 
 	// Phase 2: create blocks
 	if lastIndex >= len(f.Block) {
@@ -352,56 +352,31 @@ func write(wreq writeReq) writeResp {
 		}
 	}
 
-	if firstIndex == lastIndex {
-		// Phase 4a: if within one block
-		//           return data[block][offsetStart:offsetEnd]
-		copy(p, f.Block[firstIndex].Data[firstOffset:lastOffset])
-	} else {
-		// Phase 4b: if in non-adjacent blocks
-		//           return data[blockStart][offsetStart:] + ... + data[blocksInMiddle] + ... + data[blockEnd][:offsetEnd]
-		bytesRead := 0
-		src := f.Block[firstIndex].Data[firstOffset:]
-		copy(p, src)
-		bytesRead += len(src)
-		for i := firstIndex + 1; i < lastIndex; i++ {
-			copy(p[bytesRead:], f.Block[i].Data)
-			bytesRead += BytesPerBlock
-		}
-		copy(p[bytesRead:], f.Block[lastIndex].Data[:lastOffset])
-	}
-
-	bytesRead := int(end - start)
-	f.Position += int64(bytesRead)
-	// return readResp{n: bytesRead}
-
-	/**** Old Code ****/
-	if f.Position+int64(len(p)) > f.SizeValue {
-		needToGrow := int(f.Position) + len(p) - int(f.SizeValue)
-		lastIndex := len(f.Block) - 1
-		spaceLeftInLastBlock := BytesPerBlock - len(f.Block[lastIndex].Data)
-		if needToGrow < spaceLeftInLastBlock {
-			newData := make([]byte, needToGrow)
-			f.Block[lastIndex].Data = append(f.Block[lastIndex].Data, newData...)
-			f.SizeValue += int64(needToGrow)
-		}
-		for _, b := range p {
-			f.Block.Data[f.Position] = b
-			f.Position++
-		}
-	}
-
-	req := model.NewPutBlockReq(f.Block)
+	bytesWritten := 0
+	// Phase 4: if in non-adjacent blocks
+	//           return data[blockStart][offsetStart:] + ... + data[blocksInMiddle] + ... + data[blockEnd][:offsetEnd]
+	bytesWritten += copy(f.Block[firstIndex].Data[firstOffset:], p)
+	req := model.NewPutBlockReq(f.Block[firstIndex])
 	result := f.FileSystem.pushBlock(req)
-	if result.Err == nil {
-		err := f.FileSystem.persistFileIndexAndBroadcast(f, upsertFile)
-		if err != nil {
-			return writeResp{n: len(p), err: err}
+	if result.Err != nil {
+		return writeResp{err: result.Err}
+	}
+	for i := firstIndex + 1; i <= lastIndex; i++ {
+		bytesWritten += copy(f.Block[i].Data, p[bytesWritten:])
+		req := model.NewPutBlockReq(f.Block[i])
+		result := f.FileSystem.pushBlock(req)
+		if result.Err != nil {
+			return writeResp{err: result.Err}
 		}
-		return writeResp{n: len(p)}
 	}
 
-	return writeResp{err: result.Err}
-	/**** Old Code ****/
+	f.Position += int64(bytesWritten)
+
+	err := f.FileSystem.persistFileIndexAndBroadcast(f, upsertFile)
+	if err != nil {
+		return writeResp{n: bytesWritten, err: err}
+	}
+	return writeResp{n: bytesWritten}
 }
 
 func (f *File) ensureData() error {
