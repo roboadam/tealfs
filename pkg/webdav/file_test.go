@@ -173,9 +173,9 @@ func TestSerialize(t *testing.T) {
 		return
 	}
 
-	// if file.Block.Id != fileClone.Block.Id {
-	// 	t.Error("block id is different", file.Block.Id, fileClone.Block.Id)
-	// }
+	if file.Block[0].Id != fileClone.Block[0].Id {
+		t.Error("block id is different", file.Block[0].Id, fileClone.Block[0].Id)
+	}
 	if file.Name() != fileClone.Name() {
 		t.Error("name is different", file.Name(), fileClone.Name())
 	}
