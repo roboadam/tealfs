@@ -42,8 +42,10 @@ func (f *FileHolder) allFiles() []*File {
 func (f *FileHolder) Upsert(file *File) {
 	f.mux.Lock()
 	defer f.mux.Unlock()
-	if oldFile, exists := f.byBlockId[file.Block.Id]; exists {
-		delete(f.byPath, oldFile.Path.toName())
+	for _, b := range file.Block {
+		if oldFile, exists := f.byBlockId[b.Id]; exists {
+			delete(f.byPath, oldFile.Path.toName())
+		}
 	}
 	f.add(file)
 }
@@ -56,7 +58,9 @@ func (f *FileHolder) Add(file *File) {
 
 func (f *FileHolder) add(file *File) {
 	f.byPath[file.Path.toName()] = file
-	f.byBlockId[file.Block.Id] = file
+	for _, b := range file.Block {
+		f.byBlockId[b.Id] = file
+	}
 }
 
 func (f *FileHolder) Delete(file *File) {
@@ -67,7 +71,9 @@ func (f *FileHolder) Delete(file *File) {
 
 func (f *FileHolder) delete(file *File) {
 	delete(f.byPath, file.Path.toName())
-	delete(f.byBlockId, file.Block.Id)
+	for _, b := range file.Block {
+		delete(f.byBlockId, b.Id)
+	}
 }
 
 func (f *FileHolder) Exists(p Path) bool {
@@ -95,18 +101,20 @@ func (f *FileHolder) ToBytes() []byte {
 }
 
 func (f *FileHolder) updateFile(update *File) {
-	toUpdate, exists := f.byBlockId[update.Block.Id]
-	if exists {
-		toUpdate.SizeValue = update.SizeValue
-		toUpdate.ModeValue = update.ModeValue
-		toUpdate.Modtime = update.Modtime
-		oldPath := toUpdate.Path
-		toUpdate.Path = update.Path
-		delete(f.byPath, oldPath.toName())
-		f.byPath[toUpdate.Path.toName()] = toUpdate
-	} else {
-		f.add(update)
+	for _, b := range update.Block {
+		toUpdate, exists := f.byBlockId[b.Id]
+		if exists {
+			toUpdate.SizeValue = update.SizeValue
+			toUpdate.ModeValue = update.ModeValue
+			toUpdate.Modtime = update.Modtime
+			oldPath := toUpdate.Path
+			toUpdate.Path = update.Path
+			delete(f.byPath, oldPath.toName())
+			f.byPath[toUpdate.Path.toName()] = toUpdate
+			return
+		}
 	}
+	f.add(update)
 }
 
 func (f *FileHolder) UpdateFileHolderFromBytes(data []byte, fileSystem *FileSystem) error {
@@ -123,11 +131,11 @@ func (f *FileHolder) UpdateFileHolderFromBytes(data []byte, fileSystem *FileSyst
 		if err != nil {
 			return err
 		}
-		allBlockIds.Add(file.Block.Id)
+		allBlockIds.Add(file.Block[0].Id)
 		f.updateFile(&file)
 	}
 	for _, file := range f.allFiles() {
-		if !allBlockIds.Contains(file.Block.Id) {
+		if !allBlockIds.Contains(file.Block[0].Id) {
 			f.delete(file)
 		}
 	}

@@ -98,8 +98,8 @@ func NewFileSystem(
 		ModeValue:  fs.ModeDir,
 		Modtime:    time.Time{},
 		Position:   0,
-		Block:      block,
-		HasData:    false,
+		Block:      []model.Block{block},
+		HasData:    []bool{false},
 		Path:       []pathSeg{},
 		FileSystem: &filesystem,
 	}
@@ -273,8 +273,8 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 		ModeValue:  fs.ModeDir,
 		Modtime:    time.Now(),
 		Position:   0,
-		Block:      block,
-		HasData:    false,
+		Block:      []model.Block{block},
+		HasData:    []bool{false},
 		Path:       p,
 		FileSystem: f,
 	}

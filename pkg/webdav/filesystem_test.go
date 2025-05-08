@@ -154,8 +154,10 @@ func TestWriteAndRead(t *testing.T) {
 		t.Error("error stat-ing file")
 		return
 	}
+
 	if stat.Size() != 5 {
-		t.Error("wrong file size")
+		t.Errorf("wrong file size, got %d, expected 5", stat.Size())
+		return
 	}
 
 	err = f.Close()

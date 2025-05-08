@@ -315,12 +315,6 @@ func (f *File) Write(p []byte) (n int, err error) {
 	return resp.n, resp.err
 }
 
-func (f *File) growFile(byteCount int64) {
-	if byteCount > 0 {
-
-	}
-}
-
 func write(wreq writeReq) writeResp {
 	f := wreq.f
 	p := wreq.p
@@ -355,14 +349,19 @@ func write(wreq writeReq) writeResp {
 	bytesWritten := 0
 	// Phase 4: if in non-adjacent blocks
 	//           return data[blockStart][offsetStart:] + ... + data[blocksInMiddle] + ... + data[blockEnd][:offsetEnd]
-	bytesWritten += copy(f.Block[firstIndex].Data[firstOffset:], p)
+
+	copied, grew := growAndCopyIntoBlock(&f.Block[firstIndex], p, int(firstOffset))
+	bytesWritten += copied
+	f.SizeValue += int64(grew)
 	req := model.NewPutBlockReq(f.Block[firstIndex])
 	result := f.FileSystem.pushBlock(req)
 	if result.Err != nil {
 		return writeResp{err: result.Err}
 	}
 	for i := firstIndex + 1; i <= lastIndex; i++ {
-		bytesWritten += copy(f.Block[i].Data, p[bytesWritten:])
+		copied, grew := growAndCopyIntoBlock(&f.Block[i], p[bytesWritten:], 0)
+		bytesWritten += copied
+		f.SizeValue += int64(grew)
 		req := model.NewPutBlockReq(f.Block[i])
 		result := f.FileSystem.pushBlock(req)
 		if result.Err != nil {
@@ -377,6 +376,18 @@ func write(wreq writeReq) writeResp {
 		return writeResp{n: bytesWritten, err: err}
 	}
 	return writeResp{n: bytesWritten}
+}
+
+func growAndCopyIntoBlock(block *model.Block, src []byte, blockOffset int) (int, int) {
+	maxGrowth := BytesPerBlock - len(block.Data)
+	if maxGrowth == 0 {
+		return copy(block.Data[blockOffset:], src), 0
+	}
+	freeSpace := len(block.Data) - blockOffset
+	growthToFitAll := len(src) - freeSpace
+	growth := min(maxGrowth, growthToFitAll)
+	block.Data = append(block.Data, make([]byte, growth)...)
+	return copy(block.Data[blockOffset:], src), growth
 }
 
 func (f *File) ensureData() error {
