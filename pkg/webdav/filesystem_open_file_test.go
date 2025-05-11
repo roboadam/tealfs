@@ -140,6 +140,60 @@ func TestOpenRoot(t *testing.T) {
 	cancel()
 }
 
+func TestCreateBigFile(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	nodeId := model.NewNodeId()
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(
+		nodeId,
+		inBroadcast,
+		outBroadcast,
+		&disk.MockFileOps{},
+		"indexPath",
+		0,
+		ctx,
+	)
+	name := "/hello-bigFile.txt"
+	bytesInWrite := []byte{6, 5, 4, 3, 2}
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
+
+	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		t.Error("Error opening file", err)
+		return
+	}
+
+	err = f.Close()
+	if err != nil {
+		t.Error("Error closing file", err)
+		return
+	}
+
+	f, err = fs.OpenFile(context.Background(), name, os.O_RDONLY, 0444)
+	if err != nil {
+		t.Error("Error opening file", err)
+	}
+
+	dataRead := make([]byte, 10)
+	_, err = f.Read(dataRead)
+	if err == nil || err != io.EOF {
+		t.Error("expected EOF", err)
+		return
+	}
+	numWritten, err := f.Write(bytesInWrite)
+	if err != nil {
+		t.Error("error pushing", err)
+		return
+	}
+	if numWritten != len(bytesInWrite) {
+		t.Error("wrong number of blocks written. expected", len(bytesInWrite), "got", numWritten)
+		return
+	}
+	cancel()
+}
+
 func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {

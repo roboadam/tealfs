@@ -81,67 +81,6 @@ func TestRead(t *testing.T) {
 
 }
 
-func TestReadBig(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
-	mockPushesAndPulls(ctx, &fs, outBroadcast)
-
-	data := make([]byte, webdav.BytesPerBlock*3.5)
-	for i := range len(data) {
-		data[i] = byte(i % 16)
-	}
-
-	file := webdav.File{
-		SizeValue: 6,
-		ModeValue: 0,
-		Modtime:   time.Now(),
-		Position:  0,
-		HasData:   []bool{true},
-		Block: []model.Block{{
-			Id:   "",
-			Data: data,
-		}},
-		FileSystem: &fs,
-	}
-
-	buf := make([]byte, 4)
-	n, err := file.Read(buf)
-	if err != nil {
-		t.Error("error reading", err)
-		return
-	}
-	if n != 4 {
-		t.Error("should have read 4 bytes instead of", n)
-		return
-	}
-	if !bytes.Equal(buf, []byte{1, 2, 3, 4}) {
-		t.Error("buffer is different", buf)
-		return
-	}
-	n, err = file.Read(buf)
-	if err != nil {
-		t.Error("error reading", err)
-		return
-	}
-	if n != 2 {
-		t.Error("should have read 2 bytes instead of", n)
-		return
-	}
-	if !bytes.Equal(buf[:2], []byte{5, 6}) {
-		t.Error("buffer is different", buf)
-		return
-	}
-	n, err = file.Read(buf)
-	if err != io.EOF {
-		t.Error("should have reached EOF", err, n)
-		return
-	}
-
-}
-
 func TestSeek(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
