@@ -15,7 +15,11 @@
 package webdav_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
+	"hash"
+	"hash/fnv"
 	"io"
 	"io/fs"
 	"os"
@@ -156,13 +160,28 @@ func TestCreateBigFile(t *testing.T) {
 		ctx,
 	)
 	name := "/hello-bigFile.txt"
-	bytesInWrite := []byte{6, 5, 4, 3, 2}
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
 	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error("Error opening file", err)
 		return
+	}
+
+	totalWritten := 0
+	h := fnv.New32a()
+	for totalWritten < webdav.BytesPerBlock*1.5 {
+		bytes := nextBytes(h)
+		numWritten, err := f.Write(bytes)
+		totalWritten += numWritten
+		if err != nil {
+			t.Error("error pushing", err)
+			return
+		}
+		if numWritten != 4 {
+			t.Error("wrong number of blocks written. expected 4 got", numWritten)
+			return
+		}
 	}
 
 	err = f.Close()
@@ -176,22 +195,35 @@ func TestCreateBigFile(t *testing.T) {
 		t.Error("Error opening file", err)
 	}
 
-	dataRead := make([]byte, 10)
-	_, err = f.Read(dataRead)
-	if err == nil || err != io.EOF {
-		t.Error("expected EOF", err)
+	dataRead := make([]byte, 4)
+	totalRead := 0
+	h.Reset()
+	for n, err := f.Read(dataRead); err != io.EOF; {
+		if err != nil {
+			t.Error("Error reading", err)
+			return
+		}
+		totalWritten += n
+		expected := nextBytes(h)
+		if !bytes.Equal(dataRead, expected) {
+			t.Error("Unexpected bytes")
+			return
+		}
+	}
+	if totalRead != totalWritten {
+		t.Error("Unexpected number of bytes")
 		return
 	}
-	numWritten, err := f.Write(bytesInWrite)
-	if err != nil {
-		t.Error("error pushing", err)
-		return
-	}
-	if numWritten != len(bytesInWrite) {
-		t.Error("wrong number of blocks written. expected", len(bytesInWrite), "got", numWritten)
-		return
-	}
+
 	cancel()
+}
+
+func nextBytes(h hash.Hash32) []byte {
+	h.Write([]byte{1})
+	value := h.Sum32()
+	bytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(bytes, value)
+	return bytes
 }
 
 func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux *sync.Mutex, data map[model.BlockId][]byte) {

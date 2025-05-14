@@ -335,6 +335,7 @@ func write(wreq writeReq) writeResp {
 				Type: model.Mirrored,
 				Data: []byte{},
 			})
+			f.HasData = append(f.HasData, false)
 		}
 	}
 
