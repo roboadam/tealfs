@@ -145,6 +145,8 @@ func TestOpenRoot(t *testing.T) {
 }
 
 func TestCreateBigFile(t *testing.T) {
+	const bytesPerRead = 100
+	const bytesPerWrite = 101
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	nodeId := model.NewNodeId()
@@ -198,12 +200,16 @@ func TestCreateBigFile(t *testing.T) {
 	dataRead := make([]byte, 4)
 	totalRead := 0
 	h.Reset()
-	for n, err := f.Read(dataRead); err != io.EOF; {
+	for {
+		n, err := f.Read(dataRead)
 		if err != nil {
+			if err == io.EOF {
+				break
+			}
 			t.Error("Error reading", err)
 			return
 		}
-		totalWritten += n
+		totalRead += n
 		expected := nextBytes(h)
 		if !bytes.Equal(dataRead, expected) {
 			t.Error("Unexpected bytes")
@@ -218,11 +224,19 @@ func TestCreateBigFile(t *testing.T) {
 	cancel()
 }
 
-func nextBytes(h hash.Hash32) []byte {
-	h.Write([]byte{1})
-	value := h.Sum32()
-	bytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(bytes, value)
+func nextBytes(h hash.Hash32, size int) []byte {
+	bytes := make([]byte, size)
+	numLoopIterations := size/4 + 1
+	if size%4 > 0 {
+		numLoopIterations++
+	}
+	pos := 0
+	for range numLoopIterations {
+		h.Write([]byte{1})
+		value := h.Sum32()
+		binary.BigEndian.PutUint32(bytes[pos:], value)
+		pos += 4
+	}
 	return bytes
 }
 
