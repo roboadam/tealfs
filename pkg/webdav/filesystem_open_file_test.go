@@ -146,7 +146,7 @@ func TestOpenRoot(t *testing.T) {
 
 func TestCreateBigFile(t *testing.T) {
 	const bytesPerRead = 100
-	const bytesPerWrite = 101
+	const bytesPerWrite = 104
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	nodeId := model.NewNodeId()
@@ -173,15 +173,15 @@ func TestCreateBigFile(t *testing.T) {
 	totalWritten := 0
 	h := fnv.New32a()
 	for totalWritten < webdav.BytesPerBlock*1.5 {
-		bytes := nextBytes(h)
+		bytes := nextBytes(h, bytesPerWrite)
 		numWritten, err := f.Write(bytes)
 		totalWritten += numWritten
 		if err != nil {
 			t.Error("error pushing", err)
 			return
 		}
-		if numWritten != 4 {
-			t.Error("wrong number of blocks written. expected 4 got", numWritten)
+		if numWritten != bytesPerWrite {
+			t.Error("wrong number of blocks written. expected ", bytesPerWrite, " got ", numWritten)
 			return
 		}
 	}
@@ -197,7 +197,7 @@ func TestCreateBigFile(t *testing.T) {
 		t.Error("Error opening file", err)
 	}
 
-	dataRead := make([]byte, 4)
+	dataRead := make([]byte, bytesPerRead)
 	totalRead := 0
 	h.Reset()
 	for {
@@ -210,8 +210,8 @@ func TestCreateBigFile(t *testing.T) {
 			return
 		}
 		totalRead += n
-		expected := nextBytes(h)
-		if !bytes.Equal(dataRead, expected) {
+		expected := nextBytes(h, n)
+		if !bytes.Equal(dataRead[:n], expected) {
 			t.Error("Unexpected bytes")
 			return
 		}
@@ -226,9 +226,9 @@ func TestCreateBigFile(t *testing.T) {
 
 func nextBytes(h hash.Hash32, size int) []byte {
 	bytes := make([]byte, size)
-	numLoopIterations := size/4 + 1
-	if size%4 > 0 {
-		numLoopIterations++
+	numLoopIterations := size / 4
+	if size%4 != 0 {
+		panic("must be multiple of 4 bytes")
 	}
 	pos := 0
 	for range numLoopIterations {
