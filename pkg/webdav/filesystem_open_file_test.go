@@ -15,7 +15,11 @@
 package webdav_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
+	"hash"
+	"hash/fnv"
 	"io"
 	"io/fs"
 	"os"
@@ -138,6 +142,102 @@ func TestOpenRoot(t *testing.T) {
 		return
 	}
 	cancel()
+}
+
+func TestCreateBigFile(t *testing.T) {
+	const bytesPerRead = 100
+	const bytesPerWrite = 104
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	nodeId := model.NewNodeId()
+	inBroadcast := make(chan model.Broadcast)
+	outBroadcast := make(chan model.Broadcast)
+	fs := webdav.NewFileSystem(
+		nodeId,
+		inBroadcast,
+		outBroadcast,
+		&disk.MockFileOps{},
+		"indexPath",
+		0,
+		ctx,
+	)
+	name := "/hello-bigFile.txt"
+	mockPushesAndPulls(ctx, &fs, outBroadcast)
+
+	f, err := fs.OpenFile(context.Background(), name, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		t.Error("Error opening file", err)
+		return
+	}
+
+	totalWritten := 0
+	h := fnv.New32a()
+	for totalWritten < webdav.BytesPerBlock*1.5 {
+		bytes := nextBytes(h, bytesPerWrite)
+		numWritten, err := f.Write(bytes)
+		totalWritten += numWritten
+		if err != nil {
+			t.Error("error pushing", err)
+			return
+		}
+		if numWritten != bytesPerWrite {
+			t.Error("wrong number of blocks written. expected ", bytesPerWrite, " got ", numWritten)
+			return
+		}
+	}
+
+	err = f.Close()
+	if err != nil {
+		t.Error("Error closing file", err)
+		return
+	}
+
+	f, err = fs.OpenFile(context.Background(), name, os.O_RDONLY, 0444)
+	if err != nil {
+		t.Error("Error opening file", err)
+	}
+
+	dataRead := make([]byte, bytesPerRead)
+	totalRead := 0
+	h.Reset()
+	for {
+		n, err := f.Read(dataRead)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Error("Error reading", err)
+			return
+		}
+		totalRead += n
+		expected := nextBytes(h, n)
+		if !bytes.Equal(dataRead[:n], expected) {
+			t.Error("Unexpected bytes")
+			return
+		}
+	}
+	if totalRead != totalWritten {
+		t.Error("Unexpected number of bytes")
+		return
+	}
+
+	cancel()
+}
+
+func nextBytes(h hash.Hash32, size int) []byte {
+	bytes := make([]byte, size)
+	numLoopIterations := size / 4
+	if size%4 != 0 {
+		panic("must be multiple of 4 bytes")
+	}
+	pos := 0
+	for range numLoopIterations {
+		h.Write([]byte{1})
+		value := h.Sum32()
+		binary.BigEndian.PutUint32(bytes[pos:], value)
+		pos += 4
+	}
+	return bytes
 }
 
 func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux *sync.Mutex, data map[model.BlockId][]byte) {

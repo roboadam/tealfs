@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-func TestSeralizeBroadcast(t *testing.T) {
+func TestSerializeBroadcast(t *testing.T) {
 	path, _ := PathFromName("/asdf")
 	msg := broadcastMessage{
 		bType: deleteFile,
@@ -28,25 +28,25 @@ func TestSeralizeBroadcast(t *testing.T) {
 			SizeValue: 5,
 			ModeValue: 4,
 			Modtime:   time.Now(),
-			Block: model.Block{
-				Id:   "blockid",
+			Block: []model.Block{{
+				Id:   "blockId",
 				Type: model.Mirrored,
-			},
-			HasData: true,
+			}},
+			HasData: []bool{true},
 			Path:    path,
 		},
 	}
 	raw := msg.toBytes()
 	msg2, err := broadcastMessageFromBytes(raw, &FileSystem{})
 	if err != nil {
-		t.Error("error deseralizing")
+		t.Error("error deserializing")
 		return
 	}
 	if msg2.bType != msg.bType {
-		t.Error("error with btype")
+		t.Error("error with bType")
 		return
 	}
-	if msg2.file.Block.Id != msg.file.Block.Id {
+	if msg2.file.Block[0].Id != msg.file.Block[0].Id {
 		t.Error("error with block id")
 		return
 	}

@@ -37,7 +37,7 @@ func TestSerializeFileHolder(t *testing.T) {
 		SizeValue:  1,
 		ModeValue:  2,
 		Modtime:    time.Unix(12345, 0),
-		Block:      model.Block{Id: model.NewBlockId()},
+		Block:      []model.Block{{Id: model.NewBlockId()}},
 		Path:       path1,
 		FileSystem: &fs,
 	}
@@ -45,7 +45,7 @@ func TestSerializeFileHolder(t *testing.T) {
 		SizeValue:  3,
 		ModeValue:  4,
 		Modtime:    time.Unix(67890, 0),
-		Block:      model.Block{Id: model.NewBlockId()},
+		Block:      []model.Block{{Id: model.NewBlockId()}},
 		Path:       path2,
 		FileSystem: &fs,
 	}
@@ -92,7 +92,7 @@ func TestSerializeFileHolder(t *testing.T) {
 }
 
 func FileEquality(f1 *webdav.File, f2 *webdav.File) bool {
-	if f1.Block.Id != f2.Block.Id {
+	if f1.Block[0].Id != f2.Block[0].Id {
 		return false
 	}
 	if f1.Size() != f2.Size() {
