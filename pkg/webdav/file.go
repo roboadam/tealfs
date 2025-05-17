@@ -89,6 +89,7 @@ type closeReq struct {
 type closeResp struct{ err error }
 
 func (f *File) Close() error {
+	log.Info("Closing ", f.Name())
 	req := closeReq{f: f, resp: make(chan closeResp)}
 	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.closeReq, req, "close")
 	resp := <-req.resp
