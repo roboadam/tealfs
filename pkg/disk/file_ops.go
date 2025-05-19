@@ -22,6 +22,7 @@ import (
 type FileOps interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte) error
+	ReadDir(name string) ([]os.DirEntry, error)
 }
 
 type DiskFileOps struct{}
@@ -32,6 +33,10 @@ func (d *DiskFileOps) ReadFile(name string) ([]byte, error) {
 
 func (d *DiskFileOps) WriteFile(name string, data []byte) error {
 	return os.WriteFile(name, data, 0644)
+}
+
+func (d *DiskFileOps) ReadDir(name string) ([]os.DirEntry, error) {
+	return os.ReadDir(name)
 }
 
 type MockFileOps struct {
@@ -69,4 +74,8 @@ func (m *MockFileOps) WriteFile(name string, data []byte) error {
 	m.mockFS[name] = data
 	m.WriteCount++
 	return nil
+}
+
+func (d *MockFileOps) ReadDir(name string) ([]os.DirEntry, error) {
+	return nil, os.ErrNotExist
 }
