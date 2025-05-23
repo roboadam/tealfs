@@ -43,6 +43,7 @@ type Mgr struct {
 	WebdavMgrBroadcast      chan model.Broadcast
 	MgrConnsConnectTos      chan model.MgrConnsConnectTo
 	MgrConnsSends           chan model.MgrConnsSend
+	MgrDiskBroadcast        chan model.Broadcast
 	MgrDiskWrites           map[model.DiskId]chan model.WriteRequest
 	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
 	MgrUiConnectionStatuses chan model.UiConnectionStatus
@@ -93,6 +94,7 @@ func NewWithChanSize(
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
 		MgrConnsConnectTos:      make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
+		MgrDiskBroadcast:        make(chan model.Broadcast, chanSize),
 		MgrDiskWrites:           make(map[model.DiskId]chan model.WriteRequest),
 		MgrDiskReads:            make(map[model.DiskId]chan model.ReadRequest),
 		MgrUiConnectionStatuses: make(chan model.UiConnectionStatus, chanSize),
@@ -174,6 +176,7 @@ func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
 		id,
 		m.MgrDiskWrites[id],
 		m.MgrDiskReads[id],
+		m.MgrDiskBroadcast,
 		m.DiskMgrWrites,
 		m.DiskMgrReads,
 		m.ctx,
@@ -280,7 +283,7 @@ func (m *Mgr) eventLoop() {
 		case r := <-m.WebdavMgrPuts:
 			m.handleWebdavWriteRequest(r)
 		case r := <-m.WebdavMgrBroadcast:
-			m.handleWebdavMgrBroadcast(r)
+			m.sendBroadcast(r)
 		}
 	}
 }
@@ -420,7 +423,13 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.ReadResult:
 		m.handleDiskReadResult(*p)
 	case *model.Broadcast:
-		chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
+		if p.Dest() == model.FileSystemDest {
+			chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
+		} else if p.Dest() == model.DiskDest {
+			chanutil.Send(m.ctx, m.MgrDiskBroadcast, *p, "mgr: handleReceives: forward broadcast to disk")
+		} else {
+			log.Panicf("unknown dest %d", p.Dest())
+		}
 	case *model.AddDiskReq:
 		m.handleAddDiskReq(*p)
 	default:
@@ -432,7 +441,9 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 	if r.Caller() == m.NodeId {
 		resolved := m.pendingBlockWrites.resolve(r.Ptr(), r.ReqId())
 		var err error = nil
-		if !r.Ok() {
+		if r.Ok() {
+			m.sendBroadcast(model.NewBroadcast([]byte{}, model.DiskDest))
+		} else {
 			err = errors.New(r.Message())
 			m.pendingBlockWrites.cancel(r.ReqId())
 		}
@@ -567,7 +578,7 @@ func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
 		panic("unknown block type")
 	}
 }
-func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
+func (m *Mgr) sendBroadcast(b model.Broadcast) {
 	for node := range m.nodesAddressMap {
 		if connId, exists := m.nodeConnMap.Get1(node); exists {
 			chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: connId, Payload: &b}, "Broadcasting")

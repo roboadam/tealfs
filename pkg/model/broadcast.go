@@ -14,31 +14,48 @@
 
 package model
 
-import "bytes"
+import (
+	"bytes"
+)
 
 type Broadcast struct {
-	msg []byte
+	msg  []byte
+	dest BroadcastDest
 }
 
-func NewBroadcast(msg []byte) Broadcast {
-	return Broadcast{msg: msg}
+type BroadcastDest uint8
+
+const (
+	FileSystemDest BroadcastDest = 0
+	DiskDest       BroadcastDest = 1
+)
+
+func NewBroadcast(msg []byte, dest BroadcastDest) Broadcast {
+	return Broadcast{msg: msg, dest: dest}
 }
 
-func (b *Broadcast) Msg() []byte { return b.msg }
+func (b *Broadcast) Msg() []byte         { return b.msg }
+func (b *Broadcast) Dest() BroadcastDest { return b.dest }
 
 func (b *Broadcast) ToBytes() []byte {
 	msg := BytesToBytes(b.msg)
-	return AddType(BroadcastType, msg)
+	dest := IntToBytes(uint32(b.dest))
+	data := bytes.Join([][]byte{msg, dest}, []byte{})
+	return AddType(BroadcastType, data)
 }
 
 func (b *Broadcast) Equal(p Payload) bool {
 	if o, ok := p.(*Broadcast); ok {
-		return bytes.Equal(b.msg, o.msg)
+		if !bytes.Equal(b.msg, o.msg) {
+			return false
+		}
+		return b.dest == o.dest
 	}
 	return false
 }
 
 func ToBroadcast(data []byte) *Broadcast {
-	msg, _ := BytesFromBytes(data)
-	return &Broadcast{msg: msg}
+	msg, remainder := BytesFromBytes(data)
+	dest, _ := IntFromBytes(remainder)
+	return &Broadcast{msg: msg, dest: BroadcastDest(dest)}
 }

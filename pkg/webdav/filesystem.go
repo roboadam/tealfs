@@ -224,7 +224,7 @@ func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType broadca
 		return err
 	}
 	msg := broadcastMessage{bType: updateType, file: *file}
-	chanutil.Send(f.Ctx, f.outBroadcast, model.NewBroadcast(msg.toBytes()), "filesystem: persistFileIndexAndBroadcast")
+	chanutil.Send(f.Ctx, f.outBroadcast, model.NewBroadcast(msg.toBytes(), model.FileSystemDest), "filesystem: persistFileIndexAndBroadcast")
 	return nil
 }
 

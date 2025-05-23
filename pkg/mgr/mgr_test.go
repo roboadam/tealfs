@@ -289,7 +289,7 @@ func TestBroadcast(t *testing.T) {
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, maxNumberOfWritesInOnePass, t, paths)
 
-	testMsg := model.NewBroadcast([]byte{1, 2, 3})
+	testMsg := model.NewBroadcast([]byte{1, 2, 3}, model.FileSystemDest)
 	outMsgCounter := 0
 
 	go func() {
@@ -307,14 +307,14 @@ func TestBroadcast(t *testing.T) {
 		}
 	}()
 
-	m.WebdavMgrBroadcast <- model.NewBroadcast([]byte{1, 2, 3})
+	m.WebdavMgrBroadcast <- model.NewBroadcast([]byte{1, 2, 3}, model.FileSystemDest)
 	time.Sleep(time.Millisecond * 500)
 	if outMsgCounter != 2 {
 		t.Error("Expected 2 messages to go out, got", outMsgCounter)
 		return
 	}
 
-	msg := model.NewBroadcast([]byte{2, 3, 4})
+	msg := model.NewBroadcast([]byte{2, 3, 4}, model.FileSystemDest)
 	m.ConnsMgrReceives <- model.ConnsMgrReceive{
 		ConnId:  expectedConnectionId1,
 		Payload: &msg,

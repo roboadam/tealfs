@@ -34,33 +34,36 @@ func New(
 	diskId model.DiskId,
 	mgrDiskWrites chan model.WriteRequest,
 	mgrDiskReads chan model.ReadRequest,
+	mgrDiskBroadcast chan model.Broadcast,
 	diskMgrWrites chan model.WriteResult,
 	diskMgrReads chan model.ReadResult,
 	ctx context.Context,
 ) Disk {
 	p := Disk{
-		path:      path,
-		id:        id,
-		diskId:    diskId,
-		inWrites:  mgrDiskWrites,
-		inReads:   mgrDiskReads,
-		outReads:  diskMgrReads,
-		outWrites: diskMgrWrites,
-		ctx:       ctx,
+		path:        path,
+		id:          id,
+		diskId:      diskId,
+		inWrites:    mgrDiskWrites,
+		inReads:     mgrDiskReads,
+		inBroadcast: mgrDiskBroadcast,
+		outReads:    diskMgrReads,
+		outWrites:   diskMgrWrites,
+		ctx:         ctx,
 	}
 	go p.consumeChannels()
 	return p
 }
 
 type Disk struct {
-	path      Path
-	id        model.NodeId
-	diskId    model.DiskId
-	outReads  chan model.ReadResult
-	outWrites chan model.WriteResult
-	inWrites  chan model.WriteRequest
-	inReads   chan model.ReadRequest
-	ctx       context.Context
+	path        Path
+	id          model.NodeId
+	diskId      model.DiskId
+	outReads    chan model.ReadResult
+	outWrites   chan model.WriteResult
+	inWrites    chan model.WriteRequest
+	inReads     chan model.ReadRequest
+	inBroadcast chan model.Broadcast
+	ctx         context.Context
 }
 
 func (d *Disk) Id() model.DiskId { return d.diskId }
@@ -93,6 +96,7 @@ func (d *Disk) consumeChannels() {
 					chanutil.Send(d.ctx, d.outReads, rr, "disk: read failure")
 				}
 			}
+		case <-d.inBroadcast:
 		}
 	}
 }
