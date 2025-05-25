@@ -113,16 +113,38 @@ func TestReadNewFile(t *testing.T) {
 	}
 }
 
-func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.Broadcast, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
+func newDiskService(ctx context.Context) (
+	*disk.MockFileOps,
+	disk.Path, model.NodeId,
+	chan model.WriteRequest,
+	chan model.ReadRequest,
+	chan model.Broadcast,
+	chan model.WriteResult,
+	chan model.ReadResult,
+	disk.Disk,
+) {
 	f := disk.MockFileOps{}
 	path := disk.NewPath("/some/fake/path", &f)
 	id := model.NewNodeId()
 	diskId := model.DiskId(uuid.New().String())
 	mgrDiskWrites := make(chan model.WriteRequest)
 	mgrDiskReads := make(chan model.ReadRequest)
+	mgrDiskBroadcast := make(chan model.Broadcast)
 	diskMgrWrites := make(chan model.WriteResult)
 	diskMgrReads := make(chan model.ReadResult)
-	mgrDiskBroadcast := make(chan model.Broadcast)
-	d := disk.New(path, id, diskId, mgrDiskWrites, mgrDiskReads, mgrDiskBroadcast, diskMgrWrites, diskMgrReads, ctx)
+	diskMgrBroadcast := make(chan model.Broadcast)
+
+	d := disk.New(
+		path,
+		id,
+		diskId,
+		mgrDiskWrites,
+		mgrDiskReads,
+		mgrDiskBroadcast,
+		diskMgrWrites,
+		diskMgrReads,
+		diskMgrBroadcast,
+		ctx,
+	)
 	return &f, path, id, mgrDiskWrites, mgrDiskReads, mgrDiskBroadcast, diskMgrWrites, diskMgrReads, d
 }

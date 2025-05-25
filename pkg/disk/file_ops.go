@@ -15,14 +15,18 @@
 package disk
 
 import (
+	"io"
 	"os"
 	"sync"
+
+	"github.com/spf13/afero"
 )
 
 type FileOps interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte) error
 	ReadDir(name string) ([]os.DirEntry, error)
+	CreateDir(name string) error
 }
 
 type DiskFileOps struct{}
@@ -39,27 +43,32 @@ func (d *DiskFileOps) ReadDir(name string) ([]os.DirEntry, error) {
 	return os.ReadDir(name)
 }
 
+func (d *DiskFileOps) CreateDir(name string) error {
+	return os.MkdirAll(name, os.ModeDir)
+}
+
 type MockFileOps struct {
 	ReadError  error
 	WriteError error
 	WriteCount int
-	mockFS     map[string][]byte
+	mockFS     afero.Fs
 	mux        sync.Mutex
 }
 
 func (m *MockFileOps) ReadFile(name string) ([]byte, error) {
-	m.mux.Lock()
-	defer m.mux.Unlock()
+	if m.mockFS == nil {
+		m.mockFS = afero.NewMemMapFs()
+	}
 	if m.ReadError != nil {
 		return nil, m.ReadError
 	}
-	if m.mockFS == nil {
-		m.mockFS = make(map[string][]byte)
+	f, err := m.mockFS.OpenFile(name, os.O_RDONLY, 0644)
+	if err != nil {
+		return []byte{}, err
 	}
-	if data, ok := m.mockFS[name]; ok {
-		return data, nil
-	}
-	return nil, os.ErrNotExist
+	data, err := io.ReadAll(f)
+	f.Close()
+	return data, err
 }
 
 func (m *MockFileOps) WriteFile(name string, data []byte) error {
@@ -68,14 +77,24 @@ func (m *MockFileOps) WriteFile(name string, data []byte) error {
 	if m.WriteError != nil {
 		return m.WriteError
 	}
-	if m.mockFS == nil {
-		m.mockFS = make(map[string][]byte)
+
+	f, err := m.mockFS.OpenFile(name, os.O_WRONLY, 0666)
+	if err != nil {
+		return err
 	}
-	m.mockFS[name] = data
-	m.WriteCount++
-	return nil
+	_, err = f.Write([]byte(name))
+	f.Close()
+	if err == nil {
+		m.WriteCount++
+	}
+	return err
 }
 
 func (d *MockFileOps) ReadDir(name string) ([]os.DirEntry, error) {
 	return nil, os.ErrNotExist
+}
+
+func (d *MockFileOps) CreateDir(name string) error {
+	d.mockFS.ReadDir(``)
+	return
 }

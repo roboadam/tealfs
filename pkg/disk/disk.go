@@ -15,12 +15,16 @@
 package disk
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/fs"
 	"path/filepath"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Path struct {
@@ -29,6 +33,32 @@ type Path struct {
 }
 
 type StoredHash string
+type Op int
+
+const (
+	Add Op = iota
+	Remove
+)
+
+type StoredHashMessage struct {
+	Op   Op
+	Hash StoredHash
+}
+
+func (m StoredHashMessage) Serialize() []byte {
+	op := model.IntToBytes(uint32(m.Op))
+	hash := model.StringToBytes(string(m.Hash))
+	return bytes.Join([][]byte{op, hash}, []byte{})
+}
+
+func toStoredHashMessage(data []byte) StoredHashMessage {
+	op, remainder := model.IntFromBytes(data)
+	hash, _ := model.StringFromBytes(remainder)
+	return StoredHashMessage{
+		Op:   Op(op),
+		Hash: StoredHash(hash),
+	}
+}
 
 func New(
 	path Path,
@@ -52,11 +82,19 @@ func New(
 		outReads:     diskMgrReads,
 		outWrites:    diskMgrWrites,
 		outBroadcast: diskMgrBroadcast,
-		storedHashes: []StoredHash{},
+		storedHashes: listStoredHashes(path),
 		ctx:          ctx,
 	}
 	go p.consumeChannels()
 	return p
+}
+
+func listStoredHashes(path Path) set.Set[StoredHash] {
+	result := set.NewSet[StoredHash]()
+	for _, fileName := range path.ListDirFiles() {
+		result.Add(StoredHash(fileName))
+	}
+	return result
 }
 
 type Disk struct {
@@ -69,7 +107,7 @@ type Disk struct {
 	inWrites     chan model.WriteRequest
 	inReads      chan model.ReadRequest
 	inBroadcast  chan model.Broadcast
-	storedHashes []StoredHash
+	storedHashes set.Set[StoredHash]
 	ctx          context.Context
 }
 
@@ -81,9 +119,14 @@ func (d *Disk) consumeChannels() {
 		case <-d.ctx.Done():
 			return
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Data())
+			data := s.Data()
+			err := d.path.Save(data)
 			if err == nil {
 				wr := model.NewWriteResultOk(s.Data().Ptr, s.Caller(), s.ReqId())
+				hash := StoredHash(data.Ptr.FileName())
+				msg := StoredHashMessage{Op: Add, Hash: hash}.Serialize()
+				broadcast := model.NewBroadcast(msg, model.DiskDest)
+				chanutil.Send(d.ctx, d.outBroadcast, broadcast, "disk: broadcast add")
 				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save success")
 			} else {
 				wr := model.NewWriteResultErr(err.Error(), s.Caller(), s.ReqId())
@@ -103,7 +146,16 @@ func (d *Disk) consumeChannels() {
 					chanutil.Send(d.ctx, d.outReads, rr, "disk: read failure")
 				}
 			}
-		case <-d.inBroadcast:
+		case b := <-d.inBroadcast:
+			msg := toStoredHashMessage(b.Msg())
+			switch msg.Op {
+			case Add:
+				d.storedHashes.Add(msg.Hash)
+			case Remove:
+				d.storedHashes.Remove(msg.Hash)
+			default:
+				log.Panicf("Unknown disk broadcast with op %d", msg.Op)
+			}
 		}
 	}
 }
@@ -120,6 +172,21 @@ func (p *Path) Read(ptr model.DiskPointer) (model.RawData, error) {
 		return model.RawData{Ptr: ptr, Data: []byte{}}, nil
 	}
 	return model.RawData{Ptr: ptr, Data: result}, err
+}
+
+func (p *Path) ListDirFiles() []string {
+	result := []string{}
+	files, err := p.ops.ReadDir(p.raw)
+	if err != nil {
+		log.Panic("No dir here")
+		return []string{}
+	}
+	for _, file := range files {
+		if file.Type().IsRegular() {
+			result = append(result, file.Name())
+		}
+	}
+	return result
 }
 
 func NewPath(rawPath string, ops FileOps) Path {
