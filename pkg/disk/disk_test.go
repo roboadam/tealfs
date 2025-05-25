@@ -29,7 +29,7 @@ import (
 func TestWriteData(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	f, path, nodeId, mgrDiskWrites, _, diskMgrWrites, _, _ := newDiskService(ctx)
+	f, path, nodeId, mgrDiskWrites, _, _, diskMgrWrites, _, _ := newDiskService(ctx)
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
@@ -61,7 +61,7 @@ func TestWriteData(t *testing.T) {
 func TestReadData(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	f, path, _, _, mgrDiskReads, _, diskMgrReads, _ := newDiskService(ctx)
+	f, path, _, _, mgrDiskReads, _, _, diskMgrReads, _ := newDiskService(ctx)
 	blockId := model.NewBlockId()
 	caller := model.NewNodeId()
 	data := []byte{0, 1, 2, 3, 4, 5}
@@ -88,7 +88,7 @@ func TestReadData(t *testing.T) {
 func TestReadNewFile(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	f, path, _, _, mgrDiskReads, _, diskMgrReads, _ := newDiskService(ctx)
+	f, path, _, _, mgrDiskReads, _, _, diskMgrReads, _ := newDiskService(ctx)
 	blockId := model.NewBlockId()
 	caller := model.NewNodeId()
 	data := []byte{0, 1, 2, 3, 4, 5}
@@ -113,7 +113,7 @@ func TestReadNewFile(t *testing.T) {
 	}
 }
 
-func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
+func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.Broadcast, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
 	f := disk.MockFileOps{}
 	path := disk.NewPath("/some/fake/path", &f)
 	id := model.NewNodeId()
@@ -122,6 +122,7 @@ func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.No
 	mgrDiskReads := make(chan model.ReadRequest)
 	diskMgrWrites := make(chan model.WriteResult)
 	diskMgrReads := make(chan model.ReadResult)
-	d := disk.New(path, id, diskId, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, ctx)
-	return &f, path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, d
+	mgrDiskBroadcast := make(chan model.Broadcast)
+	d := disk.New(path, id, diskId, mgrDiskWrites, mgrDiskReads, mgrDiskBroadcast, diskMgrWrites, diskMgrReads, ctx)
+	return &f, path, id, mgrDiskWrites, mgrDiskReads, mgrDiskBroadcast, diskMgrWrites, diskMgrReads, d
 }

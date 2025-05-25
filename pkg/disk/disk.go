@@ -28,6 +28,8 @@ type Path struct {
 	ops FileOps
 }
 
+type StoredHash string
+
 func New(
 	path Path,
 	id model.NodeId,
@@ -37,33 +39,38 @@ func New(
 	mgrDiskBroadcast chan model.Broadcast,
 	diskMgrWrites chan model.WriteResult,
 	diskMgrReads chan model.ReadResult,
+	diskMgrBroadcast chan model.Broadcast,
 	ctx context.Context,
 ) Disk {
 	p := Disk{
-		path:        path,
-		id:          id,
-		diskId:      diskId,
-		inWrites:    mgrDiskWrites,
-		inReads:     mgrDiskReads,
-		inBroadcast: mgrDiskBroadcast,
-		outReads:    diskMgrReads,
-		outWrites:   diskMgrWrites,
-		ctx:         ctx,
+		path:         path,
+		id:           id,
+		diskId:       diskId,
+		inWrites:     mgrDiskWrites,
+		inReads:      mgrDiskReads,
+		inBroadcast:  mgrDiskBroadcast,
+		outReads:     diskMgrReads,
+		outWrites:    diskMgrWrites,
+		outBroadcast: diskMgrBroadcast,
+		storedHashes: []StoredHash{},
+		ctx:          ctx,
 	}
 	go p.consumeChannels()
 	return p
 }
 
 type Disk struct {
-	path        Path
-	id          model.NodeId
-	diskId      model.DiskId
-	outReads    chan model.ReadResult
-	outWrites   chan model.WriteResult
-	inWrites    chan model.WriteRequest
-	inReads     chan model.ReadRequest
-	inBroadcast chan model.Broadcast
-	ctx         context.Context
+	path         Path
+	id           model.NodeId
+	diskId       model.DiskId
+	outReads     chan model.ReadResult
+	outWrites    chan model.WriteResult
+	outBroadcast chan model.Broadcast
+	inWrites     chan model.WriteRequest
+	inReads      chan model.ReadRequest
+	inBroadcast  chan model.Broadcast
+	storedHashes []StoredHash
+	ctx          context.Context
 }
 
 func (d *Disk) Id() model.DiskId { return d.diskId }
