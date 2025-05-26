@@ -124,7 +124,9 @@ func newDiskService(ctx context.Context) (
 	disk.Disk,
 ) {
 	f := disk.MockFileOps{}
-	path := disk.NewPath("/some/fake/path", &f)
+	pathStr := "/some/fake/path"
+	path := disk.NewPath(pathStr, &f)
+	f.MkdirAll(pathStr)
 	id := model.NewNodeId()
 	diskId := model.DiskId(uuid.New().String())
 	mgrDiskWrites := make(chan model.WriteRequest)

@@ -15,9 +15,7 @@
 package disk
 
 import (
-	"io"
 	"os"
-	"sync"
 
 	"github.com/spf13/afero"
 )
@@ -26,7 +24,7 @@ type FileOps interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte) error
 	ReadDir(name string) ([]os.DirEntry, error)
-	CreateDir(name string) error
+	MkdirAll(name string) error
 }
 
 type DiskFileOps struct{}
@@ -43,7 +41,7 @@ func (d *DiskFileOps) ReadDir(name string) ([]os.DirEntry, error) {
 	return os.ReadDir(name)
 }
 
-func (d *DiskFileOps) CreateDir(name string) error {
+func (d *DiskFileOps) MkdirAll(name string) error {
 	return os.MkdirAll(name, os.ModeDir)
 }
 
@@ -51,50 +49,39 @@ type MockFileOps struct {
 	ReadError  error
 	WriteError error
 	WriteCount int
-	mockFS     afero.Fs
-	mux        sync.Mutex
+	mockFS     *afero.IOFS
 }
 
 func (m *MockFileOps) ReadFile(name string) ([]byte, error) {
 	if m.mockFS == nil {
-		m.mockFS = afero.NewMemMapFs()
+		m.mockFS = &afero.IOFS{Fs: afero.NewMemMapFs()}
 	}
 	if m.ReadError != nil {
 		return nil, m.ReadError
 	}
-	f, err := m.mockFS.OpenFile(name, os.O_RDONLY, 0644)
-	if err != nil {
-		return []byte{}, err
-	}
-	data, err := io.ReadAll(f)
-	f.Close()
-	return data, err
+	return m.mockFS.ReadFile(name)
 }
 
 func (m *MockFileOps) WriteFile(name string, data []byte) error {
-	m.mux.Lock()
-	defer m.mux.Unlock()
+	if m.mockFS == nil {
+		m.mockFS = &afero.IOFS{Fs: afero.NewMemMapFs()}
+	}
 	if m.WriteError != nil {
 		return m.WriteError
 	}
-
-	f, err := m.mockFS.OpenFile(name, os.O_WRONLY, 0666)
-	if err != nil {
-		return err
-	}
-	_, err = f.Write([]byte(name))
-	f.Close()
-	if err == nil {
-		m.WriteCount++
-	}
-	return err
+	return afero.WriteFile(m.mockFS.Fs, name, data, 0644)
 }
 
-func (d *MockFileOps) ReadDir(name string) ([]os.DirEntry, error) {
-	return nil, os.ErrNotExist
+func (m *MockFileOps) ReadDir(name string) ([]os.DirEntry, error) {
+	if m.mockFS == nil {
+		m.mockFS = &afero.IOFS{Fs: afero.NewMemMapFs()}
+	}
+	return m.mockFS.ReadDir(name)
 }
 
-func (d *MockFileOps) CreateDir(name string) error {
-	d.mockFS.ReadDir(``)
-	return
+func (m *MockFileOps) MkdirAll(name string) error {
+	if m.mockFS == nil {
+		m.mockFS = &afero.IOFS{Fs: afero.NewMemMapFs()}
+	}
+	return m.mockFS.MkdirAll(name, os.ModeDir)
 }
