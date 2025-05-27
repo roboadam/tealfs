@@ -29,7 +29,8 @@ import (
 func TestWriteData(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	f, path, nodeId, mgrDiskWrites, _, _, diskMgrWrites, _, _ := newDiskService(ctx)
+	f, path, nodeId, mgrDiskWrites, _, _, diskMgrWrites, _, outBroadcast, _ := newDiskService(ctx)
+	consumeBroadcast(ctx, outBroadcast)
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
@@ -58,10 +59,22 @@ func TestWriteData(t *testing.T) {
 	}
 }
 
+func consumeBroadcast(ctx context.Context, broadcast chan model.Broadcast) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-broadcast:
+			}
+		}
+	}()
+}
+
 func TestReadData(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	f, path, _, _, mgrDiskReads, _, _, diskMgrReads, _ := newDiskService(ctx)
+	f, path, _, _, mgrDiskReads, _, _, diskMgrReads, _, _ := newDiskService(ctx)
 	blockId := model.NewBlockId()
 	caller := model.NewNodeId()
 	data := []byte{0, 1, 2, 3, 4, 5}
@@ -88,7 +101,7 @@ func TestReadData(t *testing.T) {
 func TestReadNewFile(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	f, path, _, _, mgrDiskReads, _, _, diskMgrReads, _ := newDiskService(ctx)
+	f, path, _, _, mgrDiskReads, _, _, diskMgrReads, _, _ := newDiskService(ctx)
 	blockId := model.NewBlockId()
 	caller := model.NewNodeId()
 	data := []byte{0, 1, 2, 3, 4, 5}
@@ -121,10 +134,11 @@ func newDiskService(ctx context.Context) (
 	chan model.Broadcast,
 	chan model.WriteResult,
 	chan model.ReadResult,
+	chan model.Broadcast,
 	disk.Disk,
 ) {
 	f := disk.MockFileOps{}
-	pathStr := "/some/fake/path"
+	pathStr := "some/fake/path"
 	path := disk.NewPath(pathStr, &f)
 	f.MkdirAll(pathStr)
 	id := model.NewNodeId()
@@ -148,5 +162,5 @@ func newDiskService(ctx context.Context) (
 		diskMgrBroadcast,
 		ctx,
 	)
-	return &f, path, id, mgrDiskWrites, mgrDiskReads, mgrDiskBroadcast, diskMgrWrites, diskMgrReads, d
+	return &f, path, id, mgrDiskWrites, mgrDiskReads, mgrDiskBroadcast, diskMgrWrites, diskMgrReads, diskMgrBroadcast, d
 }
