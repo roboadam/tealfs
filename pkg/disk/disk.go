@@ -30,14 +30,6 @@ type Path struct {
 	ops FileOps
 }
 
-type StoredHash string
-type Op int
-
-const (
-	Add Op = iota
-	Remove
-)
-
 func New(
 	path Path,
 	id model.NodeId,

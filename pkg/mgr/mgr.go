@@ -436,9 +436,7 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 	if r.Caller() == m.NodeId {
 		resolved := m.pendingBlockWrites.resolve(r.Ptr(), r.ReqId())
 		var err error = nil
-		if r.Ok() {
-			m.sendBroadcast(model.NewBroadcast([]byte{}, model.DiskDest))
-		} else {
+		if !r.Ok() {
 			err = errors.New(r.Message())
 			m.pendingBlockWrites.cancel(r.ReqId())
 		}
