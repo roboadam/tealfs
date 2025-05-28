@@ -3,17 +3,17 @@
 - [x] UI setup
 - [x] Break up big blocks
 - [ ] Rebalance on disk changes
-	- [x] Revert the code I already wrote
+    - [x] Revert the code I already wrote
     - [ ] Global BlockID list
-	    - [ ] Use an mgr level broadcast to maintain list
+        - [ ] Use an mgr level broadcast to maintain list
             - [x] Struct to hold broadcast and serialize/deserialize it
             - [ ] Send the broadcast when adding/removing a BlockId
             - [ ] Receive the broadcast and update a list
-		- [ ] Save that list to disk on update
-		- [ ] Load that list on startup
-		- [ ] Periodically pick one node to update all other mgrs with a broadcast
-	- [ ] In the event of a disk change (resize/removal/addition)
-		- [ ] Pick one node's mgr to do the updating
+        - [ ] Save that list to disk on update
+        - [ ] Load that list on startup
+        - [ ] Periodically pick one node to update all other mgrs with a broadcast
+    - [ ] In the event of a disk change (resize/removal/addition)
+        - [ ] Pick one node's mgr to do the updating
         - [ ] Loop through all BlockIDs
             - [ ] Get a list of disks that have that block but don't need it
             - [ ] Fetch the data if that list isn't empty
