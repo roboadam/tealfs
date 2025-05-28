@@ -1,8 +1,7 @@
-- [ ] Encryption in transit
-- [ ] Authentication
+- [x] Robust block fetching - goes to backup on failure
+- [x] Everywhere blocks - for file index
+- [x] UI setup
 - [x] Break up big blocks
-- [ ] Combine small blocks
-- [ ] UI Refresh
 - [ ] Rebalance on disk changes
 	- [ ] Revert the code I already wrote
     - [ ] Global BlockID list
@@ -17,10 +16,13 @@
             - [ ] Fetch the data if that list isn't empty
             - [ ] For each of those disks send the data
             - [ ] For each disk that doesn't need the data delete it
+- [ ] Update Readme
+- [ ] Automatically choose ports
+- [ ] Encryption in transit
+- [ ] Authentication
+- [ ] Combine small blocks
+- [ ] UI Refresh
 - [ ] XOR background process
 - [ ] Service discovery
-- [x] UI setup
 - [ ] CLI setup
-- [x] Everywhere blocks - for file index
-- [x] Robust block fetching - goes to backup on failure
 - [ ] Hash as filename
