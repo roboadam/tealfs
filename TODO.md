@@ -3,9 +3,12 @@
 - [x] UI setup
 - [x] Break up big blocks
 - [ ] Rebalance on disk changes
-	- [ ] Revert the code I already wrote
+	- [x] Revert the code I already wrote
     - [ ] Global BlockID list
 	    - [ ] Use an mgr level broadcast to maintain list
+            - [x] Struct to hold broadcast and serialize/deserialize it
+            - [ ] Send the broadcast when adding/removing a BlockId
+            - [ ] Receive the broadcast and update a list
 		- [ ] Save that list to disk on update
 		- [ ] Load that list on startup
 		- [ ] Periodically pick one node to update all other mgrs with a broadcast

@@ -69,6 +69,7 @@ func (m *MockFileOps) WriteFile(name string, data []byte) error {
 	if m.WriteError != nil {
 		return m.WriteError
 	}
+	m.WriteCount++
 	return afero.WriteFile(m.mockFS.Fs, name, data, 0644)
 }
 
