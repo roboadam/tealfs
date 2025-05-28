@@ -43,7 +43,6 @@ type Mgr struct {
 	WebdavMgrBroadcast      chan model.Broadcast
 	MgrConnsConnectTos      chan model.MgrConnsConnectTo
 	MgrConnsSends           chan model.MgrConnsSend
-	MgrDiskBroadcast        chan model.Broadcast
 	MgrDiskWrites           map[model.DiskId]chan model.WriteRequest
 	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
 	MgrUiConnectionStatuses chan model.UiConnectionStatus
@@ -94,7 +93,6 @@ func NewWithChanSize(
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
 		MgrConnsConnectTos:      make(chan model.MgrConnsConnectTo, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
-		MgrDiskBroadcast:        make(chan model.Broadcast, chanSize),
 		MgrDiskWrites:           make(map[model.DiskId]chan model.WriteRequest),
 		MgrDiskReads:            make(map[model.DiskId]chan model.ReadRequest),
 		MgrUiConnectionStatuses: make(chan model.UiConnectionStatus, chanSize),
@@ -176,7 +174,6 @@ func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
 		id,
 		m.MgrDiskWrites[id],
 		m.MgrDiskReads[id],
-		m.MgrDiskBroadcast,
 		m.DiskMgrWrites,
 		m.DiskMgrReads,
 		m.ctx,
@@ -197,7 +194,7 @@ func (m *Mgr) markLocalDiskAvailable(id model.DiskId, path string, size int) {
 	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: local disk available")
 }
 
-func (m *Mgr) markRemoteDiskUnknown(id model.DiskId, node model.NodeId, path string, size int) {
+func (m *Mgr) markRemoteDiskUnknown(id model.DiskId, node model.NodeId, path string) {
 	status := model.UiDiskStatus{
 		Localness:     model.Remote,
 		Availableness: model.Unknown,
@@ -306,7 +303,7 @@ func (m *Mgr) syncDisksAndIds() {
 			m.createLocalDisk(diskIdPath.Id, diskIdPath.Path)
 			m.markLocalDiskAvailable(diskIdPath.Id, diskIdPath.Path, 1)
 		} else {
-			m.markRemoteDiskUnknown(diskIdPath.Id, diskIdPath.Node, diskIdPath.Path, 1)
+			m.markRemoteDiskUnknown(diskIdPath.Id, diskIdPath.Node, diskIdPath.Path)
 		}
 	}
 }
@@ -425,8 +422,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.Broadcast:
 		if p.Dest() == model.FileSystemDest {
 			chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
-		} else if p.Dest() == model.DiskDest {
-			chanutil.Send(m.ctx, m.MgrDiskBroadcast, *p, "mgr: handleReceives: forward broadcast to disk")
 		} else {
 			log.Panicf("unknown dest %d", p.Dest())
 		}

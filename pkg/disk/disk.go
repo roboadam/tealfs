@@ -15,14 +15,12 @@
 package disk
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io/fs"
 	"path/filepath"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -40,75 +38,39 @@ const (
 	Remove
 )
 
-type StoredHashMessage struct {
-	Op   Op
-	Hash StoredHash
-}
-
-func (m StoredHashMessage) Serialize() []byte {
-	op := model.IntToBytes(uint32(m.Op))
-	hash := model.StringToBytes(string(m.Hash))
-	return bytes.Join([][]byte{op, hash}, []byte{})
-}
-
-func toStoredHashMessage(data []byte) StoredHashMessage {
-	op, remainder := model.IntFromBytes(data)
-	hash, _ := model.StringFromBytes(remainder)
-	return StoredHashMessage{
-		Op:   Op(op),
-		Hash: StoredHash(hash),
-	}
-}
-
 func New(
 	path Path,
 	id model.NodeId,
 	diskId model.DiskId,
 	mgrDiskWrites chan model.WriteRequest,
 	mgrDiskReads chan model.ReadRequest,
-	mgrDiskBroadcast chan model.Broadcast,
 	diskMgrWrites chan model.WriteResult,
 	diskMgrReads chan model.ReadResult,
-	diskMgrBroadcast chan model.Broadcast,
 	ctx context.Context,
 ) Disk {
 	p := Disk{
-		path:         path,
-		id:           id,
-		diskId:       diskId,
-		inWrites:     mgrDiskWrites,
-		inReads:      mgrDiskReads,
-		inBroadcast:  mgrDiskBroadcast,
-		outReads:     diskMgrReads,
-		outWrites:    diskMgrWrites,
-		outBroadcast: diskMgrBroadcast,
-		storedHashes: listStoredHashes(path),
-		ctx:          ctx,
+		path:      path,
+		id:        id,
+		diskId:    diskId,
+		inWrites:  mgrDiskWrites,
+		inReads:   mgrDiskReads,
+		outReads:  diskMgrReads,
+		outWrites: diskMgrWrites,
+		ctx:       ctx,
 	}
 	go p.consumeChannels()
 	return p
 }
 
-func listStoredHashes(path Path) set.Set[StoredHash] {
-	result := set.NewSet[StoredHash]()
-	for _, fileName := range path.ListDirFiles() {
-		result.Add(StoredHash(fileName))
-	}
-	return result
-}
-
 type Disk struct {
-	path         Path
-	id           model.NodeId
-	diskId       model.DiskId
-	outReads     chan model.ReadResult
-	outWrites    chan model.WriteResult
-	outBroadcast chan model.Broadcast
-	inWrites     chan model.WriteRequest
-	inReads      chan model.ReadRequest
-	inBroadcast  chan model.Broadcast
-	storedHashes set.Set[StoredHash]
-	ctx          context.Context
+	path      Path
+	id        model.NodeId
+	diskId    model.DiskId
+	outReads  chan model.ReadResult
+	outWrites chan model.WriteResult
+	inWrites  chan model.WriteRequest
+	inReads   chan model.ReadRequest
+	ctx       context.Context
 }
 
 func (d *Disk) Id() model.DiskId { return d.diskId }
@@ -123,10 +85,6 @@ func (d *Disk) consumeChannels() {
 			err := d.path.Save(data)
 			if err == nil {
 				wr := model.NewWriteResultOk(s.Data().Ptr, s.Caller(), s.ReqId())
-				hash := StoredHash(data.Ptr.FileName())
-				msg := StoredHashMessage{Op: Add, Hash: hash}.Serialize()
-				broadcast := model.NewBroadcast(msg, model.DiskDest)
-				chanutil.Send(d.ctx, d.outBroadcast, broadcast, "disk: broadcast add")
 				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save success")
 			} else {
 				wr := model.NewWriteResultErr(err.Error(), s.Caller(), s.ReqId())
@@ -145,16 +103,6 @@ func (d *Disk) consumeChannels() {
 					rr := model.NewReadResultErr(err.Error(), r.Caller(), r.GetBlockId(), r.BlockId())
 					chanutil.Send(d.ctx, d.outReads, rr, "disk: read failure")
 				}
-			}
-		case b := <-d.inBroadcast:
-			msg := toStoredHashMessage(b.Msg())
-			switch msg.Op {
-			case Add:
-				d.storedHashes.Add(msg.Hash)
-			case Remove:
-				d.storedHashes.Remove(msg.Hash)
-			default:
-				log.Panicf("Unknown disk broadcast with op %d", msg.Op)
 			}
 		}
 	}
