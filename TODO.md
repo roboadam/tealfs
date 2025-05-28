@@ -1,0 +1,26 @@
+- [ ] Encryption in transit
+- [ ] Authentication
+- [x] Break up big blocks
+- [ ] Combine small blocks
+- [ ] UI Refresh
+- [ ] Rebalance on disk changes
+	- [ ] Revert the code I already wrote
+    - [ ] Global BlockID list
+	    - [ ] Use an mgr level broadcast to maintain list
+		- [ ] Save that list to disk on update
+		- [ ] Load that list on startup
+		- [ ] Periodically pick one node to update all other mgrs with a broadcast
+	- [ ] In the event of a disk change (resize/removal/addition)
+		- [ ] Pick one node's mgr to do the updating
+        - [ ] Loop through all BlockIDs
+            - [ ] Get a list of disks that have that block but don't need it
+            - [ ] Fetch the data if that list isn't empty
+            - [ ] For each of those disks send the data
+            - [ ] For each disk that doesn't need the data delete it
+- [ ] XOR background process
+- [ ] Service discovery
+- [x] UI setup
+- [ ] CLI setup
+- [x] Everywhere blocks - for file index
+- [x] Robust block fetching - goes to backup on failure
+- [ ] Hash as filename
