@@ -14,19 +14,25 @@
 
 package set
 
-import "maps"
+import (
+	"maps"
+	"sync"
+)
 
 type Set[K comparable] struct {
+	mux  sync.RWMutex
 	data map[K]bool
 }
 
 func NewSet[K comparable]() Set[K] {
-	return Set[K]{data: make(map[K]bool)}
+	return Set[K]{data: make(map[K]bool), mux: sync.RWMutex{}}
 }
 
 func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
-	result := Set[K]{data: make(map[K]bool)}
+	result := Set[K]{data: make(map[K]bool), mux: sync.RWMutex{}}
 
+	result.mux.Lock()
+	defer result.mux.Unlock()
 	for k := range input {
 		result.Add(k)
 	}
@@ -35,14 +41,20 @@ func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
 }
 
 func (s *Set[K]) Add(item K) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	s.data[item] = true
 }
 
 func (s *Set[K]) Remove(item K) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	delete(s.data, item)
 }
 
 func (s *Set[K]) Equal(b *Set[K]) bool {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	if len(s.data) != len(b.data) {
 		return false
 	}
@@ -57,11 +69,15 @@ func (s *Set[K]) Equal(b *Set[K]) bool {
 }
 
 func (s *Set[K]) Contains(k K) bool {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	_, exists := s.data[k]
 	return exists
 }
 
 func (s *Set[K]) GetValues() []K {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	result := make([]K, len(s.data))
 	i := 0
 	for k := range s.data {
@@ -72,6 +88,8 @@ func (s *Set[K]) GetValues() []K {
 }
 
 func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	result := NewSet[K]()
 	for k := range s.data {
 		if !o.Contains(k) {
@@ -82,10 +100,14 @@ func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
 }
 
 func (s *Set[K]) Len() int {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	return len(s.data)
 }
 
 func (s *Set[K]) Clone() Set[K] {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	return Set[K]{
 		data: maps.Clone(s.data),
 	}
