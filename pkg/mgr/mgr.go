@@ -65,6 +65,7 @@ type Mgr struct {
 	DiskIds            []model.DiskIdPath
 	disks              []disk.Disk
 	ctx                context.Context
+	cnt                int
 }
 
 func NewWithChanSize(
@@ -420,9 +421,12 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.ReadResult:
 		m.handleDiskReadResult(*p)
 	case *model.Broadcast:
-		if p.Dest() == model.FileSystemDest {
+		switch p.Dest() {
+		case model.FileSystemDest:
 			chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
-		} else {
+		case model.MgrDest:
+			log.Info("MGR")
+		default:
 			log.Panicf("unknown dest %d", p.Dest())
 		}
 	case *model.AddDiskReq:
@@ -447,6 +451,14 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 				Err: err,
 			}
 			chanutil.Send(m.ctx, m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
+			ptr := r.Ptr()
+			cmd := GlobalBlockListCommand{
+				Type:    Add,
+				BlockId: ptr.BlockId(),
+			}
+			m.sendBroadcast(model.NewBroadcast(cmd.ToBytes(), model.MgrDest))
+			m.cnt++
+			log.Infof("COUNT:%d - %s", m.cnt, cmd.BlockId)
 		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller())

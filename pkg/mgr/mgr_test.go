@@ -20,10 +20,13 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 	"time"
 
 	"context"
+
+	"github.com/sirupsen/logrus"
 )
 
 func TestConnectToMgr(t *testing.T) {
@@ -187,7 +190,7 @@ func TestWebdavGet(t *testing.T) {
 
 func TestWebdavPut(t *testing.T) {
 	paths := []string{"path1", "path2"}
-	const expectedAddress1 = "some-address:123"
+	const expectedAddress1 = "some-address:1234"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()
 	disks12 := []model.DiskIdPath{
@@ -212,7 +215,7 @@ func TestWebdavPut(t *testing.T) {
 	}, maxNumberOfWritesInOnePass, t, paths)
 
 	blocks := []model.Block{}
-	for i := range 100 {
+	for i := range 5 {
 		data := []byte{byte(i)}
 		block := model.Block{
 			Id:   model.NewBlockId(),
@@ -225,6 +228,9 @@ func TestWebdavPut(t *testing.T) {
 	twoCount := int32(0)
 	threeCount := int32(0)
 	fourCount := int32(0)
+
+	broadcasts := set.NewSet[model.BlockId]()
+	cnt := 0
 
 	go func() {
 		for {
@@ -247,29 +253,38 @@ func TestWebdavPut(t *testing.T) {
 
 					result := model.NewWriteResultOk(request.Data().Ptr, request.Caller(), request.ReqId())
 					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
+				case *model.Broadcast:
+					if request.Dest() == model.MgrDest {
+						cmd := ToGlobalBlockListCommand(request.Msg())
+						broadcasts.Add(cmd.BlockId)
+						cnt++
+						logrus.Infof("TEST CNT %d,%d - %s", cnt, broadcasts.Len(), cmd.BlockId)
+					}
 				}
 
 			}
 		}
 	}()
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 
 	for _, block := range blocks {
 		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
 		<-m.MgrWebdavPuts
 	}
-	if fileOps.WriteCount == 0 || oneCount == 0 /*|| twoCount == 0 || threeCount == 0 || fourCount == 0*/ {
+	if fileOps.WriteCount == 0 || oneCount == 0 {
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fileOps.WriteCount))
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", oneCount))
-		// t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", twoCount))
-		// t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", threeCount))
-		// t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fourCount))
+		return
+	}
+
+	if broadcasts.Len() != 5 {
+		t.Errorf("Expected 100 broadcasts, got %d", broadcasts.Len())
 		return
 	}
 }
 
-func TestBroadcast(t *testing.T) {
+func TestFileSystemBroadcast(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()

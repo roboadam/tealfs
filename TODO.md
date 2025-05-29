@@ -7,7 +7,7 @@
     - [ ] Global BlockID list
         - [ ] Use an mgr level broadcast to maintain list
             - [x] Struct to hold broadcast and serialize/deserialize it
-            - [ ] Send the broadcast when adding/removing a BlockId
+            - [ ] Send the broadcast when adding a BlockId
             - [ ] Receive the broadcast and update a list
         - [ ] Save that list to disk on update
         - [ ] Load that list on startup
@@ -20,6 +20,8 @@
             - [ ] For each of those disks send the data
             - [ ] For each disk that doesn't need the data delete it
 - [ ] Update Readme
+- [ ] Hash as filename
+- [ ] Delete unused blocks
 - [ ] Automatically choose ports
 - [ ] Encryption in transit
 - [ ] Authentication
@@ -28,4 +30,3 @@
 - [ ] XOR background process
 - [ ] Service discovery
 - [ ] CLI setup
-- [ ] Hash as filename
