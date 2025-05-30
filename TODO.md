@@ -20,6 +20,7 @@
             - [ ] For each of those disks send the data
             - [ ] For each disk that doesn't need the data delete it
 - [ ] Update Readme
+- [ ] Check for race conditions in tests
 - [ ] Hash as filename
 - [ ] Delete unused blocks
 - [ ] Automatically choose ports

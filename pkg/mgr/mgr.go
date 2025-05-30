@@ -64,6 +64,7 @@ type Mgr struct {
 	freeBytes          uint32
 	DiskIds            []model.DiskIdPath
 	disks              []disk.Disk
+	GlobalBlockIds     set.Set[model.BlockId]
 	ctx                context.Context
 }
 
@@ -113,6 +114,7 @@ func NewWithChanSize(
 		freeBytes:               freeBytes,
 		DiskIds:                 []model.DiskIdPath{},
 		disks:                   []disk.Disk{},
+		GlobalBlockIds:          set.NewSet[model.BlockId](),
 		ctx:                     ctx,
 	}
 
@@ -424,7 +426,13 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		case model.FileSystemDest:
 			chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
 		case model.MgrDest:
-			log.Info("MGR")
+			cmd := ToGlobalBlockListCommand(p.Msg())
+			switch cmd.Type {
+			case Add:
+				m.GlobalBlockIds.Add(cmd.BlockId)
+			case Delete:
+				m.GlobalBlockIds.Remove(cmd.BlockId)
+			}
 		default:
 			log.Panicf("unknown dest %d", p.Dest())
 		}
@@ -451,12 +459,12 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 			}
 			chanutil.Send(m.ctx, m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
 			ptr := r.Ptr()
+			m.GlobalBlockIds.Add(ptr.BlockId())
 			cmd := GlobalBlockListCommand{
 				Type:    Add,
 				BlockId: ptr.BlockId(),
 			}
 			m.sendBroadcast(model.NewBroadcast(cmd.ToBytes(), model.MgrDest))
-			log.Infof("BROADCAST:%s", cmd.BlockId)
 		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller())
