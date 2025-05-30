@@ -15,7 +15,6 @@
 package mgr
 
 import (
-	"fmt"
 	"sync/atomic"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
@@ -25,8 +24,6 @@ import (
 	"time"
 
 	"context"
-
-	"github.com/sirupsen/logrus"
 )
 
 func TestConnectToMgr(t *testing.T) {
@@ -215,7 +212,7 @@ func TestWebdavPut(t *testing.T) {
 	}, maxNumberOfWritesInOnePass, t, paths)
 
 	blocks := []model.Block{}
-	for i := range 5 {
+	for i := range 100 {
 		data := []byte{byte(i)}
 		block := model.Block{
 			Id:   model.NewBlockId(),
@@ -258,7 +255,6 @@ func TestWebdavPut(t *testing.T) {
 						cmd := ToGlobalBlockListCommand(request.Msg())
 						broadcasts.Add(cmd.BlockId)
 						cnt++
-						logrus.Infof("TEST CNT %d,%d - %s", cnt, broadcasts.Len(), cmd.BlockId)
 					}
 				}
 
@@ -266,19 +262,19 @@ func TestWebdavPut(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(time.Second * 2)
-
 	for _, block := range blocks {
 		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
 		<-m.MgrWebdavPuts
 	}
-	if fileOps.WriteCount == 0 || oneCount == 0 {
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fileOps.WriteCount))
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", oneCount))
+
+	time.Sleep(time.Second)
+
+	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 || threeCount == 0 || fourCount == 0 {
+		t.Errorf("Expected everyone to fetch some data %d, %d, %d, %d, %d", fileOps.WriteCount, oneCount, twoCount, threeCount, fourCount)
 		return
 	}
 
-	if broadcasts.Len() != 5 {
+	if broadcasts.Len() != 100 {
 		t.Errorf("Expected 100 broadcasts, got %d", broadcasts.Len())
 		return
 	}

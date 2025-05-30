@@ -31,8 +31,6 @@ func NewSet[K comparable]() Set[K] {
 func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
 	result := Set[K]{data: make(map[K]bool), mux: sync.RWMutex{}}
 
-	result.mux.Lock()
-	defer result.mux.Unlock()
 	for k := range input {
 		result.Add(k)
 	}

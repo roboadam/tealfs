@@ -65,7 +65,6 @@ type Mgr struct {
 	DiskIds            []model.DiskIdPath
 	disks              []disk.Disk
 	ctx                context.Context
-	cnt                int
 }
 
 func NewWithChanSize(
@@ -457,8 +456,7 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 				BlockId: ptr.BlockId(),
 			}
 			m.sendBroadcast(model.NewBroadcast(cmd.ToBytes(), model.MgrDest))
-			m.cnt++
-			log.Infof("COUNT:%d - %s", m.cnt, cmd.BlockId)
+			log.Infof("BROADCAST:%s", cmd.BlockId)
 		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller())

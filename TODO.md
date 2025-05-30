@@ -7,7 +7,7 @@
     - [ ] Global BlockID list
         - [ ] Use an mgr level broadcast to maintain list
             - [x] Struct to hold broadcast and serialize/deserialize it
-            - [ ] Send the broadcast when adding a BlockId
+            - [x] Send the broadcast when adding a BlockId
             - [ ] Receive the broadcast and update a list
         - [ ] Save that list to disk on update
         - [ ] Load that list on startup
