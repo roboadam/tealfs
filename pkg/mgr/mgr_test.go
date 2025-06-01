@@ -280,10 +280,6 @@ func TestWebdavPut(t *testing.T) {
 	}
 }
 
-func TestGlobalBlockList(t *testing.T) {
-	
-}
-
 func TestFileSystemBroadcast(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
