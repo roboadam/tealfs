@@ -16,7 +16,9 @@ package mgr
 
 import (
 	"bytes"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type GlobalBlockListCommand struct {
@@ -26,15 +28,22 @@ type GlobalBlockListCommand struct {
 
 type GlobalBlockListCommandType uint8
 
+type GlobalBlockList set.Set[model.BlockId]
+
 const (
 	Add    GlobalBlockListCommandType = 0
 	Delete GlobalBlockListCommandType = 1
 )
 
+
 func (g *GlobalBlockListCommand) ToBytes() []byte {
 	typeVal := model.IntToBytes(uint32(g.Type))
 	blockId := model.StringToBytes(string(g.BlockId))
 	return bytes.Join([][]byte{typeVal, blockId}, []byte{})
+}
+
+func (g *GlobalBlockList) SaveFile(ops disk.FileOps, path string) error {
+	return ops.WriteFile(path, g.ToBytes())
 }
 
 func ToGlobalBlockListCommand(data []byte) GlobalBlockListCommand {

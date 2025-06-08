@@ -8,7 +8,7 @@
         - [ ] Use an mgr level broadcast to maintain list
             - [x] Struct to hold broadcast and serialize/deserialize it
             - [x] Send the broadcast when adding a BlockId
-            - [ ] Receive the broadcast and update a list
+            - [x] Receive the broadcast and update a list
         - [ ] Save that list to disk on update
         - [ ] Load that list on startup
         - [ ] Periodically pick one node to update all other mgrs with a broadcast
