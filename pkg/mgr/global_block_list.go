@@ -28,13 +28,10 @@ type GlobalBlockListCommand struct {
 
 type GlobalBlockListCommandType uint8
 
-type GlobalBlockList set.Set[model.BlockId]
-
 const (
 	Add    GlobalBlockListCommandType = 0
 	Delete GlobalBlockListCommandType = 1
 )
-
 
 func (g *GlobalBlockListCommand) ToBytes() []byte {
 	typeVal := model.IntToBytes(uint32(g.Type))
@@ -42,8 +39,28 @@ func (g *GlobalBlockListCommand) ToBytes() []byte {
 	return bytes.Join([][]byte{typeVal, blockId}, []byte{})
 }
 
-func (g *GlobalBlockList) SaveFile(ops disk.FileOps, path string) error {
-	return ops.WriteFile(path, g.ToBytes())
+func SaveGBL(ops disk.FileOps, path string, gbl *set.Set[model.BlockId]) error {
+	data := model.IntToBytes(uint32(gbl.Len()))
+	for _, id := range gbl.GetValues() {
+		data = append(data, model.StringToBytes(string(id))...)
+	}
+	return ops.WriteFile(path, data)
+}
+
+func LoadGBL(ops disk.FileOps, path string) (set.Set[model.BlockId], error) {
+	data, error := ops.ReadFile(path)
+	if error != nil {
+		return set.Set[model.BlockId]{}, error
+	}
+
+	result := set.NewSet[model.BlockId]()
+	len, remainder := model.IntFromBytes(data)
+	for range len {
+		var id string
+		id, remainder = model.StringFromBytes(remainder)
+		result.Add(model.BlockId(id))
+	}
+	return result, nil
 }
 
 func ToGlobalBlockListCommand(data []byte) GlobalBlockListCommand {
