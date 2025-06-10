@@ -20,16 +20,16 @@ import (
 )
 
 type Set[K comparable] struct {
-	mux  sync.RWMutex
+	mux  *sync.RWMutex
 	data map[K]bool
 }
 
 func NewSet[K comparable]() Set[K] {
-	return Set[K]{data: make(map[K]bool), mux: sync.RWMutex{}}
+	return Set[K]{data: make(map[K]bool), mux: &sync.RWMutex{}}
 }
 
 func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
-	result := Set[K]{data: make(map[K]bool), mux: sync.RWMutex{}}
+	result := Set[K]{data: make(map[K]bool), mux: &sync.RWMutex{}}
 
 	for k := range input {
 		result.Add(k)
@@ -108,5 +108,6 @@ func (s *Set[K]) Clone() Set[K] {
 	defer s.mux.RUnlock()
 	return Set[K]{
 		data: maps.Clone(s.data),
+		mux:  &sync.RWMutex{},
 	}
 }

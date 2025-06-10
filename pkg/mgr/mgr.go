@@ -231,6 +231,10 @@ func (m *Mgr) loadSettings() error {
 		return err
 	}
 
+	if err = m.loadGbl(); err != nil {
+		return err
+	}
+
 	m.syncDisksAndIds()
 
 	return nil
@@ -430,8 +434,16 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			switch cmd.Type {
 			case Add:
 				m.GlobalBlockIds.Add(cmd.BlockId)
+				err := m.saveGbl()
+				if err != nil {
+					log.Panicf("%v", err)
+				}
 			case Delete:
 				m.GlobalBlockIds.Remove(cmd.BlockId)
+				err := m.saveGbl()
+				if err != nil {
+					log.Panicf("%v", err)
+				}
 			}
 		default:
 			log.Panicf("unknown dest %d", p.Dest())
@@ -460,6 +472,10 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 			chanutil.Send(m.ctx, m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
 			ptr := r.Ptr()
 			m.GlobalBlockIds.Add(ptr.BlockId())
+			err := m.saveGbl()
+			if err != nil {
+				log.Panicf("%v", err)
+			}
 			cmd := GlobalBlockListCommand{
 				Type:    Add,
 				BlockId: ptr.BlockId(),
@@ -597,6 +613,20 @@ func (m *Mgr) sendBroadcast(b model.Broadcast) {
 			log.Warn("Unable to broadcast to disconnected node")
 		}
 	}
+}
+
+func (m *Mgr) saveGbl() error {
+	path := filepath.Join(m.savePath, "gbl.bin")
+	return SaveGBL(m.fileOps, path, &m.GlobalBlockIds)
+}
+func (m *Mgr) loadGbl() error {
+	path := filepath.Join(m.savePath, "gbl.bin")
+	gbl, err := LoadGBL(m.fileOps, path)
+	if err != nil {
+		return err
+	}
+	m.GlobalBlockIds = *gbl
+	return nil
 }
 
 func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {

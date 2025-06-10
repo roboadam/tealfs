@@ -16,6 +16,8 @@ package mgr
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -47,10 +49,15 @@ func SaveGBL(ops disk.FileOps, path string, gbl *set.Set[model.BlockId]) error {
 	return ops.WriteFile(path, data)
 }
 
-func LoadGBL(ops disk.FileOps, path string) (set.Set[model.BlockId], error) {
-	data, error := ops.ReadFile(path)
-	if error != nil {
-		return set.Set[model.BlockId]{}, error
+func LoadGBL(ops disk.FileOps, path string) (*set.Set[model.BlockId], error) {
+	data, err := ops.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		empty := set.NewSet[model.BlockId]()
+		return &empty, nil
+	}
+	if err != nil {
+		empty := set.NewSet[model.BlockId]()
+		return &empty, err
 	}
 
 	result := set.NewSet[model.BlockId]()
@@ -60,7 +67,7 @@ func LoadGBL(ops disk.FileOps, path string) (set.Set[model.BlockId], error) {
 		id, remainder = model.StringFromBytes(remainder)
 		result.Add(model.BlockId(id))
 	}
-	return result, nil
+	return &result, nil
 }
 
 func ToGlobalBlockListCommand(data []byte) GlobalBlockListCommand {

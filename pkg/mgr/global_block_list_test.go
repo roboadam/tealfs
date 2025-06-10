@@ -15,10 +15,34 @@
 package mgr_test
 
 import (
+	"tealfs/pkg/disk"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 )
+
+func TestGlobalBlockListSaving(t *testing.T) {
+	gbl := set.NewSet[model.BlockId]()
+	gbl.Add("blockId1")
+	gbl.Add("blockId2")
+	fs := disk.MockFileOps{}
+	err := mgr.SaveGBL(&fs, "bl", &gbl)
+	if err != nil {
+		t.Errorf("Error saving GBL %v", err)
+		return
+	}
+	gbl2, err := mgr.LoadGBL(&fs, "bl")
+	if err != nil {
+		t.Errorf("Error loading GBL %v", err)
+		return
+	}
+	if !gbl2.Equal(&gbl) {
+		t.Errorf("gbl1 != gbl2 %d != %d", gbl.Len(), gbl2.Len())
+		return
+	}
+
+}
 
 func TestGlobalBlockListCommand(t *testing.T) {
 	cmd := mgr.GlobalBlockListCommand{
