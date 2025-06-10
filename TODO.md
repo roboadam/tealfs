@@ -5,12 +5,12 @@
 - [ ] Rebalance on disk changes
     - [x] Revert the code I already wrote
     - [ ] Global BlockID list
-        - [ ] Use an mgr level broadcast to maintain list
+        - [x] Use an mgr level broadcast to maintain list
             - [x] Struct to hold broadcast and serialize/deserialize it
             - [x] Send the broadcast when adding a BlockId
             - [x] Receive the broadcast and update a list
-        - [ ] Save that list to disk on update
-        - [ ] Load that list on startup
+        - [x] Save that list to disk on update
+        - [x] Load that list on startup
         - [ ] Periodically pick one node to update all other mgrs with a broadcast
     - [ ] In the event of a disk change (resize/removal/addition)
         - [ ] Pick one node's mgr to do the updating
