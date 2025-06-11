@@ -27,6 +27,7 @@ import (
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+	"time"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -454,6 +455,19 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		m.handleAddDiskReq(*p)
 	default:
 		panic("Received unknown payload")
+	}
+}
+
+func (m *Mgr) blockReconcileLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Hour):
+			if m.mainNodeId() == m.NodeId {
+
+			}
+		}
 	}
 }
 

@@ -13,7 +13,7 @@
         - [x] Load that list on startup
         - [ ] Periodically pick one node to update all other mgrs with a broadcast
     - [ ] In the event of a disk change (resize/removal/addition)
-        - [ ] Pick one node's mgr to do the updating
+        - [x] Pick one node's mgr to do the updating
         - [ ] Loop through all BlockIDs
             - [ ] Get a list of disks that have that block but don't need it
             - [ ] Fetch the data if that list isn't empty
