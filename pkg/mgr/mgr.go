@@ -21,6 +21,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
@@ -318,6 +319,7 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
+		m.onDiskChange()
 		m.syncDisksAndIds()
 		err := m.saveSettings()
 		if err != nil {
@@ -520,6 +522,21 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 	} else {
 		m.readDiskPtr(r.Ptrs(), r.ReqId(), r.BlockId())
 	}
+}
+
+func (m *Mgr) mainNodeId() model.NodeId {
+	allNodes := set.NewSetFromMapKeys(m.nodesAddressMap)
+	allNodes.Add(m.NodeId)
+	values := allNodes.GetValues()
+	sort.Slice(values, func(i, j int) bool {
+		return values[i] < values[j]
+	})
+	return values[0]
+}
+
+func (m *Mgr) onDiskChange() {
+	mainNodeId := m.mainNodeId()
+	log.Infof("ON DISK CHANGE. MAIN NODE ID: %s", mainNodeId)
 }
 
 func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
