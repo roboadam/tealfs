@@ -41,6 +41,19 @@ func (g *GlobalBlockListCommand) ToBytes() []byte {
 	return bytes.Join([][]byte{typeVal, blockId}, []byte{})
 }
 
+func (g *GlobalBlockListCommand) Equal(o *GlobalBlockListCommand) bool {
+	if g == nil && o == nil {
+		return true
+	}
+	if (g == nil) != (o == nil) {
+		return false
+	}
+	if g.BlockId != o.BlockId {
+		return false
+	}
+	return g.Type == o.Type
+}
+
 func SaveGBL(ops disk.FileOps, path string, gbl *set.Set[model.BlockId]) error {
 	return ops.WriteFile(path, GBLToBytes(*gbl))
 }
@@ -85,5 +98,32 @@ func ToGlobalBlockListCommand(data []byte) GlobalBlockListCommand {
 	return GlobalBlockListCommand{
 		Type:    GlobalBlockListCommandType(typeVal),
 		BlockId: model.BlockId(blockId),
+	}
+}
+
+type MgrBroadcastMsg struct {
+	GBLCmd *GlobalBlockListCommand
+	GBList *set.Set[model.BlockId]
+}
+
+func (m *MgrBroadcastMsg) ToBytes() []byte {
+	if m.GBLCmd != nil {
+		data := model.IntToBytes(0)
+		data = append(data, m.GBLCmd.ToBytes()...)
+		return data
+	}
+	data := model.IntToBytes(1)
+	data = append(data, GBLToBytes(*m.GBList)...)
+	return data
+}
+
+func MgrBroadcastMsgFromBytes(data []byte) MgrBroadcastMsg {
+	t, remainder := model.IntFromBytes(data)
+	if t == 0 {
+		cmd := ToGlobalBlockListCommand(remainder)
+		return MgrBroadcastMsg{GBLCmd: &cmd}
+	} else {
+		gbl := GBLFromBytes(remainder)
+		return MgrBroadcastMsg{GBList: gbl}
 	}
 }

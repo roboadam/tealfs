@@ -435,20 +435,26 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		case model.FileSystemDest:
 			chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
 		case model.MgrDest:
-			cmd := ToGlobalBlockListCommand(p.Msg())
-			switch cmd.Type {
-			case Add:
-				m.GlobalBlockIds.Add(cmd.BlockId)
-				err := m.saveGbl()
-				if err != nil {
-					log.Panicf("%v", err)
+			bCast := MgrBroadcastMsgFromBytes(p.Msg())
+			if bCast.GBList == nil {
+				cmd := bCast.GBLCmd
+				switch cmd.Type {
+				case Add:
+					m.GlobalBlockIds.Add(cmd.BlockId)
+					err := m.saveGbl()
+					if err != nil {
+						log.Panicf("%v", err)
+					}
+				case Delete:
+					m.GlobalBlockIds.Remove(cmd.BlockId)
+					err := m.saveGbl()
+					if err != nil {
+						log.Panicf("%v", err)
+					}
 				}
-			case Delete:
-				m.GlobalBlockIds.Remove(cmd.BlockId)
-				err := m.saveGbl()
-				if err != nil {
-					log.Panicf("%v", err)
-				}
+			} else {
+				_ = bCast.GBList
+				log.Info("a list")
 			}
 		default:
 			log.Panicf("unknown dest %d", p.Dest())
@@ -491,7 +497,8 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 				Type:    Add,
 				BlockId: ptr.BlockId(),
 			}
-			m.sendBroadcast(model.NewBroadcast(cmd.ToBytes(), model.MgrDest))
+			bCast := MgrBroadcastMsg{GBLCmd: &cmd}
+			m.sendBroadcast(model.NewBroadcast(bCast.ToBytes(), model.MgrDest))
 		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller())

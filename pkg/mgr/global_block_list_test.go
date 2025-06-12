@@ -64,3 +64,37 @@ func TestGlobalBlockListCommand(t *testing.T) {
 		return
 	}
 }
+
+func TestMgrBroadcast(t *testing.T) {
+	cmd := mgr.GlobalBlockListCommand{Type: mgr.Add, BlockId: "blockId"}
+	list := set.NewSet[model.BlockId]()
+
+	bCast1 := mgr.MgrBroadcastMsg{GBLCmd: &cmd}
+	bCast2 := mgr.MgrBroadcastMsg{GBList: &list}
+
+	bytes1 := bCast1.ToBytes()
+	bytes2 := bCast2.ToBytes()
+
+	new1 := mgr.MgrBroadcastMsgFromBytes(bytes1)
+	new2 := mgr.MgrBroadcastMsgFromBytes(bytes2)
+
+	if new1.GBList != nil {
+		t.Error("Should be a cmd")
+		return
+	}
+
+	if new2.GBLCmd != nil {
+		t.Error("Should be a list")
+		return
+	}
+
+	if !new1.GBLCmd.Equal(&cmd) {
+		t.Error("Wrong cmd")
+		return
+	}
+
+	if !new2.GBList.Equal(&list) {
+		t.Error("Wrong list")
+		return
+	}
+}
