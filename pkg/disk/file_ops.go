@@ -16,12 +16,15 @@ package disk
 
 import (
 	"os"
-	"sync"
+
+	"github.com/spf13/afero"
 )
 
 type FileOps interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte) error
+	ReadDir(name string) ([]os.DirEntry, error)
+	MkdirAll(name string) error
 }
 
 type DiskFileOps struct{}
@@ -34,39 +37,52 @@ func (d *DiskFileOps) WriteFile(name string, data []byte) error {
 	return os.WriteFile(name, data, 0644)
 }
 
+func (d *DiskFileOps) ReadDir(name string) ([]os.DirEntry, error) {
+	return os.ReadDir(name)
+}
+
+func (d *DiskFileOps) MkdirAll(name string) error {
+	return os.MkdirAll(name, os.ModeDir)
+}
+
 type MockFileOps struct {
 	ReadError  error
 	WriteError error
 	WriteCount int
-	mockFS     map[string][]byte
-	mux        sync.Mutex
+	mockFS     *afero.IOFS
 }
 
 func (m *MockFileOps) ReadFile(name string) ([]byte, error) {
-	m.mux.Lock()
-	defer m.mux.Unlock()
+	if m.mockFS == nil {
+		m.mockFS = &afero.IOFS{Fs: afero.NewMemMapFs()}
+	}
 	if m.ReadError != nil {
 		return nil, m.ReadError
 	}
-	if m.mockFS == nil {
-		m.mockFS = make(map[string][]byte)
-	}
-	if data, ok := m.mockFS[name]; ok {
-		return data, nil
-	}
-	return nil, os.ErrNotExist
+	return m.mockFS.ReadFile(name)
 }
 
 func (m *MockFileOps) WriteFile(name string, data []byte) error {
-	m.mux.Lock()
-	defer m.mux.Unlock()
+	if m.mockFS == nil {
+		m.mockFS = &afero.IOFS{Fs: afero.NewMemMapFs()}
+	}
 	if m.WriteError != nil {
 		return m.WriteError
 	}
-	if m.mockFS == nil {
-		m.mockFS = make(map[string][]byte)
-	}
-	m.mockFS[name] = data
 	m.WriteCount++
-	return nil
+	return afero.WriteFile(m.mockFS.Fs, name, data, 0644)
+}
+
+func (m *MockFileOps) ReadDir(name string) ([]os.DirEntry, error) {
+	if m.mockFS == nil {
+		m.mockFS = &afero.IOFS{Fs: afero.NewMemMapFs()}
+	}
+	return m.mockFS.ReadDir(name)
+}
+
+func (m *MockFileOps) MkdirAll(name string) error {
+	if m.mockFS == nil {
+		m.mockFS = &afero.IOFS{Fs: afero.NewMemMapFs()}
+	}
+	return m.mockFS.MkdirAll(name, os.ModeDir)
 }

@@ -20,8 +20,8 @@ import (
 )
 
 func TestBroadcast(t *testing.T) {
-	b1 := model.NewBroadcast([]byte{1, 2, 3})
-	b2 := model.NewBroadcast([]byte{1, 2, 3, 4})
+	b1 := model.NewBroadcast([]byte{1, 2, 3}, model.FileSystemDest)
+	b2 := model.NewBroadcast([]byte{1, 2, 3, 4}, model.FileSystemDest)
 	if b1.Equal(&b2) {
 		t.Errorf("b1 and b2 are not equal")
 		return

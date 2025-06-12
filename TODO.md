@@ -1,0 +1,38 @@
+- [x] Robust block fetching - goes to backup on failure
+- [x] Everywhere blocks - for file index
+- [x] UI setup
+- [x] Break up big blocks
+- [ ] Rebalance on disk changes
+    - [x] Revert the code I already wrote
+    - [ ] Global BlockID list
+        - [x] Use an mgr level broadcast to maintain list
+            - [x] Struct to hold broadcast and serialize/deserialize it
+            - [x] Send the broadcast when adding a BlockId
+            - [x] Receive the broadcast and update a list
+        - [x] Save that list to disk on update
+        - [x] Load that list on startup
+        - [ ] Periodically pick one node to update all other mgrs with a broadcast
+            - [x] Function in mgr that is called once every 12 hours in the main loop
+            - [x] Function that serializes the GBL by refactoring save/load functions
+            - [ ] Enhance the broadcast MGR type to include the GBL
+            - [ ] Call send the broadcast from the periodic function
+            - [ ] Receive the broadcast and update your own list if you aren't the main node
+    - [ ] In the event of a disk change (resize/removal/addition)
+        - [x] Pick one node's mgr to do the updating
+        - [ ] Loop through all BlockIDs
+            - [ ] Get a list of disks that have that block but don't need it
+            - [ ] Fetch the data if that list isn't empty
+            - [ ] For each of those disks send the data
+            - [ ] For each disk that doesn't need the data delete it
+- [ ] Update Readme
+- [ ] Check for race conditions in tests
+- [ ] Hash as filename
+- [ ] Delete unused blocks
+- [ ] Automatically choose ports
+- [ ] Encryption in transit
+- [ ] Authentication
+- [ ] Combine small blocks
+- [ ] UI Refresh
+- [ ] XOR background process
+- [ ] Service discovery
+- [ ] CLI setup

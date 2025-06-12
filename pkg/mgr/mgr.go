@@ -21,11 +21,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+	"time"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -64,6 +66,7 @@ type Mgr struct {
 	freeBytes          uint32
 	DiskIds            []model.DiskIdPath
 	disks              []disk.Disk
+	GlobalBlockIds     set.Set[model.BlockId]
 	ctx                context.Context
 }
 
@@ -113,6 +116,7 @@ func NewWithChanSize(
 		freeBytes:               freeBytes,
 		DiskIds:                 []model.DiskIdPath{},
 		disks:                   []disk.Disk{},
+		GlobalBlockIds:          set.NewSet[model.BlockId](),
 		ctx:                     ctx,
 	}
 
@@ -194,7 +198,7 @@ func (m *Mgr) markLocalDiskAvailable(id model.DiskId, path string, size int) {
 	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: local disk available")
 }
 
-func (m *Mgr) markRemoteDiskUnknown(id model.DiskId, node model.NodeId, path string, size int) {
+func (m *Mgr) markRemoteDiskUnknown(id model.DiskId, node model.NodeId, path string) {
 	status := model.UiDiskStatus{
 		Localness:     model.Remote,
 		Availableness: model.Unknown,
@@ -226,6 +230,10 @@ func (m *Mgr) loadSettings() error {
 	} else if errors.Is(err, fs.ErrNotExist) {
 		m.DiskIds = []model.DiskIdPath{}
 	} else {
+		return err
+	}
+
+	if err = m.loadGbl(); err != nil {
 		return err
 	}
 
@@ -280,7 +288,9 @@ func (m *Mgr) eventLoop() {
 		case r := <-m.WebdavMgrPuts:
 			m.handleWebdavWriteRequest(r)
 		case r := <-m.WebdavMgrBroadcast:
-			m.handleWebdavMgrBroadcast(r)
+			m.sendBroadcast(r)
+		case <-time.After(time.Hour):
+			m.reconcileBlocks()
 		}
 	}
 }
@@ -303,7 +313,7 @@ func (m *Mgr) syncDisksAndIds() {
 			m.createLocalDisk(diskIdPath.Id, diskIdPath.Path)
 			m.markLocalDiskAvailable(diskIdPath.Id, diskIdPath.Path, 1)
 		} else {
-			m.markRemoteDiskUnknown(diskIdPath.Id, diskIdPath.Node, diskIdPath.Path, 1)
+			m.markRemoteDiskUnknown(diskIdPath.Id, diskIdPath.Node, diskIdPath.Path)
 		}
 	}
 }
@@ -312,6 +322,7 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
+		m.onDiskChange()
 		m.syncDisksAndIds()
 		err := m.saveSettings()
 		if err != nil {
@@ -420,11 +431,38 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.ReadResult:
 		m.handleDiskReadResult(*p)
 	case *model.Broadcast:
-		chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
+		switch p.Dest() {
+		case model.FileSystemDest:
+			chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
+		case model.MgrDest:
+			cmd := ToGlobalBlockListCommand(p.Msg())
+			switch cmd.Type {
+			case Add:
+				m.GlobalBlockIds.Add(cmd.BlockId)
+				err := m.saveGbl()
+				if err != nil {
+					log.Panicf("%v", err)
+				}
+			case Delete:
+				m.GlobalBlockIds.Remove(cmd.BlockId)
+				err := m.saveGbl()
+				if err != nil {
+					log.Panicf("%v", err)
+				}
+			}
+		default:
+			log.Panicf("unknown dest %d", p.Dest())
+		}
 	case *model.AddDiskReq:
 		m.handleAddDiskReq(*p)
 	default:
 		panic("Received unknown payload")
+	}
+}
+
+func (m *Mgr) reconcileBlocks() {
+	if m.mainNodeId() == m.NodeId {
+		log.Info("RECONCILE")
 	}
 }
 
@@ -443,6 +481,17 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 				Err: err,
 			}
 			chanutil.Send(m.ctx, m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
+			ptr := r.Ptr()
+			m.GlobalBlockIds.Add(ptr.BlockId())
+			err := m.saveGbl()
+			if err != nil {
+				log.Panicf("%v", err)
+			}
+			cmd := GlobalBlockListCommand{
+				Type:    Add,
+				BlockId: ptr.BlockId(),
+			}
+			m.sendBroadcast(model.NewBroadcast(cmd.ToBytes(), model.MgrDest))
 		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller())
@@ -482,6 +531,21 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 	} else {
 		m.readDiskPtr(r.Ptrs(), r.ReqId(), r.BlockId())
 	}
+}
+
+func (m *Mgr) mainNodeId() model.NodeId {
+	allNodes := set.NewSetFromMapKeys(m.nodesAddressMap)
+	allNodes.Add(m.NodeId)
+	values := allNodes.GetValues()
+	sort.Slice(values, func(i, j int) bool {
+		return values[i] < values[j]
+	})
+	return values[0]
+}
+
+func (m *Mgr) onDiskChange() {
+	mainNodeId := m.mainNodeId()
+	log.Infof("ON DISK CHANGE. MAIN NODE ID: %s", mainNodeId)
 }
 
 func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
@@ -567,7 +631,8 @@ func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
 		panic("unknown block type")
 	}
 }
-func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
+
+func (m *Mgr) sendBroadcast(b model.Broadcast) {
 	for node := range m.nodesAddressMap {
 		if connId, exists := m.nodeConnMap.Get1(node); exists {
 			chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: connId, Payload: &b}, "Broadcasting")
@@ -575,6 +640,20 @@ func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
 			log.Warn("Unable to broadcast to disconnected node")
 		}
 	}
+}
+
+func (m *Mgr) saveGbl() error {
+	path := filepath.Join(m.savePath, "gbl.bin")
+	return SaveGBL(m.fileOps, path, &m.GlobalBlockIds)
+}
+func (m *Mgr) loadGbl() error {
+	path := filepath.Join(m.savePath, "gbl.bin")
+	gbl, err := LoadGBL(m.fileOps, path)
+	if err != nil {
+		return err
+	}
+	m.GlobalBlockIds = *gbl
+	return nil
 }
 
 func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {

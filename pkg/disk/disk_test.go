@@ -36,7 +36,7 @@ func TestWriteData(t *testing.T) {
 	req := model.NewWriteRequest(
 		nodeId,
 		model.RawData{
-			Ptr:  model.NewDiskPointer(nodeId, "disk1", string(blockId)),
+			Ptr:  model.NewDiskPointer(nodeId, "disk1", blockId),
 			Data: data,
 		},
 		"putBlockId",
@@ -69,7 +69,7 @@ func TestReadData(t *testing.T) {
 	_ = f.WriteFile(expectedPath, data)
 	req := model.NewReadRequest(
 		caller,
-		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", string(blockId))},
+		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", blockId)},
 		blockId,
 		model.GetBlockId("getBlockId1"),
 	)
@@ -97,7 +97,7 @@ func TestReadNewFile(t *testing.T) {
 	_ = f.WriteFile(expectedPath, data)
 	req := model.NewReadRequest(
 		caller,
-		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", string(blockId))},
+		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", blockId)},
 		blockId,
 		model.GetBlockId("getBlockId1"),
 	)
@@ -113,15 +113,35 @@ func TestReadNewFile(t *testing.T) {
 	}
 }
 
-func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
+func newDiskService(ctx context.Context) (
+	*disk.MockFileOps,
+	disk.Path, model.NodeId,
+	chan model.WriteRequest,
+	chan model.ReadRequest,
+	chan model.WriteResult,
+	chan model.ReadResult,
+	disk.Disk,
+) {
 	f := disk.MockFileOps{}
-	path := disk.NewPath("/some/fake/path", &f)
+	pathStr := "some/fake/path"
+	path := disk.NewPath(pathStr, &f)
+	f.MkdirAll(pathStr)
 	id := model.NewNodeId()
 	diskId := model.DiskId(uuid.New().String())
 	mgrDiskWrites := make(chan model.WriteRequest)
 	mgrDiskReads := make(chan model.ReadRequest)
 	diskMgrWrites := make(chan model.WriteResult)
 	diskMgrReads := make(chan model.ReadResult)
-	d := disk.New(path, id, diskId, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, ctx)
+
+	d := disk.New(
+		path,
+		id,
+		diskId,
+		mgrDiskWrites,
+		mgrDiskReads,
+		diskMgrWrites,
+		diskMgrReads,
+		ctx,
+	)
 	return &f, path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, d
 }

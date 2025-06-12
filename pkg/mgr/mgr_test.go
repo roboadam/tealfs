@@ -15,11 +15,11 @@
 package mgr
 
 import (
-	"fmt"
 	"sync/atomic"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 	"time"
 
@@ -187,7 +187,7 @@ func TestWebdavGet(t *testing.T) {
 
 func TestWebdavPut(t *testing.T) {
 	paths := []string{"path1", "path2"}
-	const expectedAddress1 = "some-address:123"
+	const expectedAddress1 = "some-address:1234"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()
 	disks12 := []model.DiskIdPath{
@@ -226,6 +226,9 @@ func TestWebdavPut(t *testing.T) {
 	threeCount := int32(0)
 	fourCount := int32(0)
 
+	broadcasts := set.NewSet[model.BlockId]()
+	cnt := 0
+
 	go func() {
 		for {
 			select {
@@ -247,29 +250,37 @@ func TestWebdavPut(t *testing.T) {
 
 					result := model.NewWriteResultOk(request.Data().Ptr, request.Caller(), request.ReqId())
 					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
+				case *model.Broadcast:
+					if request.Dest() == model.MgrDest {
+						cmd := ToGlobalBlockListCommand(request.Msg())
+						broadcasts.Add(cmd.BlockId)
+						cnt++
+					}
 				}
 
 			}
 		}
 	}()
 
-	time.Sleep(time.Second)
-
 	for _, block := range blocks {
 		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
 		<-m.MgrWebdavPuts
 	}
-	if fileOps.WriteCount == 0 || oneCount == 0 /*|| twoCount == 0 || threeCount == 0 || fourCount == 0*/ {
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fileOps.WriteCount))
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", oneCount))
-		// t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", twoCount))
-		// t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", threeCount))
-		// t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fourCount))
+
+	time.Sleep(time.Second)
+
+	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 || threeCount == 0 || fourCount == 0 {
+		t.Errorf("Expected everyone to fetch some data %d, %d, %d, %d, %d", fileOps.WriteCount, oneCount, twoCount, threeCount, fourCount)
+		return
+	}
+
+	if broadcasts.Len() != 100 {
+		t.Errorf("Expected 100 broadcasts, got %d", broadcasts.Len())
 		return
 	}
 }
 
-func TestBroadcast(t *testing.T) {
+func TestFileSystemBroadcast(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()
@@ -289,7 +300,7 @@ func TestBroadcast(t *testing.T) {
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, maxNumberOfWritesInOnePass, t, paths)
 
-	testMsg := model.NewBroadcast([]byte{1, 2, 3})
+	testMsg := model.NewBroadcast([]byte{1, 2, 3}, model.FileSystemDest)
 	outMsgCounter := 0
 
 	go func() {
@@ -307,14 +318,14 @@ func TestBroadcast(t *testing.T) {
 		}
 	}()
 
-	m.WebdavMgrBroadcast <- model.NewBroadcast([]byte{1, 2, 3})
+	m.WebdavMgrBroadcast <- model.NewBroadcast([]byte{1, 2, 3}, model.FileSystemDest)
 	time.Sleep(time.Millisecond * 500)
 	if outMsgCounter != 2 {
 		t.Error("Expected 2 messages to go out, got", outMsgCounter)
 		return
 	}
 
-	msg := model.NewBroadcast([]byte{2, 3, 4})
+	msg := model.NewBroadcast([]byte{2, 3, 4}, model.FileSystemDest)
 	m.ConnsMgrReceives <- model.ConnsMgrReceive{
 		ConnId:  expectedConnectionId1,
 		Payload: &msg,

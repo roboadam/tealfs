@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Path struct {
@@ -71,7 +73,8 @@ func (d *Disk) consumeChannels() {
 		case <-d.ctx.Done():
 			return
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Data())
+			data := s.Data()
+			err := d.path.Save(data)
 			if err == nil {
 				wr := model.NewWriteResultOk(s.Data().Ptr, s.Caller(), s.ReqId())
 				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save success")
@@ -98,17 +101,32 @@ func (d *Disk) consumeChannels() {
 }
 
 func (p *Path) Save(rawData model.RawData) error {
-	filePath := filepath.Join(p.raw, rawData.Ptr.FileName())
+	filePath := filepath.Join(p.raw, string(rawData.Ptr.BlockId()))
 	return p.ops.WriteFile(filePath, rawData.Data)
 }
 
 func (p *Path) Read(ptr model.DiskPointer) (model.RawData, error) {
-	filePath := filepath.Join(p.raw, ptr.FileName())
+	filePath := filepath.Join(p.raw, string(ptr.BlockId()))
 	result, err := p.ops.ReadFile(filePath)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
 		return model.RawData{Ptr: ptr, Data: []byte{}}, nil
 	}
 	return model.RawData{Ptr: ptr, Data: result}, err
+}
+
+func (p *Path) ListDirFiles() []string {
+	result := []string{}
+	files, err := p.ops.ReadDir(p.raw)
+	if err != nil {
+		log.Panic("No dir here")
+		return []string{}
+	}
+	for _, file := range files {
+		if file.Type().IsRegular() {
+			result = append(result, file.Name())
+		}
+	}
+	return result
 }
 
 func NewPath(rawPath string, ops FileOps) Path {
