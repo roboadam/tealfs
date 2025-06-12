@@ -12,8 +12,8 @@
         - [x] Save that list to disk on update
         - [x] Load that list on startup
         - [ ] Periodically pick one node to update all other mgrs with a broadcast
-            - [ ] Function in mgr that is called once every 12 hours in the main loop
-            - [ ] Function that serializes the GBL by refactoring save/load functions
+            - [x] Function in mgr that is called once every 12 hours in the main loop
+            - [x] Function that serializes the GBL by refactoring save/load functions
             - [ ] Enhance the broadcast MGR type to include the GBL
             - [ ] Call send the broadcast from the periodic function
             - [ ] Receive the broadcast and update your own list if you aren't the main node

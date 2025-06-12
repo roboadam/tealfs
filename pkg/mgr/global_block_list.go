@@ -42,11 +42,26 @@ func (g *GlobalBlockListCommand) ToBytes() []byte {
 }
 
 func SaveGBL(ops disk.FileOps, path string, gbl *set.Set[model.BlockId]) error {
+	return ops.WriteFile(path, GBLToBytes(*gbl))
+}
+
+func GBLToBytes(gbl set.Set[model.BlockId]) []byte {
 	data := model.IntToBytes(uint32(gbl.Len()))
 	for _, id := range gbl.GetValues() {
 		data = append(data, model.StringToBytes(string(id))...)
 	}
-	return ops.WriteFile(path, data)
+	return data
+}
+
+func GBLFromBytes(rawData []byte) *set.Set[model.BlockId] {
+	result := set.NewSet[model.BlockId]()
+	len, remainder := model.IntFromBytes(rawData)
+	for range len {
+		var id string
+		id, remainder = model.StringFromBytes(remainder)
+		result.Add(model.BlockId(id))
+	}
+	return &result
 }
 
 func LoadGBL(ops disk.FileOps, path string) (*set.Set[model.BlockId], error) {
@@ -60,14 +75,8 @@ func LoadGBL(ops disk.FileOps, path string) (*set.Set[model.BlockId], error) {
 		return &empty, err
 	}
 
-	result := set.NewSet[model.BlockId]()
-	len, remainder := model.IntFromBytes(data)
-	for range len {
-		var id string
-		id, remainder = model.StringFromBytes(remainder)
-		result.Add(model.BlockId(id))
-	}
-	return &result, nil
+	gbl := GBLFromBytes(data)
+	return gbl, nil
 }
 
 func ToGlobalBlockListCommand(data []byte) GlobalBlockListCommand {
