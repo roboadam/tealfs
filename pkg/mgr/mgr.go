@@ -289,6 +289,8 @@ func (m *Mgr) eventLoop() {
 			m.handleWebdavWriteRequest(r)
 		case r := <-m.WebdavMgrBroadcast:
 			m.sendBroadcast(r)
+		case <-time.After(time.Hour):
+			m.reconcileBlocks()
 		}
 	}
 }
@@ -458,16 +460,9 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	}
 }
 
-func (m *Mgr) blockReconcileLoop(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(time.Hour):
-			if m.mainNodeId() == m.NodeId {
-
-			}
-		}
+func (m *Mgr) reconcileBlocks() {
+	if m.mainNodeId() == m.NodeId {
+		log.Info("RECONCILE")
 	}
 }
 
@@ -636,6 +631,7 @@ func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
 		panic("unknown block type")
 	}
 }
+
 func (m *Mgr) sendBroadcast(b model.Broadcast) {
 	for node := range m.nodesAddressMap {
 		if connId, exists := m.nodeConnMap.Get1(node); exists {
