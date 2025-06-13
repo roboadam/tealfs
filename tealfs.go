@@ -28,6 +28,7 @@ import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -57,13 +58,29 @@ func main() {
 
 	freeBytes := uint32(val)
 
-	_ = startTealFs(configDir, os.Args[1], os.Args[2], os.Args[3], freeBytes, context.Background())
+	_ = startTealFs(configDir, os.Args[1], os.Args[2], os.Args[3], freeBytes, time.Hour, context.Background())
 }
 
-func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
+func startTealFs(
+	globalPath string,
+	webdavAddress string,
+	uiAddress string,
+	nodeAddress string,
+	freeBytes uint32,
+	reconcileRate time.Duration,
+	ctx context.Context,
+) error {
 	log.SetLevel(log.DebugLevel)
 	chansize := 0
-	m := mgr.NewWithChanSize(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, ctx)
+	m := mgr.NewWithChanSize(
+		chansize,
+		nodeAddress,
+		globalPath,
+		&disk.DiskFileOps{},
+		model.Mirrored,
+		freeBytes,
+		reconcileRate,
+		ctx)
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,

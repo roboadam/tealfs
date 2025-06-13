@@ -4,26 +4,26 @@
 - [x] Break up big blocks
 - [ ] Rebalance on disk changes
     - [x] Revert the code I already wrote
-    - [ ] Global BlockID list
+    - [x] Global BlockID list
         - [x] Use an mgr level broadcast to maintain list
             - [x] Struct to hold broadcast and serialize/deserialize it
             - [x] Send the broadcast when adding a BlockId
             - [x] Receive the broadcast and update a list
         - [x] Save that list to disk on update
         - [x] Load that list on startup
-        - [ ] Periodically pick one node to update all other mgrs with a broadcast
+        - [x] Periodically pick one node to update all other mgrs with a broadcast
             - [x] Function in mgr that is called once every 12 hours in the main loop
             - [x] Function that serializes the GBL by refactoring save/load functions
-            - [ ] Enhance the broadcast MGR type to include the GBL
-            - [ ] Call send the broadcast from the periodic function
-            - [ ] Receive the broadcast and update your own list if you aren't the main node
-    - [ ] In the event of a disk change (resize/removal/addition)
-        - [x] Pick one node's mgr to do the updating
-        - [ ] Loop through all BlockIDs
-            - [ ] Get a list of disks that have that block but don't need it
-            - [ ] Fetch the data if that list isn't empty
-            - [ ] For each of those disks send the data
-            - [ ] For each disk that doesn't need the data delete it
+            - [x] Enhance the broadcast MGR type to include the GBL
+            - [x] Call send the broadcast from the periodic function
+            - [x] Receive the broadcast and update your own list if you aren't the main node
+    - [ ] If you are the main node, loop through all BlockIDs in your list, for each id:
+        - [ ] Verify it exists on the two appropriate disks
+        - [ ] If it doesn't fetch the block into memory and send it to the disk
+        - [ ] Send a delete to all other disks
+    - [ ] Get a list BlockIds on disk(s) into the Mgr - all nodes every hour
+    - [ ] Then loop through all BlockIDs on disk, for each id:
+        - [ ] If the id doesn't exist in the global list, delete it
 - [ ] Update Readme
 - [ ] Check for race conditions in tests
 - [ ] Hash as filename

@@ -37,6 +37,7 @@ func TestConnectToMgr(t *testing.T) {
 		&disk.MockFileOps{},
 		model.Mirrored,
 		1,
+		time.Hour,
 		ctx,
 	)
 
@@ -252,9 +253,11 @@ func TestWebdavPut(t *testing.T) {
 					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
 				case *model.Broadcast:
 					if request.Dest() == model.MgrDest {
-						cmd := ToGlobalBlockListCommand(request.Msg())
-						broadcasts.Add(cmd.BlockId)
-						cnt++
+						mgrBroadcastMsg := MgrBroadcastMsgFromBytes(request.Msg())
+						if mgrBroadcastMsg.GBLCmd != nil {
+							broadcasts.Add(mgrBroadcastMsg.GBLCmd.BlockId)
+							cnt++
+						}
 					}
 				}
 
@@ -346,7 +349,7 @@ type connectedNode struct {
 
 func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, t *testing.T, paths []string) (*Mgr, *disk.MockFileOps) {
 	fileOps := disk.MockFileOps{}
-	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1, ctx)
+	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1, time.Hour, ctx)
 
 	for _, path := range paths {
 		m.UiMgrDisk <- model.NewAddDiskReq(path, m.NodeId, 1)

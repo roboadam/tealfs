@@ -67,6 +67,7 @@ type Mgr struct {
 	DiskIds            []model.DiskIdPath
 	disks              []disk.Disk
 	GlobalBlockIds     set.Set[model.BlockId]
+	reconcileRate      time.Duration
 	ctx                context.Context
 }
 
@@ -77,6 +78,7 @@ func NewWithChanSize(
 	fileOps disk.FileOps,
 	blockType model.BlockType,
 	freeBytes uint32,
+	reconcileRate time.Duration,
 	ctx context.Context,
 ) *Mgr {
 	nodeId, err := readNodeId(globalPath, fileOps)
@@ -117,6 +119,7 @@ func NewWithChanSize(
 		DiskIds:                 []model.DiskIdPath{},
 		disks:                   []disk.Disk{},
 		GlobalBlockIds:          set.NewSet[model.BlockId](),
+		reconcileRate:           reconcileRate,
 		ctx:                     ctx,
 	}
 
@@ -289,7 +292,7 @@ func (m *Mgr) eventLoop() {
 			m.handleWebdavWriteRequest(r)
 		case r := <-m.WebdavMgrBroadcast:
 			m.sendBroadcast(r)
-		case <-time.After(time.Hour):
+		case <-time.After(m.reconcileRate):
 			m.reconcileBlocks()
 		}
 	}
@@ -453,8 +456,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 					}
 				}
 			} else {
-				_ = bCast.GBList
-				log.Info("a list")
+				m.updateGlobalBlockList(*bCast.GBList)
 			}
 		default:
 			log.Panicf("unknown dest %d", p.Dest())
@@ -468,8 +470,15 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 
 func (m *Mgr) reconcileBlocks() {
 	if m.mainNodeId() == m.NodeId {
-		log.Info("RECONCILE")
+		mgrBroadcastMsg := MgrBroadcastMsg{GBList: &m.GlobalBlockIds}
+		broadcast := model.NewBroadcast(mgrBroadcastMsg.ToBytes(), model.MgrDest)
+		// Todo: make sure blocks aren't added before this message goes out
+		m.MgrConnsSends <- model.MgrConnsSend{Payload: &broadcast}
 	}
+}
+
+func (m *Mgr) updateGlobalBlockList(set set.Set[model.BlockId]) {
+	m.GlobalBlockIds = set
 }
 
 func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
