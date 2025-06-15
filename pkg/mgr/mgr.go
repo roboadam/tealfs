@@ -154,6 +154,7 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 
 func (m *Mgr) start() {
 	go m.eventLoop()
+	go m.verifyGlobalBlockListIfMain()
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
 			chanutil.Send(m.ctx, m.UiMgrConnectTos, model.UiMgrConnectTo{Address: address}, "mgr: init connect to")
@@ -170,9 +171,20 @@ func (m *Mgr) createDiskChannels(diskId model.DiskId) {
 	}
 }
 
-func (m *Mgr) verifyGlobalBlockList() {
-	for _, blockId := range m.GlobalBlockIds.GetValues() {
-
+func (m *Mgr) verifyGlobalBlockListIfMain() {
+	for {
+		select {
+		case <-m.ctx.Done():
+			return
+		default:
+			if m.mainNodeId() != m.NodeId {
+				time.Sleep(time.Hour)
+			}
+			for _, blockId := range m.GlobalBlockIds.GetValues() {
+				chanutil.Send(m.ctx, m.VerifyBlockId, blockId, "send verify")
+				time.Sleep(time.Minute)
+			}
+		}
 	}
 }
 
@@ -300,12 +312,16 @@ func (m *Mgr) eventLoop() {
 			m.handleWebdavWriteRequest(r)
 		case r := <-m.WebdavMgrBroadcast:
 			m.sendBroadcast(r)
-		case r := <- m.VerifyBlockId:
-			m.VerifyBlockId(r)
+		case r := <-m.VerifyBlockId:
+			m.verifyBlockId(r)
 		case <-time.After(m.reconcileRate):
 			m.reconcileBlocks()
 		}
 	}
+}
+
+func (m *Mgr) verifyBlockId(id model.BlockId) {
+	// TODO: do something here
 }
 
 func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
