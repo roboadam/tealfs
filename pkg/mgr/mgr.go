@@ -52,6 +52,7 @@ type Mgr struct {
 	MgrWebdavGets           chan model.GetBlockResp
 	MgrWebdavPuts           chan model.PutBlockResp
 	MgrWebdavBroadcast      chan model.Broadcast
+	VerifyBlockId           chan model.BlockId
 
 	nodesAddressMap    map[model.NodeId]string
 	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
@@ -106,6 +107,7 @@ func NewWithChanSize(
 		MgrWebdavPuts:           make(chan model.PutBlockResp, chanSize),
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodesAddressMap:         make(map[model.NodeId]string),
+		VerifyBlockId:           make(chan model.BlockId, chanSize),
 		NodeId:                  nodeId,
 		connAddress:             set.NewBimap[model.ConnId, string](),
 		nodeConnMap:             set.NewBimap[model.NodeId, model.ConnId](),
@@ -165,6 +167,12 @@ func (m *Mgr) createDiskChannels(diskId model.DiskId) {
 	}
 	if _, ok := m.MgrDiskWrites[diskId]; !ok {
 		m.MgrDiskWrites[diskId] = make(chan model.WriteRequest)
+	}
+}
+
+func (m *Mgr) verifyGlobalBlockList() {
+	for _, blockId := range m.GlobalBlockIds.GetValues() {
+
 	}
 }
 
@@ -292,6 +300,8 @@ func (m *Mgr) eventLoop() {
 			m.handleWebdavWriteRequest(r)
 		case r := <-m.WebdavMgrBroadcast:
 			m.sendBroadcast(r)
+		case r := <- m.VerifyBlockId:
+			m.VerifyBlockId(r)
 		case <-time.After(m.reconcileRate):
 			m.reconcileBlocks()
 		}
