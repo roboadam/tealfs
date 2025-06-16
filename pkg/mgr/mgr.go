@@ -171,23 +171,6 @@ func (m *Mgr) createDiskChannels(diskId model.DiskId) {
 	}
 }
 
-func (m *Mgr) verifyGlobalBlockListIfMain() {
-	for {
-		select {
-		case <-m.ctx.Done():
-			return
-		default:
-			if m.mainNodeId() != m.NodeId {
-				time.Sleep(time.Hour)
-			}
-			for _, blockId := range m.GlobalBlockIds.GetValues() {
-				chanutil.Send(m.ctx, m.VerifyBlockId, blockId, "send verify")
-				time.Sleep(time.Minute)
-			}
-		}
-	}
-}
-
 func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
 	for _, disk := range m.disks {
 		if disk.Id() == id {
@@ -321,7 +304,15 @@ func (m *Mgr) eventLoop() {
 }
 
 func (m *Mgr) verifyBlockId(id model.BlockId) {
-	// TODO: do something here
+	disks := m.mirrorDistributer.ReadPointersForId(id)
+	if len(disks) == 0 {
+		return
+	}
+	for _, disk := range disks {
+		if disk.NodeId() != m.NodeId {
+			// send new has block payload to dest node
+		}
+	}
 }
 
 func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {

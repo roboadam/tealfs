@@ -19,6 +19,12 @@
             - [x] Receive the broadcast and update your own list if you aren't the main node
     - [ ] If you are the main node, loop through all BlockIDs in your list, for each id:
         - [ ] Verify it exists on the two appropriate disks
+            - [ ] Create a new DiskHasBlockReq and DiskHasBlockResp
+            - [ ] Send a DiskHasBlockReq to the appropriate node
+            - [ ] Receive the DiskHasBlockReq and route to the disk
+            - [ ] Disk sends DiskHasBlockResp back to Mgr
+            - [ ] Mgr routes the requests back to the appropriate Caller
+            - [ ] Receive the DiskHasBlockResp 
         - [ ] If it doesn't fetch the block into memory and send it to the disk
         - [ ] Send a delete to all other disks
     - [ ] Get a list BlockIds on disk(s) into the Mgr - all nodes every hour
