@@ -17,6 +17,7 @@
             - [x] Enhance the broadcast MGR type to include the GBL
             - [x] Call send the broadcast from the periodic function
             - [x] Receive the broadcast and update your own list if you aren't the main node
+    - [ ] Refactor code into its own service called Custodian
     - [ ] If you are the main node, loop through all BlockIDs in your list, for each id:
         - [ ] Verify it exists on the two appropriate disks
             - [ ] Create a new DiskHasBlockReq and DiskHasBlockResp

@@ -16,6 +16,7 @@ package custodian
 
 import (
 	"context"
+	"path/filepath"
 	"sort"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
@@ -23,17 +24,25 @@ import (
 	"time"
 )
 
-type Custodian struct{
-	ctx context.Context
-	nodeId model.NodeId
-	nodes set.Set[model.NodeId]
+type Custodian struct {
+	ctx            context.Context
+	nodeId         model.NodeId
+	nodes          set.Set[model.NodeId]
 	globalBlockIds set.Set[model.BlockId]
+	verifyBlockId  chan model.BlockId
 }
 
-func New(ctx context.Context) *Custodian {
-	return &Custodian{
-		ctx: ctx,
+func New(ctx context.Context, nodeId model.NodeId, nodes set.Set[model.NodeId], globalBlockIds set.Set[model.BlockId]) *Custodian {
+	c := Custodian{
+		ctx:            ctx,
+		nodeId:         nodeId,
+		nodes:          nodes,
+		globalBlockIds: globalBlockIds,
+		verifyBlockId:  make(chan model.BlockId),
 	}
+	go c.verifyGlobalBlockListIfMain()
+
+	return &c
 }
 
 func (c *Custodian) mainNodeId() model.NodeId {
@@ -54,9 +63,24 @@ func (c *Custodian) verifyGlobalBlockListIfMain() {
 				time.Sleep(time.Hour)
 			}
 			for _, blockId := range c.globalBlockIds.GetValues() {
-				chanutil.Send(m.ctx, m.VerifyBlockId, blockId, "send verify")
+				chanutil.Send(c.ctx, c.verifyBlockId, blockId, "send verify")
 				time.Sleep(time.Minute)
 			}
 		}
 	}
+}
+
+func (c *Custodian) saveGbl() error {
+	path := filepath.Join(m.savePath, "gbl.bin")
+	return SaveGBL(c.fileOps, path, &c.globalBlockIds)
+}
+
+func (c *Custodian) loadGbl() error {
+	path := filepath.Join(m.savePath, "gbl.bin")
+	gbl, err := LoadGBL(m.fileOps, path)
+	if err != nil {
+		return err
+	}
+	m.GlobalBlockIds = *gbl
+	return nil
 }

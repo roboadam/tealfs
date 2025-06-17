@@ -154,7 +154,6 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 
 func (m *Mgr) start() {
 	go m.eventLoop()
-	go m.verifyGlobalBlockListIfMain()
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
 			chanutil.Send(m.ctx, m.UiMgrConnectTos, model.UiMgrConnectTo{Address: address}, "mgr: init connect to")
@@ -342,7 +341,6 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 	if i.Node() == m.NodeId {
 		id := model.DiskId(uuid.New().String())
 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path(), Node: m.NodeId})
-		m.onDiskChange()
 		m.syncDisksAndIds()
 		err := m.saveSettings()
 		if err != nil {
@@ -576,11 +574,6 @@ func (m *Mgr) mainNodeId() model.NodeId {
 	return values[0]
 }
 
-func (m *Mgr) onDiskChange() {
-	mainNodeId := m.mainNodeId()
-	log.Infof("ON DISK CHANGE. MAIN NODE ID: %s", mainNodeId)
-}
-
 func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	m.nodesAddressMap[iam.Node()] = iam.Address()
 	err := m.saveSettings()
@@ -673,20 +666,6 @@ func (m *Mgr) sendBroadcast(b model.Broadcast) {
 			log.Warn("Unable to broadcast to disconnected node")
 		}
 	}
-}
-
-func (m *Mgr) saveGbl() error {
-	path := filepath.Join(m.savePath, "gbl.bin")
-	return SaveGBL(m.fileOps, path, &m.GlobalBlockIds)
-}
-func (m *Mgr) loadGbl() error {
-	path := filepath.Join(m.savePath, "gbl.bin")
-	gbl, err := LoadGBL(m.fileOps, path)
-	if err != nil {
-		return err
-	}
-	m.GlobalBlockIds = *gbl
-	return nil
 }
 
 func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {

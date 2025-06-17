@@ -12,11 +12,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package mgr_test
+package custodian_test
 
 import (
+	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
-	"tealfs/pkg/mgr"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 	"testing"
@@ -27,12 +27,12 @@ func TestGlobalBlockListSaving(t *testing.T) {
 	gbl.Add("blockId1")
 	gbl.Add("blockId2")
 	fs := disk.MockFileOps{}
-	err := mgr.SaveGBL(&fs, "bl", &gbl)
+	err := custodian.SaveGBL(&fs, "bl", &gbl)
 	if err != nil {
 		t.Errorf("Error saving GBL %v", err)
 		return
 	}
-	gbl2, err := mgr.LoadGBL(&fs, "bl")
+	gbl2, err := custodian.LoadGBL(&fs, "bl")
 	if err != nil {
 		t.Errorf("Error loading GBL %v", err)
 		return
@@ -45,14 +45,14 @@ func TestGlobalBlockListSaving(t *testing.T) {
 }
 
 func TestGlobalBlockListCommand(t *testing.T) {
-	cmd := mgr.GlobalBlockListCommand{
-		Type:    mgr.Delete,
+	cmd := custodian.GlobalBlockListCommand{
+		Type:    custodian.Delete,
 		BlockId: model.NewBlockId(),
 	}
 
 	byteCmd := cmd.ToBytes()
 
-	cmd2 := mgr.ToGlobalBlockListCommand(byteCmd)
+	cmd2 := custodian.ToGlobalBlockListCommand(byteCmd)
 
 	if cmd.BlockId != cmd2.BlockId {
 		t.Errorf("Expected %s got %s", cmd.BlockId, cmd2.BlockId)
@@ -66,17 +66,17 @@ func TestGlobalBlockListCommand(t *testing.T) {
 }
 
 func TestMgrBroadcast(t *testing.T) {
-	cmd := mgr.GlobalBlockListCommand{Type: mgr.Add, BlockId: "blockId"}
+	cmd := custodian.GlobalBlockListCommand{Type: custodian.Add, BlockId: "blockId"}
 	list := set.NewSet[model.BlockId]()
 
-	bCast1 := mgr.MgrBroadcastMsg{GBLCmd: &cmd}
-	bCast2 := mgr.MgrBroadcastMsg{GBList: &list}
+	bCast1 := custodian.MgrBroadcastMsg{GBLCmd: &cmd}
+	bCast2 := custodian.MgrBroadcastMsg{GBList: &list}
 
 	bytes1 := bCast1.ToBytes()
 	bytes2 := bCast2.ToBytes()
 
-	new1 := mgr.MgrBroadcastMsgFromBytes(bytes1)
-	new2 := mgr.MgrBroadcastMsgFromBytes(bytes2)
+	new1 := custodian.MgrBroadcastMsgFromBytes(bytes1)
+	new2 := custodian.MgrBroadcastMsgFromBytes(bytes2)
 
 	if new1.GBList != nil {
 		t.Error("Should be a cmd")
