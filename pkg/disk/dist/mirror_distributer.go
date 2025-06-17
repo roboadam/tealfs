@@ -16,41 +16,49 @@ package dist
 
 import (
 	"encoding/binary"
-	"hash"
 	"hash/crc32"
 	"maps"
 	"sort"
 	"strings"
+	"sync"
 	"tealfs/pkg/model"
 )
 
 type MirrorDistributer struct {
 	weights map[string]int
-	hasher  hash.Hash32
+	mux     sync.RWMutex
 }
 
 func NewMirrorDistributer() MirrorDistributer {
 	return MirrorDistributer{
 		weights: make(map[string]int),
-		hasher:  crc32.NewIEEE(),
+		mux:     sync.RWMutex{},
 	}
 }
 
 func (d *MirrorDistributer) WritePointersForId(id model.BlockId) []model.DiskPointer {
-	ptrs := d.ReadPointersForId(id)
+	d.mux.RLock()
+	defer d.mux.RUnlock()
+	ptrs := d.readPointersForId(id)
 	if len(ptrs) < 2 {
 		return ptrs
 	}
 	return ptrs[:2]
 }
 
-func (d *MirrorDistributer) ReadPointersForId(id model.BlockId) []model.DiskPointer {
+func (d *MirrorDistributer) readPointersForId(id model.BlockId) []model.DiskPointer {
 	nodeIds := d.generateNodeIds(id)
 	data := []model.DiskPointer{}
 	for _, nodeId := range nodeIds {
 		data = append(data, model.NewDiskPointer(nodeId.n, nodeId.d, id))
 	}
 	return data
+}
+
+func (d *MirrorDistributer) ReadPointersForId(id model.BlockId) []model.DiskPointer {
+	d.mux.RLock()
+	defer d.mux.RUnlock()
+	return d.readPointersForId(id)
 }
 
 type nodeAndDisk struct {
@@ -76,10 +84,10 @@ func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []nodeAndDisk {
 	}
 
 	idb := []byte(id)
-	checksum := d.checksum(idb)
-	intHash := int(binary.BigEndian.Uint32(checksum))
+	sum := checksum(idb)
+	intHash := int(binary.BigEndian.Uint32(sum))
 
-	node1 := d.nodeIdForHashAndWeights(intHash, d.weights)
+	node1 := nodeIdForHashAndWeights(intHash, d.weights)
 
 	if len(d.weights) == 1 {
 		return []nodeAndDisk{fromString(node1)}
@@ -87,7 +95,7 @@ func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []nodeAndDisk {
 
 	weights2 := maps.Clone(d.weights)
 	delete(weights2, node1)
-	node2 := d.nodeIdForHashAndWeights(intHash, weights2)
+	node2 := nodeIdForHashAndWeights(intHash, weights2)
 	delete(weights2, node2)
 
 	result := []nodeAndDisk{fromString(node1), fromString(node2)}
@@ -99,7 +107,7 @@ func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []nodeAndDisk {
 	return result
 }
 
-func (d *MirrorDistributer) nodeIdForHashAndWeights(hash int, weights map[string]int) string {
+func nodeIdForHashAndWeights(hash int, weights map[string]int) string {
 	total := totalWeight(weights)
 	randomNum := hash % total
 
@@ -131,13 +139,15 @@ func totalWeight(weights map[string]int) int {
 	return total
 }
 
-func (d *MirrorDistributer) checksum(data []byte) []byte {
-	d.hasher.Reset()
-	d.hasher.Write(data)
-	return d.hasher.Sum(nil)
+func checksum(data []byte) []byte {
+	hasher := crc32.NewIEEE()
+	hasher.Write(data)
+	return hasher.Sum(nil)
 }
 
 func (d *MirrorDistributer) SetWeight(node model.NodeId, disk model.DiskId, weight int) {
+	d.mux.Lock()
+	defer d.mux.Unlock()
 	nad := nodeAndDisk{n: node, d: disk}
 	id := nad.string()
 	if weight > 0 {

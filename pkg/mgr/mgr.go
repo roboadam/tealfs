@@ -52,7 +52,7 @@ type Mgr struct {
 	MgrWebdavGets           chan model.GetBlockResp
 	MgrWebdavPuts           chan model.PutBlockResp
 	MgrWebdavBroadcast      chan model.Broadcast
-	VerifyBlockId           chan model.BlockId
+	MgrCustodianBroadcast   chan model.Broadcast
 
 	nodesAddressMap    map[model.NodeId]string
 	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
@@ -107,7 +107,6 @@ func NewWithChanSize(
 		MgrWebdavPuts:           make(chan model.PutBlockResp, chanSize),
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodesAddressMap:         make(map[model.NodeId]string),
-		VerifyBlockId:           make(chan model.BlockId, chanSize),
 		NodeId:                  nodeId,
 		connAddress:             set.NewBimap[model.ConnId, string](),
 		nodeConnMap:             set.NewBimap[model.NodeId, model.ConnId](),
@@ -238,10 +237,6 @@ func (m *Mgr) loadSettings() error {
 		return err
 	}
 
-	if err = m.loadGbl(); err != nil {
-		return err
-	}
-
 	m.syncDisksAndIds()
 
 	return nil
@@ -294,22 +289,8 @@ func (m *Mgr) eventLoop() {
 			m.handleWebdavWriteRequest(r)
 		case r := <-m.WebdavMgrBroadcast:
 			m.sendBroadcast(r)
-		case r := <-m.VerifyBlockId:
-			m.verifyBlockId(r)
 		case <-time.After(m.reconcileRate):
 			m.reconcileBlocks()
-		}
-	}
-}
-
-func (m *Mgr) verifyBlockId(id model.BlockId) {
-	disks := m.mirrorDistributer.ReadPointersForId(id)
-	if len(disks) == 0 {
-		return
-	}
-	for _, disk := range disks {
-		if disk.NodeId() != m.NodeId {
-			// send new has block payload to dest node
 		}
 	}
 }
@@ -452,27 +433,8 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		switch p.Dest() {
 		case model.FileSystemDest:
 			chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
-		case model.MgrDest:
-			bCast := MgrBroadcastMsgFromBytes(p.Msg())
-			if bCast.GBList == nil {
-				cmd := bCast.GBLCmd
-				switch cmd.Type {
-				case Add:
-					m.GlobalBlockIds.Add(cmd.BlockId)
-					err := m.saveGbl()
-					if err != nil {
-						log.Panicf("%v", err)
-					}
-				case Delete:
-					m.GlobalBlockIds.Remove(cmd.BlockId)
-					err := m.saveGbl()
-					if err != nil {
-						log.Panicf("%v", err)
-					}
-				}
-			} else {
-				m.updateGlobalBlockList(*bCast.GBList)
-			}
+		case model.CustodianDest:
+			chanutil.Send(m.ctx, m.MgrCustodianBroadcast, *p, "mgr: handleReceives: forward broadcast to custodian")
 		default:
 			log.Panicf("unknown dest %d", p.Dest())
 		}
@@ -481,19 +443,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	default:
 		panic("Received unknown payload")
 	}
-}
-
-func (m *Mgr) reconcileBlocks() {
-	if m.mainNodeId() == m.NodeId {
-		mgrBroadcastMsg := MgrBroadcastMsg{GBList: &m.GlobalBlockIds}
-		broadcast := model.NewBroadcast(mgrBroadcastMsg.ToBytes(), model.MgrDest)
-		// Todo: make sure blocks aren't added before this message goes out
-		m.MgrConnsSends <- model.MgrConnsSend{Payload: &broadcast}
-	}
-}
-
-func (m *Mgr) updateGlobalBlockList(set set.Set[model.BlockId]) {
-	m.GlobalBlockIds = set
 }
 
 func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
@@ -522,7 +471,7 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 				BlockId: ptr.BlockId(),
 			}
 			bCast := MgrBroadcastMsg{GBLCmd: &cmd}
-			m.sendBroadcast(model.NewBroadcast(bCast.ToBytes(), model.MgrDest))
+			m.sendBroadcast(model.NewBroadcast(bCast.ToBytes(), model.CustodianDest))
 		}
 	} else {
 		c, ok := m.nodeConnMap.Get1(r.Caller())

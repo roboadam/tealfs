@@ -252,7 +252,7 @@ func TestWebdavPut(t *testing.T) {
 					result := model.NewWriteResultOk(request.Data().Ptr, request.Caller(), request.ReqId())
 					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
 				case *model.Broadcast:
-					if request.Dest() == model.MgrDest {
+					if request.Dest() == model.CustodianDest {
 						mgrBroadcastMsg := MgrBroadcastMsgFromBytes(request.Msg())
 						if mgrBroadcastMsg.GBLCmd != nil {
 							broadcasts.Add(mgrBroadcastMsg.GBLCmd.BlockId)

@@ -27,7 +27,7 @@ type BroadcastDest uint8
 
 const (
 	FileSystemDest BroadcastDest = 0
-	MgrDest        BroadcastDest = 1
+	CustodianDest  BroadcastDest = 1
 )
 
 func NewBroadcast(msg []byte, dest BroadcastDest) Broadcast {
