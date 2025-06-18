@@ -31,7 +31,7 @@ type Conns struct {
 	acceptedConns chan AcceptedConns
 	outStatuses   chan model.NetConnectionStatus
 	outReceives   chan model.ConnsMgrReceive
-	inConnectTo   <-chan model.MgrConnsConnectTo
+	inConnectTo   <-chan model.ConnectToNodeReq
 	inSends       <-chan model.MgrConnsSend
 	Address       string
 	provider      ConnectionProvider
@@ -43,7 +43,7 @@ type Conns struct {
 func NewConns(
 	outStatuses chan model.NetConnectionStatus,
 	outReceives chan model.ConnsMgrReceive,
-	inConnectTo <-chan model.MgrConnsConnectTo,
+	inConnectTo <-chan model.ConnectToNodeReq,
 	inSends <-chan model.MgrConnsSend,
 	provider ConnectionProvider,
 	address string,

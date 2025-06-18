@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Send[T any](ctx context.Context, channel chan T, value T, message string) {
+func Send[T any](ctx context.Context, channel chan<- T, value T, message string) {
 	checkDoneCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go checkDone(checkDoneCtx, message)

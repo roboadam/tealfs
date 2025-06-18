@@ -63,7 +63,7 @@ const (
 
 type ConnId int32
 
-type MgrConnsConnectTo struct {
+type ConnectToNodeReq struct {
 	Address string
 }
 
@@ -141,10 +141,6 @@ func NewAddDiskReq(
 		node:      node,
 		freeBytes: freeBytes,
 	}
-}
-
-type UiMgrConnectTo struct {
-	Address string
 }
 
 type NodeId string

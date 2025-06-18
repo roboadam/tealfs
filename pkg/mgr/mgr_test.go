@@ -40,11 +40,11 @@ func TestConnectToMgr(t *testing.T) {
 		ctx,
 	)
 
-	m.UiMgrConnectTos <- model.UiMgrConnectTo{
+	m.InConnectToNodeReq <- model.UiMgrConnectTo{
 		Address: expectedAddress,
 	}
 
-	expectedMessage := <-m.MgrConnsConnectTos
+	expectedMessage := <-m.OutConnectToNodeReq
 
 	if expectedMessage.Address != expectedAddress {
 		t.Error("Received address", expectedMessage.Address)
@@ -106,7 +106,7 @@ func TestReceiveSyncNodes(t *testing.T) {
 		Payload: &sn,
 	}
 
-	expectedConnectTo := <-m.MgrConnsConnectTos
+	expectedConnectTo := <-m.OutConnectToNodeReq
 	if expectedConnectTo.Address != remoteAddress {
 		t.Error("expected to connect to", remoteAddress)
 	}

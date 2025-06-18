@@ -67,7 +67,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
-		m.MgrConnsConnectTos,
+		m.OutConnectToNodeReq,
 		m.MgrConnsSends,
 		&conns.TcpConnectionProvider{},
 		nodeAddress,
@@ -75,7 +75,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		ctx,
 	)
 	_ = ui.NewUi(
-		m.UiMgrConnectTos,
+		m.InConnectToNodeReq,
 		m.MgrUiConnectionStatuses,
 		m.UiMgrDisk,
 		m.MgrUiDiskStatuses,

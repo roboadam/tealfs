@@ -32,7 +32,7 @@ import (
 )
 
 type Mgr struct {
-	UiMgrConnectTos         chan model.UiMgrConnectTo
+	InConnectToNodeReq      <-chan model.ConnectToNodeReq
 	UiMgrDisk               chan model.AddDiskReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
@@ -41,7 +41,7 @@ type Mgr struct {
 	WebdavMgrGets           chan model.GetBlockReq
 	WebdavMgrPuts           chan model.PutBlockReq
 	WebdavMgrBroadcast      chan model.Broadcast
-	MgrConnsConnectTos      chan model.MgrConnsConnectTo
+	OutConnectToNodeReq     chan<- model.ConnectToNodeReq
 	MgrConnsSends           chan model.MgrConnsSend
 	MgrDiskWrites           map[model.DiskId]chan model.WriteRequest
 	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
@@ -82,7 +82,7 @@ func NewWithChanSize(
 	}
 
 	mgr := Mgr{
-		UiMgrConnectTos:         make(chan model.UiMgrConnectTo, chanSize),
+		InConnectToNodeReq:      make(chan model.ConnectToNodeReq, chanSize),
 		UiMgrDisk:               make(chan model.AddDiskReq),
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
@@ -91,7 +91,7 @@ func NewWithChanSize(
 		WebdavMgrGets:           make(chan model.GetBlockReq, chanSize),
 		WebdavMgrPuts:           make(chan model.PutBlockReq, chanSize),
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
-		MgrConnsConnectTos:      make(chan model.MgrConnsConnectTo, chanSize),
+		OutConnectToNodeReq:     make(chan model.ConnectToNodeReq, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:           make(map[model.DiskId]chan model.WriteRequest),
 		MgrDiskReads:            make(map[model.DiskId]chan model.ReadRequest),
@@ -147,7 +147,7 @@ func (m *Mgr) start() {
 	go m.eventLoop()
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
-			chanutil.Send(m.ctx, m.UiMgrConnectTos, model.UiMgrConnectTo{Address: address}, "mgr: init connect to")
+			m.handleConnectToReq(model.ConnectToNodeReq{Address: address})
 		}
 	}
 }
@@ -263,7 +263,7 @@ func (m *Mgr) eventLoop() {
 		select {
 		case <-m.ctx.Done():
 			return
-		case r := <-m.UiMgrConnectTos:
+		case r := <-m.InConnectToNodeReq:
 			m.handleConnectToReq(r)
 		case r := <-m.UiMgrDisk:
 			m.handleAddDiskReq(r)
@@ -285,14 +285,9 @@ func (m *Mgr) eventLoop() {
 	}
 }
 
-func (m *Mgr) handleConnectToReq(i model.UiMgrConnectTo) {
+func (m *Mgr) handleConnectToReq(i model.ConnectToNodeReq) {
 	if _, ok := m.connAddress.Get2(i.Address); !ok {
-		chanutil.Send(
-			m.ctx,
-			m.MgrConnsConnectTos,
-			model.MgrConnsConnectTo{Address: string(i.Address)},
-			"mgr: handleConnectToReq",
-		)
+		chanutil.Send(m.ctx, m.OutConnectToNodeReq, i, "mgr: handleConnectToReq")
 	}
 }
 
@@ -390,8 +385,8 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		missing := remoteNodes.Minus(&localNodes)
 		for _, n := range missing.GetValues() {
 			address := p.AddressForNode(n)
-			mct := model.MgrConnsConnectTo{Address: address}
-			chanutil.Send(m.ctx, m.MgrConnsConnectTos, mct, "mgr: handleReceives: connect to")
+			mct := model.ConnectToNodeReq{Address: address}
+			chanutil.Send(m.ctx, m.OutConnectToNodeReq, mct, "mgr: handleReceives: connect to")
 
 		}
 	case *model.WriteRequest:
