@@ -32,7 +32,7 @@ import (
 )
 
 type Mgr struct {
-	InConnectToNodeReq      chan model.ConnectToNodeReq
+	ConnectToNodeReqs       chan<- model.ConnectToNodeReq
 	UiMgrDisk               chan model.AddDiskReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
@@ -41,7 +41,6 @@ type Mgr struct {
 	WebdavMgrGets           chan model.GetBlockReq
 	WebdavMgrPuts           chan model.PutBlockReq
 	WebdavMgrBroadcast      chan model.Broadcast
-	OutConnectToNodeReq     chan model.ConnectToNodeReq
 	MgrConnsSends           chan model.MgrConnsSend
 	MgrDiskWrites           map[model.DiskId]chan model.WriteRequest
 	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
@@ -82,7 +81,6 @@ func NewWithChanSize(
 	}
 
 	mgr := Mgr{
-		InConnectToNodeReq:      make(chan model.ConnectToNodeReq, chanSize),
 		UiMgrDisk:               make(chan model.AddDiskReq),
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
@@ -91,7 +89,6 @@ func NewWithChanSize(
 		WebdavMgrGets:           make(chan model.GetBlockReq, chanSize),
 		WebdavMgrPuts:           make(chan model.PutBlockReq, chanSize),
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
-		OutConnectToNodeReq:     make(chan model.ConnectToNodeReq, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
 		MgrDiskWrites:           make(map[model.DiskId]chan model.WriteRequest),
 		MgrDiskReads:            make(map[model.DiskId]chan model.ReadRequest),
@@ -147,7 +144,7 @@ func (m *Mgr) start() {
 	go m.eventLoop()
 	for nodeId, address := range m.nodesAddressMap {
 		if nodeId != m.NodeId {
-			m.handleConnectToReq(model.ConnectToNodeReq{Address: address})
+			m.ConnectToNodeReqs <- model.ConnectToNodeReq{Address: address}
 		}
 	}
 }
@@ -194,7 +191,7 @@ func (m *Mgr) markLocalDiskAvailable(id model.DiskId, path string, size int) {
 	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: local disk available")
 }
 
-func (m *Mgr) markRemoteDiskUnknown(id model.DiskId, node model.NodeId, path string, size int) {
+func (m *Mgr) markRemoteDiskUnknown(id model.DiskId, node model.NodeId, path string) {
 	status := model.UiDiskStatus{
 		Localness:     model.Remote,
 		Availableness: model.Unknown,
@@ -263,8 +260,6 @@ func (m *Mgr) eventLoop() {
 		select {
 		case <-m.ctx.Done():
 			return
-		case r := <-m.InConnectToNodeReq:
-			m.handleConnectToReq(r)
 		case r := <-m.UiMgrDisk:
 			m.handleAddDiskReq(r)
 		case r := <-m.ConnsMgrStatuses:
@@ -285,12 +280,6 @@ func (m *Mgr) eventLoop() {
 	}
 }
 
-func (m *Mgr) handleConnectToReq(i model.ConnectToNodeReq) {
-	if _, ok := m.connAddress.Get2(i.Address); !ok {
-		chanutil.Send(m.ctx, m.OutConnectToNodeReq, i, "mgr: handleConnectToReq")
-	}
-}
-
 func (m *Mgr) syncDisksAndIds() {
 	for _, diskIdPath := range m.DiskIds {
 		if diskIdPath.Node == m.NodeId {
@@ -298,7 +287,7 @@ func (m *Mgr) syncDisksAndIds() {
 			m.createLocalDisk(diskIdPath.Id, diskIdPath.Path)
 			m.markLocalDiskAvailable(diskIdPath.Id, diskIdPath.Path, 1)
 		} else {
-			m.markRemoteDiskUnknown(diskIdPath.Id, diskIdPath.Node, diskIdPath.Path, 1)
+			m.markRemoteDiskUnknown(diskIdPath.Id, diskIdPath.Node, diskIdPath.Path)
 		}
 	}
 }
@@ -386,7 +375,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		for _, n := range missing.GetValues() {
 			address := p.AddressForNode(n)
 			mct := model.ConnectToNodeReq{Address: address}
-			chanutil.Send(m.ctx, m.OutConnectToNodeReq, mct, "mgr: handleReceives: connect to")
+			chanutil.Send(m.ctx, m.ConnectToNodeReqs, mct, "mgr: handleReceives: connect to")
 
 		}
 	case *model.WriteRequest:

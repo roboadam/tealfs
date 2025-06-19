@@ -63,11 +63,13 @@ func main() {
 func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
 	log.SetLevel(log.DebugLevel)
 	chansize := 0
+	connReqs := make(chan model.ConnectToNodeReq)
 	m := mgr.NewWithChanSize(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, ctx)
+	m.ConnectToNodeReqs = connReqs
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
-		m.OutConnectToNodeReq,
+		connReqs,
 		m.MgrConnsSends,
 		&conns.TcpConnectionProvider{},
 		nodeAddress,
@@ -75,7 +77,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		ctx,
 	)
 	_ = ui.NewUi(
-		m.InConnectToNodeReq,
+		connReqs,
 		m.MgrUiConnectionStatuses,
 		m.UiMgrDisk,
 		m.MgrUiDiskStatuses,
