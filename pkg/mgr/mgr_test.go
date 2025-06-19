@@ -40,7 +40,7 @@ func TestConnectToMgr(t *testing.T) {
 		ctx,
 	)
 
-	m.InConnectToNodeReq <- model.UiMgrConnectTo{
+	m.InConnectToNodeReq <- model.ConnectToNodeReq{
 		Address: expectedAddress,
 	}
 

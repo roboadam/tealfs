@@ -32,7 +32,7 @@ import (
 )
 
 type Mgr struct {
-	InConnectToNodeReq      <-chan model.ConnectToNodeReq
+	InConnectToNodeReq      chan model.ConnectToNodeReq
 	UiMgrDisk               chan model.AddDiskReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
@@ -41,7 +41,7 @@ type Mgr struct {
 	WebdavMgrGets           chan model.GetBlockReq
 	WebdavMgrPuts           chan model.PutBlockReq
 	WebdavMgrBroadcast      chan model.Broadcast
-	OutConnectToNodeReq     chan<- model.ConnectToNodeReq
+	OutConnectToNodeReq     chan model.ConnectToNodeReq
 	MgrConnsSends           chan model.MgrConnsSend
 	MgrDiskWrites           map[model.DiskId]chan model.WriteRequest
 	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
