@@ -50,10 +50,12 @@ type Mgr struct {
 	MgrWebdavPuts           chan model.PutBlockResp
 	MgrWebdavBroadcast      chan model.Broadcast
 
-	nodesAddressMap    map[model.NodeId]string
-	nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
+	nodeConnMapper *model.NodeConnectionMapper
+
+	// nodesAddressMap    map[model.NodeId]string
+	// nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
+	// connAddress        set.Bimap[model.ConnId, string]
 	NodeId             model.NodeId
-	connAddress        set.Bimap[model.ConnId, string]
 	mirrorDistributer  dist.MirrorDistributer
 	blockType          model.BlockType
 	nodeAddress        string
@@ -73,6 +75,7 @@ func NewWithChanSize(
 	fileOps disk.FileOps,
 	blockType model.BlockType,
 	freeBytes uint32,
+	nodeConnMapper *model.NodeConnectionMapper,
 	ctx context.Context,
 ) *Mgr {
 	nodeId, err := readNodeId(globalPath, fileOps)
@@ -97,20 +100,21 @@ func NewWithChanSize(
 		MgrWebdavGets:           make(chan model.GetBlockResp, chanSize),
 		MgrWebdavPuts:           make(chan model.PutBlockResp, chanSize),
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
-		nodesAddressMap:         make(map[model.NodeId]string),
+		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
-		connAddress:             set.NewBimap[model.ConnId, string](),
-		nodeConnMap:             set.NewBimap[model.NodeId, model.ConnId](),
-		mirrorDistributer:       dist.NewMirrorDistributer(),
-		blockType:               blockType,
-		nodeAddress:             nodeAddress,
-		savePath:                globalPath,
-		fileOps:                 fileOps,
-		pendingBlockWrites:      newPendingBlockWrites(),
-		freeBytes:               freeBytes,
-		DiskIds:                 []model.DiskIdPath{},
-		disks:                   []disk.Disk{},
-		ctx:                     ctx,
+		// nodesAddressMap:         make(map[model.NodeId]string),
+		// connAddress:             set.NewBimap[model.ConnId, string](),
+		// nodeConnMap:             set.NewBimap[model.NodeId, model.ConnId](),
+		mirrorDistributer:  dist.NewMirrorDistributer(),
+		blockType:          blockType,
+		nodeAddress:        nodeAddress,
+		savePath:           globalPath,
+		fileOps:            fileOps,
+		pendingBlockWrites: newPendingBlockWrites(),
+		freeBytes:          freeBytes,
+		DiskIds:            []model.DiskIdPath{},
+		disks:              []disk.Disk{},
+		ctx:                ctx,
 	}
 
 	go func() {
@@ -142,10 +146,12 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 
 func (m *Mgr) start() {
 	go m.eventLoop()
-	for nodeId, address := range m.nodesAddressMap {
-		if nodeId != m.NodeId {
-			m.ConnectToNodeReqs <- model.ConnectToNodeReq{Address: address}
-		}
+	m.connectToUnconnected()
+}
+
+func (m *Mgr) connectToUnconnected() {
+	for _, address := range m.nodeConnMapper.AddressesWithoutConnections() {
+		m.ConnectToNodeReqs <- model.ConnectToNodeReq{Address: address}
 	}
 }
 
@@ -208,7 +214,7 @@ func (m *Mgr) loadSettings() error {
 		return err
 	}
 	if len(data) > 0 {
-		err = json.Unmarshal(data, &m.nodesAddressMap)
+		err = json.Unmarshal(data, &m.nodeConnMapper)
 		if err != nil {
 			return err
 		}
@@ -242,7 +248,7 @@ func (m *Mgr) saveSettings() error {
 		return err
 	}
 
-	data, err = json.Marshal(m.nodesAddressMap)
+	data, err = json.Marshal(m.nodeConnMapper)
 	if err != nil {
 		return err
 	}
@@ -302,18 +308,16 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 			panic("error saving disk settings")
 		}
 
-		for node := range m.nodesAddressMap {
-			if conn, exist := m.nodeConnMap.Get1(node); exist {
-				iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
-				mcs := model.MgrConnsSend{
-					ConnId:  conn,
-					Payload: &iam,
-				}
-				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
+		for _, conn := range m.nodeConnMapper.Connections() {
+			iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
+			mcs := model.MgrConnsSend{
+				ConnId:  conn,
+				Payload: &iam,
 			}
+			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
 		}
 	} else {
-		if conn, exists := m.nodeConnMap.Get1(i.Node()); exists {
+		if conn, exists := m.nodeConnMapper.ConnForNode(i.Node()); exists {
 			chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: conn, Payload: &i}, "send add disk to node")
 		}
 	}
@@ -321,16 +325,11 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 
 func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 	result := model.NewSyncNodes()
-	for node := range m.nodesAddressMap {
-		connId, success := m.nodeConnMap.Get1(node)
-		if success {
-			if address, ok := m.connAddress.Get1(connId); ok {
-				result.Nodes.Add(struct {
-					Node    model.NodeId
-					Address string
-				}{Node: node, Address: address})
-			}
-		}
+	for _, an := range m.nodeConnMapper.AddressesAndNodes() {
+		result.Nodes.Add(struct {
+			Node    model.NodeId
+			Address string
+		}{Node: an.NodeId, Address: an.Address})
 	}
 	return result
 }
