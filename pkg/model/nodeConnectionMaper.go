@@ -19,8 +19,8 @@ import "tealfs/pkg/set"
 type NodeConnectionMapper struct {
 	addresses      set.Set[string]
 	addressConnMap set.Bimap[string, ConnId]
-	connNodeMap    set.Bimap[ConnId, *NodeId]
-	addressNodeMap set.Bimap[string, *NodeId]
+	connNodeMap    set.Bimap[ConnId, NodeId]
+	addressNodeMap set.Bimap[string, NodeId]
 }
 
 func (n *NodeConnectionMapper) AddressesWithoutConnections() set.Set[string] {
@@ -44,12 +44,12 @@ func (n *NodeConnectionMapper) Connections() set.Set[ConnId] {
 }
 
 func (n *NodeConnectionMapper) ConnForNode(node NodeId) (ConnId, bool) {
-	return n.connNodeMap.Get2(&node)
+	return n.connNodeMap.Get2(node)
 }
 
 func (n *NodeConnectionMapper) NodeForConn(connId ConnId) (NodeId, bool) {
 	node, ok := n.connNodeMap.Get1(connId)
-	return *node, ok
+	return node, ok
 }
 
 func (n *NodeConnectionMapper) AddressForConn(connId ConnId) (string, bool) {
@@ -75,7 +75,7 @@ func (n *NodeConnectionMapper) AddressesAndNodes() set.Set[struct {
 			NodeId  NodeId
 		}{
 			Address: values.K,
-			NodeId:  *values.J,
+			NodeId:  values.J,
 		})
 	}
 	return result
@@ -83,14 +83,14 @@ func (n *NodeConnectionMapper) AddressesAndNodes() set.Set[struct {
 func (n *NodeConnectionMapper) SetAll(conn ConnId, address string, node NodeId) {
 	n.addresses.Add(address)
 	n.addressConnMap.Add(address, conn)
-	n.connNodeMap.Add(conn, &node)
-	n.addressNodeMap.Add(address, &node)
+	n.connNodeMap.Add(conn, node)
+	n.addressNodeMap.Add(address, node)
 }
 
 func (n *NodeConnectionMapper) Nodes() set.Set[NodeId] {
 	result := set.NewSet[NodeId]()
 	for _, values := range n.addressNodeMap.AllValues() {
-		result.Add(*values.J)
+		result.Add(values.J)
 	}
 	return result
 }
@@ -99,7 +99,7 @@ func NewNodeConnectionMapper() *NodeConnectionMapper {
 	return &NodeConnectionMapper{
 		addresses:      set.NewSet[string](),
 		addressConnMap: set.NewBimap[string, ConnId](),
-		connNodeMap:    set.NewBimap[ConnId, *NodeId](),
-		addressNodeMap: set.NewBimap[string, *NodeId](),
+		connNodeMap:    set.NewBimap[ConnId, NodeId](),
+		addressNodeMap: set.NewBimap[string, NodeId](),
 	}
 }

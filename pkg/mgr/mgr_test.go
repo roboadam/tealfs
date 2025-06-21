@@ -154,6 +154,7 @@ func TestWebdavGet(t *testing.T) {
 		w := <-m.MgrWebdavGets
 		if w.Block.Id != blockId {
 			t.Error("Expected", blockId, "got", w.Block.Id)
+			return
 		}
 	}
 	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 {
