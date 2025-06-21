@@ -23,18 +23,20 @@ import (
 func (m *Mgr) handleWebdavGets(req model.GetBlockReq) {
 	ptrs := m.mirrorDistributer.ReadPointersForId(req.BlockId)
 	if len(ptrs) == 0 {
-		resp := model.GetBlockResp{
-			Id:  req.Id(),
-			Err: errors.New("not found"),
-		}
-		chanutil.Send(m.ctx, m.MgrWebdavGets, resp, "mgr: handleWebdavGets: not found")
+		m.webdavGetResponseError("not found", req.Id())
 	} else {
-		m.readDiskPtr(ptrs, req.Id(), req.BlockId)
+		m.handleWebdavGetsWithPtrs(ptrs, req.Id(), req.BlockId)
 	}
 }
 
-func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, reqId model.GetBlockId, blockId model.BlockId) {
+func (m *Mgr) webdavGetResponseError(msg string, id model.GetBlockId) {
+	resp := model.GetBlockResp{Id: id, Err: errors.New(msg)}
+	chanutil.Send(m.ctx, m.MgrWebdavGets, resp, "mgr: handleWebdavGets: "+msg)
+}
+
+func (m *Mgr) handleWebdavGetsWithPtrs(ptrs []model.DiskPointer, reqId model.GetBlockId, blockId model.BlockId) {
 	if len(ptrs) == 0 {
+		m.webdavGetResponseError("exhausted all ptrs", reqId)
 		return
 	}
 	n := ptrs[0].NodeId()
@@ -48,11 +50,7 @@ func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, reqId model.GetBlockId, bloc
 			mcs := model.MgrConnsSend{ConnId: c, Payload: &rr}
 			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: readDiskPtr: remote")
 		} else {
-			resp := model.GetBlockResp{
-				Id:  reqId,
-				Err: errors.New("not connected"),
-			}
-			chanutil.Send(m.ctx, m.MgrWebdavGets, resp, "mgr: readDiskPtr: not connected")
+			m.webdavGetResponseError("not connected", reqId)
 		}
 	}
 }

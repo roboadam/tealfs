@@ -98,16 +98,16 @@ func NewWithChanSize(
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
-		mirrorDistributer:  dist.NewMirrorDistributer(),
-		blockType:          blockType,
-		nodeAddress:        nodeAddress,
-		savePath:           globalPath,
-		fileOps:            fileOps,
-		pendingBlockWrites: newPendingBlockWrites(),
-		freeBytes:          freeBytes,
-		DiskIds:            []model.DiskIdPath{},
-		disks:              []disk.Disk{},
-		ctx:                ctx,
+		mirrorDistributer:       dist.NewMirrorDistributer(),
+		blockType:               blockType,
+		nodeAddress:             nodeAddress,
+		savePath:                globalPath,
+		fileOps:                 fileOps,
+		pendingBlockWrites:      newPendingBlockWrites(),
+		freeBytes:               freeBytes,
+		DiskIds:                 []model.DiskIdPath{},
+		disks:                   []disk.Disk{},
+		ctx:                     ctx,
 	}
 
 	go func() {
@@ -459,7 +459,7 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 			}
 		}
 	} else {
-		m.readDiskPtr(r.Ptrs(), r.ReqId(), r.BlockId())
+		m.handleWebdavGetsWithPtrs(r.Ptrs(), r.ReqId(), r.BlockId())
 	}
 }
 
