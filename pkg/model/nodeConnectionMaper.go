@@ -27,10 +27,10 @@ type NodeConnectionMapper struct {
 }
 
 type NodeConnectionMapperExport struct {
-	Addresses      set.Set[string]
-	AddressConnMap set.Bimap[string, ConnId]
-	ConnNodeMap    set.Bimap[ConnId, NodeId]
-	AddressNodeMap set.Bimap[string, NodeId]
+	Addresses      []string
+	AddressConnMap map[string]ConnId
+	ConnNodeMap    map[ConnId]NodeId
+	AddressNodeMap map[string]NodeId
 }
 
 func (n *NodeConnectionMapper) AddressesWithoutConnections() set.Set[string] {
@@ -73,10 +73,10 @@ func (n *NodeConnectionMapper) RemoveConn(connId ConnId) {
 
 func (n *NodeConnectionMapper) Marshal() ([]byte, error) {
 	exportable := NodeConnectionMapperExport{
-		Addresses:      n.addresses,
-		AddressConnMap: n.addressConnMap,
-		ConnNodeMap:    n.connNodeMap,
-		AddressNodeMap: n.addressNodeMap,
+		Addresses:      n.addresses.ToSlice(),
+		AddressConnMap: n.addressConnMap.ToMap(),
+		ConnNodeMap:    n.connNodeMap.ToMap(),
+		AddressNodeMap: n.addressNodeMap.ToMap(),
 	}
 	return json.Marshal(exportable)
 }
@@ -88,10 +88,10 @@ func NodeConnectionMapperUnmarshal(data []byte) (*NodeConnectionMapper, error) {
 		return nil, err
 	}
 	result := NodeConnectionMapper{
-		addresses:      exportable.Addresses,
-		addressConnMap: exportable.AddressConnMap,
-		connNodeMap:    exportable.ConnNodeMap,
-		addressNodeMap: exportable.AddressNodeMap,
+		addresses:      set.NewSetFromSlice(exportable.Addresses),
+		addressConnMap: set.NewBimapFromMap(exportable.AddressConnMap),
+		connNodeMap:    set.NewBimapFromMap(exportable.ConnNodeMap),
+		addressNodeMap: set.NewBimapFromMap(exportable.AddressNodeMap),
 	}
 
 	return &result, nil

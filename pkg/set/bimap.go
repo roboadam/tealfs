@@ -14,6 +14,8 @@
 
 package set
 
+import "maps"
+
 type Bimap[K comparable, J comparable] struct {
 	dataKj map[K]J
 	dataJk map[J]K
@@ -24,6 +26,22 @@ func NewBimap[K comparable, J comparable]() Bimap[K, J] {
 		dataKj: make(map[K]J),
 		dataJk: make(map[J]K),
 	}
+}
+
+func NewBimapFromMap[K comparable, J comparable](input map[K]J) Bimap[K, J] {
+	result := NewBimap[K, J]()
+
+	for k, j := range input {
+		result.Add(k, j)
+	}
+
+	return result
+}
+
+func (b *Bimap[K, J]) ToMap() map[K]J {
+	result := make(map[K]J)
+	maps.Copy(result, b.dataKj)
+	return result
 }
 
 func (b *Bimap[K, J]) Add(item1 K, item2 J) {
