@@ -16,6 +16,7 @@ package model
 
 import (
 	"encoding/json"
+	"sync"
 	"tealfs/pkg/set"
 )
 
@@ -24,6 +25,7 @@ type NodeConnectionMapper struct {
 	addressConnMap set.Bimap[string, ConnId]
 	connNodeMap    set.Bimap[ConnId, NodeId]
 	addressNodeMap set.Bimap[string, NodeId]
+	mux            sync.RWMutex
 }
 
 type NodeConnectionMapperExport struct {
@@ -34,6 +36,8 @@ type NodeConnectionMapperExport struct {
 }
 
 func (n *NodeConnectionMapper) AddressesWithoutConnections() set.Set[string] {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
 	result := set.NewSet[string]()
 	for _, address := range n.addresses.GetValues() {
 		if _, ok := n.addressConnMap.Get1(address); !ok {
@@ -44,6 +48,12 @@ func (n *NodeConnectionMapper) AddressesWithoutConnections() set.Set[string] {
 }
 
 func (n *NodeConnectionMapper) Connections() set.Set[ConnId] {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	return n.connections()
+}
+
+func (n *NodeConnectionMapper) connections() set.Set[ConnId] {
 	result := set.NewSet[ConnId]()
 	for _, address := range n.addresses.GetValues() {
 		if conn, ok := n.addressConnMap.Get1(address); ok {
@@ -54,24 +64,38 @@ func (n *NodeConnectionMapper) Connections() set.Set[ConnId] {
 }
 
 func (n *NodeConnectionMapper) ConnForNode(node NodeId) (ConnId, bool) {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
 	return n.connNodeMap.Get2(node)
 }
 
 func (n *NodeConnectionMapper) NodeForConn(connId ConnId) (NodeId, bool) {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
 	node, ok := n.connNodeMap.Get1(connId)
 	return node, ok
 }
 
 func (n *NodeConnectionMapper) AddressForConn(connId ConnId) (string, bool) {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
 	return n.addressConnMap.Get2(connId)
 }
 
 func (n *NodeConnectionMapper) RemoveConn(connId ConnId) {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	n.removeConn(connId)
+}
+
+func (n *NodeConnectionMapper) removeConn(connId ConnId) {
 	n.addressConnMap.Remove2(connId)
 	n.connNodeMap.Remove1(connId)
 }
 
 func (n *NodeConnectionMapper) Marshal() ([]byte, error) {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
 	exportable := NodeConnectionMapperExport{
 		Addresses:      n.addresses.ToSlice(),
 		AddressConnMap: n.addressConnMap.ToMap(),
@@ -92,6 +116,7 @@ func NodeConnectionMapperUnmarshal(data []byte) (*NodeConnectionMapper, error) {
 		addressConnMap: set.NewBimapFromMap(exportable.AddressConnMap),
 		connNodeMap:    set.NewBimapFromMap(exportable.ConnNodeMap),
 		addressNodeMap: set.NewBimapFromMap(exportable.AddressNodeMap),
+		mux:            sync.RWMutex{},
 	}
 
 	return &result, nil
@@ -101,6 +126,8 @@ func (n *NodeConnectionMapper) AddressesAndNodes() set.Set[struct {
 	Address string
 	NodeId  NodeId
 }] {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
 	result := set.NewSet[struct {
 		Address string
 		NodeId  NodeId
@@ -117,6 +144,8 @@ func (n *NodeConnectionMapper) AddressesAndNodes() set.Set[struct {
 	return result
 }
 func (n *NodeConnectionMapper) SetAll(conn ConnId, address string, node NodeId) {
+	n.mux.Lock()
+	defer n.mux.Unlock()
 	n.addresses.Add(address)
 	n.addressConnMap.Add(address, conn)
 	n.connNodeMap.Add(conn, node)
@@ -124,6 +153,8 @@ func (n *NodeConnectionMapper) SetAll(conn ConnId, address string, node NodeId) 
 }
 
 func (n *NodeConnectionMapper) Nodes() set.Set[NodeId] {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
 	result := set.NewSet[NodeId]()
 	for _, values := range n.addressNodeMap.AllValues() {
 		result.Add(values.J)
@@ -132,9 +163,11 @@ func (n *NodeConnectionMapper) Nodes() set.Set[NodeId] {
 }
 
 func (n *NodeConnectionMapper) UnsetConnections() {
-	connections := n.Connections()
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	connections := n.connections()
 	for _, conn := range connections.GetValues() {
-		n.RemoveConn(conn)
+		n.removeConn(conn)
 	}
 }
 
@@ -144,5 +177,6 @@ func NewNodeConnectionMapper() *NodeConnectionMapper {
 		addressConnMap: set.NewBimap[string, ConnId](),
 		connNodeMap:    set.NewBimap[ConnId, NodeId](),
 		addressNodeMap: set.NewBimap[string, NodeId](),
+		mux:            sync.RWMutex{},
 	}
 }
