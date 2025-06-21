@@ -51,9 +51,6 @@ type Mgr struct {
 
 	nodeConnMapper *model.NodeConnectionMapper
 
-	// nodesAddressMap    map[model.NodeId]string
-	// nodeConnMap        set.Bimap[model.NodeId, model.ConnId]
-	// connAddress        set.Bimap[model.ConnId, string]
 	NodeId             model.NodeId
 	mirrorDistributer  dist.MirrorDistributer
 	blockType          model.BlockType
@@ -101,9 +98,6 @@ func NewWithChanSize(
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
-		// nodesAddressMap:         make(map[model.NodeId]string),
-		// connAddress:             set.NewBimap[model.ConnId, string](),
-		// nodeConnMap:             set.NewBimap[model.NodeId, model.ConnId](),
 		mirrorDistributer:  dist.NewMirrorDistributer(),
 		blockType:          blockType,
 		nodeAddress:        nodeAddress,
@@ -501,43 +495,6 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 			Id:            id,
 		}
 		// Todo: Need to periodically try to reconnect to unconnected nodes
-	}
-}
-
-func (m *Mgr) handleWebdavGets(req model.GetBlockReq) {
-	ptrs := m.mirrorDistributer.ReadPointersForId(req.BlockId)
-	if len(ptrs) == 0 {
-		resp := model.GetBlockResp{
-			Id:  req.Id(),
-			Err: errors.New("not found"),
-		}
-		chanutil.Send(m.ctx, m.MgrWebdavGets, resp, "mgr: handleWebdavGets: not found")
-	} else {
-		m.readDiskPtr(ptrs, req.Id(), req.BlockId)
-	}
-}
-
-func (m *Mgr) readDiskPtr(ptrs []model.DiskPointer, reqId model.GetBlockId, blockId model.BlockId) {
-	if len(ptrs) == 0 {
-		return
-	}
-	n := ptrs[0].NodeId()
-	disk := ptrs[0].Disk()
-	rr := model.NewReadRequest(m.NodeId, ptrs, blockId, reqId)
-	if m.NodeId == n {
-		chanutil.Send(m.ctx, m.MgrDiskReads[disk], rr, "mgr: readDiskPtr: local")
-	} else {
-		c, ok := m.nodeConnMapper.ConnForNode(n)
-		if ok {
-			mcs := model.MgrConnsSend{ConnId: c, Payload: &rr}
-			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: readDiskPtr: remote")
-		} else {
-			resp := model.GetBlockResp{
-				Id:  reqId,
-				Err: errors.New("not connected"),
-			}
-			chanutil.Send(m.ctx, m.MgrWebdavGets, resp, "mgr: readDiskPtr: not connected")
-		}
 	}
 }
 
