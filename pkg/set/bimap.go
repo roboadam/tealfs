@@ -27,16 +27,21 @@ func NewBimap[K comparable, J comparable]() Bimap[K, J] {
 }
 
 func (b *Bimap[K, J]) Add(item1 K, item2 J) {
+	b.Remove1(item1)
 	b.dataKj[item1] = item2
 	b.dataJk[item2] = item1
 }
 
 func (b *Bimap[K, J]) Remove1(item K) {
+	item2 := b.dataKj[item]
 	delete(b.dataKj, item)
+	delete(b.dataJk, item2)
 }
 
 func (b *Bimap[K, J]) Remove2(item J) {
+	item2 := b.dataJk[item]
 	delete(b.dataJk, item)
+	delete(b.dataKj, item2)
 }
 
 func (b *Bimap[K, J]) Get1(item K) (J, bool) {
@@ -47,4 +52,21 @@ func (b *Bimap[K, J]) Get1(item K) (J, bool) {
 func (b *Bimap[K, J]) Get2(item J) (K, bool) {
 	value, ok := b.dataJk[item]
 	return value, ok
+}
+
+func (b *Bimap[K, J]) AllValues() []struct {
+	K K
+	J J
+} {
+	result := []struct {
+		K K
+		J J
+	}{}
+	for k, j := range b.dataKj {
+		result = append(result, struct {
+			K K
+			J J
+		}{K: k, J: j})
+	}
+	return result
 }

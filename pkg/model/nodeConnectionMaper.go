@@ -14,31 +14,19 @@
 
 package model
 
-type connRecord struct {
-	address *string
-	nodeId  *NodeId
-}
-
-type addressRecord struct {
-	nodeId *NodeId
-	connId *ConnId
-}
-
-type nodeRecord struct {
-	address *string
-	connId  *ConnId
-}
+import "tealfs/pkg/set"
 
 type NodeConnectionMapper struct {
-	connRecords    map[ConnId]connRecord
-	addressRecords map[string]addressRecord
-	nodeRecords    map[NodeId]nodeRecord
+	addresses      set.Set[string]
+	addressConnMap set.Bimap[string, ConnId]
+	connNodeMap    set.Bimap[ConnId, *NodeId]
+	addressNodeMap set.Bimap[string, *NodeId]
 }
 
 func (n *NodeConnectionMapper) AddressesWithoutConnections() []string {
 	result := []string{}
-	for address := range n.addressRecords {
-		if n.addressRecords[address].connId == nil {
+	for _, address := range n.addresses.GetValues() {
+		if _, ok := n.addressConnMap.Get1(address); !ok {
 			result = append(result, address)
 		}
 	}
@@ -47,17 +35,16 @@ func (n *NodeConnectionMapper) AddressesWithoutConnections() []string {
 
 func (n *NodeConnectionMapper) Connections() []ConnId {
 	result := []ConnId{}
-	for conn := range n.connRecords {
-		result = append(result, conn)
+	for _, address := range n.addresses.GetValues() {
+		if conn, ok := n.addressConnMap.Get1(address); ok {
+			result = append(result, conn)
+		}
 	}
 	return result
 }
 
 func (n *NodeConnectionMapper) ConnForNode(node NodeId) (ConnId, bool) {
-	if record, ok := n.nodeRecords[node]; ok {
-		return *record.connId, true
-	}
-	return -1, false
+	return n.connNodeMap.Get2(&node)
 }
 
 func (n *NodeConnectionMapper) AddressesAndNodes() []struct {
@@ -68,24 +55,29 @@ func (n *NodeConnectionMapper) AddressesAndNodes() []struct {
 		Address string
 		NodeId  NodeId
 	}{}
-	for address := range n.addressRecords {
-		if n.addressRecords[address].nodeId != nil {
-			result = append(result, struct {
-				Address string
-				NodeId  NodeId
-			}{
-				Address: address,
-				NodeId:  *n.addressRecords[address].nodeId,
-			})
-		}
+	for _, values := range n.addressNodeMap.AllValues() {
+		result = append(result, struct {
+			Address string
+			NodeId  NodeId
+		}{
+			Address: values.K,
+			NodeId:  *values.J,
+		})
 	}
 	return result
+}
+func (n *NodeConnectionMapper) SetAll(conn ConnId, address string, node NodeId) {
+	n.addresses.Add(address)
+	n.addressConnMap.Add(address, conn)
+	n.connNodeMap.Add(conn, &node)
+	n.addressNodeMap.Add(address, &node)
 }
 
 func NewNodeConnectionMapper() *NodeConnectionMapper {
 	return &NodeConnectionMapper{
-		connRecords:    make(map[ConnId]connRecord),
-		addressRecords: make(map[string]addressRecord),
-		nodeRecords:    make(map[NodeId]nodeRecord),
+		addresses:      set.NewSet[string](),
+		addressConnMap: set.NewBimap[string, ConnId](),
+		connNodeMap:    set.NewBimap[ConnId, *NodeId](),
+		addressNodeMap: set.NewBimap[string, *NodeId](),
 	}
 }

@@ -337,7 +337,7 @@ func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
-		m.connAddress.Add(i.ConnId, p.Address())
+		m.nodeConnMapper.SetAll(i.ConnId, p.Address(), p.Node())
 		status := model.UiConnectionStatus{
 			Type:          model.Connected,
 			RemoteAddress: p.Address(),
@@ -356,15 +356,12 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			chanutil.Send(m.ctx, m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")
 		}
 		syncNodes := m.syncNodesPayloadToSend()
-		for n := range m.nodesAddressMap {
-			connId, ok := m.nodeConnMap.Get1(n)
-			if ok {
-				mcs := model.MgrConnsSend{
-					ConnId:  connId,
-					Payload: &syncNodes,
-				}
-				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleReceives: sync nodes")
+		for _, connId := range m.nodeConnMapper.Connections() {
+			mcs := model.MgrConnsSend{
+				ConnId:  connId,
+				Payload: &syncNodes,
 			}
+			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleReceives: sync nodes")
 		}
 	case *model.SyncNodes:
 		remoteNodes := p.GetNodes()
