@@ -14,13 +14,23 @@
 
 package model
 
-import "tealfs/pkg/set"
+import (
+	"encoding/json"
+	"tealfs/pkg/set"
+)
 
 type NodeConnectionMapper struct {
 	addresses      set.Set[string]
 	addressConnMap set.Bimap[string, ConnId]
 	connNodeMap    set.Bimap[ConnId, NodeId]
 	addressNodeMap set.Bimap[string, NodeId]
+}
+
+type NodeConnectionMapperExport struct {
+	Addresses      set.Set[string]
+	AddressConnMap set.Bimap[string, ConnId]
+	ConnNodeMap    set.Bimap[ConnId, NodeId]
+	AddressNodeMap set.Bimap[string, NodeId]
 }
 
 func (n *NodeConnectionMapper) AddressesWithoutConnections() set.Set[string] {
@@ -61,6 +71,32 @@ func (n *NodeConnectionMapper) RemoveConn(connId ConnId) {
 	n.connNodeMap.Remove1(connId)
 }
 
+func (n *NodeConnectionMapper) Marshal() ([]byte, error) {
+	exportable := NodeConnectionMapperExport{
+		Addresses:      n.addresses,
+		AddressConnMap: n.addressConnMap,
+		ConnNodeMap:    n.connNodeMap,
+		AddressNodeMap: n.addressNodeMap,
+	}
+	return json.Marshal(exportable)
+}
+
+func NodeConnectionMapperUnmarshal(data []byte) (*NodeConnectionMapper, error) {
+	var exportable NodeConnectionMapperExport
+	err := json.Unmarshal(data, &exportable)
+	if err != nil {
+		return nil, err
+	}
+	result := NodeConnectionMapper{
+		addresses:      exportable.Addresses,
+		addressConnMap: exportable.AddressConnMap,
+		connNodeMap:    exportable.ConnNodeMap,
+		addressNodeMap: exportable.AddressNodeMap,
+	}
+
+	return &result, nil
+}
+
 func (n *NodeConnectionMapper) AddressesAndNodes() set.Set[struct {
 	Address string
 	NodeId  NodeId
@@ -93,6 +129,13 @@ func (n *NodeConnectionMapper) Nodes() set.Set[NodeId] {
 		result.Add(values.J)
 	}
 	return result
+}
+
+func (n *NodeConnectionMapper) UnsetConnections() {
+	connections := n.Connections()
+	for _, conn := range connections.GetValues() {
+		n.RemoveConn(conn)
+	}
 }
 
 func NewNodeConnectionMapper() *NodeConnectionMapper {

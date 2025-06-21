@@ -214,10 +214,12 @@ func (m *Mgr) loadSettings() error {
 		return err
 	}
 	if len(data) > 0 {
-		err = json.Unmarshal(data, &m.nodeConnMapper)
+		mapper, err := model.NodeConnectionMapperUnmarshal(data)
 		if err != nil {
 			return err
 		}
+		mapper.UnsetConnections()
+		m.nodeConnMapper = mapper
 	}
 
 	data, err = m.fileOps.ReadFile(filepath.Join(m.savePath, "disks.json"))
@@ -248,7 +250,7 @@ func (m *Mgr) saveSettings() error {
 		return err
 	}
 
-	data, err = json.Marshal(m.nodeConnMapper)
+	data, err = m.nodeConnMapper.Marshal()
 	if err != nil {
 		return err
 	}
