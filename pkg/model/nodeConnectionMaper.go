@@ -52,6 +52,15 @@ func (n *NodeConnectionMapper) NodeForConn(connId ConnId) (NodeId, bool) {
 	return *node, ok
 }
 
+func (n *NodeConnectionMapper) AddressForConn(connId ConnId) (string, bool) {
+	return n.addressConnMap.Get2(connId)
+}
+
+func (n *NodeConnectionMapper) RemoveConn(connId ConnId) {
+	n.addressConnMap.Remove2(connId)
+	n.connNodeMap.Remove1(connId)
+}
+
 func (n *NodeConnectionMapper) AddressesAndNodes() set.Set[struct {
 	Address string
 	NodeId  NodeId

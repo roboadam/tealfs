@@ -312,7 +312,8 @@ type connectedNode struct {
 
 func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, t *testing.T, paths []string, connReqs chan<- model.ConnectToNodeReq) (*Mgr, *disk.MockFileOps) {
 	fileOps := disk.MockFileOps{}
-	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1, ctx)
+	nodeConnMapper := model.NewNodeConnectionMapper()
+	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1, nodeConnMapper, ctx)
 	m.ConnectToNodeReqs = connReqs
 
 	for _, path := range paths {
