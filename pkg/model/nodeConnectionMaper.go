@@ -23,21 +23,21 @@ type NodeConnectionMapper struct {
 	addressNodeMap set.Bimap[string, *NodeId]
 }
 
-func (n *NodeConnectionMapper) AddressesWithoutConnections() []string {
-	result := []string{}
+func (n *NodeConnectionMapper) AddressesWithoutConnections() set.Set[string] {
+	result := set.NewSet[string]()
 	for _, address := range n.addresses.GetValues() {
 		if _, ok := n.addressConnMap.Get1(address); !ok {
-			result = append(result, address)
+			result.Add(address)
 		}
 	}
 	return result
 }
 
-func (n *NodeConnectionMapper) Connections() []ConnId {
-	result := []ConnId{}
+func (n *NodeConnectionMapper) Connections() set.Set[ConnId] {
+	result := set.NewSet[ConnId]()
 	for _, address := range n.addresses.GetValues() {
 		if conn, ok := n.addressConnMap.Get1(address); ok {
-			result = append(result, conn)
+			result.Add(conn)
 		}
 	}
 	return result
@@ -47,16 +47,21 @@ func (n *NodeConnectionMapper) ConnForNode(node NodeId) (ConnId, bool) {
 	return n.connNodeMap.Get2(&node)
 }
 
-func (n *NodeConnectionMapper) AddressesAndNodes() []struct {
+func (n *NodeConnectionMapper) NodeForConn(connId ConnId) (NodeId, bool) {
+	node, ok := n.connNodeMap.Get1(connId)
+	return *node, ok
+}
+
+func (n *NodeConnectionMapper) AddressesAndNodes() set.Set[struct {
 	Address string
 	NodeId  NodeId
-} {
-	result := []struct {
+}] {
+	result := set.NewSet[struct {
 		Address string
 		NodeId  NodeId
-	}{}
+	}]()
 	for _, values := range n.addressNodeMap.AllValues() {
-		result = append(result, struct {
+		result.Add(struct {
 			Address string
 			NodeId  NodeId
 		}{
@@ -71,6 +76,14 @@ func (n *NodeConnectionMapper) SetAll(conn ConnId, address string, node NodeId) 
 	n.addressConnMap.Add(address, conn)
 	n.connNodeMap.Add(conn, &node)
 	n.addressNodeMap.Add(address, &node)
+}
+
+func (n *NodeConnectionMapper) Nodes() set.Set[NodeId] {
+	result := set.NewSet[NodeId]()
+	for _, values := range n.addressNodeMap.AllValues() {
+		result.Add(*values.J)
+	}
+	return result
 }
 
 func NewNodeConnectionMapper() *NodeConnectionMapper {

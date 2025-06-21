@@ -25,7 +25,6 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -150,7 +149,8 @@ func (m *Mgr) start() {
 }
 
 func (m *Mgr) connectToUnconnected() {
-	for _, address := range m.nodeConnMapper.AddressesWithoutConnections() {
+	addresses := m.nodeConnMapper.AddressesWithoutConnections()
+	for _, address := range addresses.GetValues() {
 		m.ConnectToNodeReqs <- model.ConnectToNodeReq{Address: address}
 	}
 }
@@ -308,7 +308,8 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 			panic("error saving disk settings")
 		}
 
-		for _, conn := range m.nodeConnMapper.Connections() {
+		connections := m.nodeConnMapper.Connections()
+		for _, conn := range connections.GetValues() {
 			iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
 			mcs := model.MgrConnsSend{
 				ConnId:  conn,
@@ -325,7 +326,8 @@ func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
 
 func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 	result := model.NewSyncNodes()
-	for _, an := range m.nodeConnMapper.AddressesAndNodes() {
+	addressesAndNodes := m.nodeConnMapper.AddressesAndNodes()
+	for _, an := range addressesAndNodes.GetValues() {
 		result.Nodes.Add(struct {
 			Node    model.NodeId
 			Address string
@@ -356,7 +358,8 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			chanutil.Send(m.ctx, m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")
 		}
 		syncNodes := m.syncNodesPayloadToSend()
-		for _, connId := range m.nodeConnMapper.Connections() {
+		connections := m.nodeConnMapper.Connections()
+		for _, connId := range connections.GetValues() {
 			mcs := model.MgrConnsSend{
 				ConnId:  connId,
 				Payload: &syncNodes,
@@ -365,7 +368,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		}
 	case *model.SyncNodes:
 		remoteNodes := p.GetNodes()
-		localNodes := set.NewSetFromMapKeys(m.nodesAddressMap)
+		localNodes := m.nodeConnMapper.Nodes()
 		localNodes.Add(m.NodeId)
 		missing := remoteNodes.Minus(&localNodes)
 		for _, n := range missing.GetValues() {
@@ -375,7 +378,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 
 		}
 	case *model.WriteRequest:
-		caller, ok := m.nodeConnMap.Get2(i.ConnId)
+		caller, ok := m.nodeConnMapper.NodeForConn(i.ConnId)
 		if ok {
 			ptr := p.Data().Ptr
 			disk := ptr.Disk()
@@ -425,7 +428,7 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 			chanutil.Send(m.ctx, m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
 		}
 	} else {
-		c, ok := m.nodeConnMap.Get1(r.Caller())
+		c, ok := m.nodeConnMapper.ConnForNode(r.Caller())
 		if ok {
 			mcs := model.MgrConnsSend{
 				ConnId:  c,
@@ -451,7 +454,7 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 			}
 			chanutil.Send(m.ctx, m.MgrWebdavGets, br, "mgr: handleDiskReadResult: to local webdav")
 		} else {
-			c, ok := m.nodeConnMap.Get1(r.Caller())
+			c, ok := m.nodeConnMapper.ConnForNode(r.Caller())
 			if ok {
 				mcs := model.MgrConnsSend{ConnId: c, Payload: &r}
 				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReadResult: to remote webdav")
