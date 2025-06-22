@@ -1,0 +1,21 @@
+- [x] Robust block fetching - goes to backup on failure
+- [x] Everywhere blocks - for file index
+- [x] UI setup
+- [x] Break up big blocks
+- [ ] Rebalance on disk changes
+    - [ ] Create balancer service
+    - [ ] Maintain a global block list on all nodes
+    - [ ] Have main node make sure nodes are in the right place
+    - [ ] Have all nodes loop through their local disk nodes and delete those not in the global list
+- [ ] Update Readme
+- [ ] Check for race conditions in tests
+- [ ] Hash as filename
+- [ ] Delete unused blocks
+- [ ] Automatically choose ports
+- [ ] Encryption in transit
+- [ ] Authentication
+- [ ] Combine small blocks
+- [ ] UI Refresh
+- [ ] XOR background process
+- [ ] Service discovery
+- [ ] CLI setup
