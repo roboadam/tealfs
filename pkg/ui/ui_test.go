@@ -121,8 +121,8 @@ func waitForWrittenData(handler func() string, values []string) {
 	}
 }
 
-func NewUi(ctx context.Context) (*ui.Ui, chan model.UiMgrConnectTo, chan model.UiConnectionStatus, *ui.MockHtmlOps) {
-	connToReq := make(chan model.UiMgrConnectTo)
+func NewUi(ctx context.Context) (*ui.Ui, chan model.ConnectToNodeReq, chan model.UiConnectionStatus, *ui.MockHtmlOps) {
+	connToReq := make(chan model.ConnectToNodeReq)
 	connToResp := make(chan model.UiConnectionStatus)
 	diskAddReq := make(chan model.AddDiskReq)
 	diskStatus := make(chan model.UiDiskStatus)

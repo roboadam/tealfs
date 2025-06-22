@@ -26,31 +26,6 @@ import (
 	"context"
 )
 
-func TestConnectToMgr(t *testing.T) {
-	const expectedAddress = "some-address:123"
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	m := NewWithChanSize(
-		0,
-		"dummyAddress",
-		"dummyPath",
-		&disk.MockFileOps{},
-		model.Mirrored,
-		1,
-		ctx,
-	)
-
-	m.UiMgrConnectTos <- model.UiMgrConnectTo{
-		Address: expectedAddress,
-	}
-
-	expectedMessage := <-m.MgrConnsConnectTos
-
-	if expectedMessage.Address != expectedAddress {
-		t.Error("Received address", expectedMessage.Address)
-	}
-}
-
 func TestConnectToSuccess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -69,7 +44,7 @@ func TestConnectToSuccess(t *testing.T) {
 		[]connectedNode{
 			{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 			{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
-		}, 0, t, disks)
+		}, 0, t, disks, make(chan<- model.ConnectToNodeReq))
 }
 
 func TestReceiveSyncNodes(t *testing.T) {
@@ -86,11 +61,12 @@ func TestReceiveSyncNodes(t *testing.T) {
 	const remoteAddress = "some-address3:345"
 	var remoteNodeId = model.NewNodeId()
 	disks := []string{"disk"}
+	connReqs := make(chan model.ConnectToNodeReq)
 
 	m, _ := mgrWithConnectedNodes(ctx, []connectedNode{
 		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId, disks: disks1},
 		{address: localAddress, conn: localConnectionId, node: localNodeId, disks: disks2},
-	}, 0, t, disks)
+	}, 0, t, disks, connReqs)
 
 	sn := model.NewSyncNodes()
 	sn.Nodes.Add(struct {
@@ -106,7 +82,7 @@ func TestReceiveSyncNodes(t *testing.T) {
 		Payload: &sn,
 	}
 
-	expectedConnectTo := <-m.MgrConnsConnectTos
+	expectedConnectTo := <-connReqs
 	if expectedConnectTo.Address != remoteAddress {
 		t.Error("expected to connect to", remoteAddress)
 	}
@@ -128,7 +104,7 @@ func TestWebdavGet(t *testing.T) {
 	m, fileOps := mgrWithConnectedNodes(ctx, []connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
-	}, 0, t, disks)
+	}, 0, t, disks, make(chan<- model.ConnectToNodeReq))
 
 	ids := []model.BlockId{}
 	for range 100 {
@@ -147,9 +123,10 @@ func TestWebdavGet(t *testing.T) {
 			case s := <-m.MgrConnsSends:
 				switch readRequest := s.Payload.(type) {
 				case *model.ReadRequest:
-					if s.ConnId == expectedConnectionId1 {
+					switch s.ConnId {
+					case expectedConnectionId1:
 						atomic.AddInt32(&oneCount, 1)
-					} else if s.ConnId == expectedConnectionId2 {
+					case expectedConnectionId2:
 						atomic.AddInt32(&twoCount, 1)
 					}
 					data := model.RawData{
@@ -177,6 +154,7 @@ func TestWebdavGet(t *testing.T) {
 		w := <-m.MgrWebdavGets
 		if w.Block.Id != blockId {
 			t.Error("Expected", blockId, "got", w.Block.Id)
+			return
 		}
 	}
 	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 {
@@ -209,7 +187,7 @@ func TestWebdavPut(t *testing.T) {
 	m, fileOps := mgrWithConnectedNodes(ctx, []connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks12},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks34},
-	}, maxNumberOfWritesInOnePass, t, paths)
+	}, maxNumberOfWritesInOnePass, t, paths, make(chan<- model.ConnectToNodeReq))
 
 	blocks := []model.Block{}
 	for i := range 100 {
@@ -287,7 +265,7 @@ func TestBroadcast(t *testing.T) {
 	m, _ := mgrWithConnectedNodes(ctx, []connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
-	}, maxNumberOfWritesInOnePass, t, paths)
+	}, maxNumberOfWritesInOnePass, t, paths, make(chan<- model.ConnectToNodeReq))
 
 	testMsg := model.NewBroadcast([]byte{1, 2, 3})
 	outMsgCounter := 0
@@ -333,9 +311,11 @@ type connectedNode struct {
 	disks   []model.DiskIdPath
 }
 
-func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, t *testing.T, paths []string) (*Mgr, *disk.MockFileOps) {
+func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, t *testing.T, paths []string, connReqs chan<- model.ConnectToNodeReq) (*Mgr, *disk.MockFileOps) {
 	fileOps := disk.MockFileOps{}
-	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1, ctx)
+	nodeConnMapper := model.NewNodeConnectionMapper()
+	m := NewWithChanSize(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1, nodeConnMapper, ctx)
+	m.ConnectToNodeReqs = connReqs
 
 	for _, path := range paths {
 		m.UiMgrDisk <- model.NewAddDiskReq(path, m.NodeId, 1)

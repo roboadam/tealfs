@@ -24,7 +24,7 @@ import (
 )
 
 type Ui struct {
-	connToReq   chan model.UiMgrConnectTo
+	connToReq   chan model.ConnectToNodeReq
 	connToResp  chan model.UiConnectionStatus
 	addDiskReq  chan model.AddDiskReq
 	addDiskResp chan model.UiDiskStatus
@@ -39,7 +39,7 @@ type Ui struct {
 }
 
 func NewUi(
-	connToReq chan model.UiMgrConnectTo,
+	connToReq chan model.ConnectToNodeReq,
 	connToResp chan model.UiConnectionStatus,
 	addDiskReq chan model.AddDiskReq,
 	addDiskResp chan model.UiDiskStatus,
@@ -119,7 +119,7 @@ func (ui *Ui) handleRoot() {
 			ui.connectToGet(w, tmpl)
 		} else if r.Method == http.MethodPut {
 			hostAndPort := r.FormValue("hostAndPort")
-			ui.connToReq <- model.UiMgrConnectTo{Address: hostAndPort}
+			ui.connToReq <- model.ConnectToNodeReq{Address: hostAndPort}
 			ui.connectionStatus(w, tmpl)
 		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)

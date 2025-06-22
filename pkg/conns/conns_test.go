@@ -206,15 +206,15 @@ func lenAsBytes(data []byte) []byte {
 	return buf
 }
 
-func connectTo(address string, outStatus chan model.NetConnectionStatus, inConnectTo chan model.MgrConnsConnectTo) model.NetConnectionStatus {
-	inConnectTo <- model.MgrConnsConnectTo{Address: address}
+func connectTo(address string, outStatus chan model.NetConnectionStatus, inConnectTo chan model.ConnectToNodeReq) model.NetConnectionStatus {
+	inConnectTo <- model.ConnectToNodeReq{Address: address}
 	return <-outStatus
 }
 
-func newConnsTest(ctx context.Context) (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.MgrConnsConnectTo, chan model.MgrConnsSend, *MockConnectionProvider) {
+func newConnsTest(ctx context.Context) (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.ConnectToNodeReq, chan model.MgrConnsSend, *MockConnectionProvider) {
 	outStatuses := make(chan model.NetConnectionStatus)
 	outReceives := make(chan model.ConnsMgrReceive)
-	inConnectTo := make(chan model.MgrConnsConnectTo)
+	inConnectTo := make(chan model.ConnectToNodeReq)
 	inSends := make(chan model.MgrConnsSend)
 	provider := NewMockConnectionProvider()
 	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)

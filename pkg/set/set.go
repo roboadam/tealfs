@@ -24,6 +24,16 @@ func NewSet[K comparable]() Set[K] {
 	return Set[K]{data: make(map[K]bool)}
 }
 
+func NewSetFromSlice[K comparable](input []K) Set[K] {
+	result := NewSet[K]()
+
+	for _, item := range input {
+		result.Add(item)
+	}
+
+	return result
+}
+
 func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
 	result := Set[K]{data: make(map[K]bool)}
 
@@ -31,6 +41,16 @@ func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
 		result.Add(k)
 	}
 
+	return result
+}
+
+func (s *Set[K]) ToSlice() []K {
+	result := make([]K, len(s.data))
+	i := 0
+	for k := range s.data {
+		result[i] = k
+		i++
+	}
 	return result
 }
 
