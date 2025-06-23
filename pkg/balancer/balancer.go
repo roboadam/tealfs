@@ -13,14 +13,19 @@ type Balancer struct {
 	ctx         context.Context
 }
 
-func New(addBlock chan model.BlockId, removeBlock chan model.BlockId) *Balancer {
+func New(ctx context.Context) *Balancer {
 	b := Balancer{
 		allBlocks:   set.NewSet[model.BlockId](),
-		addBlock:    addBlock,
-		removeBlock: removeBlock,
+		addBlock:    make(chan model.BlockId),
+		removeBlock: make(chan model.BlockId),
+		ctx:         ctx,
 	}
 	go b.processChannels()
 	return &b
+}
+
+func (b *Balancer) AddBlock(blockId model.BlockId) {
+	b.addBlock <- blockId
 }
 
 func (b *Balancer) processChannels() {

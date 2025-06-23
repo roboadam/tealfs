@@ -115,20 +115,22 @@ func (ui *Ui) handleRoot() {
 		ui.diskStatus(w, tmpl)
 	})
 	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
+		switch r.Method {
+		case http.MethodGet:
 			ui.connectToGet(w, tmpl)
-		} else if r.Method == http.MethodPut {
+		case http.MethodPut:
 			hostAndPort := r.FormValue("hostAndPort")
 			ui.connToReq <- model.ConnectToNodeReq{Address: hostAndPort}
 			ui.connectionStatus(w, tmpl)
-		} else {
+		default:
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		}
 	})
 	ui.ops.HandleFunc("/add-disk", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
+		switch r.Method {
+		case http.MethodGet:
 			ui.addDiskGet(w, tmpl, ui.remotes.GetValues(), ui.nodeId)
-		} else if r.Method == http.MethodPut {
+		case http.MethodPut:
 			diskPath := r.FormValue("diskPath")
 			node := r.FormValue("node")
 			if node == "" {
@@ -137,7 +139,7 @@ func (ui *Ui) handleRoot() {
 			req := model.NewAddDiskReq(diskPath, model.NodeId(node), 1)
 			chanutil.Send(ui.ctx, ui.addDiskReq, req, "ui: add disk req")
 			ui.connectionStatus(w, tmpl)
-		} else {
+		default:
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		}
 	})

@@ -21,6 +21,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"tealfs/pkg/balancer"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
@@ -51,6 +52,7 @@ type Mgr struct {
 
 	nodeConnMapper *model.NodeConnectionMapper
 
+	balancer           *balancer.Balancer
 	NodeId             model.NodeId
 	mirrorDistributer  dist.MirrorDistributer
 	blockType          model.BlockType
@@ -96,6 +98,7 @@ func NewWithChanSize(
 		MgrWebdavGets:           make(chan model.GetBlockResp, chanSize),
 		MgrWebdavPuts:           make(chan model.PutBlockResp, chanSize),
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
+		balancer:                balancer.New(ctx),
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
 		mirrorDistributer:       dist.NewMirrorDistributer(),
