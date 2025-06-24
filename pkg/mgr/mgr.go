@@ -420,10 +420,7 @@ func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
 		}
 		switch resolved {
 		case done:
-			resp := model.PutBlockResp{
-				Id:  r.ReqId(),
-				Err: err,
-			}
+			resp := model.PutBlockResp{Id: r.ReqId(), Err: err}
 			chanutil.Send(m.ctx, m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
 		}
 	} else {

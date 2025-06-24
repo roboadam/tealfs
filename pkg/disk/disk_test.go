@@ -36,7 +36,7 @@ func TestWriteData(t *testing.T) {
 	req := model.NewWriteRequest(
 		nodeId,
 		model.RawData{
-			Ptr:  model.NewDiskPointer(nodeId, "disk1", string(blockId)),
+			Ptr:  model.NewDiskPointer(nodeId, "disk1", blockId),
 			Data: data,
 		},
 		"putBlockId",
@@ -69,7 +69,7 @@ func TestReadData(t *testing.T) {
 	_ = f.WriteFile(expectedPath, data)
 	req := model.NewReadRequest(
 		caller,
-		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", string(blockId))},
+		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", blockId)},
 		blockId,
 		model.GetBlockId("getBlockId1"),
 	)
@@ -97,7 +97,7 @@ func TestReadNewFile(t *testing.T) {
 	_ = f.WriteFile(expectedPath, data)
 	req := model.NewReadRequest(
 		caller,
-		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", string(blockId))},
+		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", blockId)},
 		blockId,
 		model.GetBlockId("getBlockId1"),
 	)

@@ -58,27 +58,27 @@ func (b *RawData) Equals(o *RawData) bool {
 }
 
 type DiskPointer struct {
-	nodeId   NodeId
-	disk     DiskId
-	fileName string
+	nodeId  NodeId
+	disk    DiskId
+	blockId BlockId
 }
 
 func (d *DiskPointer) NodeId() NodeId   { return d.nodeId }
 func (d *DiskPointer) Disk() DiskId     { return d.disk }
-func (d *DiskPointer) FileName() string { return d.fileName }
+func (d *DiskPointer) BlockId() BlockId { return d.blockId }
 
-func NewDiskPointer(nodeId NodeId, disk DiskId, fileName string) DiskPointer {
+func NewDiskPointer(nodeId NodeId, disk DiskId, fileName BlockId) DiskPointer {
 	return DiskPointer{
-		nodeId:   nodeId,
-		disk:     disk,
-		fileName: fileName,
+		nodeId:  nodeId,
+		disk:    disk,
+		blockId: fileName,
 	}
 }
 
 func (d *DiskPointer) ToBytes() []byte {
 	node := StringToBytes(string(d.nodeId))
 	disk := StringToBytes(string(d.disk))
-	fileName := StringToBytes(d.fileName)
+	fileName := StringToBytes(string(d.blockId))
 	return bytes.Join([][]byte{node, disk, fileName}, []byte{})
 }
 
@@ -87,9 +87,9 @@ func ToDiskPointer(data []byte) (*DiskPointer, []byte) {
 	disk, remainder := StringFromBytes(remainder)
 	rawFileName, remainder := StringFromBytes(remainder)
 	return &DiskPointer{
-		nodeId:   NodeId(rawId),
-		disk:     DiskId(disk),
-		fileName: rawFileName,
+		nodeId:  NodeId(rawId),
+		disk:    DiskId(disk),
+		blockId: BlockId(rawFileName),
 	}, remainder
 }
 
@@ -100,7 +100,7 @@ func (d *DiskPointer) Equals(o *DiskPointer) bool {
 	if d.disk != o.disk {
 		return false
 	}
-	if d.fileName != o.fileName {
+	if d.blockId != o.blockId {
 		return false
 	}
 	return true
