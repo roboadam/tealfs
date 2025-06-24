@@ -187,9 +187,10 @@ func TestGetData(t *testing.T) {
 	disks := []model.DiskIdPath{{Id: "disk1", Path: "disk1path", Node: "node1"}}
 	iam := model.NewIam("nodeId", disks, "localAddress:123", 1)
 	payload := &iam
-	dataReceived := payload.ToBytes()
+	dataReceived := append(payload.ToBytes(), 0)
 	length := lenAsBytes(dataReceived)
 	provider.Conn.dataToRead <- length
+	provider.Conn.dataToRead <- []byte{0}
 	provider.Conn.dataToRead <- dataReceived
 
 	result := <-cmr

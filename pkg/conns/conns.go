@@ -190,7 +190,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			return
 		default:
 			netConn := c.netConns[conn]
-			bytes, err := tnet.ReadPayload(netConn)
+			payloadType, bytes, err := tnet.ReadPayload(netConn)
 			if err != nil {
 				closeErr := netConn.Close()
 				if closeErr != nil {
@@ -198,6 +198,8 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				}
 				delete(c.netConns, conn)
 				return
+			} else if payloadType != 0 {
+				panic("Not implemented yet")
 			}
 			payload := model.ToPayload(bytes)
 			cmr := model.ConnsMgrReceive{
