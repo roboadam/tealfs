@@ -19,6 +19,7 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
+	"tealfs/pkg/balancer"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 )
@@ -36,6 +37,7 @@ func New(
 	mgrDiskReads chan model.ReadRequest,
 	diskMgrWrites chan model.WriteResult,
 	diskMgrReads chan model.ReadResult,
+	balancer *balancer.Balancer,
 	ctx context.Context,
 ) Disk {
 	p := Disk{
@@ -46,6 +48,7 @@ func New(
 		inReads:   mgrDiskReads,
 		outReads:  diskMgrReads,
 		outWrites: diskMgrWrites,
+		balancer:  balancer,
 		ctx:       ctx,
 	}
 	go p.consumeChannels()
@@ -60,6 +63,7 @@ type Disk struct {
 	outWrites chan model.WriteResult
 	inWrites  chan model.WriteRequest
 	inReads   chan model.ReadRequest
+	balancer  *balancer.Balancer
 	ctx       context.Context
 }
 
@@ -73,7 +77,9 @@ func (d *Disk) consumeChannels() {
 		case s := <-d.inWrites:
 			err := d.path.Save(s.Data())
 			if err == nil {
-				wr := model.NewWriteResultOk(s.Data().Ptr, s.Caller(), s.ReqId())
+				ptr := s.Data().Ptr
+				wr := model.NewWriteResultOk(ptr, s.Caller(), s.ReqId())
+				d.balancer.AddBlock(ptr.BlockId())
 				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save success")
 			} else {
 				wr := model.NewWriteResultErr(err.Error(), s.Caller(), s.ReqId())

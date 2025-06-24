@@ -19,6 +19,7 @@ import (
 	"context"
 	"io/fs"
 	"path/filepath"
+	"tealfs/pkg/balancer"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
@@ -122,6 +123,7 @@ func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.No
 	mgrDiskReads := make(chan model.ReadRequest)
 	diskMgrWrites := make(chan model.WriteResult)
 	diskMgrReads := make(chan model.ReadResult)
-	d := disk.New(path, id, diskId, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, ctx)
+	balancer := balancer.New(ctx)
+	d := disk.New(path, id, diskId, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, balancer, ctx)
 	return &f, path, id, mgrDiskWrites, mgrDiskReads, diskMgrWrites, diskMgrReads, d
 }

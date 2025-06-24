@@ -176,6 +176,7 @@ func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
 		m.MgrDiskReads[id],
 		m.DiskMgrWrites,
 		m.DiskMgrReads,
+		m.balancer,
 		m.ctx,
 	)
 	m.disks = append(m.disks, d)
