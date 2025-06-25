@@ -52,6 +52,23 @@ func SendPayload(conn net.Conn, data []byte) error {
 	return nil
 }
 
+func SendPayload2(conn net.Conn, data []byte) error {
+	typ := []byte{1}
+	dataWithType := append(typ, data...)
+	size := uint32(len(dataWithType))
+	buf := make([]byte, 4)
+	binary.BigEndian.PutUint32(buf, size)
+	err := SendBytes(conn, buf)
+	if err != nil {
+		return err
+	}
+	err = SendBytes(conn, dataWithType)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func ReadBytes(conn net.Conn, length uint32) ([]byte, error) {
 	buf := make([]byte, length)
 	offset := uint32(0)

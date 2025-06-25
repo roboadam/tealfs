@@ -24,6 +24,7 @@ const (
 	ReadResultType   = uint8(6)
 	BroadcastType    = uint8(7)
 	AddDiskRequest   = uint8(8)
+	ErrorRespType    = uint8(9)
 )
 
 type Payload interface {

@@ -22,11 +22,14 @@ import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type Conns struct {
 	netConns      map[model.ConnId]net.Conn
+	respPayloads  map[PayloadId][]byte
+	inSends2      chan sendInput
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
 	outStatuses   chan model.NetConnectionStatus
@@ -39,6 +42,8 @@ type Conns struct {
 	listener      net.Listener
 	ctx           context.Context
 }
+
+type PayloadId string
 
 func NewConns(
 	outStatuses chan model.NetConnectionStatus,
@@ -57,6 +62,7 @@ func NewConns(
 	}
 	c := Conns{
 		netConns:      make(map[model.ConnId]net.Conn, 3),
+		respPayloads:  make(map[PayloadId][]byte),
 		nextId:        model.ConnId(0),
 		acceptedConns: make(chan AcceptedConns),
 		outStatuses:   outStatuses,
@@ -129,8 +135,34 @@ func (c *Conns) consumeChannels() {
 					c.handleSendFailure(sendReq, err)
 				}
 			}
+		case input := <-c.inSends2:
+			if conn, ok := c.netConns[input.connId]; ok {
+				err := tnet.SendPayload2(conn, input.payload.ToBytes())
+				if err == nil {
+					payloadId := PayloadId(uuid.NewString())
+					c.respPayloads
+				} else {
+					resp := model.NewErrorResp(err.Error())
+					input.resp <- &resp
+				}
+			}
 		}
 	}
+}
+
+type sendInput struct {
+	connId  model.ConnId
+	payload model.Payload
+	resp    chan<- model.Payload
+}
+
+func (c *Conns) Send(connId model.ConnId, payload model.Payload, resp chan<- model.Payload) {
+	sendInput := sendInput{
+		connId:  connId,
+		payload: payload,
+		resp:    resp,
+	}
+	c.inSends2 <- sendInput
 }
 
 func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
