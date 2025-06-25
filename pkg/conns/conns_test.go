@@ -60,7 +60,10 @@ func TestSendData(t *testing.T) {
 		Payload: &expected,
 	}
 
-	payload := collectPayload(provider.Conn.dataWritten)
+	typ, payload := collectPayload(provider.Conn.dataWritten)
+	if typ != 0 {
+		t.Error("Expected type 0")
+	}
 
 	switch p := model.ToPayload(payload).(type) {
 	case *model.WriteRequest:
@@ -167,13 +170,13 @@ func TestConnectionError(t *testing.T) {
 	}
 }
 
-func collectPayload(channel chan []byte) []byte {
+func collectPayload(channel chan []byte) (byte, []byte) {
 	data := <-channel
 	size := binary.BigEndian.Uint32(data[:4])
 	data = data[4:]
 	for {
 		if len(data) >= int(size) {
-			return data
+			return data[0], data[1:]
 		}
 		data = append(data, <-channel...)
 	}

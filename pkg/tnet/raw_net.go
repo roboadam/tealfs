@@ -22,21 +22,22 @@ import (
 func ReadPayload(conn net.Conn) (byte, []byte, error) {
 	rawLen, err := ReadBytes(conn, 4)
 	if err != nil {
-		return 0, nil, err
+		return 0xff, nil, err
 	}
 	size := binary.BigEndian.Uint32(rawLen)
 	bytes, err := ReadBytes(conn, size)
 	if err != nil {
-		return 0, nil, err
+		return 0xff, nil, err
 	}
 	if len(bytes) > 0 {
 		return bytes[0], bytes[1:], nil
 	}
-	return 0, bytes, err
+	return 0xff, bytes, err
 }
 
 func SendPayload(conn net.Conn, data []byte) error {
-	dataWithType := append(data, 0)
+	typ := []byte{0}
+	dataWithType := append(typ, data...)
 	size := uint32(len(dataWithType))
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, size)
