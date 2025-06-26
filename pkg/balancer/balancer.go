@@ -2,23 +2,27 @@ package balancer
 
 import (
 	"context"
+	"tealfs/pkg/conns"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
 
 type Balancer struct {
-	allBlocks   set.Set[model.BlockId]
-	addBlock    chan model.BlockId
-	removeBlock chan model.BlockId
-	ctx         context.Context
+	allBlocks      set.Set[model.BlockId]
+	addBlock       chan model.BlockId
+	removeBlock    chan model.BlockId
+	nodeConnMapper *model.NodeConnectionMapper
+	conns          *conns.Conns
+	ctx            context.Context
 }
 
-func New(ctx context.Context) *Balancer {
+func New(ctx context.Context, nodeConnMapper *model.NodeConnectionMapper) *Balancer {
 	b := Balancer{
-		allBlocks:   set.NewSet[model.BlockId](),
-		addBlock:    make(chan model.BlockId),
-		removeBlock: make(chan model.BlockId),
-		ctx:         ctx,
+		allBlocks:      set.NewSet[model.BlockId](),
+		addBlock:       make(chan model.BlockId),
+		removeBlock:    make(chan model.BlockId),
+		nodeConnMapper: nodeConnMapper,
+		ctx:            ctx,
 	}
 	go b.processChannels()
 	return &b
@@ -26,6 +30,10 @@ func New(ctx context.Context) *Balancer {
 
 func (b *Balancer) AddBlock(blockId model.BlockId) {
 	b.addBlock <- blockId
+	connections := b.nodeConnMapper.Connections()
+	for _, connId := range connections.GetValues() {
+		b.conns.Send(connId, model.NewAddBlockReq(blockId), nil)
+	}
 }
 
 func (b *Balancer) processChannels() {

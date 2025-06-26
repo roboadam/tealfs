@@ -237,14 +237,14 @@ func (c *Conns) consumeData(conn model.ConnId) {
 					delete(c.respPayloads, payloadId)
 				}
 
-
+			} else if payloadType == 0 {
+				payload := model.ToPayload(bytes)
+				cmr := model.ConnsMgrReceive{
+					ConnId:  conn,
+					Payload: payload,
+				}
+				chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 			}
-			payload := model.ToPayload(bytes)
-			cmr := model.ConnsMgrReceive{
-				ConnId:  conn,
-				Payload: payload,
-			}
-			chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 		}
 	}
 }
