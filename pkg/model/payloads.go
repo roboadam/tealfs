@@ -50,6 +50,8 @@ func ToPayload(data []byte) Payload {
 		return ToBroadcast(payloadData(data))
 	case AddDiskRequest:
 		return ToAddDiskReq(payloadData(data))
+	case ErrorRespType:
+		return ToErrorResp(payloadData(data))
 	default:
 		return ToNoOp(payloadData(data))
 	}

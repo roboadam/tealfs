@@ -20,7 +20,6 @@ import (
 	"net"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
-	"tealfs/pkg/tnet"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -28,7 +27,7 @@ import (
 
 type Conns struct {
 	netConns      map[model.ConnId]net.Conn
-	respPayloads  map[PayloadId][]byte
+	respPayloads  map[PayloadId]chan<- model.Payload
 	inSends2      chan sendInput
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
@@ -62,7 +61,7 @@ func NewConns(
 	}
 	c := Conns{
 		netConns:      make(map[model.ConnId]net.Conn, 3),
-		respPayloads:  make(map[PayloadId][]byte),
+		respPayloads:  make(map[PayloadId]chan<- model.Payload),
 		nextId:        model.ConnId(0),
 		acceptedConns: make(chan AcceptedConns),
 		outStatuses:   outStatuses,
@@ -130,17 +129,17 @@ func (c *Conns) consumeChannels() {
 				c.handleSendFailure(sendReq, errors.New("connection not found"))
 			} else {
 				//Todo maybe this should be async
-				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
+				err := SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
 				if err != nil {
 					c.handleSendFailure(sendReq, err)
 				}
 			}
 		case input := <-c.inSends2:
 			if conn, ok := c.netConns[input.connId]; ok {
-				err := tnet.SendPayload2(conn, input.payload.ToBytes())
+				payloadId := PayloadId(uuid.NewString())
+				err := SendPayload2(conn, payloadId, input.payload.ToBytes())
 				if err == nil {
-					payloadId := PayloadId(uuid.NewString())
-					c.respPayloads
+					c.respPayloads[payloadId] = input.resp
 				} else {
 					resp := model.NewErrorResp(err.Error())
 					input.resp <- &resp
@@ -222,7 +221,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			return
 		default:
 			netConn := c.netConns[conn]
-			payloadType, bytes, err := tnet.ReadPayload(netConn)
+			payloadType, bytes, err := ReadPayload(netConn)
 			if err != nil {
 				closeErr := netConn.Close()
 				if closeErr != nil {
@@ -230,8 +229,15 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				}
 				delete(c.netConns, conn)
 				return
-			} else if payloadType != 0 {
-				panic("Not implemented yet")
+			} else if payloadType == 1 {
+				payloadIdRaw, remainder := model.StringFromBytes(bytes)
+				payloadId := PayloadId(payloadIdRaw)
+				if respChan, ok := c.respPayloads[payloadId]; ok {
+					respChan <- model.ToPayload(remainder)
+					delete(c.respPayloads, payloadId)
+				}
+
+
 			}
 			payload := model.ToPayload(bytes)
 			cmr := model.ConnsMgrReceive{

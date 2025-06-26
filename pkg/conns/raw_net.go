@@ -12,11 +12,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package tnet
+package conns
 
 import (
+	"bytes"
 	"encoding/binary"
 	"net"
+	"tealfs/pkg/model"
 )
 
 func ReadPayload(conn net.Conn) (byte, []byte, error) {
@@ -52,17 +54,18 @@ func SendPayload(conn net.Conn, data []byte) error {
 	return nil
 }
 
-func SendPayload2(conn net.Conn, data []byte) error {
+func SendPayload2(conn net.Conn, payloadId PayloadId, rawPayload []byte) error {
 	typ := []byte{1}
-	dataWithType := append(typ, data...)
-	size := uint32(len(dataWithType))
+	rawPayloadId := model.StringToBytes(string(payloadId))
+	data := bytes.Join([][]byte{typ, rawPayloadId, rawPayload}, []byte{})
+	size := uint32(len(data))
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, size)
 	err := SendBytes(conn, buf)
 	if err != nil {
 		return err
 	}
-	err = SendBytes(conn, dataWithType)
+	err = SendBytes(conn, data)
 	if err != nil {
 		return err
 	}

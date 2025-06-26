@@ -36,7 +36,7 @@ func (e *ErrorResp) Equal(p Payload) bool {
 	return false
 }
 
-func ToErrorResp(data []byte) (ErrorResp, []byte) {
-	msg, remainder := StringFromBytes(data)
-	return ErrorResp{msg: msg}, remainder
+func ToErrorResp(data []byte) *ErrorResp {
+	msg, _ := StringFromBytes(data)
+	return &ErrorResp{msg: msg}
 }
