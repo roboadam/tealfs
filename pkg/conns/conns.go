@@ -16,18 +16,18 @@ package conns
 
 import (
 	"context"
+	"encoding/gob"
 	"errors"
 	"net"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 
-	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type Conns struct {
 	netConns      map[model.ConnId]net.Conn
-	respPayloads  map[PayloadId]chan<- model.Payload
+	respPayloads  map[PayloadId]chan<- NewPayload
 	inSends2      chan sendInput
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
@@ -42,8 +42,6 @@ type Conns struct {
 	ctx           context.Context
 }
 
-type PayloadId string
-
 func NewConns(
 	outStatuses chan model.NetConnectionStatus,
 	outReceives chan model.ConnsMgrReceive,
@@ -54,11 +52,11 @@ func NewConns(
 	nodeId model.NodeId,
 	ctx context.Context,
 ) Conns {
-
 	listener, err := provider.GetListener(address)
 	if err != nil {
 		panic(err)
 	}
+	gob.Register(BalancerAddBlockId{})
 	c := Conns{
 		netConns:      make(map[model.ConnId]net.Conn, 3),
 		respPayloads:  make(map[PayloadId]chan<- model.Payload),
@@ -136,8 +134,7 @@ func (c *Conns) consumeChannels() {
 			}
 		case input := <-c.inSends2:
 			if conn, ok := c.netConns[input.connId]; ok {
-				payloadId := PayloadId(uuid.NewString())
-				err := SendPayload2(conn, payloadId, input.payload.ToBytes())
+				err := SendPayload2(conn, input.payload)
 				if err == nil {
 					c.respPayloads[payloadId] = input.resp
 				} else {
@@ -151,11 +148,11 @@ func (c *Conns) consumeChannels() {
 
 type sendInput struct {
 	connId  model.ConnId
-	payload model.Payload
-	resp    chan<- model.Payload
+	payload NewPayload
+	resp    chan<- NewPayload
 }
 
-func (c *Conns) Send(connId model.ConnId, payload model.Payload, resp chan<- model.Payload) {
+func (c *Conns) Send(connId model.ConnId, payload NewPayload, resp chan<- NewPayload) {
 	sendInput := sendInput{
 		connId:  connId,
 		payload: payload,
@@ -235,6 +232,8 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				if respChan, ok := c.respPayloads[payloadId]; ok {
 					respChan <- model.ToPayload(remainder)
 					delete(c.respPayloads, payloadId)
+				} else {
+
 				}
 
 			} else if payloadType == 0 {
@@ -263,4 +262,25 @@ func (c *Conns) saveNetConn(netConn net.Conn) model.ConnId {
 	c.nextId++
 	c.netConns[id] = netConn
 	return id
+}
+
+type NewPayload interface {
+	PayloadId() PayloadId
+	PayloadType() PayloadType
+}
+
+type PayloadId string
+type PayloadType uint32
+
+type BalancerAddBlockId struct {
+	BlockId model.BlockId
+	Id      PayloadId
+}
+
+func (b *BalancerAddBlockId) PayloadId() PayloadId {
+	return b.Id
+}
+
+func (b *BalancerAddBlockId) PayloadType() PayloadType {
+	return PayloadType(0)
 }

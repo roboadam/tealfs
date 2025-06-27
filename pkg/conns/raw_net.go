@@ -17,8 +17,8 @@ package conns
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/gob"
 	"net"
-	"tealfs/pkg/model"
 )
 
 func ReadPayload(conn net.Conn) (byte, []byte, error) {
@@ -54,22 +54,20 @@ func SendPayload(conn net.Conn, data []byte) error {
 	return nil
 }
 
-func SendPayload2(conn net.Conn, payloadId PayloadId, rawPayload []byte) error {
-	typ := []byte{1}
-	rawPayloadId := model.StringToBytes(string(payloadId))
-	data := bytes.Join([][]byte{typ, rawPayloadId, rawPayload}, []byte{})
-	size := uint32(len(data))
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, size)
-	err := SendBytes(conn, buf)
+func (c *Conns) SendPayload2(conn net.Conn, payload NewPayload) error {
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
+	typ := byte(1)
+	err := encoder.Encode(typ)
 	if err != nil {
 		return err
 	}
-	err = SendBytes(conn, data)
+	err = encoder.Encode(payload)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	return SendBuffer(conn, buffer)
 }
 
 func ReadBytes(conn net.Conn, length uint32) ([]byte, error) {
@@ -85,6 +83,10 @@ func ReadBytes(conn net.Conn, length uint32) ([]byte, error) {
 	}
 
 	return buf, nil
+}
+
+func SendBuffer(conn net.Conn, data bytes.Buffer) error {
+	return SendBytes(conn, data.Bytes())
 }
 
 func SendBytes(conn net.Conn, data []byte) error {
