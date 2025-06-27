@@ -26,33 +26,7 @@ const (
 	AddDiskRequest   = uint8(8)
 )
 
-type Payload interface {
-	ToBytes() []byte
-	Equal(Payload) bool
-}
-
-func ToPayload(data []byte) Payload {
-	switch payloadType(data) {
-	case IAmType:
-		return ToHello(payloadData(data))
-	case SyncType:
-		return ToSyncNodes(payloadData(data))
-	case WriteRequestType:
-		return ToWriteRequest(payloadData(data))
-	case WriteResultType:
-		return ToWriteResult(payloadData(data))
-	case ReadRequestType:
-		return ToReadRequest(payloadData(data))
-	case ReadResultType:
-		return ToReadResult(payloadData(data))
-	case BroadcastType:
-		return ToBroadcast(payloadData(data))
-	case AddDiskRequest:
-		return ToAddDiskReq(payloadData(data))
-	default:
-		return ToNoOp(payloadData(data))
-	}
-}
+type Payload2 interface{}
 
 func payloadData(data []byte) []byte {
 	if len(data) > 0 {

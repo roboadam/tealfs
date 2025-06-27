@@ -16,10 +16,13 @@ package tnet
 
 import (
 	"encoding/binary"
+	"encoding/gob"
 	"net"
+	"tealfs/pkg/model"
 )
 
-func ReadPayload(conn net.Conn) ([]byte, error) {
+func ReadPayload(conn net.Conn) (model.Payload2, error) {
+	decoder := go
 	rawLen, err := ReadBytes(conn, 4)
 	if err != nil {
 		return nil, err
@@ -29,15 +32,9 @@ func ReadPayload(conn net.Conn) ([]byte, error) {
 	return a, b
 }
 
-func SendPayload(conn net.Conn, data []byte) error {
-	size := uint32(len(data))
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, size)
-	err := SendBytes(conn, buf)
-	if err != nil {
-		return err
-	}
-	err = SendBytes(conn, data)
+func SendPayload(conn net.Conn, payload model.Payload2) error {
+	encoder := gob.NewEncoder(conn)
+	err := encoder.Encode(payload)
 	if err != nil {
 		return err
 	}
