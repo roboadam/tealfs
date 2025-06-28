@@ -16,6 +16,7 @@ package conns
 
 import (
 	"context"
+	"encoding/gob"
 	"errors"
 	"net"
 	"tealfs/pkg/chanutil"
@@ -54,6 +55,7 @@ func NewConns(
 	if err != nil {
 		panic(err)
 	}
+	gob.Register(model.WriteRequest{})
 	c := Conns{
 		netConns:      make(map[model.ConnId]net.Conn, 3),
 		nextId:        model.ConnId(0),

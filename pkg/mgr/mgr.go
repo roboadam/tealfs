@@ -376,11 +376,11 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	case *model.WriteRequest:
 		caller, ok := m.nodeConnMapper.NodeForConn(i.ConnId)
 		if ok {
-			ptr := p.Data().Ptr
+			ptr := p.Data.Ptr
 			disk := ptr.Disk()
 			chanutil.Send(m.ctx, m.MgrDiskWrites[disk], *p, "mgr: handleReceives: write request")
 		} else {
-			payload := model.NewWriteResultErr("connection error", caller, p.ReqId())
+			payload := model.NewWriteResultErr("connection error", caller, p.ReqId)
 			mcs := model.MgrConnsSend{
 				ConnId:  i.ConnId,
 				Payload: &payload,
@@ -523,7 +523,7 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 			Data: b.Block.Data,
 			Ptr:  ptr,
 		}
-		writeRequest := model.NewWriteRequest(m.NodeId, data, b.Id())
+		writeRequest := model.WriteRequest{Caller: m.NodeId, Data: data, ReqId: b.Id()}
 		if ptr.NodeId() == m.NodeId {
 			chanutil.Send(m.ctx, m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
 		} else {

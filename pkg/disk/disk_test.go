@@ -33,14 +33,14 @@ func TestWriteData(t *testing.T) {
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
-	req := model.NewWriteRequest(
-		nodeId,
-		model.RawData{
+	req := model.WriteRequest{
+		Caller: nodeId,
+		Data: model.RawData{
 			Ptr:  model.NewDiskPointer(nodeId, "disk1", string(blockId)),
 			Data: data,
 		},
-		"putBlockId",
-	)
+		ReqId: "putBlockId",
+	}
 	mgrDiskWrites <- req
 	result := <-diskMgrWrites
 	if !result.Ok() {

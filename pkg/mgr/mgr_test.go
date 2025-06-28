@@ -213,7 +213,7 @@ func TestWebdavPut(t *testing.T) {
 			case s := <-m.MgrConnsSends:
 				switch request := s.Payload.(type) {
 				case *model.WriteRequest:
-					ptr := request.Data().Ptr
+					ptr := request.Data.Ptr
 					if ptr.Disk() == disks12[0].Id {
 						atomic.AddInt32(&oneCount, 1)
 					} else if ptr.Disk() == disks12[1].Id {
@@ -224,7 +224,7 @@ func TestWebdavPut(t *testing.T) {
 						atomic.AddInt32(&fourCount, 1)
 					}
 
-					result := model.NewWriteResultOk(request.Data().Ptr, request.Caller(), request.ReqId())
+					result := model.NewWriteResultOk(request.Data.Ptr, request.Caller, request.ReqId)
 					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
 				}
 

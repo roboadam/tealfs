@@ -54,14 +54,13 @@ func TestSendData(t *testing.T) {
 		Ptr:  model.NewDiskPointer("destNode", "disk1", "blockId"),
 		Data: []byte{1, 2, 3},
 	}
-	expected := model.NewWriteRequest(caller, data, "putBlockId")
+	expected := model.WriteRequest{Caller: caller, Data: data, ReqId: "putBlockId"}
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{
 		ConnId:  status.Id,
 		Payload: &expected,
 	}
 
-	// payload := collectPayload(provider.Conn.dataWritten)
 	decoder := gob.NewDecoder(&provider.Conn.dataWritten)
 	var payload model.Payload2
 	err := decoder.Decode(payload)

@@ -14,47 +14,8 @@
 
 package model
 
-import (
-	"bytes"
-)
-
 type WriteRequest struct {
-	caller NodeId
-	data   RawData
-	reqId  PutBlockId
-}
-
-func NewWriteRequest(
-	caller NodeId,
-	data RawData,
-	reqId PutBlockId,
-) WriteRequest {
-	return WriteRequest{
-		caller: caller,
-		data:   data,
-		reqId:  reqId,
-	}
-}
-
-func (r *WriteRequest) Caller() NodeId    { return r.caller }
-func (r *WriteRequest) Data() RawData     { return r.data }
-func (r *WriteRequest) ReqId() PutBlockId { return r.reqId }
-
-func (r *WriteRequest) ToBytes() []byte {
-	caller := StringToBytes(string(r.caller))
-	rawData := r.data.ToBytes()
-	putblockId := StringToBytes(string(r.reqId))
-	payload := bytes.Join([][]byte{caller, rawData, putblockId}, []byte{})
-	return AddType(WriteRequestType, payload)
-}
-
-func ToWriteRequest(raw []byte) *WriteRequest {
-	caller, remainder := StringFromBytes(raw)
-	rawData, remainder := ToRawData(remainder)
-	putBlockId, _ := StringFromBytes(remainder)
-	return &WriteRequest{
-		caller: NodeId(caller),
-		data:   *rawData,
-		reqId:  PutBlockId(putBlockId),
-	}
+	Caller NodeId
+	Data   RawData
+	ReqId  PutBlockId
 }
