@@ -69,12 +69,12 @@ type ConnectToNodeReq struct {
 
 type MgrConnsSend struct {
 	ConnId  ConnId
-	Payload Payload2
+	Payload Payload
 }
 
 type ConnsMgrReceive struct {
 	ConnId  ConnId
-	Payload Payload2
+	Payload Payload
 }
 
 type MgrDiskSave struct {

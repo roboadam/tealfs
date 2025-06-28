@@ -20,14 +20,14 @@ import (
 	"tealfs/pkg/model"
 )
 
-func ReadPayload(conn net.Conn) (model.Payload2, error) {
+func ReadPayload(conn net.Conn) (model.Payload, error) {
 	decoder := gob.NewDecoder(conn)
-	var result model.Payload2
+	var result model.Payload
 	err := decoder.Decode(&result)
 	return result, err
 }
 
-func SendPayload(conn net.Conn, payload model.Payload2) error {
+func SendPayload(conn net.Conn, payload model.Payload) error {
 	encoder := gob.NewEncoder(conn)
 	err := encoder.Encode(payload)
 	if err != nil {

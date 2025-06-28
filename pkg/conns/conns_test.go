@@ -62,7 +62,7 @@ func TestSendData(t *testing.T) {
 	}
 
 	decoder := gob.NewDecoder(&provider.Conn.dataWritten)
-	var payload model.Payload2
+	var payload model.Payload
 	err := decoder.Decode(payload)
 	if err != nil {
 		t.Error("Error decoding payload", err)

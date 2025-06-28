@@ -26,4 +26,4 @@ const (
 	AddDiskRequest   = uint8(8)
 )
 
-type Payload2 any
+type Payload any
