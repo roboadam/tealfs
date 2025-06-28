@@ -69,20 +69,12 @@ type ConnectToNodeReq struct {
 
 type MgrConnsSend struct {
 	ConnId  ConnId
-	Payload Payload
-}
-
-func (m *MgrConnsSend) Equal(o *MgrConnsSend) bool {
-	if m.ConnId != o.ConnId {
-		return false
-	}
-
-	return m.Payload.Equal(o.Payload)
+	Payload Payload2
 }
 
 type ConnsMgrReceive struct {
 	ConnId  ConnId
-	Payload Payload
+	Payload Payload2
 }
 
 type MgrDiskSave struct {
@@ -112,19 +104,6 @@ func (a *AddDiskReq) ToBytes() []byte {
 	node := StringToBytes(string(a.node))
 	freeBytes := IntToBytes(uint32(a.freeBytes))
 	return AddType(AddDiskRequest, bytes.Join([][]byte{path, node, freeBytes}, []byte{}))
-}
-
-func (a *AddDiskReq) Equal(p Payload) bool {
-	if o, ok := p.(*AddDiskReq); ok {
-		if a.path != o.path {
-			return false
-		}
-		if a.node != o.node {
-			return false
-		}
-		return a.freeBytes == o.freeBytes
-	}
-	return false
 }
 
 func (a *AddDiskReq) Path() string   { return a.path }

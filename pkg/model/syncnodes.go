@@ -34,13 +34,6 @@ func NewSyncNodes() SyncNodes {
 	}
 }
 
-func (s *SyncNodes) Equal(p Payload) bool {
-	if s2, ok := p.(*SyncNodes); ok {
-		return s.Nodes.Equal(&s2.Nodes)
-	}
-	return false
-}
-
 func (s *SyncNodes) ToBytes() []byte {
 	result := make([]byte, 0)
 	for _, n := range s.Nodes.GetValues() {

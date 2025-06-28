@@ -17,7 +17,9 @@ package conns
 import (
 	"context"
 	"encoding/binary"
+	"encoding/gob"
 	"errors"
+	"reflect"
 	"tealfs/pkg/model"
 	"testing"
 )
@@ -60,11 +62,18 @@ func TestSendData(t *testing.T) {
 		Payload: &expected,
 	}
 
-	payload := collectPayload(provider.Conn.dataWritten)
+	// payload := collectPayload(provider.Conn.dataWritten)
+	decoder := gob.NewDecoder(&provider.Conn.dataWritten)
+	var payload model.Payload2
+	err := decoder.Decode(payload)
+	if err != nil {
+		t.Error("Error decoding payload", err)
+		return
+	}
 
-	switch p := model.ToPayload(payload).(type) {
+	switch p := payload.(type) {
 	case *model.WriteRequest:
-		if !p.Equal(&expected) {
+		if !reflect.DeepEqual(p, expected) {
 			t.Error("WriteRequest not equal to expected value")
 		}
 	default:
@@ -186,15 +195,16 @@ func TestGetData(t *testing.T) {
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
 	disks := []model.DiskIdPath{{Id: "disk1", Path: "disk1path", Node: "node1"}}
 	iam := model.NewIam("nodeId", disks, "localAddress:123", 1)
-	payload := &iam
-	dataReceived := payload.ToBytes()
-	length := lenAsBytes(dataReceived)
-	provider.Conn.dataToRead <- length
-	provider.Conn.dataToRead <- dataReceived
+	encoder := gob.NewEncoder(&provider.Conn.dataToRead)
+	err := encoder.Encode(iam)
+	if err != nil {
+		t.Error("Error encoding payload", err)
+		return
+	}
 
 	result := <-cmr
 
-	if result.ConnId != status.Id || !result.Payload.Equal(payload) {
+	if result.ConnId != status.Id || !reflect.DeepEqual(result, iam) {
 		t.Error("We didn't pass the message")
 	}
 }

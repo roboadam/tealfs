@@ -40,19 +40,6 @@ func (r *WriteRequest) Caller() NodeId    { return r.caller }
 func (r *WriteRequest) Data() RawData     { return r.data }
 func (r *WriteRequest) ReqId() PutBlockId { return r.reqId }
 
-func (r *WriteRequest) Equal(p Payload) bool {
-	if o, ok := p.(*WriteRequest); ok {
-		if r.caller != o.caller {
-			return false
-		}
-		if r.reqId != o.reqId {
-			return false
-		}
-		return r.data.Equals(&o.data)
-	}
-	return false
-}
-
 func (r *WriteRequest) ToBytes() []byte {
 	caller := StringToBytes(string(r.caller))
 	rawData := r.data.ToBytes()

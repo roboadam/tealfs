@@ -64,27 +64,6 @@ func (r *ReadRequest) ToBytes() []byte {
 	return AddType(ReadRequestType, bytes.Join([][]byte{callerId, ptrLen, ptrs, blockId, reqId}, []byte{}))
 }
 
-func (r *ReadRequest) Equal(p Payload) bool {
-	if o, ok := p.(*ReadRequest); ok {
-		if r.caller != o.caller {
-			return false
-		}
-		if len(r.ptrs) != len(o.ptrs) {
-			return false
-		}
-		for i, ptr := range r.ptrs {
-			if !ptr.Equals(&o.ptrs[i]) {
-				return false
-			}
-		}
-		if r.reqId != o.reqId {
-			return false
-		}
-		return r.blockId == o.blockId
-	}
-	return false
-}
-
 func ToReadRequest(data []byte) *ReadRequest {
 	callerId, remainder := StringFromBytes(data)
 	numPtrs, remainder := IntFromBytes(remainder)

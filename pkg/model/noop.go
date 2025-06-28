@@ -22,13 +22,6 @@ func (h *NoOp) ToBytes() []byte {
 	return result
 }
 
-func (h *NoOp) Equal(p Payload) bool {
-	if _, ok := p.(*NoOp); ok {
-		return true
-	}
-	return false
-}
-
 func ToNoOp(_ []byte) *NoOp {
 	return &NoOp{}
 }

@@ -14,8 +14,6 @@
 
 package model
 
-import "bytes"
-
 type Broadcast struct {
 	msg []byte
 }
@@ -29,13 +27,6 @@ func (b *Broadcast) Msg() []byte { return b.msg }
 func (b *Broadcast) ToBytes() []byte {
 	msg := BytesToBytes(b.msg)
 	return AddType(BroadcastType, msg)
-}
-
-func (b *Broadcast) Equal(p Payload) bool {
-	if o, ok := p.(*Broadcast); ok {
-		return bytes.Equal(b.msg, o.msg)
-	}
-	return false
 }
 
 func ToBroadcast(data []byte) *Broadcast {

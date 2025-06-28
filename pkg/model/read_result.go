@@ -69,41 +69,6 @@ func (r *ReadResult) Data() RawData       { return r.data }
 func (r *ReadResult) ReqId() GetBlockId   { return r.reqId }
 func (r *ReadResult) BlockId() BlockId    { return r.blockId }
 
-func (r *ReadResult) Equal(p Payload) bool {
-
-	if o, ok := p.(*ReadResult); ok {
-		if r.ok != o.ok {
-			return false
-		}
-		if r.message != o.message {
-			return false
-		}
-		if r.caller != o.caller {
-			return false
-		}
-		if len(r.ptrs) != len(o.ptrs) {
-			return false
-		}
-		for i, ptr := range r.ptrs {
-			if !ptr.Equals(&o.ptrs[i]) {
-				return false
-			}
-		}
-		if !r.data.Equals(&o.data) {
-			return false
-		}
-		if r.reqId != o.reqId {
-			return false
-		}
-		if r.blockId != o.blockId {
-			return false
-		}
-
-		return true
-	}
-	return false
-}
-
 func (r *ReadResult) ToBytes() []byte {
 	ok := BoolToBytes(r.ok)
 	message := StringToBytes(r.message)

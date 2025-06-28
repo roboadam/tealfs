@@ -50,7 +50,6 @@ func NewConns(
 	nodeId model.NodeId,
 	ctx context.Context,
 ) Conns {
-
 	listener, err := provider.GetListener(address)
 	if err != nil {
 		panic(err)
@@ -124,7 +123,7 @@ func (c *Conns) consumeChannels() {
 				c.handleSendFailure(sendReq, errors.New("connection not found"))
 			} else {
 				//Todo maybe this should be async
-				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
+				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload)
 				if err != nil {
 					c.handleSendFailure(sendReq, err)
 				}
@@ -190,7 +189,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			return
 		default:
 			netConn := c.netConns[conn]
-			bytes, err := tnet.ReadPayload(netConn)
+			payload, err := tnet.ReadPayload(netConn)
 			if err != nil {
 				closeErr := netConn.Close()
 				if closeErr != nil {
@@ -199,7 +198,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				delete(c.netConns, conn)
 				return
 			}
-			payload := model.ToPayload(bytes)
 			cmr := model.ConnsMgrReceive{
 				ConnId:  conn,
 				Payload: payload,

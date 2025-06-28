@@ -15,6 +15,7 @@
 package conns
 
 import (
+	"bytes"
 	"net"
 	"time"
 )
@@ -43,8 +44,8 @@ func NewMockConnectionProvider() MockConnectionProvider {
 	return MockConnectionProvider{
 		Listener: NewMockListener(),
 		Conn: MockConn{
-			dataToRead:  make(chan []byte),
-			dataWritten: make(chan []byte),
+			dataToRead:  bytes.Buffer{},
+			dataWritten: bytes.Buffer{},
 		},
 	}
 }
@@ -58,8 +59,8 @@ func (m *MockConnectionProvider) GetListener(address string) (net.Listener, erro
 }
 
 type MockConn struct {
-	dataToRead  chan []byte
-	dataWritten chan []byte
+	dataToRead  bytes.Buffer
+	dataWritten bytes.Buffer
 	ReadError   error
 	WriteError  error
 }
@@ -69,17 +70,14 @@ func (m *MockConn) Read(b []byte) (n int, err error) {
 	if m.ReadError != nil {
 		return 0, m.ReadError
 	}
-	d := <-m.dataToRead
-	copy(b, d)
-	return min(len(b), len(d)), nil
+	return m.dataToRead.Read(b)
 }
 
 func (m *MockConn) Write(b []byte) (n int, err error) {
 	if m.WriteError != nil {
 		return 0, m.WriteError
 	}
-	m.dataWritten <- b
-	return len(b), nil
+	return m.dataWritten.Write(b)
 }
 
 func (m *MockConn) Close() error {
@@ -127,8 +125,8 @@ func NewMockListener() MockListener {
 func (m *MockListener) Accept() (net.Conn, error) {
 	<-m.accept
 	return &MockConn{
-		dataToRead:  make(chan []byte),
-		dataWritten: make(chan []byte),
+		dataToRead:  bytes.Buffer{},
+		dataWritten: bytes.Buffer{},
 	}, nil
 }
 

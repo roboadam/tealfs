@@ -26,19 +26,4 @@ const (
 	AddDiskRequest   = uint8(8)
 )
 
-type Payload2 interface{}
-
-func payloadData(data []byte) []byte {
-	if len(data) > 0 {
-		return data[1:]
-	} else {
-		return data
-	}
-}
-
-func payloadType(data []byte) byte {
-	if len(data) <= 0 {
-		return NoOpType
-	}
-	return data[0]
-}
+type Payload2 any

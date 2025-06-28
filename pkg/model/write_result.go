@@ -65,28 +65,6 @@ func NewWriteResultSuccess(
 	}
 }
 
-func (r *WriteResult) Equal(p Payload) bool {
-	if o, ok := p.(*WriteResult); ok {
-		if r.ok != o.ok {
-			return false
-		}
-		if r.message != o.message {
-			return false
-		}
-		if r.caller != o.caller {
-			return false
-		}
-		if !r.ptr.Equals(&o.ptr) {
-			return false
-		}
-		if r.reqId != o.reqId {
-			return false
-		}
-		return true
-	}
-	return false
-}
-
 func (r *WriteResult) Ok() bool          { return r.ok }
 func (r *WriteResult) Message() string   { return r.message }
 func (r *WriteResult) Caller() NodeId    { return r.caller }
