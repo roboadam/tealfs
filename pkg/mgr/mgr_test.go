@@ -16,6 +16,7 @@ package mgr
 
 import (
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
@@ -277,7 +278,7 @@ func TestBroadcast(t *testing.T) {
 				return
 			case w := <-m.MgrConnsSends:
 				if b, ok := w.Payload.(*model.Broadcast); ok {
-					if b.Equal(&testMsg) {
+					if reflect.DeepEqual(b, testMsg) {
 						outMsgCounter++
 					}
 				}
@@ -299,7 +300,7 @@ func TestBroadcast(t *testing.T) {
 	}
 
 	forwardedMsg := <-m.MgrWebdavBroadcast
-	if !forwardedMsg.Equal(&msg) {
+	if !reflect.DeepEqual(forwardedMsg, msg) {
 		t.Error("Wrong message was forwarded")
 	}
 }
@@ -427,7 +428,7 @@ func cIdSnEquals(a, b connIdAndSyncNodes) bool {
 	if a.ConnId != b.ConnId {
 		return false
 	}
-	return a.Payload.Equal(&b.Payload)
+	return reflect.DeepEqual(a.Payload, b.Payload)
 }
 
 func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {

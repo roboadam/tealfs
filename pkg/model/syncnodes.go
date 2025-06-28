@@ -34,19 +34,6 @@ func NewSyncNodes() SyncNodes {
 	}
 }
 
-func (s *SyncNodes) ToBytes() []byte {
-	result := make([]byte, 0)
-	for _, n := range s.Nodes.GetValues() {
-		result = append(result, nodeToBytes(n.Node)...)
-		result = append(result, StringToBytes(n.Address)...)
-	}
-	return AddType(SyncType, result)
-}
-
-func nodeToBytes(node NodeId) []byte {
-	return StringToBytes(string(node))
-}
-
 func (s *SyncNodes) GetNodes() set.Set[NodeId] {
 	result := set.NewSet[NodeId]()
 	for _, n := range s.Nodes.GetValues() {

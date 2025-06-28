@@ -16,7 +16,6 @@ package conns
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/gob"
 	"errors"
 	"reflect"
@@ -176,18 +175,6 @@ func TestConnectionError(t *testing.T) {
 	}
 }
 
-func collectPayload(channel chan []byte) []byte {
-	data := <-channel
-	size := binary.BigEndian.Uint32(data[:4])
-	data = data[4:]
-	for {
-		if len(data) >= int(size) {
-			return data
-		}
-		data = append(data, <-channel...)
-	}
-}
-
 func TestGetData(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -207,13 +194,6 @@ func TestGetData(t *testing.T) {
 	if result.ConnId != status.Id || !reflect.DeepEqual(result, iam) {
 		t.Error("We didn't pass the message")
 	}
-}
-
-func lenAsBytes(data []byte) []byte {
-	size := uint32(len(data))
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, size)
-	return buf
 }
 
 func connectTo(address string, outStatus chan model.NetConnectionStatus, inConnectTo chan model.ConnectToNodeReq) model.NetConnectionStatus {

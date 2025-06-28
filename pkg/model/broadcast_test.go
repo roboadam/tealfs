@@ -15,6 +15,7 @@
 package model_test
 
 import (
+	"reflect"
 	"tealfs/pkg/model"
 	"testing"
 )
@@ -22,14 +23,14 @@ import (
 func TestBroadcast(t *testing.T) {
 	b1 := model.NewBroadcast([]byte{1, 2, 3})
 	b2 := model.NewBroadcast([]byte{1, 2, 3, 4})
-	if b1.Equal(&b2) {
+	if reflect.DeepEqual(b1, b2) {
 		t.Errorf("b1 and b2 are not equal")
 		return
 	}
 
 	raw := b1.ToBytes()
 	b3 := model.ToBroadcast(raw[1:])
-	if !b1.Equal(b3) {
+	if !reflect.DeepEqual(b1, b3) {
 		t.Errorf("Expected %v, got %v", b1, b3)
 	}
 }
