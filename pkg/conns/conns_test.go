@@ -15,6 +15,7 @@
 package conns
 
 import (
+	"bytes"
 	"context"
 	"encoding/gob"
 	"errors"
@@ -46,12 +47,30 @@ func TestConnectToConns(t *testing.T) {
 }
 
 func TestSendData(t *testing.T) {
+	gob.Register(model.WriteRequest{})
+	wr := model.WriteRequest{
+		Caller: "caller",
+		Data: model.RawData{
+			Ptr:  model.DiskPointer{NodeId: "destNode", Disk: "disk1", FileName: "blockId"},
+			Data: []byte{1, 2, 3},
+		},
+		ReqId: "reqId",
+	}
+
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
+	err := encoder.Encode(wr)
+	if err != nil {
+		t.Error("Error encoding payload", err)
+		return
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest(ctx)
 	caller := model.NewNodeId()
 	data := model.RawData{
-		Ptr:  model.NewDiskPointer("destNode", "disk1", "blockId"),
+		Ptr:  model.DiskPointer{NodeId: "destNode", Disk: "disk1", FileName: "blockId"},
 		Data: []byte{1, 2, 3},
 	}
 	expected := model.WriteRequest{Caller: caller, Data: data, ReqId: "putBlockId"}
@@ -63,7 +82,7 @@ func TestSendData(t *testing.T) {
 
 	decoder := gob.NewDecoder(&provider.Conn.dataWritten)
 	var payload model.Payload
-	err := decoder.Decode(payload)
+	err = decoder.Decode(payload)
 	if err != nil {
 		t.Error("Error decoding payload", err)
 		return
@@ -85,8 +104,8 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	_, _, outReceives, _, inSend, _ := newConnsTest(ctx)
 	caller := model.NodeId("caller1")
 	ptrs := []model.DiskPointer{
-		model.NewDiskPointer("nodeId1", "disk1", "filename1"),
-		model.NewDiskPointer("nodeId2", "disk2", "filename2"),
+		model.DiskPointer{NodeId: "nodeId1", Disk: "disk1", FileName: "filename1"},
+		model.DiskPointer{NodeId: "nodeId2", Disk: "disk2", FileName: "filename2"},
 	}
 	blockId := model.BlockId("blockId1")
 	reqId := model.GetBlockId("reqId")
@@ -126,8 +145,8 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 	req := model.NewReadRequest(
 		"caller1",
 		[]model.DiskPointer{
-			model.NewDiskPointer("nodeId1", "disk1", "filename1"),
-			model.NewDiskPointer("nodeId2", "disk2", "filename2"),
+			model.DiskPointer{NodeId: "nodeId1", Disk: "disk1", FileName: "filename1"},
+			model.DiskPointer{NodeId: "nodeId2", Disk: "disk2", FileName: "filename2"},
 		},
 		"blockId1",
 		"getBlockId1",

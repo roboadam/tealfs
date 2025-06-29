@@ -377,7 +377,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		caller, ok := m.nodeConnMapper.NodeForConn(i.ConnId)
 		if ok {
 			ptr := p.Data.Ptr
-			disk := ptr.Disk()
+			disk := ptr.Disk
 			chanutil.Send(m.ctx, m.MgrDiskWrites[disk], *p, "mgr: handleReceives: write request")
 		} else {
 			payload := model.NewWriteResultErr("connection error", caller, p.ReqId)
@@ -394,7 +394,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		if len(p.Ptrs()) == 0 {
 			log.Error("No pointers to read from")
 		} else {
-			chanutil.Send(m.ctx, m.MgrDiskReads[p.Ptrs()[0].Disk()], *p, "mgr: handleReceives: read request")
+			chanutil.Send(m.ctx, m.MgrDiskReads[p.Ptrs()[0].Disk], *p, "mgr: handleReceives: read request")
 		}
 	case *model.ReadResult:
 		m.handleDiskReadResult(*p)
@@ -524,10 +524,10 @@ func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
 			Ptr:  ptr,
 		}
 		writeRequest := model.WriteRequest{Caller: m.NodeId, Data: data, ReqId: b.Id()}
-		if ptr.NodeId() == m.NodeId {
-			chanutil.Send(m.ctx, m.MgrDiskWrites[ptr.Disk()], writeRequest, "mgr: handleMirroredWriteRequest: local")
+		if ptr.NodeId == m.NodeId {
+			chanutil.Send(m.ctx, m.MgrDiskWrites[ptr.Disk], writeRequest, "mgr: handleMirroredWriteRequest: local")
 		} else {
-			c, ok := m.nodeConnMapper.ConnForNode(ptr.NodeId())
+			c, ok := m.nodeConnMapper.ConnForNode(ptr.NodeId)
 			if ok {
 				mcs := model.MgrConnsSend{ConnId: c, Payload: &writeRequest}
 				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleMirroredWriteRequest: remote")

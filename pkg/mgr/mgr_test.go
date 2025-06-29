@@ -214,13 +214,13 @@ func TestWebdavPut(t *testing.T) {
 				switch request := s.Payload.(type) {
 				case *model.WriteRequest:
 					ptr := request.Data.Ptr
-					if ptr.Disk() == disks12[0].Id {
+					if ptr.Disk == disks12[0].Id {
 						atomic.AddInt32(&oneCount, 1)
-					} else if ptr.Disk() == disks12[1].Id {
+					} else if ptr.Disk == disks12[1].Id {
 						atomic.AddInt32(&twoCount, 1)
-					} else if ptr.Disk() == disks34[0].Id {
+					} else if ptr.Disk == disks34[0].Id {
 						atomic.AddInt32(&threeCount, 1)
-					} else if ptr.Disk() == disks34[1].Id {
+					} else if ptr.Disk == disks34[1].Id {
 						atomic.AddInt32(&fourCount, 1)
 					}
 

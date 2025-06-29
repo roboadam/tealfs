@@ -24,9 +24,9 @@ func TestPendingBlockWrites(t *testing.T) {
 	blockId1 := model.PutBlockId("putBlockId1")
 	blockId2 := model.PutBlockId("putBlockId2")
 	nodeId := model.NewNodeId()
-	ptr1 := model.NewDiskPointer(nodeId, "disk1", "someFile1")
-	ptr2 := model.NewDiskPointer(nodeId, "disk1", "someFile2")
-	ptr3 := model.NewDiskPointer(nodeId, "disk1", "someFile3")
+	ptr1 := model.DiskPointer{NodeId: nodeId, Disk: "disk1", FileName: "someFile1"}
+	ptr2 := model.DiskPointer{NodeId: nodeId, Disk: "disk1", FileName: "someFile2"}
+	ptr3 := model.DiskPointer{NodeId: nodeId, Disk: "disk1", FileName: "someFile3"}
 
 	result := pbw.resolve(ptr1, blockId1)
 	if result != notTracking {

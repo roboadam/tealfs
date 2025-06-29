@@ -39,8 +39,8 @@ func (m *Mgr) handleWebdavGetsWithPtrs(ptrs []model.DiskPointer, reqId model.Get
 		m.webdavGetResponseError("exhausted all ptrs", reqId)
 		return
 	}
-	n := ptrs[0].NodeId()
-	disk := ptrs[0].Disk()
+	n := ptrs[0].NodeId
+	disk := ptrs[0].Disk
 	rr := model.NewReadRequest(m.NodeId, ptrs, blockId, reqId)
 	if m.NodeId == n {
 		chanutil.Send(m.ctx, m.MgrDiskReads[disk], rr, "mgr: readDiskPtr: local")
