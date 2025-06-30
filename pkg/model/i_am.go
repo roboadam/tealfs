@@ -15,22 +15,17 @@
 package model
 
 type IAm struct {
-	nodeId    NodeId
-	disks     []DiskIdPath
-	address   string
-	freeBytes uint32
+	NodeId    NodeId
+	Disks     []DiskIdPath
+	Address   string
+	FreeBytes uint32
 }
 
 func NewIam(nodeId NodeId, disks []DiskIdPath, address string, freeBytes uint32) IAm {
 	return IAm{
-		nodeId:    nodeId,
-		disks:     disks,
-		address:   address,
-		freeBytes: freeBytes,
+		NodeId:    nodeId,
+		Disks:     disks,
+		Address:   address,
+		FreeBytes: freeBytes,
 	}
 }
-
-func (i *IAm) Node() NodeId        { return i.nodeId }
-func (i *IAm) Disks() []DiskIdPath { return i.disks }
-func (i *IAm) Address() string     { return i.address }
-func (i *IAm) FreeBytes() uint32   { return i.freeBytes }

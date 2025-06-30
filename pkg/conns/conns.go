@@ -56,6 +56,9 @@ func NewConns(
 		panic(err)
 	}
 	gob.Register(&model.WriteRequest{})
+	gob.Register(&model.ReadRequest{})
+	gob.Register(&model.ReadResult{})
+	gob.Register(&model.IAm{})
 	c := Conns{
 		netConns:      make(map[model.ConnId]net.Conn, 3),
 		nextId:        model.ConnId(0),
@@ -139,16 +142,16 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 	payload := *sendReq.Payload
 	switch p := payload.(type) {
 	case *model.ReadRequest:
-		if len(p.Ptrs()) > 0 {
-			ptrs := p.Ptrs()[1:]
-			rr := model.NewReadRequest(p.Caller(), ptrs, p.BlockId(), p.GetBlockId())
+		if len(p.Ptrs) > 0 {
+			ptrs := p.Ptrs[1:]
+			rr := model.ReadRequest{Caller: p.Caller, Ptrs: ptrs, BlockId: p.BlockId, ReqId: p.ReqId}
 			cmr := model.ConnsMgrReceive{
 				ConnId:  sendReq.ConnId,
 				Payload: &rr,
 			}
 			chanutil.Send(c.ctx, c.outReceives, cmr, "conns failed to send read request, sending new read request")
 		} else {
-			result := model.NewReadResultErr("no pointers in read request", p.Caller(), p.GetBlockId(), p.BlockId())
+			result := model.NewReadResultErr("no pointers in read request", p.Caller, p.ReqId, p.BlockId)
 			cmr := model.ConnsMgrReceive{
 				ConnId:  sendReq.ConnId,
 				Payload: &result,
@@ -193,6 +196,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			netConn := c.netConns[conn]
 			payload, err := tnet.ReadPayload(netConn)
 			if err != nil {
+				panic("oh no")
 				closeErr := netConn.Close()
 				if closeErr != nil {
 					log.Warn("Error closing connection", closeErr)

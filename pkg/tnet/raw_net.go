@@ -16,7 +16,6 @@ package tnet
 
 import (
 	"encoding/gob"
-	"fmt"
 	"net"
 	"tealfs/pkg/model"
 )
@@ -29,17 +28,11 @@ func ReadPayload(conn net.Conn) (model.Payload, error) {
 }
 
 func SendPayload(conn net.Conn, payload *model.Payload) error {
-	fmt.Printf("Type: %T\n", payload)
-	fmt.Println("1")
 	encoder := gob.NewEncoder(conn)
-	fmt.Println("2")
 	err := encoder.Encode(payload)
-	fmt.Println("3")
 	if err != nil {
-		fmt.Println("4")
 		return err
 	}
-	fmt.Println("5")
 	return nil
 }
 

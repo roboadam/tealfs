@@ -15,13 +15,13 @@
 package model
 
 type ReadResult struct {
-	ok      bool
-	message string
-	caller  NodeId
-	ptrs    []DiskPointer
-	data    RawData
-	blockId BlockId
-	reqId   GetBlockId
+	Ok      bool
+	Message string
+	Caller  NodeId
+	Ptrs    []DiskPointer
+	Data    RawData
+	BlockId BlockId
+	ReqId   GetBlockId
 }
 
 func NewReadResultOk(
@@ -32,13 +32,13 @@ func NewReadResultOk(
 	blockId BlockId,
 ) ReadResult {
 	return ReadResult{
-		ok:      true,
-		message: "",
-		caller:  caller,
-		ptrs:    ptrs,
-		data:    data,
-		reqId:   reqId,
-		blockId: blockId,
+		Ok:      true,
+		Message: "",
+		Caller:  caller,
+		Ptrs:    ptrs,
+		Data:    data,
+		ReqId:   reqId,
+		BlockId: blockId,
 	}
 }
 
@@ -49,18 +49,10 @@ func NewReadResultErr(
 	blockId BlockId,
 ) ReadResult {
 	return ReadResult{
-		ok:      false,
-		message: message,
-		caller:  caller,
-		reqId:   reqId,
-		blockId: blockId,
+		Ok:      false,
+		Message: message,
+		Caller:  caller,
+		ReqId:   reqId,
+		BlockId: blockId,
 	}
 }
-
-func (r *ReadResult) Ok() bool            { return r.ok }
-func (r *ReadResult) Message() string     { return r.message }
-func (r *ReadResult) Caller() NodeId      { return r.caller }
-func (r *ReadResult) Ptrs() []DiskPointer { return r.ptrs }
-func (r *ReadResult) Data() RawData       { return r.data }
-func (r *ReadResult) ReqId() GetBlockId   { return r.reqId }
-func (r *ReadResult) BlockId() BlockId    { return r.blockId }
