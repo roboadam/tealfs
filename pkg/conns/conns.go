@@ -55,7 +55,7 @@ func NewConns(
 	if err != nil {
 		panic(err)
 	}
-	gob.Register(model.WriteRequest{})
+	gob.Register(&model.WriteRequest{})
 	c := Conns{
 		netConns:      make(map[model.ConnId]net.Conn, 3),
 		nextId:        model.ConnId(0),
@@ -136,7 +136,7 @@ func (c *Conns) consumeChannels() {
 
 func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 	log.Warn("Error sending ", err)
-	payload := sendReq.Payload
+	payload := *sendReq.Payload
 	switch p := payload.(type) {
 	case *model.ReadRequest:
 		if len(p.Ptrs()) > 0 {

@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"tealfs/pkg/model"
 	"testing"
+	"time"
 )
 
 func TestAcceptConn(t *testing.T) {
@@ -47,7 +48,6 @@ func TestConnectToConns(t *testing.T) {
 }
 
 func TestSendData(t *testing.T) {
-	gob.Register(model.WriteRequest{})
 	wr := model.WriteRequest{
 		Caller: "caller",
 		Data: model.RawData{
@@ -73,16 +73,18 @@ func TestSendData(t *testing.T) {
 		Ptr:  model.DiskPointer{NodeId: "destNode", Disk: "disk1", FileName: "blockId"},
 		Data: []byte{1, 2, 3},
 	}
-	expected := model.WriteRequest{Caller: caller, Data: data, ReqId: "putBlockId"}
+	var expected  model.Payload
+	expected = model.WriteRequest{Caller: caller, Data: data, ReqId: "putBlockId"}
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{
 		ConnId:  status.Id,
 		Payload: &expected,
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	decoder := gob.NewDecoder(&provider.Conn.dataWritten)
 	var payload model.Payload
-	err = decoder.Decode(payload)
+	err = decoder.Decode(&payload)
 	if err != nil {
 		t.Error("Error decoding payload", err)
 		return
@@ -90,7 +92,7 @@ func TestSendData(t *testing.T) {
 
 	switch p := payload.(type) {
 	case *model.WriteRequest:
-		if !reflect.DeepEqual(p, expected) {
+		if !reflect.DeepEqual(*p, expected) {
 			t.Error("WriteRequest not equal to expected value")
 		}
 	default:
@@ -109,7 +111,8 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	}
 	blockId := model.BlockId("blockId1")
 	reqId := model.GetBlockId("reqId")
-	request := model.NewReadRequest(caller, ptrs, blockId, reqId)
+	var request model.Payload
+	request = model.NewReadRequest(caller, ptrs, blockId, reqId)
 
 	inSend <- model.MgrConnsSend{
 		ConnId:  0,
@@ -122,11 +125,11 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	}
 	switch p := outReceive.Payload.(type) {
 	case *model.ReadRequest:
-		if p.BlockId() != request.BlockId() || p.Caller() != request.Caller() {
+		if p.BlockId() != blockId || p.Caller() != caller {
 			t.Error("unexpected read request not equal")
 			return
 		}
-		if len(p.Ptrs()) != 1 || p.Ptrs()[0] != request.Ptrs()[1] {
+		if len(p.Ptrs()) != 1 || p.Ptrs()[0] != ptrs[1] {
 			t.Error("Expected ptrs to be equal")
 			return
 		}
@@ -142,13 +145,17 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 	_, outStatus, outReceives, inConnectTo, inSend, connProvider := newConnsTest(ctx)
 	status := connectTo("address:123", outStatus, inConnectTo)
 	connProvider.Conn.WriteError = errors.New("some error writing")
-	req := model.NewReadRequest(
-		"caller1",
-		[]model.DiskPointer{
-			model.DiskPointer{NodeId: "nodeId1", Disk: "disk1", FileName: "filename1"},
-			model.DiskPointer{NodeId: "nodeId2", Disk: "disk2", FileName: "filename2"},
-		},
-		"blockId1",
+	var req model.Payload
+	caller := model.NodeId("caller1")
+	ptrs := []model.DiskPointer{
+		model.DiskPointer{NodeId: "nodeId1", Disk: "disk1", FileName: "filename1"},
+		model.DiskPointer{NodeId: "nodeId2", Disk: "disk2", FileName: "filename2"},
+	}
+	blockId := model.BlockId("blockId1")
+	req = model.NewReadRequest(
+		caller,
+		ptrs,
+		blockId,
 		"getBlockId1",
 	)
 	inSend <- model.MgrConnsSend{
@@ -162,11 +169,11 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 	}
 	switch p := outReceive.Payload.(type) {
 	case *model.ReadRequest:
-		if p.BlockId() != req.BlockId() || p.Caller() != req.Caller() {
+		if p.BlockId() != blockId || p.Caller() != caller {
 			t.Error("unexpected read request not equal")
 			return
 		}
-		if len(p.Ptrs()) != 1 || p.Ptrs()[0] != req.Ptrs()[1] {
+		if len(p.Ptrs()) != 1 || p.Ptrs()[0] != ptrs[1] {
 			t.Error("Expected ptrs to be equal")
 			return
 		}

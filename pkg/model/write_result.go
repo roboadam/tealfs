@@ -14,10 +14,6 @@
 
 package model
 
-import (
-	"bytes"
-)
-
 type WriteResult struct {
 	ok      bool
 	message string
@@ -70,29 +66,3 @@ func (r *WriteResult) Message() string   { return r.message }
 func (r *WriteResult) Caller() NodeId    { return r.caller }
 func (r *WriteResult) Ptr() DiskPointer  { return r.ptr }
 func (r *WriteResult) ReqId() PutBlockId { return r.reqId }
-
-func (r *WriteResult) ToBytes() []byte {
-	ok := BoolToBytes(r.ok)
-	message := StringToBytes(r.message)
-	caller := StringToBytes(string(r.caller))
-	ptr := r.ptr.ToBytes()
-	reqId := StringToBytes(string(r.reqId))
-
-	payload := bytes.Join([][]byte{ok, message, caller, ptr, reqId}, []byte{})
-	return AddType(WriteResultType, payload)
-}
-
-func ToWriteResult(data []byte) *WriteResult {
-	ok, remainder := BoolFromBytes(data)
-	message, remainder := StringFromBytes(remainder)
-	caller, remainder := StringFromBytes(remainder)
-	ptr, remainder := ToDiskPointer(remainder)
-	reqId, _ := StringFromBytes(remainder)
-	return &WriteResult{
-		ok:      ok,
-		message: message,
-		caller:  NodeId(caller),
-		ptr:     *ptr,
-		reqId:   PutBlockId(reqId),
-	}
-}

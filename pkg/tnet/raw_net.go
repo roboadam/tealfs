@@ -28,11 +28,12 @@ func ReadPayload(conn net.Conn) (model.Payload, error) {
 	return result, err
 }
 
-func SendPayload(conn net.Conn, payload model.Payload) error {
+func SendPayload(conn net.Conn, payload *model.Payload) error {
+	fmt.Printf("Type: %T\n", payload)
 	fmt.Println("1")
 	encoder := gob.NewEncoder(conn)
 	fmt.Println("2")
-	err := encoder.Encode(&payload)
+	err := encoder.Encode(payload)
 	fmt.Println("3")
 	if err != nil {
 		fmt.Println("4")

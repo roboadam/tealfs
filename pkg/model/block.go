@@ -32,31 +32,6 @@ type RawData struct {
 	Data []byte
 }
 
-func ToRawData(dataRaw []byte) (*RawData, []byte) {
-	ptr, remainder := ToDiskPointer(dataRaw)
-	data, remainder := BytesFromBytes(remainder)
-	return &RawData{
-		Ptr:  *ptr,
-		Data: data,
-	}, remainder
-}
-
-func (b *RawData) ToBytes() []byte {
-	ptr := b.Ptr.ToBytes()
-	data := BytesToBytes(b.Data)
-	return bytes.Join([][]byte{ptr, data}, []byte{})
-}
-
-func (b *RawData) Equals(o *RawData) bool {
-	if !b.Ptr.Equals(&o.Ptr) {
-		return false
-	}
-	if !bytes.Equal(b.Data, o.Data) {
-		return false
-	}
-	return true
-}
-
 type DiskPointer struct {
 	NodeId   NodeId
 	Disk     DiskId

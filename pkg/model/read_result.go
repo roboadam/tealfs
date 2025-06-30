@@ -14,10 +14,6 @@
 
 package model
 
-import (
-	"bytes"
-)
-
 type ReadResult struct {
 	ok      bool
 	message string
@@ -68,44 +64,3 @@ func (r *ReadResult) Ptrs() []DiskPointer { return r.ptrs }
 func (r *ReadResult) Data() RawData       { return r.data }
 func (r *ReadResult) ReqId() GetBlockId   { return r.reqId }
 func (r *ReadResult) BlockId() BlockId    { return r.blockId }
-
-func (r *ReadResult) ToBytes() []byte {
-	ok := BoolToBytes(r.ok)
-	message := StringToBytes(r.message)
-	caller := StringToBytes(string(r.caller))
-	numPtrs := IntToBytes(uint32(len(r.ptrs)))
-	ptrs := make([]byte, 0)
-	for _, ptr := range r.ptrs {
-		ptrs = append(ptrs, ptr.ToBytes()...)
-	}
-	raw := r.data.ToBytes()
-	reqId := StringToBytes(string(r.reqId))
-	blockId := StringToBytes(string(r.blockId))
-	payload := bytes.Join([][]byte{ok, message, caller, numPtrs, ptrs, raw, reqId, blockId}, []byte{})
-	return AddType(ReadResultType, payload)
-}
-
-func ToReadResult(data []byte) *ReadResult {
-	ok, remainder := BoolFromBytes(data)
-	message, remainder := StringFromBytes(remainder)
-	caller, remainder := StringFromBytes(remainder)
-	numPtrs, remainder := IntFromBytes(remainder)
-	ptrs := make([]DiskPointer, 0, numPtrs)
-	for range numPtrs {
-		var ptr *DiskPointer
-		ptr, remainder = ToDiskPointer(remainder)
-		ptrs = append(ptrs, *ptr)
-	}
-	raw, remainder := ToRawData(remainder)
-	reqId, remainder := StringFromBytes(remainder)
-	blockId, _ := StringFromBytes(remainder)
-	return &ReadResult{
-		ok:      ok,
-		message: message,
-		caller:  NodeId(caller),
-		ptrs:    ptrs,
-		data:    *raw,
-		reqId:   GetBlockId(reqId),
-		blockId: BlockId(blockId),
-	}
-}
