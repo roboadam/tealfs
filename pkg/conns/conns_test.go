@@ -48,7 +48,7 @@ func TestConnectToConns(t *testing.T) {
 }
 
 func TestSendData(t *testing.T) {
-	wr := model.WriteRequest{
+	var wr model.Payload = model.WriteRequest{
 		Caller: "caller",
 		Data: model.RawData{
 			Ptr:  model.DiskPointer{NodeId: "destNode", Disk: "disk1", FileName: "blockId"},
@@ -151,10 +151,10 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 	}
 	blockId := model.BlockId("blockId1")
 	req = model.ReadRequest{
-		Caller: caller,
-		Ptrs: ptrs,
+		Caller:  caller,
+		Ptrs:    ptrs,
 		BlockId: blockId,
-		ReqId: "getBlockId1",
+		ReqId:   "getBlockId1",
 	}
 	inSend <- model.MgrConnsSend{
 		ConnId:  status.Id,
@@ -204,17 +204,20 @@ func TestGetData(t *testing.T) {
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest(ctx)
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
 	disks := []model.DiskIdPath{{Id: "disk1", Path: "disk1path", Node: "node1"}}
-	var iam model.Payload = model.NewIam("nodeId", disks, "localAddress:123", 1)
-	encoder := gob.NewEncoder(&provider.Conn.dataToRead)
-	err := encoder.Encode(&iam)
+	iam := model.NewIam("nodeId", disks, "localAddress:123", 1)
+	var payload model.Payload = &iam
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
+	err := encoder.Encode(payload)
 	if err != nil {
 		t.Error("Error encoding payload", err)
 		return
 	}
+	provider.Conn.dataToRead <- buffer
 
 	result := <-cmr
 
-	if result.ConnId != status.Id || !reflect.DeepEqual(result, iam) {
+	if result.ConnId != status.Id || !reflect.DeepEqual(result.Payload, &iam) {
 		t.Error("We didn't pass the message")
 		return
 	}

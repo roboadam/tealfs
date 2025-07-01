@@ -126,7 +126,7 @@ func (c *Conns) consumeChannels() {
 			_, ok := c.netConns[sendReq.ConnId]
 			if !ok {
 				c.handleSendFailure(sendReq, errors.New("connection not found"))
-			} else {
+			} else {1
 				//Todo maybe this should be async
 				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload)
 				if err != nil {
@@ -196,7 +196,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			netConn := c.netConns[conn]
 			payload, err := tnet.ReadPayload(netConn)
 			if err != nil {
-				panic("oh no")
 				closeErr := netConn.Close()
 				if closeErr != nil {
 					log.Warn("Error closing connection", closeErr)

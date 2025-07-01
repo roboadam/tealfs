@@ -27,7 +27,7 @@ func ReadPayload(conn net.Conn) (model.Payload, error) {
 	return result, err
 }
 
-func SendPayload(conn net.Conn, payload *model.Payload) error {
+func SendPayload(conn net.Conn, payload model.Payload) error {
 	encoder := gob.NewEncoder(conn)
 	err := encoder.Encode(payload)
 	if err != nil {
