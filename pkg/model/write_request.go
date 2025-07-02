@@ -19,3 +19,7 @@ type WriteRequest struct {
 	Data   RawData
 	ReqId  PutBlockId
 }
+
+func (w *WriteRequest) Type() uint16 {
+	return 0
+}

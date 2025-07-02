@@ -15,48 +15,41 @@
 package conns
 
 import (
-	"reflect"
+	"encoding/gob"
 	"tealfs/pkg/model"
 )
 
-func intForType(val any) uint16 {
-	switch reflect.TypeOf(val) {
-	case reflect.TypeOf(model.IAm{}):
-		{
-			return 0
-		}
-	case reflect.TypeOf(model.WriteRequest{}):
-		{
-			return 1
-		}
-	case reflect.TypeOf(model.ReadRequest{}):
-		{
-			return 2
-		}
-	default:
-		{
-			panic("unknown type")
-		}
+
+func (c *Conns) sendPayload(conn model.ConnId, payload model.Payload) error {
+	encoder := gob.NewEncoder(c.netConns[conn])
+	err := encoder.Encode(payload.Type())
+	if err != nil {
+		return err
 	}
+	err = encoder.Encode(payload)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func typeForInt(val uint16) any {
-	switch val {
-	case 0:
-		{
-			return model.IAm{}
-		}
-	case 1:
-		{
-			return model.WriteRequest{}
-		}
-	case 2:
-		{
-			return model.ReadRequest{}
-		}
-	default:
-		{
-			panic("unknown type")
-		}
-	}
-}
+// func intForType(val any) uint16 {
+// 	switch reflect.TypeOf(val) {
+// 	case reflect.TypeOf(model.IAm{}):
+// 		{
+// 			return 0
+// 		}
+// 	case reflect.TypeOf(model.WriteRequest{}):
+// 		{
+// 			return 1
+// 		}
+// 	case reflect.TypeOf(model.ReadRequest{}):
+// 		{
+// 			return 2
+// 		}
+// 	default:
+// 		{
+// 			panic("unknown type")
+// 		}
+// 	}
+// }

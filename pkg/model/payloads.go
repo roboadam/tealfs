@@ -14,16 +14,20 @@
 
 package model
 
+type PayloadType uint16
+
 const (
-	NoOpType         = uint8(0)
-	IAmType          = uint8(1)
-	SyncType         = uint8(2)
-	WriteRequestType = uint8(3)
-	WriteResultType  = uint8(4)
-	ReadRequestType  = uint8(5)
-	ReadResultType   = uint8(6)
-	BroadcastType    = uint8(7)
-	AddDiskRequest   = uint8(8)
+	NoOpType         PayloadType = 0
+	IAmType          PayloadType = 1
+	SyncType         PayloadType = 2
+	WriteRequestType PayloadType = 3
+	WriteResultType  PayloadType = 4
+	ReadRequestType  PayloadType = 5
+	ReadResultType   PayloadType = 6
+	BroadcastType    PayloadType = 7
+	AddDiskRequest   PayloadType = 8
 )
 
-type Payload any
+type Payload interface {
+	Type() uint16
+}
