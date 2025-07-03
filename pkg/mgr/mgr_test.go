@@ -279,7 +279,7 @@ func TestBroadcast(t *testing.T) {
 				return
 			case w := <-m.MgrConnsSends:
 				if b, ok := w.Payload.(*model.Broadcast); ok {
-					if reflect.DeepEqual(b, testMsg) {
+					if reflect.DeepEqual(b, &testMsg) {
 						outMsgCounter++
 					}
 				}

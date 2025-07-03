@@ -43,6 +43,26 @@ func ReadPayload(conn io.Reader) (model.Payload, error) {
 		var payload model.ReadRequest
 		err = decoder.Decode(&payload)
 		return &payload, err
+	case model.ReadResultType:
+		var payload model.ReadResult
+		err = decoder.Decode(&payload)
+		return &payload, err
+	case model.BroadcastType:
+		var payload model.Broadcast
+		err = decoder.Decode(&payload)
+		return &payload, err
+	case model.AddDiskRequestType:
+		var payload model.AddDiskReq
+		err = decoder.Decode(&payload)
+		return &payload, err
+	case model.SyncType:
+		var payload model.SyncNodes
+		err = decoder.Decode(&payload)
+		return &payload, err
+	case model.WriteResultType:
+		var payload model.WriteResult
+		err = decoder.Decode(&payload)
+		return &payload, err
 	}
 
 	return nil, errors.New("unknown payload type")
