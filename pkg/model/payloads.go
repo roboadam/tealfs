@@ -29,5 +29,5 @@ const (
 )
 
 type Payload interface {
-	Type() uint16
+	Type() PayloadType
 }

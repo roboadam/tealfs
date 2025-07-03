@@ -15,7 +15,6 @@
 package model
 
 import (
-	"bytes"
 	"hash"
 
 	"github.com/google/uuid"
@@ -69,7 +68,7 @@ type ConnectToNodeReq struct {
 
 type MgrConnsSend struct {
 	ConnId  ConnId
-	Payload *Payload
+	Payload Payload
 }
 
 type ConnsMgrReceive struct {
@@ -86,24 +85,6 @@ type AddDiskReq struct {
 	path      string
 	node      NodeId
 	freeBytes int
-}
-
-func ToAddDiskReq(data []byte) *AddDiskReq {
-	path, remainder := StringFromBytes(data)
-	node, remainder := StringFromBytes(remainder)
-	freeBytes, _ := IntFromBytes(remainder)
-	return &AddDiskReq{
-		path:      path,
-		node:      NodeId(node),
-		freeBytes: int(freeBytes),
-	}
-}
-
-func (a *AddDiskReq) ToBytes() []byte {
-	path := StringToBytes(a.path)
-	node := StringToBytes(string(a.node))
-	freeBytes := IntToBytes(uint32(a.freeBytes))
-	return AddType(AddDiskRequest, bytes.Join([][]byte{path, node, freeBytes}, []byte{}))
 }
 
 func (a *AddDiskReq) Path() string   { return a.path }

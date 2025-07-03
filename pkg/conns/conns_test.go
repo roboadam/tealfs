@@ -48,7 +48,7 @@ func TestConnectToConns(t *testing.T) {
 }
 
 func TestSendData(t *testing.T) {
-	var wr model.Payload = model.WriteRequest{
+	var wr model.Payload = &model.WriteRequest{
 		Caller: "caller",
 		Data: model.RawData{
 			Ptr:  model.DiskPointer{NodeId: "destNode", Disk: "disk1", FileName: "blockId"},
@@ -73,11 +73,11 @@ func TestSendData(t *testing.T) {
 		Ptr:  model.DiskPointer{NodeId: "destNode", Disk: "disk1", FileName: "blockId"},
 		Data: []byte{1, 2, 3},
 	}
-	var expected model.Payload = model.WriteRequest{Caller: caller, Data: data, ReqId: "putBlockId"}
+	var expected model.Payload = &model.WriteRequest{Caller: caller, Data: data, ReqId: "putBlockId"}
 	status := connectTo("address:123", outStatus, inConnectTo)
 	inSend <- model.MgrConnsSend{
 		ConnId:  status.Id,
-		Payload: &expected,
+		Payload: expected,
 	}
 	time.Sleep(100 * time.Millisecond)
 
@@ -110,11 +110,11 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 	}
 	blockId := model.BlockId("blockId1")
 	reqId := model.GetBlockId("reqId")
-	var request model.Payload = model.ReadRequest{Caller: caller, Ptrs: ptrs, BlockId: blockId, ReqId: reqId}
+	var request model.Payload = &model.ReadRequest{Caller: caller, Ptrs: ptrs, BlockId: blockId, ReqId: reqId}
 
 	inSend <- model.MgrConnsSend{
 		ConnId:  0,
-		Payload: &request,
+		Payload: request,
 	}
 	outReceive := <-outReceives
 	if outReceive.ConnId != 0 {
@@ -150,7 +150,7 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 		{NodeId: "nodeId2", Disk: "disk2", FileName: "filename2"},
 	}
 	blockId := model.BlockId("blockId1")
-	req = model.ReadRequest{
+	req = &model.ReadRequest{
 		Caller:  caller,
 		Ptrs:    ptrs,
 		BlockId: blockId,
@@ -158,7 +158,7 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 	}
 	inSend <- model.MgrConnsSend{
 		ConnId:  status.Id,
-		Payload: &req,
+		Payload: req,
 	}
 	outReceive := <-outReceives
 	if outReceive.ConnId != 0 {

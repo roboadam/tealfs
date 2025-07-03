@@ -21,6 +21,10 @@ type IAm struct {
 	FreeBytes uint32
 }
 
+func (i *IAm) Type() PayloadType {
+	return IAmType
+}
+
 func NewIam(nodeId NodeId, disks []DiskIdPath, address string, freeBytes uint32) IAm {
 	return IAm{
 		NodeId:    nodeId,

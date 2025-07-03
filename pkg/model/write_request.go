@@ -20,6 +20,6 @@ type WriteRequest struct {
 	ReqId  PutBlockId
 }
 
-func (w *WriteRequest) Type() uint16 {
-	return 0
+func (w *WriteRequest) Type() PayloadType {
+	return WriteRequestType
 }
