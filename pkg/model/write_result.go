@@ -15,11 +15,15 @@
 package model
 
 type WriteResult struct {
-	ok      bool
-	message string
-	caller  NodeId
-	ptr     DiskPointer
-	reqId   PutBlockId
+	Ok      bool
+	Message string
+	Caller  NodeId
+	Ptr     DiskPointer
+	ReqId   PutBlockId
+}
+
+func (w *WriteResult) Type() PayloadType {
+	return WriteResultType
 }
 
 func NewWriteResultOk(
@@ -28,10 +32,10 @@ func NewWriteResultOk(
 	reqId PutBlockId,
 ) WriteResult {
 	return WriteResult{
-		ok:     true,
-		caller: caller,
-		ptr:    ptr,
-		reqId:  reqId,
+		Ok:     true,
+		Caller: caller,
+		Ptr:    ptr,
+		ReqId:  reqId,
 	}
 }
 
@@ -41,28 +45,9 @@ func NewWriteResultErr(
 	reqId PutBlockId,
 ) WriteResult {
 	return WriteResult{
-		ok:      false,
-		message: message,
-		caller:  caller,
-		reqId:   reqId,
+		Ok:      false,
+		Message: message,
+		Caller:  caller,
+		ReqId:   reqId,
 	}
 }
-
-func NewWriteResultSuccess(
-	caller NodeId,
-	ptr DiskPointer,
-	reqId PutBlockId,
-) WriteResult {
-	return WriteResult{
-		ok:     true,
-		caller: caller,
-		ptr:    ptr,
-		reqId:  reqId,
-	}
-}
-
-func (r *WriteResult) Ok() bool          { return r.ok }
-func (r *WriteResult) Message() string   { return r.message }
-func (r *WriteResult) Caller() NodeId    { return r.caller }
-func (r *WriteResult) Ptr() DiskPointer  { return r.ptr }
-func (r *WriteResult) ReqId() PutBlockId { return r.reqId }

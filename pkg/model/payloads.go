@@ -17,15 +17,15 @@ package model
 type PayloadType uint16
 
 const (
-	NoOpType         PayloadType = 0
-	IAmType          PayloadType = 1
-	SyncType         PayloadType = 2
-	WriteRequestType PayloadType = 3
-	WriteResultType  PayloadType = 4
-	ReadRequestType  PayloadType = 5
-	ReadResultType   PayloadType = 6
-	BroadcastType    PayloadType = 7
-	AddDiskRequest   PayloadType = 8
+	NoOpType           PayloadType = 0
+	IAmType            PayloadType = 1
+	SyncType           PayloadType = 2
+	WriteRequestType   PayloadType = 3
+	WriteResultType    PayloadType = 4
+	ReadRequestType    PayloadType = 5
+	ReadResultType     PayloadType = 6
+	BroadcastType      PayloadType = 7
+	AddDiskRequestType PayloadType = 8
 )
 
 type Payload interface {

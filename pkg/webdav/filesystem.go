@@ -183,7 +183,7 @@ func (f *FileSystem) run() {
 		case req := <-f.sysReq:
 			chanutil.Send(f.Ctx, req.resp, sys(req), "filesystem: sys")
 		case r := <-f.inBroadcast:
-			msg, err := broadcastMessageFromBytes(r.Msg(), f)
+			msg, err := broadcastMessageFromBytes(r.Msg, f)
 			if err == nil {
 				switch msg.bType {
 				case upsertFile:

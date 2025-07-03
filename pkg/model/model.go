@@ -82,14 +82,14 @@ type MgrDiskSave struct {
 }
 
 type AddDiskReq struct {
-	path      string
-	node      NodeId
-	freeBytes int
+	Path      string
+	Node      NodeId
+	FreeBytes int
 }
 
-func (a *AddDiskReq) Path() string   { return a.path }
-func (a *AddDiskReq) Node() NodeId   { return a.node }
-func (a *AddDiskReq) FreeBytes() int { return a.freeBytes }
+func (a *AddDiskReq) Type() PayloadType {
+	return AddDiskRequestType
+}
 
 func NewAddDiskReq(
 	path string,
@@ -97,9 +97,9 @@ func NewAddDiskReq(
 	freeBytes int,
 ) AddDiskReq {
 	return AddDiskReq{
-		path:      path,
-		node:      node,
-		freeBytes: freeBytes,
+		Path:      path,
+		Node:      node,
+		FreeBytes: freeBytes,
 	}
 }
 

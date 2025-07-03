@@ -41,7 +41,7 @@ func (m *Mgr) handleWebdavGetsWithPtrs(ptrs []model.DiskPointer, reqId model.Get
 	}
 	n := ptrs[0].NodeId
 	disk := ptrs[0].Disk
-	rr := model.NewReadRequest(m.NodeId, ptrs, blockId, reqId)
+	rr := model.ReadRequest{Caller: m.NodeId, Ptrs: ptrs, BlockId: blockId, ReqId: reqId}
 	if m.NodeId == n {
 		chanutil.Send(m.ctx, m.MgrDiskReads[disk], rr, "mgr: readDiskPtr: local")
 	} else {

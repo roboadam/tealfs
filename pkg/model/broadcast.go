@@ -15,11 +15,13 @@
 package model
 
 type Broadcast struct {
-	msg []byte
+	Msg []byte
+}
+
+func (b *Broadcast) Type() PayloadType {
+	return BroadcastType
 }
 
 func NewBroadcast(msg []byte) Broadcast {
-	return Broadcast{msg: msg}
+	return Broadcast{Msg: msg}
 }
-
-func (b *Broadcast) Msg() []byte { return b.msg }
