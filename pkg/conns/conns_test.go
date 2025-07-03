@@ -17,10 +17,10 @@ package conns
 import (
 	"bytes"
 	"context"
-	"encoding/gob"
 	"errors"
 	"reflect"
 	"tealfs/pkg/model"
+	"tealfs/pkg/tnet"
 	"testing"
 	"time"
 )
@@ -48,23 +48,6 @@ func TestConnectToConns(t *testing.T) {
 }
 
 func TestSendData(t *testing.T) {
-	var wr model.Payload = &model.WriteRequest{
-		Caller: "caller",
-		Data: model.RawData{
-			Ptr:  model.DiskPointer{NodeId: "destNode", Disk: "disk1", FileName: "blockId"},
-			Data: []byte{1, 2, 3},
-		},
-		ReqId: "reqId",
-	}
-
-	buffer := bytes.Buffer{}
-	encoder := gob.NewEncoder(&buffer)
-	err := encoder.Encode(wr)
-	if err != nil {
-		t.Error("Error encoding payload", err)
-		return
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest(ctx)
@@ -81,9 +64,7 @@ func TestSendData(t *testing.T) {
 	}
 	time.Sleep(100 * time.Millisecond)
 
-	decoder := gob.NewDecoder(&provider.Conn.dataWritten)
-	var payload model.Payload
-	err = decoder.Decode(&payload)
+	payload, err := tnet.ReadPayload(&provider.Conn.dataWritten)
 	if err != nil {
 		t.Error("Error decoding payload", err)
 		return
@@ -91,7 +72,7 @@ func TestSendData(t *testing.T) {
 
 	switch p := payload.(type) {
 	case *model.WriteRequest:
-		if !reflect.DeepEqual(*p, expected) {
+		if !reflect.DeepEqual(p, expected) {
 			t.Error("WriteRequest not equal to expected value")
 		}
 	default:
@@ -204,20 +185,20 @@ func TestGetData(t *testing.T) {
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest(ctx)
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
 	disks := []model.DiskIdPath{{Id: "disk1", Path: "disk1path", Node: "node1"}}
+
+	buffer := bytes.Buffer{}
 	iam := model.NewIam("nodeId", disks, "localAddress:123", 1)
 	var payload model.Payload = &iam
-	buffer := bytes.Buffer{}
-	encoder := gob.NewEncoder(&buffer)
-	err := encoder.Encode(payload)
+	err := tnet.SendPayload(&buffer, payload)
 	if err != nil {
-		t.Error("Error encoding payload", err)
+		t.Error("Error sending payload", err)
 		return
 	}
 	provider.Conn.dataToRead <- buffer
 
 	result := <-cmr
 
-	if result.ConnId != status.Id || !reflect.DeepEqual(result.Payload, &iam) {
+	if result.ConnId != status.Id || !reflect.DeepEqual(result.Payload, payload) {
 		t.Error("We didn't pass the message")
 		return
 	}

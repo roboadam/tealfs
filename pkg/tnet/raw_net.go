@@ -16,20 +16,45 @@ package tnet
 
 import (
 	"encoding/gob"
+	"errors"
+	"io"
 	"net"
 	"tealfs/pkg/model"
 )
 
-func ReadPayload(conn net.Conn) (model.Payload, error) {
+func ReadPayload(conn io.Reader) (model.Payload, error) {
 	decoder := gob.NewDecoder(conn)
-	var result model.Payload
-	err := decoder.Decode(&result)
-	return result, err
+	var payloadType model.PayloadType
+	err := decoder.Decode(&payloadType)
+	if err != nil {
+		return nil, err
+	}
+
+	switch payloadType {
+	case model.IAmType:
+		var payload model.IAm
+		err = decoder.Decode(&payload)
+		return &payload, err
+	case model.WriteRequestType:
+		var payload model.WriteRequest
+		err = decoder.Decode(&payload)
+		return &payload, err
+	case model.ReadRequestType:
+		var payload model.ReadRequest
+		err = decoder.Decode(&payload)
+		return &payload, err
+	}
+
+	return nil, errors.New("unknown payload type")
 }
 
-func SendPayload(conn net.Conn, payload model.Payload) error {
+func SendPayload(conn io.Writer, payload model.Payload) error {
 	encoder := gob.NewEncoder(conn)
-	err := encoder.Encode(payload)
+	err := encoder.Encode(payload.Type())
+	if err != nil {
+		return err
+	}
+	err = encoder.Encode(payload)
 	if err != nil {
 		return err
 	}
