@@ -16,7 +16,7 @@ package tnet
 
 import (
 	"encoding/gob"
-	"errors"
+	"fmt"
 	"io"
 	"net"
 	"tealfs/pkg/model"
@@ -27,56 +27,86 @@ func ReadPayload(conn io.Reader) (model.Payload, error) {
 	var payloadType model.PayloadType
 	err := decoder.Decode(&payloadType)
 	if err != nil {
-		return nil, err
+		panic("failed to decode payload type: " + err.Error())
+		// return nil, err
+	} else {
+		fmt.Println("Received payload of type:", payloadType)
 	}
 
 	switch payloadType {
 	case model.IAmType:
 		var payload model.IAm
 		err = decoder.Decode(&payload)
+		if err != nil {
+			panic("failed to decode IAm: " + err.Error())
+		}
 		return &payload, err
 	case model.WriteRequestType:
 		var payload model.WriteRequest
 		err = decoder.Decode(&payload)
+		if err != nil {
+			panic("failed to decode WriteRequest: " + err.Error())
+		}
 		return &payload, err
 	case model.ReadRequestType:
 		var payload model.ReadRequest
 		err = decoder.Decode(&payload)
+		if err != nil {
+			panic("failed to decode ReadRequest: " + err.Error())
+		}
 		return &payload, err
 	case model.ReadResultType:
 		var payload model.ReadResult
 		err = decoder.Decode(&payload)
+		if err != nil {
+			panic("failed to decode ReadResult: " + err.Error())
+		}
 		return &payload, err
 	case model.BroadcastType:
 		var payload model.Broadcast
 		err = decoder.Decode(&payload)
+		if err != nil {
+			panic("failed to decode Broadcast: " + err.Error())
+		}
 		return &payload, err
 	case model.AddDiskRequestType:
 		var payload model.AddDiskReq
 		err = decoder.Decode(&payload)
+		if err != nil {
+			panic("failed to decode AddDiskReq: " + err.Error())
+		}
 		return &payload, err
 	case model.SyncType:
 		var payload model.SyncNodes
 		err = decoder.Decode(&payload)
+		if err != nil {
+			panic("failed to decode SyncNodes: " + err.Error())
+		}
 		return &payload, err
 	case model.WriteResultType:
 		var payload model.WriteResult
 		err = decoder.Decode(&payload)
+		if err != nil {
+			panic("failed to decode WriteResult: " + err.Error())
+		}
 		return &payload, err
 	}
 
-	return nil, errors.New("unknown payload type")
+	panic("unknown payload type: " + fmt.Sprint(payloadType))
 }
 
 func SendPayload(conn io.Writer, payload model.Payload) error {
 	encoder := gob.NewEncoder(conn)
 	err := encoder.Encode(payload.Type())
 	if err != nil {
-		return err
+		panic("failed to encode payload type: " + err.Error())
+		// return err
 	}
+	fmt.Println("Sending payload of type:", payload.Type())
 	err = encoder.Encode(payload)
 	if err != nil {
-		return err
+		panic("failed to encode payload: " + err.Error())
+		// return err
 	}
 	return nil
 }

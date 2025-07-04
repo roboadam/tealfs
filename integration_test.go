@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -110,7 +111,9 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	time.Sleep(time.Second)
 
+	fmt.Println("1")
 	resp, ok := putFile(ctx1, connectToUrl, "application/x-www-form-urlencoded", connectToContents, t)
+	fmt.Println("1a")
 	if !ok {
 		t.Error("error response", resp.Status)
 		return
@@ -123,7 +126,9 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
+	fmt.Println("2")
 	resp, ok = putFile(ctx1, urlFor(webdavAddress1, path1), "text/plain", fileContents1, t)
+	fmt.Println("2a")
 	if !ok {
 		t.Error("error response", resp.Status)
 		return
@@ -135,7 +140,9 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
+	fmt.Println("3")
 	resp, ok = putFile(ctx2, urlFor(webdavAddress2, path2), "text/plain", fileContents2, t)
+	fmt.Println("3a")
 	if !ok {
 		t.Error("error putting file")
 		return
@@ -147,6 +154,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
+	fmt.Println("4")
 	fetchedContent, ok := getFile(ctx2, urlFor(webdavAddress2, path1), t)
 	if !ok {
 		t.Error("error getting file")
@@ -157,6 +165,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
+	fmt.Println("5")
 	fetchedContent, ok = getFile(ctx1, urlFor(webdavAddress1, path2), t)
 	if !ok {
 		t.Error("error getting file")
@@ -176,6 +185,7 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	time.Sleep(time.Second)
 
+	fmt.Println("6")
 	fetchedContent, ok = getFile(ctx1, urlFor(webdavAddress1, path1), t)
 	if !ok {
 		t.Error("error getting file")
