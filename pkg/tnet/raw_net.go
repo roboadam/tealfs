@@ -24,10 +24,27 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func ReadPayload(conn io.Reader) (model.Payload, error) {
-	decoder := gob.NewDecoder(conn)
+type RawNet struct {
+	decoder *gob.Decoder
+	encoder *gob.Encoder
+	conn    io.ReadWriteCloser
+}
+
+func NewRawNet(conn io.ReadWriteCloser) *RawNet {
+	return &RawNet{
+		decoder: gob.NewDecoder(conn),
+		encoder: gob.NewEncoder(conn),
+		conn:    conn,
+	}
+}
+
+func (r *RawNet) Close() error {
+	return r.conn.Close()
+}
+
+func (r *RawNet) ReadPayload() (model.Payload, error) {
 	var payloadType model.PayloadType
-	err := decoder.Decode(&payloadType)
+	err := r.decoder.Decode(&payloadType)
 	if err != nil {
 		log.Error("failed to decode payload type: " + err.Error())
 		return nil, err
@@ -38,56 +55,56 @@ func ReadPayload(conn io.Reader) (model.Payload, error) {
 	switch payloadType {
 	case model.IAmType:
 		var payload model.IAm
-		err = decoder.Decode(&payload)
+		err = r.decoder.Decode(&payload)
 		if err != nil {
 			log.Error("failed to decode IAm: " + err.Error())
 		}
 		return &payload, err
 	case model.WriteRequestType:
 		var payload model.WriteRequest
-		err = decoder.Decode(&payload)
+		err = r.decoder.Decode(&payload)
 		if err != nil {
 			log.Error("failed to decode WriteRequest: " + err.Error())
 		}
 		return &payload, err
 	case model.ReadRequestType:
 		var payload model.ReadRequest
-		err = decoder.Decode(&payload)
+		err = r.decoder.Decode(&payload)
 		if err != nil {
 			log.Error("failed to decode ReadRequest: " + err.Error())
 		}
 		return &payload, err
 	case model.ReadResultType:
 		var payload model.ReadResult
-		err = decoder.Decode(&payload)
+		err = r.decoder.Decode(&payload)
 		if err != nil {
 			log.Error("failed to decode ReadResult: " + err.Error())
 		}
 		return &payload, err
 	case model.BroadcastType:
 		var payload model.Broadcast
-		err = decoder.Decode(&payload)
+		err = r.decoder.Decode(&payload)
 		if err != nil {
 			log.Error("failed to decode Broadcast: " + err.Error())
 		}
 		return &payload, err
 	case model.AddDiskRequestType:
 		var payload model.AddDiskReq
-		err = decoder.Decode(&payload)
+		err = r.decoder.Decode(&payload)
 		if err != nil {
 			log.Error("failed to decode AddDiskReq: " + err.Error())
 		}
 		return &payload, err
 	case model.SyncType:
 		var payload model.SyncNodes
-		err = decoder.Decode(&payload)
+		err = r.decoder.Decode(&payload)
 		if err != nil {
 			log.Error("failed to decode SyncNodes: " + err.Error())
 		}
 		return &payload, err
 	case model.WriteResultType:
 		var payload model.WriteResult
-		err = decoder.Decode(&payload)
+		err = r.decoder.Decode(&payload)
 		if err != nil {
 			log.Error("failed to decode WriteResult: " + err.Error())
 		}
@@ -97,18 +114,15 @@ func ReadPayload(conn io.Reader) (model.Payload, error) {
 	panic("unknown payload type: " + fmt.Sprint(payloadType))
 }
 
-func SendPayload(conn io.Writer, payload model.Payload) error {
-	encoder := gob.NewEncoder(conn)
-	err := encoder.Encode(payload.Type())
+func (r *RawNet) SendPayload(payload model.Payload) error {
+	err := r.encoder.Encode(payload.Type())
 	if err != nil {
-		panic("failed to encode payload type: " + err.Error())
-		// return err
+		return err
 	}
 	fmt.Println("Sending payload of type:", payload.Type())
-	err = encoder.Encode(payload)
+	err = r.encoder.Encode(payload)
 	if err != nil {
-		panic("failed to encode payload: " + err.Error())
-		// return err
+		return err
 	}
 	return nil
 }

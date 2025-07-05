@@ -27,7 +27,7 @@ import (
 )
 
 type Conns struct {
-	netConns      map[model.ConnId]net.Conn
+	netConns      map[model.ConnId]tnet.RawNet
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
 	outStatuses   chan model.NetConnectionStatus
@@ -60,7 +60,7 @@ func NewConns(
 	gob.Register(&model.ReadResult{})
 	gob.Register(&model.IAm{})
 	c := Conns{
-		netConns:      make(map[model.ConnId]net.Conn, 3),
+		netConns:      make(map[model.ConnId]tnet.RawNet),
 		nextId:        model.ConnId(0),
 		acceptedConns: make(chan AcceptedConns),
 		outStatuses:   outStatuses,
@@ -128,7 +128,8 @@ func (c *Conns) consumeChannels() {
 				c.handleSendFailure(sendReq, errors.New("connection not found"))
 			} else {
 				//Todo maybe this should be async
-				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload)
+				rawNet := c.netConns[sendReq.ConnId]
+				err := rawNet.SendPayload(sendReq.Payload)
 				if err != nil {
 					c.handleSendFailure(sendReq, err)
 				}
@@ -194,7 +195,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			return
 		default:
 			netConn := c.netConns[conn]
-			payload, err := tnet.ReadPayload(netConn)
+			payload, err := netConn.ReadPayload()
 			if err != nil {
 				closeErr := netConn.Close()
 				if closeErr != nil {
@@ -222,8 +223,9 @@ func (c *Conns) connectTo(address string) (model.ConnId, error) {
 }
 
 func (c *Conns) saveNetConn(netConn net.Conn) model.ConnId {
+	rawNet := tnet.NewRawNet(netConn)
 	id := c.nextId
 	c.nextId++
-	c.netConns[id] = netConn
+	c.netConns[id] = *rawNet
 	return id
 }

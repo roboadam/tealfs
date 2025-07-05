@@ -15,7 +15,6 @@
 package conns
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"reflect"
@@ -64,7 +63,9 @@ func TestSendData(t *testing.T) {
 	}
 	time.Sleep(100 * time.Millisecond)
 
-	payload, err := tnet.ReadPayload(&provider.Conn.dataWritten)
+	// rawNet := tnet.NewRawNet(provider.Conn.dataWritten)
+	rawNet := tnet.NewRawNet(&provider.Conn.dataWritten)
+	payload, err := rawNet.ReadPayload()
 	if err != nil {
 		t.Error("Error decoding payload", err)
 		return
@@ -186,10 +187,11 @@ func TestGetData(t *testing.T) {
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
 	disks := []model.DiskIdPath{{Id: "disk1", Path: "disk1path", Node: "node1"}}
 
-	buffer := bytes.Buffer{}
+	buffer := ClosableBuffer{}
+	rawNet := tnet.NewRawNet(&buffer)
 	iam := model.NewIam("nodeId", disks, "localAddress:123", 1)
 	var payload model.Payload = &iam
-	err := tnet.SendPayload(&buffer, payload)
+	err := rawNet.SendPayload(payload)
 	if err != nil {
 		t.Error("Error sending payload", err)
 		return

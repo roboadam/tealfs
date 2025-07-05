@@ -44,8 +44,8 @@ func NewMockConnectionProvider() MockConnectionProvider {
 	return MockConnectionProvider{
 		Listener: NewMockListener(),
 		Conn: MockConn{
-			dataToRead:  make(chan bytes.Buffer, 1),
-			dataWritten: bytes.Buffer{},
+			dataToRead:  make(chan ClosableBuffer, 1),
+			dataWritten: ClosableBuffer{},
 		},
 	}
 }
@@ -59,13 +59,27 @@ func (m *MockConnectionProvider) GetListener(address string) (net.Listener, erro
 }
 
 type MockConn struct {
-	dataToRead  chan bytes.Buffer
-	dataWritten bytes.Buffer
-	buffPtr     *bytes.Buffer
+	dataToRead  chan ClosableBuffer
+	dataWritten ClosableBuffer
+	buffPtr     *ClosableBuffer
 	ReadError   error
 	WriteError  error
 }
 type MockAddr struct{}
+
+type ClosableBuffer bytes.Buffer
+
+func (b *ClosableBuffer) Close() error {
+	return nil
+}
+
+func (b *ClosableBuffer) Write(p []byte) (n int, err error) {
+	return (*bytes.Buffer)(b).Write(p)
+}
+
+func (b *ClosableBuffer) Read(p []byte) (n int, err error) {
+	return (*bytes.Buffer)(b).Read(p)
+}
 
 func (m *MockConn) Read(b []byte) (n int, err error) {
 	if m.ReadError != nil {
@@ -130,8 +144,8 @@ func NewMockListener() MockListener {
 func (m *MockListener) Accept() (net.Conn, error) {
 	<-m.accept
 	return &MockConn{
-		dataToRead:  make(chan bytes.Buffer, 100),
-		dataWritten: bytes.Buffer{},
+		dataToRead:  make(chan ClosableBuffer, 100),
+		dataWritten: ClosableBuffer{},
 	}, nil
 }
 
