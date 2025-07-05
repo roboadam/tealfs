@@ -16,6 +16,7 @@ package mgr
 
 import (
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
@@ -130,15 +131,15 @@ func TestWebdavGet(t *testing.T) {
 						atomic.AddInt32(&twoCount, 1)
 					}
 					data := model.RawData{
-						Ptr:  readRequest.Ptrs()[0],
+						Ptr:  readRequest.Ptrs[0],
 						Data: []byte{1, 2, 3},
 					}
 					result := model.NewReadResultOk(
-						readRequest.Caller(),
-						readRequest.Ptrs()[1:],
+						readRequest.Caller,
+						readRequest.Ptrs[1:],
 						data,
-						readRequest.GetBlockId(),
-						readRequest.BlockId(),
+						readRequest.ReqId,
+						readRequest.BlockId,
 					)
 					m.ConnsMgrReceives <- model.ConnsMgrReceive{
 						ConnId:  s.ConnId,
@@ -212,18 +213,19 @@ func TestWebdavPut(t *testing.T) {
 			case s := <-m.MgrConnsSends:
 				switch request := s.Payload.(type) {
 				case *model.WriteRequest:
-					ptr := request.Data().Ptr
-					if ptr.Disk() == disks12[0].Id {
+					ptr := request.Data.Ptr
+					switch ptr.Disk {
+					case disks12[0].Id:
 						atomic.AddInt32(&oneCount, 1)
-					} else if ptr.Disk() == disks12[1].Id {
+					case disks12[1].Id:
 						atomic.AddInt32(&twoCount, 1)
-					} else if ptr.Disk() == disks34[0].Id {
+					case disks34[0].Id:
 						atomic.AddInt32(&threeCount, 1)
-					} else if ptr.Disk() == disks34[1].Id {
+					case disks34[1].Id:
 						atomic.AddInt32(&fourCount, 1)
 					}
 
-					result := model.NewWriteResultOk(request.Data().Ptr, request.Caller(), request.ReqId())
+					result := model.NewWriteResultOk(request.Data.Ptr, request.Caller, request.ReqId)
 					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
 				}
 
@@ -277,7 +279,7 @@ func TestBroadcast(t *testing.T) {
 				return
 			case w := <-m.MgrConnsSends:
 				if b, ok := w.Payload.(*model.Broadcast); ok {
-					if b.Equal(&testMsg) {
+					if reflect.DeepEqual(b, &testMsg) {
 						outMsgCounter++
 					}
 				}
@@ -299,7 +301,7 @@ func TestBroadcast(t *testing.T) {
 	}
 
 	forwardedMsg := <-m.MgrWebdavBroadcast
-	if !forwardedMsg.Equal(&msg) {
+	if !reflect.DeepEqual(forwardedMsg, msg) {
 		t.Error("Wrong message was forwarded")
 	}
 }
@@ -338,7 +340,7 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 		payload := expectedIam.Payload
 		switch p := payload.(type) {
 		case *model.IAm:
-			if p.Node() != m.NodeId {
+			if p.NodeId != m.NodeId {
 				t.Error("Unexpected nodeId")
 				panic("Unexpected nodeId")
 			}
@@ -427,7 +429,7 @@ func cIdSnEquals(a, b connIdAndSyncNodes) bool {
 	if a.ConnId != b.ConnId {
 		return false
 	}
-	return a.Payload.Equal(&b.Payload)
+	return reflect.DeepEqual(a.Payload, b.Payload)
 }
 
 func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {

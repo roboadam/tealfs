@@ -33,17 +33,17 @@ func TestWriteData(t *testing.T) {
 	blockId := model.NewBlockId()
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
-	req := model.NewWriteRequest(
-		nodeId,
-		model.RawData{
-			Ptr:  model.NewDiskPointer(nodeId, "disk1", string(blockId)),
+	req := model.WriteRequest{
+		Caller: nodeId,
+		Data: model.RawData{
+			Ptr:  model.DiskPointer{NodeId: nodeId, Disk: "disk1", FileName: string(blockId)},
 			Data: data,
 		},
-		"putBlockId",
-	)
+		ReqId: "putBlockId",
+	}
 	mgrDiskWrites <- req
 	result := <-diskMgrWrites
-	if !result.Ok() {
+	if !result.Ok {
 		t.Error("Bad write result")
 		return
 	}
@@ -67,19 +67,19 @@ func TestReadData(t *testing.T) {
 	data := []byte{0, 1, 2, 3, 4, 5}
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	_ = f.WriteFile(expectedPath, data)
-	req := model.NewReadRequest(
-		caller,
-		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", string(blockId))},
-		blockId,
-		model.GetBlockId("getBlockId1"),
-	)
+	req := model.ReadRequest{
+		Caller:  caller,
+		Ptrs:    []model.DiskPointer{{NodeId: "node1", Disk: "disk1", FileName: string(blockId)}},
+		BlockId: blockId,
+		ReqId:   model.GetBlockId("getBlockId1"),
+	}
 	mgrDiskReads <- req
 	result := <-diskMgrReads
-	if !result.Ok() {
+	if !result.Ok {
 		t.Error("Bad write result")
 		return
 	}
-	if !bytes.Equal(result.Data().Data, data) {
+	if !bytes.Equal(result.Data.Data, data) {
 		t.Error("Read data is wrong")
 		return
 	}
@@ -95,19 +95,19 @@ func TestReadNewFile(t *testing.T) {
 	f.ReadError = fs.ErrNotExist
 	expectedPath := filepath.Join(path.String(), string(blockId))
 	_ = f.WriteFile(expectedPath, data)
-	req := model.NewReadRequest(
-		caller,
-		[]model.DiskPointer{model.NewDiskPointer("node1", "disk1", string(blockId))},
-		blockId,
-		model.GetBlockId("getBlockId1"),
-	)
+	req := model.ReadRequest{
+		Caller:  caller,
+		Ptrs:    []model.DiskPointer{{NodeId: "node1", Disk: "disk1", FileName: string(blockId)}},
+		BlockId: blockId,
+		ReqId:   model.GetBlockId("getBlockId1"),
+	}
 	mgrDiskReads <- req
 	result := <-diskMgrReads
-	if !result.Ok() {
+	if !result.Ok {
 		t.Error("Bad write result")
 		return
 	}
-	if !bytes.Equal(result.Data().Data, []byte{}) {
+	if !bytes.Equal(result.Data.Data, []byte{}) {
 		t.Error("Written data is wrong")
 		return
 	}

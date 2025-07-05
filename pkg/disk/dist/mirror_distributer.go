@@ -48,7 +48,7 @@ func (d *MirrorDistributer) ReadPointersForId(id model.BlockId) []model.DiskPoin
 	nodeIds := d.generateNodeIds(id)
 	data := []model.DiskPointer{}
 	for _, nodeId := range nodeIds {
-		data = append(data, model.NewDiskPointer(nodeId.n, nodeId.d, string(id)))
+		data = append(data, model.DiskPointer{NodeId: nodeId.n, Disk: nodeId.d, FileName: string(id)})
 	}
 	return data
 }

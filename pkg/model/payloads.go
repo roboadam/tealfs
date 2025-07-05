@@ -14,57 +14,20 @@
 
 package model
 
+type PayloadType uint16
+
 const (
-	NoOpType         = uint8(0)
-	IAmType          = uint8(1)
-	SyncType         = uint8(2)
-	WriteRequestType = uint8(3)
-	WriteResultType  = uint8(4)
-	ReadRequestType  = uint8(5)
-	ReadResultType   = uint8(6)
-	BroadcastType    = uint8(7)
-	AddDiskRequest   = uint8(8)
+	NoOpType           PayloadType = 0
+	IAmType            PayloadType = 1
+	SyncType           PayloadType = 2
+	WriteRequestType   PayloadType = 3
+	WriteResultType    PayloadType = 4
+	ReadRequestType    PayloadType = 5
+	ReadResultType     PayloadType = 6
+	BroadcastType      PayloadType = 7
+	AddDiskRequestType PayloadType = 8
 )
 
 type Payload interface {
-	ToBytes() []byte
-	Equal(Payload) bool
-}
-
-func ToPayload(data []byte) Payload {
-	switch payloadType(data) {
-	case IAmType:
-		return ToHello(payloadData(data))
-	case SyncType:
-		return ToSyncNodes(payloadData(data))
-	case WriteRequestType:
-		return ToWriteRequest(payloadData(data))
-	case WriteResultType:
-		return ToWriteResult(payloadData(data))
-	case ReadRequestType:
-		return ToReadRequest(payloadData(data))
-	case ReadResultType:
-		return ToReadResult(payloadData(data))
-	case BroadcastType:
-		return ToBroadcast(payloadData(data))
-	case AddDiskRequest:
-		return ToAddDiskReq(payloadData(data))
-	default:
-		return ToNoOp(payloadData(data))
-	}
-}
-
-func payloadData(data []byte) []byte {
-	if len(data) > 0 {
-		return data[1:]
-	} else {
-		return data
-	}
-}
-
-func payloadType(data []byte) byte {
-	if len(data) <= 0 {
-		return NoOpType
-	}
-	return data[0]
+	Type() PayloadType
 }

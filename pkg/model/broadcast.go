@@ -14,31 +14,14 @@
 
 package model
 
-import "bytes"
-
 type Broadcast struct {
-	msg []byte
+	Msg []byte
+}
+
+func (b *Broadcast) Type() PayloadType {
+	return BroadcastType
 }
 
 func NewBroadcast(msg []byte) Broadcast {
-	return Broadcast{msg: msg}
-}
-
-func (b *Broadcast) Msg() []byte { return b.msg }
-
-func (b *Broadcast) ToBytes() []byte {
-	msg := BytesToBytes(b.msg)
-	return AddType(BroadcastType, msg)
-}
-
-func (b *Broadcast) Equal(p Payload) bool {
-	if o, ok := p.(*Broadcast); ok {
-		return bytes.Equal(b.msg, o.msg)
-	}
-	return false
-}
-
-func ToBroadcast(data []byte) *Broadcast {
-	msg, _ := BytesFromBytes(data)
-	return &Broadcast{msg: msg}
+	return Broadcast{Msg: msg}
 }

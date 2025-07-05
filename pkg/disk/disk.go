@@ -71,25 +71,25 @@ func (d *Disk) consumeChannels() {
 		case <-d.ctx.Done():
 			return
 		case s := <-d.inWrites:
-			err := d.path.Save(s.Data())
+			err := d.path.Save(s.Data)
 			if err == nil {
-				wr := model.NewWriteResultOk(s.Data().Ptr, s.Caller(), s.ReqId())
+				wr := model.NewWriteResultOk(s.Data.Ptr, s.Caller, s.ReqId)
 				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save success")
 			} else {
-				wr := model.NewWriteResultErr(err.Error(), s.Caller(), s.ReqId())
+				wr := model.NewWriteResultErr(err.Error(), s.Caller, s.ReqId)
 				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save failure")
 			}
 		case r := <-d.inReads:
-			if len(r.Ptrs()) == 0 {
-				rr := model.NewReadResultErr("no pointers in read request", r.Caller(), r.GetBlockId(), r.BlockId())
+			if len(r.Ptrs) == 0 {
+				rr := model.NewReadResultErr("no pointers in read request", r.Caller, r.ReqId, r.BlockId)
 				chanutil.Send(d.ctx, d.outReads, rr, "disk: no pointers in read request")
 			} else {
-				data, err := d.path.Read(r.Ptrs()[0])
+				data, err := d.path.Read(r.Ptrs[0])
 				if err == nil {
-					rr := model.NewReadResultOk(r.Caller(), r.Ptrs()[1:], data, r.GetBlockId(), r.BlockId())
+					rr := model.NewReadResultOk(r.Caller, r.Ptrs[1:], data, r.ReqId, r.BlockId)
 					chanutil.Send(d.ctx, d.outReads, rr, "disk: read success")
 				} else {
-					rr := model.NewReadResultErr(err.Error(), r.Caller(), r.GetBlockId(), r.BlockId())
+					rr := model.NewReadResultErr(err.Error(), r.Caller, r.ReqId, r.BlockId)
 					chanutil.Send(d.ctx, d.outReads, rr, "disk: read failure")
 				}
 			}
@@ -98,12 +98,12 @@ func (d *Disk) consumeChannels() {
 }
 
 func (p *Path) Save(rawData model.RawData) error {
-	filePath := filepath.Join(p.raw, rawData.Ptr.FileName())
+	filePath := filepath.Join(p.raw, rawData.Ptr.FileName)
 	return p.ops.WriteFile(filePath, rawData.Data)
 }
 
 func (p *Path) Read(ptr model.DiskPointer) (model.RawData, error) {
-	filePath := filepath.Join(p.raw, ptr.FileName())
+	filePath := filepath.Join(p.raw, ptr.FileName)
 	result, err := p.ops.ReadFile(filePath)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
 		return model.RawData{Ptr: ptr, Data: []byte{}}, nil

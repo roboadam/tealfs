@@ -52,30 +52,30 @@ func TestMirror(t *testing.T) {
 			return
 		}
 
-		if !nodes.Contains(ptrs[0].NodeId()) {
+		if !nodes.Contains(ptrs[0].NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
-		nodes.Remove(ptrs[0].NodeId())
+		nodes.Remove(ptrs[0].NodeId)
 
-		if !nodes.Contains(ptrs[1].NodeId()) {
+		if !nodes.Contains(ptrs[1].NodeId) {
 			t.Error("missing one of the nodes")
 			return
 		}
 
-		if ptrs[0].NodeId() == node1 {
+		if ptrs[0].NodeId == node1 {
 			bucket1++
-		} else if ptrs[0].NodeId() == node2 {
+		} else if ptrs[0].NodeId == node2 {
 			bucket2++
-		} else if ptrs[0].NodeId() == node3 {
+		} else if ptrs[0].NodeId == node3 {
 			bucket3++
 		}
 
-		if ptrs[1].NodeId() == node1 {
+		if ptrs[1].NodeId == node1 {
 			bucket1++
-		} else if ptrs[1].NodeId() == node2 {
+		} else if ptrs[1].NodeId == node2 {
 			bucket2++
-		} else if ptrs[1].NodeId() == node3 {
+		} else if ptrs[1].NodeId == node3 {
 			bucket3++
 		}
 	}

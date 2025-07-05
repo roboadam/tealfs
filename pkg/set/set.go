@@ -17,11 +17,11 @@ package set
 import "maps"
 
 type Set[K comparable] struct {
-	data map[K]bool
+	Data map[K]bool
 }
 
 func NewSet[K comparable]() Set[K] {
-	return Set[K]{data: make(map[K]bool)}
+	return Set[K]{Data: make(map[K]bool)}
 }
 
 func NewSetFromSlice[K comparable](input []K) Set[K] {
@@ -35,7 +35,7 @@ func NewSetFromSlice[K comparable](input []K) Set[K] {
 }
 
 func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
-	result := Set[K]{data: make(map[K]bool)}
+	result := Set[K]{Data: make(map[K]bool)}
 
 	for k := range input {
 		result.Add(k)
@@ -45,9 +45,9 @@ func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
 }
 
 func (s *Set[K]) ToSlice() []K {
-	result := make([]K, len(s.data))
+	result := make([]K, len(s.Data))
 	i := 0
-	for k := range s.data {
+	for k := range s.Data {
 		result[i] = k
 		i++
 	}
@@ -55,19 +55,19 @@ func (s *Set[K]) ToSlice() []K {
 }
 
 func (s *Set[K]) Add(item K) {
-	s.data[item] = true
+	s.Data[item] = true
 }
 
 func (s *Set[K]) Remove(item K) {
-	delete(s.data, item)
+	delete(s.Data, item)
 }
 
 func (s *Set[K]) Equal(b *Set[K]) bool {
-	if len(s.data) != len(b.data) {
+	if len(s.Data) != len(b.Data) {
 		return false
 	}
 
-	for key := range s.data {
+	for key := range s.Data {
 		if !b.Contains(key) {
 			return false
 		}
@@ -77,14 +77,14 @@ func (s *Set[K]) Equal(b *Set[K]) bool {
 }
 
 func (s *Set[K]) Contains(k K) bool {
-	_, exists := s.data[k]
+	_, exists := s.Data[k]
 	return exists
 }
 
 func (s *Set[K]) GetValues() []K {
-	result := make([]K, len(s.data))
+	result := make([]K, len(s.Data))
 	i := 0
-	for k := range s.data {
+	for k := range s.Data {
 		result[i] = k
 		i++
 	}
@@ -93,7 +93,7 @@ func (s *Set[K]) GetValues() []K {
 
 func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
 	result := NewSet[K]()
-	for k := range s.data {
+	for k := range s.Data {
 		if !o.Contains(k) {
 			result.Add(k)
 		}
@@ -102,11 +102,11 @@ func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
 }
 
 func (s *Set[K]) Len() int {
-	return len(s.data)
+	return len(s.Data)
 }
 
 func (s *Set[K]) Clone() Set[K] {
 	return Set[K]{
-		data: maps.Clone(s.data),
+		Data: maps.Clone(s.Data),
 	}
 }

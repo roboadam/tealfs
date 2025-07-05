@@ -25,6 +25,10 @@ type SyncNodes struct {
 	}]
 }
 
+func (s *SyncNodes) Type() PayloadType {
+	return SyncType
+}
+
 func NewSyncNodes() SyncNodes {
 	return SyncNodes{
 		Nodes: set.NewSet[struct {
@@ -32,26 +36,6 @@ func NewSyncNodes() SyncNodes {
 			Address string
 		}](),
 	}
-}
-
-func (s *SyncNodes) Equal(p Payload) bool {
-	if s2, ok := p.(*SyncNodes); ok {
-		return s.Nodes.Equal(&s2.Nodes)
-	}
-	return false
-}
-
-func (s *SyncNodes) ToBytes() []byte {
-	result := make([]byte, 0)
-	for _, n := range s.Nodes.GetValues() {
-		result = append(result, nodeToBytes(n.Node)...)
-		result = append(result, StringToBytes(n.Address)...)
-	}
-	return AddType(SyncType, result)
-}
-
-func nodeToBytes(node NodeId) []byte {
-	return StringToBytes(string(node))
 }
 
 func (s *SyncNodes) GetNodes() set.Set[NodeId] {
@@ -69,32 +53,4 @@ func (s *SyncNodes) AddressForNode(id NodeId) string {
 		}
 	}
 	return ""
-}
-
-func ToSyncNodes(data []byte) *SyncNodes {
-	remainder := data
-	result := set.NewSet[struct {
-		Node    NodeId
-		Address string
-	}]()
-	for {
-		var n NodeId
-		var address string
-		n, remainder = toNode(remainder)
-		address, remainder = StringFromBytes(remainder)
-		result.Add(struct {
-			Node    NodeId
-			Address string
-		}{Node: n, Address: address})
-		if len(remainder) <= 0 {
-			return &SyncNodes{Nodes: result}
-		}
-	}
-}
-
-func toNode(data []byte) (NodeId, []byte) {
-	var id string
-	remainder := data
-	id, remainder = StringFromBytes(remainder)
-	return NodeId(id), remainder
 }

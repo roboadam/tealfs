@@ -15,20 +15,3 @@
 package model
 
 type NoOp struct{}
-
-func (h *NoOp) ToBytes() []byte {
-	result := make([]byte, 1)
-	result[0] = NoOpType
-	return result
-}
-
-func (h *NoOp) Equal(p Payload) bool {
-	if _, ok := p.(*NoOp); ok {
-		return true
-	}
-	return false
-}
-
-func ToNoOp(_ []byte) *NoOp {
-	return &NoOp{}
-}

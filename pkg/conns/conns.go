@@ -26,7 +26,7 @@ import (
 )
 
 type Conns struct {
-	netConns      map[model.ConnId]net.Conn
+	netConns      map[model.ConnId]tnet.RawNet
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
 	outStatuses   chan model.NetConnectionStatus
@@ -50,13 +50,12 @@ func NewConns(
 	nodeId model.NodeId,
 	ctx context.Context,
 ) Conns {
-
 	listener, err := provider.GetListener(address)
 	if err != nil {
 		panic(err)
 	}
 	c := Conns{
-		netConns:      make(map[model.ConnId]net.Conn, 3),
+		netConns:      make(map[model.ConnId]tnet.RawNet),
 		nextId:        model.ConnId(0),
 		acceptedConns: make(chan AcceptedConns),
 		outStatuses:   outStatuses,
@@ -124,7 +123,8 @@ func (c *Conns) consumeChannels() {
 				c.handleSendFailure(sendReq, errors.New("connection not found"))
 			} else {
 				//Todo maybe this should be async
-				err := tnet.SendPayload(c.netConns[sendReq.ConnId], sendReq.Payload.ToBytes())
+				rawNet := c.netConns[sendReq.ConnId]
+				err := rawNet.SendPayload(sendReq.Payload)
 				if err != nil {
 					c.handleSendFailure(sendReq, err)
 				}
@@ -138,16 +138,16 @@ func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 	payload := sendReq.Payload
 	switch p := payload.(type) {
 	case *model.ReadRequest:
-		if len(p.Ptrs()) > 0 {
-			ptrs := p.Ptrs()[1:]
-			rr := model.NewReadRequest(p.Caller(), ptrs, p.BlockId(), p.GetBlockId())
+		if len(p.Ptrs) > 0 {
+			ptrs := p.Ptrs[1:]
+			rr := model.ReadRequest{Caller: p.Caller, Ptrs: ptrs, BlockId: p.BlockId, ReqId: p.ReqId}
 			cmr := model.ConnsMgrReceive{
 				ConnId:  sendReq.ConnId,
 				Payload: &rr,
 			}
 			chanutil.Send(c.ctx, c.outReceives, cmr, "conns failed to send read request, sending new read request")
 		} else {
-			result := model.NewReadResultErr("no pointers in read request", p.Caller(), p.GetBlockId(), p.BlockId())
+			result := model.NewReadResultErr("no pointers in read request", p.Caller, p.ReqId, p.BlockId)
 			cmr := model.ConnsMgrReceive{
 				ConnId:  sendReq.ConnId,
 				Payload: &result,
@@ -190,7 +190,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			return
 		default:
 			netConn := c.netConns[conn]
-			bytes, err := tnet.ReadPayload(netConn)
+			payload, err := netConn.ReadPayload()
 			if err != nil {
 				closeErr := netConn.Close()
 				if closeErr != nil {
@@ -199,7 +199,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				delete(c.netConns, conn)
 				return
 			}
-			payload := model.ToPayload(bytes)
 			cmr := model.ConnsMgrReceive{
 				ConnId:  conn,
 				Payload: payload,
@@ -219,8 +218,9 @@ func (c *Conns) connectTo(address string) (model.ConnId, error) {
 }
 
 func (c *Conns) saveNetConn(netConn net.Conn) model.ConnId {
+	rawNet := tnet.NewRawNet(netConn)
 	id := c.nextId
 	c.nextId++
-	c.netConns[id] = netConn
+	c.netConns[id] = *rawNet
 	return id
 }
