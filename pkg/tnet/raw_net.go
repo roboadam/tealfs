@@ -20,6 +20,8 @@ import (
 	"io"
 	"net"
 	"tealfs/pkg/model"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func ReadPayload(conn io.Reader) (model.Payload, error) {
@@ -27,8 +29,8 @@ func ReadPayload(conn io.Reader) (model.Payload, error) {
 	var payloadType model.PayloadType
 	err := decoder.Decode(&payloadType)
 	if err != nil {
-		panic("failed to decode payload type: " + err.Error())
-		// return nil, err
+		log.Error("failed to decode payload type: " + err.Error())
+		return nil, err
 	} else {
 		fmt.Println("Received payload of type:", payloadType)
 	}
@@ -38,56 +40,56 @@ func ReadPayload(conn io.Reader) (model.Payload, error) {
 		var payload model.IAm
 		err = decoder.Decode(&payload)
 		if err != nil {
-			panic("failed to decode IAm: " + err.Error())
+			log.Error("failed to decode IAm: " + err.Error())
 		}
 		return &payload, err
 	case model.WriteRequestType:
 		var payload model.WriteRequest
 		err = decoder.Decode(&payload)
 		if err != nil {
-			panic("failed to decode WriteRequest: " + err.Error())
+			log.Error("failed to decode WriteRequest: " + err.Error())
 		}
 		return &payload, err
 	case model.ReadRequestType:
 		var payload model.ReadRequest
 		err = decoder.Decode(&payload)
 		if err != nil {
-			panic("failed to decode ReadRequest: " + err.Error())
+			log.Error("failed to decode ReadRequest: " + err.Error())
 		}
 		return &payload, err
 	case model.ReadResultType:
 		var payload model.ReadResult
 		err = decoder.Decode(&payload)
 		if err != nil {
-			panic("failed to decode ReadResult: " + err.Error())
+			log.Error("failed to decode ReadResult: " + err.Error())
 		}
 		return &payload, err
 	case model.BroadcastType:
 		var payload model.Broadcast
 		err = decoder.Decode(&payload)
 		if err != nil {
-			panic("failed to decode Broadcast: " + err.Error())
+			log.Error("failed to decode Broadcast: " + err.Error())
 		}
 		return &payload, err
 	case model.AddDiskRequestType:
 		var payload model.AddDiskReq
 		err = decoder.Decode(&payload)
 		if err != nil {
-			panic("failed to decode AddDiskReq: " + err.Error())
+			log.Error("failed to decode AddDiskReq: " + err.Error())
 		}
 		return &payload, err
 	case model.SyncType:
 		var payload model.SyncNodes
 		err = decoder.Decode(&payload)
 		if err != nil {
-			panic("failed to decode SyncNodes: " + err.Error())
+			log.Error("failed to decode SyncNodes: " + err.Error())
 		}
 		return &payload, err
 	case model.WriteResultType:
 		var payload model.WriteResult
 		err = decoder.Decode(&payload)
 		if err != nil {
-			panic("failed to decode WriteResult: " + err.Error())
+			log.Error("failed to decode WriteResult: " + err.Error())
 		}
 		return &payload, err
 	}

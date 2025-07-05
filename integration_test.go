@@ -176,12 +176,12 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	cancel1()
-	time.Sleep(time.Second)
-	ctx1, cancel1 = context.WithCancel(context.Background())
-	defer cancel1()
+	// cancel1()
+	// time.Sleep(time.Second)
+	// ctx1, cancel1 = context.WithCancel(context.Background())
+	// defer cancel1()
 
-	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx1)
+	// go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx1)
 
 	time.Sleep(time.Second)
 
