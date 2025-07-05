@@ -63,7 +63,6 @@ func TestSendData(t *testing.T) {
 	}
 	time.Sleep(100 * time.Millisecond)
 
-	// rawNet := tnet.NewRawNet(provider.Conn.dataWritten)
 	rawNet := tnet.NewRawNet(&provider.Conn.dataWritten)
 	payload, err := rawNet.ReadPayload()
 	if err != nil {

@@ -48,8 +48,6 @@ func (r *RawNet) ReadPayload() (model.Payload, error) {
 	if err != nil {
 		log.Error("failed to decode payload type: " + err.Error())
 		return nil, err
-	} else {
-		fmt.Println("Received payload of type:", payloadType)
 	}
 
 	switch payloadType {
@@ -119,7 +117,6 @@ func (r *RawNet) SendPayload(payload model.Payload) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Sending payload of type:", payload.Type())
 	err = r.encoder.Encode(payload)
 	if err != nil {
 		return err
