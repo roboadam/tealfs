@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"tealfs/pkg/chanutil"
+	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
@@ -48,6 +49,7 @@ type Mgr struct {
 	MgrWebdavGets           chan model.GetBlockResp
 	MgrWebdavPuts           chan model.PutBlockResp
 	MgrWebdavBroadcast      chan model.Broadcast
+	CustodianCommands       chan<- custodian.Command
 
 	nodeConnMapper *model.NodeConnectionMapper
 
@@ -64,7 +66,7 @@ type Mgr struct {
 	ctx                context.Context
 }
 
-func NewWithChanSize(
+func New(
 	chanSize int,
 	nodeAddress string,
 	globalPath string,
@@ -80,7 +82,7 @@ func NewWithChanSize(
 	}
 
 	mgr := Mgr{
-		UiMgrDisk:               make(chan model.AddDiskReq),
+		UiMgrDisk:               make(chan model.AddDiskReq, chanSize),
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrWrites:           make(chan model.WriteResult),
@@ -110,14 +112,6 @@ func NewWithChanSize(
 		ctx:                     ctx,
 	}
 
-	go func() {
-		err = mgr.loadSettings()
-		if err != nil {
-			panic("Unable to load settings " + err.Error())
-		}
-		mgr.start()
-	}()
-
 	return &mgr
 }
 
@@ -137,9 +131,15 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 	return model.NodeId(data), nil
 }
 
-func (m *Mgr) start() {
-	go m.eventLoop()
-	m.connectToUnconnected()
+func (m *Mgr) Start() {
+	go func() {
+		err := m.loadSettings()
+		if err != nil {
+			panic("Unable to load settings " + err.Error())
+		}
+		go m.eventLoop()
+		m.connectToUnconnected()
+	}()
 }
 
 func (m *Mgr) connectToUnconnected() {
