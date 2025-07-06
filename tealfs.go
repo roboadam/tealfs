@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"tealfs/pkg/conns"
+	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model"
@@ -67,6 +68,13 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	nodeConnMapper := model.NewNodeConnectionMapper()
 	m := mgr.New(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, nodeConnMapper, ctx)
 	m.ConnectToNodeReqs = connReqs
+
+	custodianCommands := make(chan custodian.Command, chansize)
+	m.CustodianCommands = custodianCommands
+	custodian := custodian.NewCustodian(chansize)
+	custodian.Commands = custodianCommands
+	custodian.Start(ctx)
+
 	_ = conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,

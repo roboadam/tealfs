@@ -85,7 +85,7 @@ func New(
 		UiMgrDisk:               make(chan model.AddDiskReq, chanSize),
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
-		DiskMgrWrites:           make(chan model.WriteResult),
+		DiskMgrWrites:           make(chan model.WriteResult, chanSize),
 		DiskMgrReads:            make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:           make(chan model.GetBlockReq, chanSize),
 		WebdavMgrPuts:           make(chan model.PutBlockReq, chanSize),
@@ -408,6 +408,12 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 }
 
 func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
+	if r.Ok {
+		m.CustodianCommands <- custodian.Command{
+			Type:    custodian.CommandTypeAddBlock,
+			BlockId: model.BlockId(r.Ptr.FileName),
+		}
+	}
 	if r.Caller == m.NodeId {
 		resolved := m.pendingBlockWrites.resolve(r.Ptr, r.ReqId)
 		var err error = nil
