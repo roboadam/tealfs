@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"sync/atomic"
 	"tealfs/pkg/chanutil"
+	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
@@ -40,7 +41,7 @@ func TestConnectToSuccess(t *testing.T) {
 	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path", Node: expectedNodeId2}}
 	disks := []string{"disk"}
 
-	_, _ = mgrWithConnectedNodes(
+	_, _, _ = mgrWithConnectedNodes(
 		ctx,
 		[]connectedNode{
 			{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
@@ -64,7 +65,7 @@ func TestReceiveSyncNodes(t *testing.T) {
 	disks := []string{"disk"}
 	connReqs := make(chan model.ConnectToNodeReq)
 
-	m, _ := mgrWithConnectedNodes(ctx, []connectedNode{
+	m, _, _ := mgrWithConnectedNodes(ctx, []connectedNode{
 		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId, disks: disks1},
 		{address: localAddress, conn: localConnectionId, node: localNodeId, disks: disks2},
 	}, 0, t, disks, connReqs)
@@ -102,7 +103,7 @@ func TestWebdavGet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m, fileOps := mgrWithConnectedNodes(ctx, []connectedNode{
+	m, fileOps, _ := mgrWithConnectedNodes(ctx, []connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, 0, t, disks, make(chan<- model.ConnectToNodeReq))
@@ -185,7 +186,7 @@ func TestWebdavPut(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m, fileOps := mgrWithConnectedNodes(ctx, []connectedNode{
+	m, fileOps, custodianCommands := mgrWithConnectedNodes(ctx, []connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks12},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks34},
 	}, maxNumberOfWritesInOnePass, t, paths, make(chan<- model.ConnectToNodeReq))
@@ -228,23 +229,23 @@ func TestWebdavPut(t *testing.T) {
 					result := model.NewWriteResultOk(request.Data.Ptr, request.Caller, request.ReqId)
 					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
 				}
-
+			case <-custodianCommands:
 			}
 		}
 	}()
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 
 	for _, block := range blocks {
 		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
 		<-m.MgrWebdavPuts
 	}
-	if fileOps.WriteCount == 0 || oneCount == 0 /*|| twoCount == 0 || threeCount == 0 || fourCount == 0*/ {
+	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 || threeCount == 0 || fourCount == 0 {
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fileOps.WriteCount))
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", oneCount))
-		// t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", twoCount))
-		// t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", threeCount))
-		// t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fourCount))
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", twoCount))
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", threeCount))
+		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fourCount))
 		return
 	}
 }
@@ -264,7 +265,7 @@ func TestBroadcast(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	m, _ := mgrWithConnectedNodes(ctx, []connectedNode{
+	m, _, _ := mgrWithConnectedNodes(ctx, []connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
 	}, maxNumberOfWritesInOnePass, t, paths, make(chan<- model.ConnectToNodeReq))
@@ -313,11 +314,13 @@ type connectedNode struct {
 	disks   []model.DiskIdPath
 }
 
-func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, t *testing.T, paths []string, connReqs chan<- model.ConnectToNodeReq) (*Mgr, *disk.MockFileOps) {
+func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, t *testing.T, paths []string, connReqs chan<- model.ConnectToNodeReq) (*Mgr, *disk.MockFileOps, chan custodian.Command) {
 	fileOps := disk.MockFileOps{}
 	nodeConnMapper := model.NewNodeConnectionMapper()
 	m := New(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1, nodeConnMapper, ctx)
 	m.ConnectToNodeReqs = connReqs
+	custodianCommands := make(chan custodian.Command, chanSize)
+	m.CustodianCommands = custodianCommands
 	m.Start()
 
 	for _, path := range paths {
@@ -383,7 +386,7 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 		}
 	}
 
-	return m, &fileOps
+	return m, &fileOps, custodianCommands
 }
 
 func assertAllPayloadsSyncNodes(t *testing.T, mcs []model.MgrConnsSend) []connIdAndSyncNodes {

@@ -97,7 +97,7 @@ func (n *NodeConnectionMapper) Marshal() ([]byte, error) {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	exportable := NodeConnectionMapperExport{
-		Addresses:      n.addresses.ToSlice(),
+		Addresses:      n.addresses.GetValues(),
 		AddressConnMap: n.addressConnMap.ToMap(),
 		ConnNodeMap:    n.connNodeMap.ToMap(),
 		AddressNodeMap: n.addressNodeMap.ToMap(),
