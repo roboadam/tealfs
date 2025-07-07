@@ -28,7 +28,7 @@ func TestListenAddress(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	_, _, _, ops := NewUi(ctx)
-	if ops.BindAddr != "mockBindAddr:123" {
+	if ops.GetBindAddr() != "mockBindAddr:123" {
 		t.Error("Didn't bind to mockBindAddr:123")
 	}
 }
@@ -44,7 +44,7 @@ func TestConnectTo(t *testing.T) {
 	}
 	request.PostForm.Add("hostAndPort", "abcdef")
 
-	go ops.Handlers["/connect-to"](&mockResponseWriter, &request)
+	go ops.HandlerFor("/connect-to")(&mockResponseWriter, &request)
 	reqToMgr := <-connToReq
 	if reqToMgr.Address != "abcdef" {
 		t.Error("Didn't send proper request to Mgr")
@@ -72,7 +72,7 @@ func TestAddDiskGet(t *testing.T) {
 	}
 
 	waitForWrittenData(func() string {
-		ops.Handlers["/add-disk"](&mockResponseWriter, &request)
+		ops.HandlerFor("/add-disk")(&mockResponseWriter, &request)
 		return mockResponseWriter.WrittenData
 	}, []string{"local", string(nodeId1), string(nodeId2)})
 }
@@ -100,7 +100,7 @@ func TestStatus(t *testing.T) {
 	}
 
 	waitForWrittenData(func() string {
-		ops.Handlers["/connection-status"](&mockResponseWriter, &request)
+		ops.HandlerFor("/connection-status")(&mockResponseWriter, &request)
 		return mockResponseWriter.WrittenData
 	}, []string{"1234", "5678"})
 }
@@ -126,10 +126,7 @@ func NewUi(ctx context.Context) (*ui.Ui, chan model.ConnectToNodeReq, chan model
 	connToResp := make(chan model.UiConnectionStatus)
 	diskAddReq := make(chan model.AddDiskReq)
 	diskStatus := make(chan model.UiDiskStatus)
-	ops := ui.MockHtmlOps{
-		BindAddr: "mockBindAddr:123",
-		Handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
-	}
-	u := ui.NewUi(connToReq, connToResp, diskAddReq, diskStatus, &ops, "nodeId", "address", ctx)
-	return u, connToReq, connToResp, &ops
+	ops := ui.NewMockHtmlOps("mockBindAddr:123")
+	u := ui.NewUi(connToReq, connToResp, diskAddReq, diskStatus, ops, "nodeId", "address", ctx)
+	return u, connToReq, connToResp, ops
 }
