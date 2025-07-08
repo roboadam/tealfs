@@ -26,6 +26,6 @@ require (
 )
 
 require (
-	github.com/deckarep/golang-set/v2 v2.8.0 // indirect
+	github.com/deckarep/golang-set/v2 v2.8.0
 	golang.org/x/sys v0.33.0 // indirect
 )

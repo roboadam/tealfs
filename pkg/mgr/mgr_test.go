@@ -205,6 +205,7 @@ func TestWebdavPut(t *testing.T) {
 	twoCount := int32(0)
 	threeCount := int32(0)
 	fourCount := int32(0)
+	custodianCount := int32(0)
 
 	go func() {
 		for {
@@ -230,6 +231,7 @@ func TestWebdavPut(t *testing.T) {
 					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
 				}
 			case <-custodianCommands:
+				atomic.AddInt32(&custodianCount, 1)
 			}
 		}
 	}()
@@ -246,6 +248,10 @@ func TestWebdavPut(t *testing.T) {
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", twoCount))
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", threeCount))
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fourCount))
+		return
+	}
+	if atomic.LoadInt32(&custodianCount) != 200 {
+		t.Error("Expected custodian to have received some commands ", custodianCount)
 		return
 	}
 }
@@ -271,7 +277,7 @@ func TestBroadcast(t *testing.T) {
 	}, maxNumberOfWritesInOnePass, t, paths, make(chan<- model.ConnectToNodeReq))
 
 	testMsg := model.NewBroadcast([]byte{1, 2, 3})
-	outMsgCounter := 0
+	outMsgCounter := int32(0)
 
 	go func() {
 		for {
@@ -281,7 +287,7 @@ func TestBroadcast(t *testing.T) {
 			case w := <-m.MgrConnsSends:
 				if b, ok := w.Payload.(*model.Broadcast); ok {
 					if reflect.DeepEqual(b, &testMsg) {
-						outMsgCounter++
+						atomic.AddInt32(&outMsgCounter, 1)
 					}
 				}
 			}
@@ -290,7 +296,8 @@ func TestBroadcast(t *testing.T) {
 
 	m.WebdavMgrBroadcast <- model.NewBroadcast([]byte{1, 2, 3})
 	time.Sleep(time.Millisecond * 500)
-	if outMsgCounter != 2 {
+	ctr := atomic.LoadInt32(&outMsgCounter)
+	if ctr != 2 {
 		t.Error("Expected 2 messages to go out, got", outMsgCounter)
 		return
 	}

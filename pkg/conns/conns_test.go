@@ -210,7 +210,7 @@ func connectTo(address string, outStatus chan model.NetConnectionStatus, inConne
 	return <-outStatus
 }
 
-func newConnsTest(ctx context.Context) (Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.ConnectToNodeReq, chan model.MgrConnsSend, *MockConnectionProvider) {
+func newConnsTest(ctx context.Context) (*Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.ConnectToNodeReq, chan model.MgrConnsSend, *MockConnectionProvider) {
 	outStatuses := make(chan model.NetConnectionStatus)
 	outReceives := make(chan model.ConnsMgrReceive)
 	inConnectTo := make(chan model.ConnectToNodeReq)

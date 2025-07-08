@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
@@ -27,6 +28,7 @@ import (
 
 type Conns struct {
 	netConns      map[model.ConnId]tnet.RawNet
+	netConnsMux   *sync.RWMutex
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
 	outStatuses   chan model.NetConnectionStatus
@@ -49,13 +51,14 @@ func NewConns(
 	address string,
 	nodeId model.NodeId,
 	ctx context.Context,
-) Conns {
+) *Conns {
 	listener, err := provider.GetListener(address)
 	if err != nil {
 		panic(err)
 	}
 	c := Conns{
 		netConns:      make(map[model.ConnId]tnet.RawNet),
+		netConnsMux:   &sync.RWMutex{},
 		nextId:        model.ConnId(0),
 		acceptedConns: make(chan AcceptedConns),
 		outStatuses:   outStatuses,
@@ -72,7 +75,7 @@ func NewConns(
 	go c.listen()
 	go c.stopOnDone()
 
-	return c
+	return &c
 }
 
 func (c *Conns) stopOnDone() {
@@ -81,6 +84,8 @@ func (c *Conns) stopOnDone() {
 	if err != nil {
 		log.Warn("error closing listener")
 	}
+	c.netConnsMux.Lock()
+	defer c.netConnsMux.Unlock()
 	for connId := range c.netConns {
 		conn := c.netConns[connId]
 		err := conn.Close()
@@ -189,14 +194,14 @@ func (c *Conns) consumeData(conn model.ConnId) {
 		case <-c.ctx.Done():
 			return
 		default:
-			netConn := c.netConns[conn]
+			netConn := c.rawNetForConnId(conn)
 			payload, err := netConn.ReadPayload()
 			if err != nil {
 				closeErr := netConn.Close()
 				if closeErr != nil {
 					log.Warn("Error closing connection", closeErr)
 				}
-				delete(c.netConns, conn)
+				c.deleteConn(conn)
 				return
 			}
 			cmr := model.ConnsMgrReceive{
@@ -206,6 +211,18 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 		}
 	}
+}
+
+func (c *Conns) rawNetForConnId(connId model.ConnId) tnet.RawNet {
+	c.netConnsMux.RLock()
+	defer c.netConnsMux.RUnlock()
+	return c.netConns[connId]
+}
+
+func (c *Conns) deleteConn(connId model.ConnId) {
+	c.netConnsMux.Lock()
+	defer c.netConnsMux.Unlock()
+	delete(c.netConns, connId)
 }
 
 func (c *Conns) connectTo(address string) (model.ConnId, error) {
@@ -218,6 +235,8 @@ func (c *Conns) connectTo(address string) (model.ConnId, error) {
 }
 
 func (c *Conns) saveNetConn(netConn net.Conn) model.ConnId {
+	c.netConnsMux.Lock()
+	defer c.netConnsMux.Unlock()
 	rawNet := tnet.NewRawNet(netConn)
 	id := c.nextId
 	c.nextId++
