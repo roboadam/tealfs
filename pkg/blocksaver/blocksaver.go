@@ -16,17 +16,41 @@ package blocksaver
 
 import (
 	"context"
+	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 )
 
 type BlockSaver struct {
-	Req chan model.PutBlockReq
+	Req         <-chan model.PutBlockReq
+	RemoteDest  chan<- SaveToDisk
+	LocalDest   chan<- SaveToDisk
+	Distributer *dist.MirrorDistributer
+	NodeId      model.NodeId
+}
+
+type Dest struct {
+	NodeId model.NodeId
+	Disk   model.DiskId
+}
+
+type SaveToDisk struct {
+	Dest Dest
+	Req  model.PutBlockReq
 }
 
 func (bs *BlockSaver) Start(ctx context.Context) {
 	for {
 		select {
-		case <-bs.Req:
+		case req := <-bs.Req:
+			dests := bs.destsFor(req)
+			for _, dest := range dests {
+				saveToDisk := SaveToDisk{Dest: dest, Req: req}
+				if dest.NodeId == bs.NodeId {
+					bs.LocalDest <- saveToDisk
+				} else {
+					bs.RemoteDest <- saveToDisk
+				}
+			}
 		case <-ctx.Done():
 			return
 		}
