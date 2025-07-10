@@ -61,7 +61,6 @@ func FileFromBytes(raw []byte, fileSystem *FileSystem) (File, []byte, error) {
 		blockId, remainder = model.StringFromBytes(remainder)
 		blocks[i].Id = model.BlockId(blockId)
 		blocks[i].Data = []byte{}
-		blocks[i].Type = model.Mirrored
 	}
 	rawPath, remainder := model.StringFromBytes(remainder)
 
@@ -332,7 +331,6 @@ func write(wreq writeReq) writeResp {
 		for range numBlocksToCreate {
 			f.Block = append(f.Block, model.Block{
 				Id:   model.NewBlockId(),
-				Type: model.Mirrored,
 				Data: []byte{},
 			})
 			f.HasData = append(f.HasData, false)

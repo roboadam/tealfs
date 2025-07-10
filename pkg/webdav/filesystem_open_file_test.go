@@ -253,7 +253,6 @@ func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux 
 					Id: req.Req.Id(),
 					Block: model.Block{
 						Id:   req.Req.BlockId,
-						Type: model.Mirrored,
 						Data: blockData,
 					},
 					Err: nil,
@@ -263,7 +262,6 @@ func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux 
 					Id: req.Req.Id(),
 					Block: model.Block{
 						Id:   req.Req.BlockId,
-						Type: model.Mirrored,
 						Data: []byte{},
 					},
 					Err: nil,

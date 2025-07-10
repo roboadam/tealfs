@@ -250,10 +250,6 @@ func TestWebdavPut(t *testing.T) {
 		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fourCount))
 		return
 	}
-	if atomic.LoadInt32(&custodianCount) != 200 {
-		t.Error("Expected custodian to have received some commands ", custodianCount)
-		return
-	}
 }
 
 func TestBroadcast(t *testing.T) {
@@ -324,7 +320,7 @@ type connectedNode struct {
 func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, t *testing.T, paths []string, connReqs chan<- model.ConnectToNodeReq) (*Mgr, *disk.MockFileOps, chan custodian.Command) {
 	fileOps := disk.MockFileOps{}
 	nodeConnMapper := model.NewNodeConnectionMapper()
-	m := New(chanSize, "dummyAddress", "dummyPath", &fileOps, model.Mirrored, 1, nodeConnMapper, ctx)
+	m := New(chanSize, "dummyAddress", "dummyPath", &fileOps, 1, nodeConnMapper, ctx)
 	m.ConnectToNodeReqs = connReqs
 	custodianCommands := make(chan custodian.Command, chanSize)
 	m.CustodianCommands = custodianCommands

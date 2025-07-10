@@ -55,7 +55,6 @@ type Mgr struct {
 
 	NodeId             model.NodeId
 	mirrorDistributer  dist.MirrorDistributer
-	blockType          model.BlockType
 	nodeAddress        string
 	savePath           string
 	fileOps            disk.FileOps
@@ -71,7 +70,6 @@ func New(
 	nodeAddress string,
 	globalPath string,
 	fileOps disk.FileOps,
-	blockType model.BlockType,
 	freeBytes uint32,
 	nodeConnMapper *model.NodeConnectionMapper,
 	ctx context.Context,
@@ -101,7 +99,6 @@ func New(
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
 		mirrorDistributer:       dist.NewMirrorDistributer(),
-		blockType:               blockType,
 		nodeAddress:             nodeAddress,
 		savePath:                globalPath,
 		fileOps:                 fileOps,
@@ -450,7 +447,6 @@ func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
 				Id: r.ReqId,
 				Block: model.Block{
 					Id:   r.BlockId,
-					Type: model.Mirrored,
 					Data: r.Data.Data,
 				},
 			}
@@ -504,16 +500,6 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	}
 }
 
-func (m *Mgr) handleWebdavWriteRequest(w model.PutBlockReq) {
-	switch w.Block.Type {
-	case model.Mirrored:
-		m.handleMirroredWriteRequest(w)
-	case model.XORed:
-		panic("unknown block type")
-	default:
-		panic("unknown block type")
-	}
-}
 func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
 	connections := m.nodeConnMapper.Connections()
 	for _, connId := range connections.GetValues() {
@@ -521,7 +507,7 @@ func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
 	}
 }
 
-func (m *Mgr) handleMirroredWriteRequest(b model.PutBlockReq) {
+func (m *Mgr) handleWebdavWriteRequest(b model.PutBlockReq) {
 	ptrs := m.mirrorDistributer.WritePointersForId(b.Block.Id)
 	for _, ptr := range ptrs {
 		m.pendingBlockWrites.add(b.Id(), ptr)

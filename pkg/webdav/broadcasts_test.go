@@ -29,8 +29,7 @@ func TestSerializeBroadcast(t *testing.T) {
 			ModeValue: 4,
 			Modtime:   time.Now(),
 			Block: []model.Block{{
-				Id:   "blockId",
-				Type: model.Mirrored,
+				Id: "blockId",
 			}},
 			HasData: []bool{true},
 			Path:    path,

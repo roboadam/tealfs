@@ -66,7 +66,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	chansize := 0
 	connReqs := make(chan model.ConnectToNodeReq)
 	nodeConnMapper := model.NewNodeConnectionMapper()
-	m := mgr.New(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, nodeConnMapper, ctx)
+	m := mgr.New(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, freeBytes, nodeConnMapper, ctx)
 	m.ConnectToNodeReqs = connReqs
 
 	custodianCommands := make(chan custodian.Command, chansize)
