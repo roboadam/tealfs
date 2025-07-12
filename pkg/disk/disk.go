@@ -42,7 +42,7 @@ func New(
 		path:      path,
 		id:        id,
 		diskId:    diskId,
-		inWrites:  mgrDiskWrites,
+		InWrites:  mgrDiskWrites,
 		inReads:   mgrDiskReads,
 		outReads:  diskMgrReads,
 		outWrites: diskMgrWrites,
@@ -58,7 +58,7 @@ type Disk struct {
 	diskId    model.DiskId
 	outReads  chan model.ReadResult
 	outWrites chan model.WriteResult
-	inWrites  chan model.WriteRequest
+	InWrites  chan model.WriteRequest
 	inReads   chan model.ReadRequest
 	ctx       context.Context
 }
@@ -70,7 +70,7 @@ func (d *Disk) consumeChannels() {
 		select {
 		case <-d.ctx.Done():
 			return
-		case s := <-d.inWrites:
+		case s := <-d.InWrites:
 			err := d.path.Save(s.Data)
 			if err == nil {
 				wr := model.NewWriteResultOk(s.Data.Ptr, s.Caller, s.ReqId)

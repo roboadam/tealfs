@@ -22,8 +22,8 @@ import (
 
 type BlockSaver struct {
 	Req         <-chan model.PutBlockReq
-	RemoteDest  chan<- SaveToDisk
-	LocalDest   chan<- SaveToDisk
+	RemoteDest  chan<- SaveToDiskReq
+	LocalDest   chan<- SaveToDiskReq
 	Distributer *dist.MirrorDistributer
 	NodeId      model.NodeId
 }
@@ -33,9 +33,16 @@ type Dest struct {
 	Disk   model.DiskId
 }
 
-type SaveToDisk struct {
-	Dest Dest
-	Req  model.PutBlockReq
+type SaveToDiskReq struct {
+	Caller model.NodeId
+	Dest   Dest
+	Req    model.PutBlockReq
+}
+
+type SaveToDiskResp struct {
+	Caller model.BlockId
+	Dest   Dest
+	Resp   model.PutBlockResp
 }
 
 func (bs *BlockSaver) Start(ctx context.Context) {
@@ -44,7 +51,7 @@ func (bs *BlockSaver) Start(ctx context.Context) {
 		case req := <-bs.Req:
 			dests := bs.destsFor(req)
 			for _, dest := range dests {
-				saveToDisk := SaveToDisk{Dest: dest, Req: req}
+				saveToDisk := SaveToDiskReq{Dest: dest, Req: req}
 				if dest.NodeId == bs.NodeId {
 					bs.LocalDest <- saveToDisk
 				} else {
