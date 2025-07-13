@@ -26,6 +26,7 @@ const (
 	ReadResultType     PayloadType = 6
 	BroadcastType      PayloadType = 7
 	AddDiskRequestType PayloadType = 8
+	SaveToDiskReq      PayloadType = 9
 )
 
 type Payload interface {

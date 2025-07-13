@@ -18,7 +18,14 @@ import (
 	"context"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
+
+// This process accepts put requests from the local filesystem process only
+// Then it figures which disk (remote or local) need to get the data, then it send
+// The SaveToDiskReq to the appropriate places
+// It then accepts responses from the disks and once all are successful it responds
+// to the local filesystem with a success message
 
 type BlockSaver struct {
 	// Request phase
@@ -46,6 +53,10 @@ type SaveToDiskReq struct {
 	Req    model.PutBlockReq
 }
 
+func (s *SaveToDiskReq) Type() model.PayloadType {
+	return model.SaveToDiskReq
+}
+
 type SaveToDiskResp struct {
 	Caller model.NodeId
 	Dest   Dest
@@ -53,31 +64,65 @@ type SaveToDiskResp struct {
 }
 
 func (bs *BlockSaver) Start(ctx context.Context) {
-	requestState := make(map[model.PutBlockId][]model.DiskId)
+	requestState := make(map[model.PutBlockId]set.Set[model.DiskId])
 	for {
 		select {
 		case req := <-bs.Req:
-			dests := bs.destsFor(req)
-			requestState[req.Id()] = make([]model.DiskId, len(dests))
-			for i, dest := range dests {
-				requestState[req.Id()][i] = dest.DiskId
-				saveToDisk := SaveToDiskReq{Dest: dest, Req: req}
-				if dest.NodeId == bs.NodeId {
-					bs.LocalDest <- saveToDisk
-				} else {
-					bs.RemoteDest <- saveToDisk
-				}
-			}
+			bs.handlePutReq(req, requestState)
 		case resp := <-bs.LocalResp:
-			if _, ok := requestState[resp.Resp.Id]; ok {
-				if resp.Resp.Err != nil {
-					delete(requestState, resp.Resp.Id)
-
-				} else {
-				}
-			}
+			bs.handleSaveResp(requestState, resp)
 		case <-ctx.Done():
 			return
+		}
+	}
+}
+
+func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model.PutBlockId]set.Set[model.DiskId]) {
+	// Find all disk destinations for the block
+	dests := bs.destsFor(req)
+	requestState[req.Id()] = set.NewSet[model.DiskId]()
+
+	// For each disk
+	for _, dest := range dests {
+		// Save each request so we know when we've received all responses
+		state := requestState[req.Id()]
+		state.Add(dest.DiskId)
+
+		saveToDisk := SaveToDiskReq{Dest: dest, Req: req}
+
+		// If the destination is this node send to the local disk, otherwise send to remote node
+		if dest.NodeId == bs.NodeId {
+			bs.LocalDest <- saveToDisk
+		} else {
+			bs.RemoteDest <- saveToDisk
+		}
+	}
+}
+
+func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]set.Set[model.DiskId], resp SaveToDiskResp) {
+	// If we get a save response that we don't have record of one of the other destinations must have already failed
+	// so we can safely ignore any other responses
+	if _, ok := requestState[resp.Resp.Id]; ok {
+
+		if resp.Resp.Err != nil {
+			// If a response is an error then we don't have enough redundancy so ignore all following responses and send back
+			// an error
+			delete(requestState, resp.Resp.Id)
+			bs.Resp <- model.PutBlockResp{
+				Id:  resp.Resp.Id,
+				Err: resp.Resp.Err,
+			}
+		} else {
+			// If the response is a success remove the record. If all records are removed that means
+			// all save requests were successful so we can respond that the save was successful
+			state := requestState[resp.Resp.Id]
+			state.Remove(resp.Dest.DiskId)
+			if state.Len() == 0 {
+				delete(requestState, resp.Resp.Id)
+				bs.Resp <- model.PutBlockResp{
+					Id: resp.Resp.Id,
+				}
+			}
 		}
 	}
 }
