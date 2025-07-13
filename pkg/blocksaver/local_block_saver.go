@@ -17,14 +17,16 @@ package blocksaver
 import (
 	"context"
 	"errors"
-	log "github.com/sirupsen/logrus"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type LocalBlockSaver struct {
 	Req   <-chan SaveToDiskReq
-	Disks []disk.Disk
+	Disks *set.Set[disk.Disk]
 }
 
 func (l *LocalBlockSaver) Start(ctx context.Context) {
@@ -58,7 +60,7 @@ func convertSaveReq(req *SaveToDiskReq) *model.WriteRequest {
 }
 
 func (l *LocalBlockSaver) diskForId(diskId model.DiskId) (*disk.Disk, error) {
-	for _, disk := range l.Disks {
+	for _, disk := range l.Disks.GetValues() {
 		if disk.Id() == diskId {
 			return &disk, nil
 		}
