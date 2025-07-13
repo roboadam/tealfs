@@ -17,6 +17,7 @@ package blocksaver
 import (
 	"context"
 	"errors"
+	log "github.com/sirupsen/logrus"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 )
@@ -33,20 +34,15 @@ func (l *LocalBlockSaver) Start(ctx context.Context) {
 			return
 		case req := <-l.Req:
 			if disk, err := l.diskForId(req.Dest.Disk); err == nil {
-				disk.InWrites <- model.WriteRequest{
-					Caller: req.Caller,
-					Data: model.RawData{
-						Ptr:  model.DiskPointer{},
-						Data: []byte{},
-					},
-					ReqId: req.Req.Id(),
-				}
+				disk.InWrites <- *convertSaveReq(&req)
+			} else {
+				log.Errorf("no disk for id %s, %v", req.Dest.Disk, err)
 			}
 		}
 	}
 }
 
-func ConvertSaveReq(req *SaveToDiskReq) *model.WriteRequest {
+func convertSaveReq(req *SaveToDiskReq) *model.WriteRequest {
 	return &model.WriteRequest{
 		Caller: req.Caller,
 		Data: model.RawData{
