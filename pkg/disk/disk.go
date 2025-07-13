@@ -45,7 +45,7 @@ func New(
 		InWrites:  mgrDiskWrites,
 		inReads:   mgrDiskReads,
 		outReads:  diskMgrReads,
-		outWrites: diskMgrWrites,
+		OutWrites: diskMgrWrites,
 		ctx:       ctx,
 	}
 	go p.consumeChannels()
@@ -57,7 +57,7 @@ type Disk struct {
 	id        model.NodeId
 	diskId    model.DiskId
 	outReads  chan model.ReadResult
-	outWrites chan model.WriteResult
+	OutWrites chan model.WriteResult
 	InWrites  chan model.WriteRequest
 	inReads   chan model.ReadRequest
 	ctx       context.Context
@@ -74,10 +74,10 @@ func (d *Disk) consumeChannels() {
 			err := d.path.Save(s.Data)
 			if err == nil {
 				wr := model.NewWriteResultOk(s.Data.Ptr, s.Caller, s.ReqId)
-				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save success")
+				chanutil.Send(d.ctx, d.OutWrites, wr, "disk: save success")
 			} else {
 				wr := model.NewWriteResultErr(err.Error(), s.Caller, s.ReqId)
-				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save failure")
+				chanutil.Send(d.ctx, d.OutWrites, wr, "disk: save failure")
 			}
 		case r := <-d.inReads:
 			if len(r.Ptrs) == 0 {

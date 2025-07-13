@@ -40,7 +40,7 @@ type SaveToDiskReq struct {
 }
 
 type SaveToDiskResp struct {
-	Caller model.BlockId
+	Caller model.NodeId
 	Dest   Dest
 	Resp   model.PutBlockResp
 }
