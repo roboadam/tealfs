@@ -63,19 +63,21 @@ func TestMirror(t *testing.T) {
 			return
 		}
 
-		if ptrs[0].NodeId == node1 {
+		switch ptrs[0].NodeId {
+		case node1:
 			bucket1++
-		} else if ptrs[0].NodeId == node2 {
+		case node2:
 			bucket2++
-		} else if ptrs[0].NodeId == node3 {
+		case node3:
 			bucket3++
 		}
 
-		if ptrs[1].NodeId == node1 {
+		switch ptrs[1].NodeId {
+		case node1:
 			bucket1++
-		} else if ptrs[1].NodeId == node2 {
+		case node2:
 			bucket2++
-		} else if ptrs[1].NodeId == node3 {
+		case node3:
 			bucket3++
 		}
 	}
