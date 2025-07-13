@@ -30,7 +30,7 @@ type BlockSaver struct {
 
 type Dest struct {
 	NodeId model.NodeId
-	Disk   model.DiskId
+	DiskId model.DiskId
 }
 
 type SaveToDiskReq struct {

@@ -53,7 +53,7 @@ func convert(wr *model.WriteResult) *SaveToDiskResp {
 		Caller: wr.Caller,
 		Dest: Dest{
 			NodeId: wr.Ptr.NodeId,
-			Disk:   wr.Ptr.Disk,
+			DiskId: wr.Ptr.Disk,
 		},
 		Resp: model.PutBlockResp{
 			Id:  wr.ReqId,

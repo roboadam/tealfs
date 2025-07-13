@@ -32,16 +32,58 @@ func TestLocalBlockSaver(t *testing.T) {
 
 	req := make(chan SaveToDiskReq)
 
+	disk1 := mockDisk(nodeId, ctx)
+	disk2 := mockDisk(nodeId, ctx)
 	disks := set.NewSet[disk.Disk]()
-	disks.Add(*mockDisk(nodeId, ctx))
-	disks.Add(*mockDisk(nodeId, ctx))
+	disks.Add(*disk1)
+	disks.Add(*disk2)
 
 	lbs := LocalBlockSaver{
 		Req:   req,
 		Disks: &disks,
 	}
 
-	lbs.Start(ctx)
+	go lbs.Start(ctx)
+
+	req <- SaveToDiskReq{
+		Caller: model.NewNodeId(),
+		Dest: Dest{
+			NodeId: nodeId,
+			DiskId: disk1.Id(),
+		},
+		Req: model.NewPutBlockReq(model.Block{
+			Id:   model.NewBlockId(),
+			Data: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+		}),
+	}
+
+	result := <-disk1.OutWrites
+	if !result.Ok {
+		t.Errorf("Expected write to succeed, got error: %s", result.Message)
+	}
+
+	if result.Ptr.NodeId != nodeId || result.Ptr.Disk != disk1.Id() {
+		t.Errorf("Expected DiskPointer to match, got %v", result.Ptr)
+	}
+
+	req <- SaveToDiskReq{
+		Caller: model.NewNodeId(),
+		Dest: Dest{
+			NodeId: nodeId,
+			DiskId: disk2.Id(),
+		},
+		Req: model.NewPutBlockReq(model.Block{
+			Id:   model.NewBlockId(),
+			Data: []byte{10, 9, 8, 7, 6, 5, 4, 3, 2, 1},
+		}),
+	}
+	result = <-disk2.OutWrites
+	if !result.Ok {
+		t.Errorf("Expected write to succeed, got error: %s", result.Message)
+	}
+	if result.Ptr.NodeId != nodeId || result.Ptr.Disk != disk2.Id() {
+		t.Errorf("Expected DiskPointer to match, got %v", result.Ptr)
+	}
 }
 
 func mockDisk(nodeId model.NodeId, ctx context.Context) *disk.Disk {

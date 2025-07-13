@@ -21,7 +21,7 @@ func (b *BlockSaver) destsFor(req model.PutBlockReq) []Dest {
 	for _, ptr := range ptrs {
 		dests = append(dests, Dest{
 			NodeId: ptr.NodeId,
-			Disk:   ptr.Disk,
+			DiskId: ptr.Disk,
 		})
 	}
 	return dests

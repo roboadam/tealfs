@@ -35,10 +35,10 @@ func (l *LocalBlockSaver) Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case req := <-l.Req:
-			if disk, err := l.diskForId(req.Dest.Disk); err == nil {
+			if disk, err := l.diskForId(req.Dest.DiskId); err == nil {
 				disk.InWrites <- *convertSaveReq(&req)
 			} else {
-				log.Errorf("no disk for id %s, %v", req.Dest.Disk, err)
+				log.Errorf("no disk for id %s, %v", req.Dest.DiskId, err)
 			}
 		}
 	}
@@ -50,7 +50,7 @@ func convertSaveReq(req *SaveToDiskReq) *model.WriteRequest {
 		Data: model.RawData{
 			Ptr: model.DiskPointer{
 				NodeId:   req.Dest.NodeId,
-				Disk:     req.Dest.Disk,
+				Disk:     req.Dest.DiskId,
 				FileName: string(req.Req.Block.Id),
 			},
 			Data: req.Req.Block.Data,
