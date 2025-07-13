@@ -20,7 +20,7 @@ import (
 	"sync"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
-	set "github.com/deckarep/golang-set/v2"
+	"tealfs/pkg/set"
 )
 
 type Ui struct {
