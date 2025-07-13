@@ -21,9 +21,16 @@ import (
 )
 
 type BlockSaver struct {
-	Req         <-chan model.PutBlockReq
-	RemoteDest  chan<- SaveToDiskReq
-	LocalDest   chan<- SaveToDiskReq
+	// Request phase
+	Req        <-chan model.PutBlockReq
+	RemoteDest chan<- SaveToDiskReq
+	LocalDest  chan<- SaveToDiskReq
+
+	// Response phase
+	RemoteResp <-chan SaveToDiskResp
+	LocalResp  <-chan SaveToDiskResp
+	Resp       chan<- model.PutBlockResp
+
 	Distributer *dist.MirrorDistributer
 	NodeId      model.NodeId
 }
@@ -46,16 +53,27 @@ type SaveToDiskResp struct {
 }
 
 func (bs *BlockSaver) Start(ctx context.Context) {
+	requestState := make(map[model.PutBlockId][]model.DiskId)
 	for {
 		select {
 		case req := <-bs.Req:
 			dests := bs.destsFor(req)
-			for _, dest := range dests {
+			requestState[req.Id()] = make([]model.DiskId, len(dests))
+			for i, dest := range dests {
+				requestState[req.Id()][i] = dest.DiskId
 				saveToDisk := SaveToDiskReq{Dest: dest, Req: req}
 				if dest.NodeId == bs.NodeId {
 					bs.LocalDest <- saveToDisk
 				} else {
 					bs.RemoteDest <- saveToDisk
+				}
+			}
+		case resp := <-bs.LocalResp:
+			if _, ok := requestState[resp.Resp.Id]; ok {
+				if resp.Resp.Err != nil {
+					delete(requestState, resp.Resp.Id)
+
+				} else {
 				}
 			}
 		case <-ctx.Done():
