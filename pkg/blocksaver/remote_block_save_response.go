@@ -12,24 +12,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package model
+package blocksaver
 
-type PayloadType uint16
+type RemoteBlockSaveResponse struct {
 
-const (
-	NoOpType           PayloadType = 0
-	IAmType            PayloadType = 1
-	SyncType           PayloadType = 2
-	WriteRequestType   PayloadType = 3
-	WriteResultType    PayloadType = 4
-	ReadRequestType    PayloadType = 5
-	ReadResultType     PayloadType = 6
-	BroadcastType      PayloadType = 7
-	AddDiskRequestType PayloadType = 8
-	SaveToDiskReq      PayloadType = 9
-	SaveToDiskResp     PayloadType = 10
-)
-
-type Payload interface {
-	Type() PayloadType
 }

@@ -63,6 +63,10 @@ type SaveToDiskResp struct {
 	Resp   model.PutBlockResp
 }
 
+func (s *SaveToDiskResp) Type() model.PayloadType {
+	return model.SaveToDiskResp
+}
+
 func (bs *BlockSaver) Start(ctx context.Context) {
 	requestState := make(map[model.PutBlockId]set.Set[model.DiskId])
 	for {

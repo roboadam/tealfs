@@ -29,6 +29,7 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	defer cancel()
 
 	nodeId := model.NewNodeId()
+	remoteNodeId := model.NewNodeId()
 
 	disk1 := mockDisk(nodeId, ctx)
 	disk2 := mockDisk(nodeId, ctx)
@@ -37,13 +38,19 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	disks.Add(*disk2)
 
 	resp := make(chan SaveToDiskResp)
+	sends := make(chan model.MgrConnsSend)
 
 	lbsr := LocalBlockSaveResponses{
-		Disks:          &disks,
-		WriteResponses: resp,
+		Disks:               &disks,
+		LocalWriteResponses: resp,
+		Sends:               sends,
+		NodeConnMap:         model.NewNodeConnectionMapper(),
+		NodeId:              nodeId,
 	}
 
 	go lbsr.Start(ctx)
+
+	lbsr.NodeConnMap.SetAll(1, "some-address:123", remoteNodeId)
 
 	putBlockId := model.PutBlockId(uuid.NewString())
 	disk1.OutWrites <- model.NewWriteResultOk(
@@ -72,6 +79,23 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	wr = <-resp
 	if wr.Resp.Id != putBlockId2 {
 		t.Error("Unknown put block id")
+		return
+	}
+
+	putBlockId3 := model.PutBlockId(uuid.NewString())
+	disk1.OutWrites <- model.NewWriteResultOk(
+		model.DiskPointer{
+			NodeId:   nodeId,
+			Disk:     disk1.Id(),
+			FileName: uuid.NewString(),
+		},
+		remoteNodeId,
+		putBlockId3,
+	)
+
+	payload := <-sends
+	if payload.Payload.Type() != model.SaveToDiskResp {
+		t.Error("unknown send payload")
 		return
 	}
 }
