@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
@@ -95,13 +96,34 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		uiAddress,
 		ctx,
 	)
+
+	webdavPutReq := make(chan model.PutBlockReq)
+	webdavPutResp := make(chan model.PutBlockResp)
+
+	localSave := make(chan blocksaver.SaveToDiskReq)
+	remoteSave := make(chan blocksaver.SaveToDiskReq)
+	saveResp := make(chan blocksaver.SaveToDiskResp)
+
+	bs := blocksaver.BlockSaver{
+		Req:         webdavPutReq,
+		RemoteDest:  remoteSave,
+		LocalDest:   localSave,
+		InResp:      saveResp,
+		Resp:        webdavPutResp,
+		Distributer: &m.MirrorDistributer,
+		NodeId:      m.NodeId,
+	}
+	go bs.Start(ctx)
+
+	lbs := blocksaver.LocalBlockSaver{}
+
 	_ = webdav.New(
 		m.NodeId,
 		m.WebdavMgrGets,
-		m.WebdavMgrPuts,
+		webdavPutReq,
 		m.WebdavMgrBroadcast,
 		m.MgrWebdavGets,
-		m.MgrWebdavPuts,
+		webdavPutResp,
 		m.MgrWebdavBroadcast,
 		webdavAddress,
 		ctx,

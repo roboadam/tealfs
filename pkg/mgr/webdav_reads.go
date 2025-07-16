@@ -21,7 +21,7 @@ import (
 )
 
 func (m *Mgr) handleWebdavGets(req model.GetBlockReq) {
-	ptrs := m.mirrorDistributer.ReadPointersForId(req.BlockId)
+	ptrs := m.MirrorDistributer.ReadPointersForId(req.BlockId)
 	if len(ptrs) == 0 {
 		m.webdavGetResponseError("not found", req.Id())
 	} else {

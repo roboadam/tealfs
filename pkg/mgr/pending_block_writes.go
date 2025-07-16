@@ -64,12 +64,3 @@ func (p *pendingBlockWrites) resolve(ptr model.DiskPointer, id model.PutBlockId)
 		return notTracking
 	}
 }
-
-func (p *pendingBlockWrites) cancel(b model.PutBlockId) {
-	if s, exists := p.b2ptr[b]; exists {
-		for _, ptr := range s.GetValues() {
-			delete(p.ptr2b, ptr)
-		}
-		delete(p.b2ptr, b)
-	}
-}

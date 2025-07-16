@@ -26,6 +26,7 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -37,31 +38,27 @@ type Mgr struct {
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
 	DiskMgrReads            chan model.ReadResult
-	DiskMgrWrites           chan model.WriteResult
 	WebdavMgrGets           chan model.GetBlockReq
-	WebdavMgrPuts           chan model.PutBlockReq
 	WebdavMgrBroadcast      chan model.Broadcast
 	MgrConnsSends           chan model.MgrConnsSend
-	MgrDiskWrites           map[model.DiskId]chan model.WriteRequest
 	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
 	MgrUiConnectionStatuses chan model.UiConnectionStatus
 	MgrUiDiskStatuses       chan model.UiDiskStatus
 	MgrWebdavGets           chan model.GetBlockResp
-	MgrWebdavPuts           chan model.PutBlockResp
 	MgrWebdavBroadcast      chan model.Broadcast
 	CustodianCommands       chan<- custodian.Command
 
 	nodeConnMapper *model.NodeConnectionMapper
 
 	NodeId             model.NodeId
-	mirrorDistributer  dist.MirrorDistributer
+	MirrorDistributer  dist.MirrorDistributer
 	nodeAddress        string
 	savePath           string
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
 	freeBytes          uint32
 	DiskIds            []model.DiskIdPath
-	disks              []disk.Disk
+	Disks              set.Set[disk.Disk]
 	ctx                context.Context
 }
 
@@ -83,29 +80,25 @@ func New(
 		UiMgrDisk:               make(chan model.AddDiskReq, chanSize),
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
-		DiskMgrWrites:           make(chan model.WriteResult, chanSize),
 		DiskMgrReads:            make(chan model.ReadResult, chanSize),
 		WebdavMgrGets:           make(chan model.GetBlockReq, chanSize),
-		WebdavMgrPuts:           make(chan model.PutBlockReq, chanSize),
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
-		MgrDiskWrites:           make(map[model.DiskId]chan model.WriteRequest),
 		MgrDiskReads:            make(map[model.DiskId]chan model.ReadRequest),
 		MgrUiConnectionStatuses: make(chan model.UiConnectionStatus, chanSize),
 		MgrUiDiskStatuses:       make(chan model.UiDiskStatus, chanSize),
 		MgrWebdavGets:           make(chan model.GetBlockResp, chanSize),
-		MgrWebdavPuts:           make(chan model.PutBlockResp, chanSize),
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
-		mirrorDistributer:       dist.NewMirrorDistributer(),
+		MirrorDistributer:       dist.NewMirrorDistributer(),
 		nodeAddress:             nodeAddress,
 		savePath:                globalPath,
 		fileOps:                 fileOps,
 		pendingBlockWrites:      newPendingBlockWrites(),
 		freeBytes:               freeBytes,
 		DiskIds:                 []model.DiskIdPath{},
-		disks:                   []disk.Disk{},
+		Disks:                   set.NewSet[disk.Disk](),
 		ctx:                     ctx,
 	}
 
@@ -150,13 +143,10 @@ func (m *Mgr) createDiskChannels(diskId model.DiskId) {
 	if _, ok := m.MgrDiskReads[diskId]; !ok {
 		m.MgrDiskReads[diskId] = make(chan model.ReadRequest)
 	}
-	if _, ok := m.MgrDiskWrites[diskId]; !ok {
-		m.MgrDiskWrites[diskId] = make(chan model.WriteRequest)
-	}
 }
 
 func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
-	for _, disk := range m.disks {
+	for _, disk := range m.Disks.GetValues() {
 		if disk.Id() == id {
 			return false
 		}
@@ -166,18 +156,16 @@ func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
 		p,
 		m.NodeId,
 		id,
-		m.MgrDiskWrites[id],
 		m.MgrDiskReads[id],
-		m.DiskMgrWrites,
 		m.DiskMgrReads,
 		m.ctx,
 	)
-	m.disks = append(m.disks, d)
+	m.Disks.Add(d)
 	return true
 }
 
 func (m *Mgr) markLocalDiskAvailable(id model.DiskId, path string, size int) {
-	m.mirrorDistributer.SetWeight(m.NodeId, id, size)
+	m.MirrorDistributer.SetWeight(m.NodeId, id, size)
 	status := model.UiDiskStatus{
 		Localness:     model.Local,
 		Availableness: model.Available,
@@ -267,12 +255,8 @@ func (m *Mgr) eventLoop() {
 			m.handleReceives(r)
 		case r := <-m.DiskMgrReads:
 			m.handleDiskReadResult(r)
-		case r := <-m.DiskMgrWrites:
-			m.handleDiskWriteResult(r)
 		case r := <-m.WebdavMgrGets:
 			m.handleWebdavGets(r)
-		case r := <-m.WebdavMgrPuts:
-			m.handleWebdavWriteRequest(r)
 		case r := <-m.WebdavMgrBroadcast:
 			m.handleWebdavMgrBroadcast(r)
 		}
@@ -370,23 +354,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			chanutil.Send(m.ctx, m.ConnectToNodeReqs, mct, "mgr: handleReceives: connect to")
 
 		}
-	case *model.WriteRequest:
-		caller, ok := m.nodeConnMapper.NodeForConn(i.ConnId)
-		if ok {
-			ptr := p.Data.Ptr
-			disk := ptr.Disk
-			chanutil.Send(m.ctx, m.MgrDiskWrites[disk], *p, "mgr: handleReceives: write request")
-		} else {
-			payload := model.NewWriteResultErr("connection error", caller, p.ReqId)
-			mcs := model.MgrConnsSend{
-				ConnId:  i.ConnId,
-				Payload: &payload,
-			}
-			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleReceives: write result conn error")
-		}
-
-	case *model.WriteResult:
-		m.handleDiskWriteResult(*p)
 	case *model.ReadRequest:
 		if len(p.Ptrs) == 0 {
 			log.Error("No pointers to read from")
@@ -401,42 +368,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		m.handleAddDiskReq(*p)
 	default:
 		panic("Received unknown payload")
-	}
-}
-
-func (m *Mgr) handleDiskWriteResult(r model.WriteResult) {
-	if r.Ok {
-		m.CustodianCommands <- custodian.Command{
-			Type:    custodian.CommandTypeAddBlock,
-			BlockId: model.BlockId(r.Ptr.FileName),
-		}
-	}
-	if r.Caller == m.NodeId {
-		resolved := m.pendingBlockWrites.resolve(r.Ptr, r.ReqId)
-		var err error = nil
-		if !r.Ok {
-			err = errors.New(r.Message)
-			m.pendingBlockWrites.cancel(r.ReqId)
-		}
-		switch resolved {
-		case done:
-			resp := model.PutBlockResp{
-				Id:  r.ReqId,
-				Err: err,
-			}
-			chanutil.Send(m.ctx, m.MgrWebdavPuts, resp, "mgr: handleDiskWriteResult: done")
-		}
-	} else {
-		c, ok := m.nodeConnMapper.ConnForNode(r.Caller)
-		if ok {
-			mcs := model.MgrConnsSend{
-				ConnId:  c,
-				Payload: &r,
-			}
-			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskWriteResult: sending to caller")
-		} else {
-			panic("not connected")
-		}
 	}
 }
 
@@ -472,7 +403,7 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 		return err
 	}
 	for _, disk := range iam.Disks {
-		m.mirrorDistributer.SetWeight(iam.NodeId, disk.Id, int(iam.FreeBytes))
+		m.MirrorDistributer.SetWeight(iam.NodeId, disk.Id, int(iam.FreeBytes))
 	}
 	return nil
 }
@@ -504,31 +435,5 @@ func (m *Mgr) handleWebdavMgrBroadcast(b model.Broadcast) {
 	connections := m.nodeConnMapper.Connections()
 	for _, connId := range connections.GetValues() {
 		chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: connId, Payload: &b}, "Broadcasting")
-	}
-}
-
-func (m *Mgr) handleWebdavWriteRequest(b model.PutBlockReq) {
-	ptrs := m.mirrorDistributer.WritePointersForId(b.Block.Id)
-	for _, ptr := range ptrs {
-		m.pendingBlockWrites.add(b.Id(), ptr)
-		data := model.RawData{
-			Data: b.Block.Data,
-			Ptr:  ptr,
-		}
-		writeRequest := model.WriteRequest{Caller: m.NodeId, Data: data, ReqId: b.Id()}
-		if ptr.NodeId == m.NodeId {
-			chanutil.Send(m.ctx, m.MgrDiskWrites[ptr.Disk], writeRequest, "mgr: handleMirroredWriteRequest: local")
-		} else {
-			c, ok := m.nodeConnMapper.ConnForNode(ptr.NodeId)
-			if ok {
-				mcs := model.MgrConnsSend{ConnId: c, Payload: &writeRequest}
-				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleMirroredWriteRequest: remote")
-			} else {
-				m.pendingBlockWrites.cancel(b.Id())
-				bir := model.PutBlockResp{Id: b.Id(), Err: errors.New("not connected")}
-				chanutil.Send(m.ctx, m.MgrWebdavPuts, bir, "mgr: handleMirroredWriteRequest: not connected")
-				return
-			}
-		}
 	}
 }

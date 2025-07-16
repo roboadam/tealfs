@@ -32,9 +32,7 @@ func New(
 	path Path,
 	id model.NodeId,
 	diskId model.DiskId,
-	mgrDiskWrites chan model.WriteRequest,
 	mgrDiskReads chan model.ReadRequest,
-	diskMgrWrites chan model.WriteResult,
 	diskMgrReads chan model.ReadResult,
 	ctx context.Context,
 ) Disk {
@@ -42,10 +40,10 @@ func New(
 		path:      path,
 		id:        id,
 		diskId:    diskId,
-		InWrites:  mgrDiskWrites,
+		InWrites:  make(chan model.WriteRequest, 1),
 		inReads:   mgrDiskReads,
 		outReads:  diskMgrReads,
-		OutWrites: diskMgrWrites,
+		OutWrites: make(chan model.WriteResult, 1),
 		ctx:       ctx,
 	}
 	go p.consumeChannels()

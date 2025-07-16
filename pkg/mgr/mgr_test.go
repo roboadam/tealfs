@@ -15,10 +15,8 @@
 package mgr
 
 import (
-	"fmt"
 	"reflect"
 	"sync/atomic"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -161,93 +159,6 @@ func TestWebdavGet(t *testing.T) {
 	}
 	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 {
 		t.Error("Expected everyone to get some data")
-		return
-	}
-}
-
-func TestWebdavPut(t *testing.T) {
-	paths := []string{"path1", "path2"}
-	const expectedAddress1 = "some-address:123"
-	const expectedConnectionId1 = 1
-	var expectedNodeId1 = model.NewNodeId()
-	disks12 := []model.DiskIdPath{
-		{Id: model.DiskId("disk1"), Path: "disk1path", Node: expectedNodeId1},
-		{Id: model.DiskId("disk2"), Path: "disk2path", Node: expectedNodeId1},
-	}
-	const expectedAddress2 = "some-address2:234"
-	const expectedConnectionId2 = 2
-	var expectedNodeId2 = model.NewNodeId()
-	disks34 := []model.DiskIdPath{
-		{Id: model.DiskId("disk3"), Path: "disk3path", Node: expectedNodeId2},
-		{Id: model.DiskId("disk4"), Path: "disk4path", Node: expectedNodeId2},
-	}
-	maxNumberOfWritesInOnePass := 2
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	m, fileOps, custodianCommands := mgrWithConnectedNodes(ctx, []connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks12},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks34},
-	}, maxNumberOfWritesInOnePass, t, paths, make(chan<- model.ConnectToNodeReq))
-
-	blocks := []model.Block{}
-	for i := range 100 {
-		data := []byte{byte(i)}
-		block := model.Block{
-			Id:   model.NewBlockId(),
-			Data: data,
-		}
-		blocks = append(blocks, block)
-	}
-
-	oneCount := int32(0)
-	twoCount := int32(0)
-	threeCount := int32(0)
-	fourCount := int32(0)
-	custodianCount := int32(0)
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case s := <-m.MgrConnsSends:
-				switch request := s.Payload.(type) {
-				case *model.WriteRequest:
-					ptr := request.Data.Ptr
-					switch ptr.Disk {
-					case disks12[0].Id:
-						atomic.AddInt32(&oneCount, 1)
-					case disks12[1].Id:
-						atomic.AddInt32(&twoCount, 1)
-					case disks34[0].Id:
-						atomic.AddInt32(&threeCount, 1)
-					case disks34[1].Id:
-						atomic.AddInt32(&fourCount, 1)
-					}
-
-					result := model.NewWriteResultOk(request.Data.Ptr, request.Caller, request.ReqId)
-					chanutil.Send(ctx, m.ConnsMgrReceives, model.ConnsMgrReceive{ConnId: s.ConnId, Payload: &result}, "remote")
-				}
-			case <-custodianCommands:
-				atomic.AddInt32(&custodianCount, 1)
-			}
-		}
-	}()
-
-	time.Sleep(time.Second * 2)
-
-	for _, block := range blocks {
-		m.WebdavMgrPuts <- model.NewPutBlockReq(block)
-		<-m.MgrWebdavPuts
-	}
-	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 || threeCount == 0 || fourCount == 0 {
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fileOps.WriteCount))
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", oneCount))
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", twoCount))
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", threeCount))
-		t.Error("Expected everyone to fetch some data " + fmt.Sprintf("%d", fourCount))
 		return
 	}
 }
