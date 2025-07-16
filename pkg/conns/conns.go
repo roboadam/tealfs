@@ -19,6 +19,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
@@ -27,19 +28,21 @@ import (
 )
 
 type Conns struct {
-	netConns      map[model.ConnId]tnet.RawNet
-	netConnsMux   *sync.RWMutex
-	nextId        model.ConnId
-	acceptedConns chan AcceptedConns
-	outStatuses   chan model.NetConnectionStatus
-	outReceives   chan model.ConnsMgrReceive
-	inConnectTo   <-chan model.ConnectToNodeReq
-	inSends       <-chan model.MgrConnsSend
-	Address       string
-	provider      ConnectionProvider
-	nodeId        model.NodeId
-	listener      net.Listener
-	ctx           context.Context
+	netConns          map[model.ConnId]tnet.RawNet
+	netConnsMux       *sync.RWMutex
+	nextId            model.ConnId
+	acceptedConns     chan AcceptedConns
+	outStatuses       chan model.NetConnectionStatus
+	outReceives       chan model.ConnsMgrReceive
+	OutSaveToDiskReq  chan<- blocksaver.SaveToDiskReq
+	OutSaveToDiskResp chan<- blocksaver.SaveToDiskResp
+	inConnectTo       <-chan model.ConnectToNodeReq
+	inSends           <-chan model.MgrConnsSend
+	Address           string
+	provider          ConnectionProvider
+	nodeId            model.NodeId
+	listener          net.Listener
+	ctx               context.Context
 }
 
 func NewConns(
@@ -203,6 +206,12 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				}
 				c.deleteConn(conn)
 				return
+			}
+			switch p := (payload).(type) {
+			case *blocksaver.SaveToDiskReq:
+				c.OutSaveToDiskReq <- *p
+			case *blocksaver.SaveToDiskResp:
+				c.OutSaveToDiskResp <- *p
 			}
 			cmr := model.ConnsMgrReceive{
 				ConnId:  conn,

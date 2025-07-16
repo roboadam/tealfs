@@ -34,9 +34,8 @@ type BlockSaver struct {
 	LocalDest  chan<- SaveToDiskReq
 
 	// Response phase
-	RemoteResp <-chan SaveToDiskResp
-	LocalResp  <-chan SaveToDiskResp
-	Resp       chan<- model.PutBlockResp
+	InResp <-chan SaveToDiskResp
+	Resp   chan<- model.PutBlockResp
 
 	Distributer *dist.MirrorDistributer
 	NodeId      model.NodeId
@@ -73,7 +72,7 @@ func (bs *BlockSaver) Start(ctx context.Context) {
 		select {
 		case req := <-bs.Req:
 			bs.handlePutReq(req, requestState)
-		case resp := <-bs.LocalResp:
+		case resp := <-bs.InResp:
 			bs.handleSaveResp(requestState, resp)
 		case <-ctx.Done():
 			return

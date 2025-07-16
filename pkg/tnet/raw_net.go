@@ -18,6 +18,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/model"
 
 	log "github.com/sirupsen/logrus"
@@ -53,58 +54,42 @@ func (r *RawNet) ReadPayload() (model.Payload, error) {
 	case model.IAmType:
 		var payload model.IAm
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode IAm: " + err.Error())
-		}
 		return &payload, err
 	case model.WriteRequestType:
 		var payload model.WriteRequest
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode WriteRequest: " + err.Error())
-		}
 		return &payload, err
 	case model.ReadRequestType:
 		var payload model.ReadRequest
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode ReadRequest: " + err.Error())
-		}
 		return &payload, err
 	case model.ReadResultType:
 		var payload model.ReadResult
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode ReadResult: " + err.Error())
-		}
 		return &payload, err
 	case model.BroadcastType:
 		var payload model.Broadcast
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode Broadcast: " + err.Error())
-		}
 		return &payload, err
 	case model.AddDiskRequestType:
 		var payload model.AddDiskReq
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode AddDiskReq: " + err.Error())
-		}
 		return &payload, err
 	case model.SyncType:
 		var payload model.SyncNodes
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode SyncNodes: " + err.Error())
-		}
 		return &payload, err
 	case model.WriteResultType:
 		var payload model.WriteResult
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode WriteResult: " + err.Error())
-		}
+		return &payload, err
+	case model.SaveToDiskReq:
+		var payload blocksaver.SaveToDiskReq
+		err := r.decoder.Decode(&payload)
+		return &payload, err
+	case model.SaveToDiskResp:
+		var payload blocksaver.SaveToDiskResp
+		err := r.decoder.Decode(&payload)
 		return &payload, err
 	}
 
