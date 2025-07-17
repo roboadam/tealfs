@@ -210,8 +210,10 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			switch p := (payload).(type) {
 			case *blocksaver.SaveToDiskReq:
 				c.OutSaveToDiskReq <- *p
+				return
 			case *blocksaver.SaveToDiskResp:
 				c.OutSaveToDiskResp <- *p
+				return
 			}
 			cmr := model.ConnsMgrReceive{
 				ConnId:  conn,
