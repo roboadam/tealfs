@@ -210,16 +210,15 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			switch p := (payload).(type) {
 			case *blocksaver.SaveToDiskReq:
 				c.OutSaveToDiskReq <- *p
-				return
 			case *blocksaver.SaveToDiskResp:
 				c.OutSaveToDiskResp <- *p
-				return
+			default:
+				cmr := model.ConnsMgrReceive{
+					ConnId:  conn,
+					Payload: payload,
+				}
+				chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 			}
-			cmr := model.ConnsMgrReceive{
-				ConnId:  conn,
-				Payload: payload,
-			}
-			chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 		}
 	}
 }
