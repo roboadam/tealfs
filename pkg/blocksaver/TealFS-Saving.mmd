@@ -5,9 +5,10 @@ flowchart TD
         B -->|SaveToDiskReq| D("RemoteBlockSaver")
         C -->|WriteRequest| E["Disk"]
         E -->|WriteResult| F("LocalBlockSaveResponses")
-        F -->|SaveToDiskResp| G("Conns")
+        F -->|SaveToDiskResp| G["Conns"]
         F -->|SaveToDiskResp| B
         D -->|SaveToDiskReq| G
+        D -->|SaveToDiskResp| B
         G -->|SaveToDiskResp| B
         G -->|SaveToDiskReq| C
         B -->|PutBlockResp| A

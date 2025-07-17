@@ -34,6 +34,7 @@ import (
 
 type Mgr struct {
 	ConnectToNodeReqs       chan<- model.ConnectToNodeReq
+	AddedDisk               chan<- *disk.Disk
 	UiMgrDisk               chan model.AddDiskReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
@@ -161,6 +162,7 @@ func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
 		m.ctx,
 	)
 	m.Disks.Add(d)
+	m.AddedDisk <- &d
 	return true
 }
 

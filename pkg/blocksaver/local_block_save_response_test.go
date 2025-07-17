@@ -18,7 +18,6 @@ import (
 	"context"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 	"testing"
 
 	"github.com/google/uuid"
@@ -33,15 +32,13 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 
 	disk1 := mockDisk(nodeId, ctx)
 	disk2 := mockDisk(nodeId, ctx)
-	disks := set.NewSet[disk.Disk]()
-	disks.Add(*disk1)
-	disks.Add(*disk2)
 
 	resp := make(chan SaveToDiskResp)
 	sends := make(chan model.MgrConnsSend)
+	addedDisks := make(chan *disk.Disk)
 
 	lbsr := LocalBlockSaveResponses{
-		Disks:               &disks,
+		InDisks:             addedDisks,
 		LocalWriteResponses: resp,
 		Sends:               sends,
 		NodeConnMap:         model.NewNodeConnectionMapper(),
@@ -50,6 +47,8 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 
 	go lbsr.Start(ctx)
 
+	addedDisks <- disk1
+	addedDisks <- disk2
 	lbsr.NodeConnMap.SetAll(1, "some-address:123", remoteNodeId)
 
 	putBlockId := model.PutBlockId(uuid.NewString())

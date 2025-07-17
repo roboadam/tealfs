@@ -19,13 +19,12 @@ import (
 	"errors"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type LocalBlockSaveResponses struct {
-	Disks               *set.Set[disk.Disk]
+	InDisks             <-chan *disk.Disk
 	LocalWriteResponses chan<- SaveToDiskResp
 	Sends               chan<- model.MgrConnsSend
 	NodeConnMap         *model.NodeConnectionMapper
@@ -33,8 +32,13 @@ type LocalBlockSaveResponses struct {
 }
 
 func (l *LocalBlockSaveResponses) Start(ctx context.Context) {
-	for _, disk := range l.Disks.GetValues() {
-		go l.readFromChan(ctx, disk.OutWrites)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case d := <-l.InDisks:
+			go l.readFromChan(ctx, d.OutWrites)
+		}
 	}
 }
 

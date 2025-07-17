@@ -63,13 +63,13 @@ func TestBlockSaver(t *testing.T) {
 	req <- putBlockReq
 
 	localReq := <-localDest
-	if localReq.Req.Id() != putBlockReq.Id() {
+	if localReq.Req.Id() != putBlockReq.Id() || localReq.Caller != localNodeId {
 		t.Error("unexpected req id 1")
 		return
 	}
 
 	remoteReq := <-remoteDest
-	if remoteReq.Req.Id() != putBlockReq.Id() {
+	if remoteReq.Req.Id() != putBlockReq.Id() || remoteReq.Caller != localNodeId {
 		t.Error("unexpected req id 2")
 		return
 	}

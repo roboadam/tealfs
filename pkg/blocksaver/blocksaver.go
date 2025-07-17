@@ -91,7 +91,7 @@ func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model
 		state := requestState[req.Id()]
 		state.Add(dest.DiskId)
 
-		saveToDisk := SaveToDiskReq{Dest: dest, Req: req}
+		saveToDisk := SaveToDiskReq{Dest: dest, Req: req, Caller: bs.NodeId}
 
 		// If the destination is this node send to the local disk, otherwise send to remote node
 		if dest.NodeId == bs.NodeId {

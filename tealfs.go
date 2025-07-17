@@ -76,7 +76,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	custodian.Commands = custodianCommands
 	custodian.Start(ctx)
 
-	_ = conns.NewConns(
+	conns := conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
 		connReqs,
@@ -97,12 +97,18 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		ctx,
 	)
 
+	addedDisks := make(chan *disk.Disk)
+	m.AddedDisk = addedDisks
+
 	webdavPutReq := make(chan model.PutBlockReq)
 	webdavPutResp := make(chan model.PutBlockResp)
 
 	localSave := make(chan blocksaver.SaveToDiskReq)
 	remoteSave := make(chan blocksaver.SaveToDiskReq)
 	saveResp := make(chan blocksaver.SaveToDiskResp)
+
+	conns.OutSaveToDiskReq = localSave
+	conns.OutSaveToDiskResp = saveResp
 
 	bs := blocksaver.BlockSaver{
 		Req:         webdavPutReq,
@@ -115,7 +121,28 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	}
 	go bs.Start(ctx)
 
-	lbs := blocksaver.LocalBlockSaver{}
+	lbs := blocksaver.LocalBlockSaver{
+		Req:   localSave,
+		Disks: &m.Disks,
+	}
+	go lbs.Start(ctx)
+
+	rbs := blocksaver.RemoteBlockSaver{
+		Req:         remoteSave,
+		Sends:       m.MgrConnsSends,
+		NoConnResp:  saveResp,
+		NodeConnMap: nodeConnMapper,
+	}
+	go rbs.Start(ctx)
+
+	lbsr := blocksaver.LocalBlockSaveResponses{
+		InDisks:             addedDisks,
+		LocalWriteResponses: saveResp,
+		Sends:               m.MgrConnsSends,
+		NodeConnMap:         nodeConnMapper,
+		NodeId:              m.NodeId,
+	}
+	go lbsr.Start(ctx)
 
 	_ = webdav.New(
 		m.NodeId,
