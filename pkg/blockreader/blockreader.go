@@ -16,9 +16,9 @@ package blockreader
 
 import (
 	"context"
+	"errors"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 )
 
 type BlockReader struct {
@@ -61,7 +61,7 @@ func (s *GetFromDiskResp) Type() model.PayloadType {
 }
 
 func (bs *BlockReader) Start(ctx context.Context) {
-	requestState := make(map[model.GetBlockId][]Dest)
+	requestState := make(map[model.GetBlockId]state)
 	for {
 		select {
 		case req := <-bs.Req:
@@ -74,31 +74,53 @@ func (bs *BlockReader) Start(ctx context.Context) {
 	}
 }
 
-func (bs *BlockReader) handleGetReq(req model.GetBlockReq, requestState map[model.GetBlockId][]Dest) {
+type state struct {
+	req   model.GetBlockReq
+	dests []Dest
+}
+
+func (bs *BlockReader) handleGetReq(req model.GetBlockReq, requestState map[model.GetBlockId]state) {
 	// Find all potential disk destinations for the block
 	dests := bs.destsFor(req)
 
+	// If there are no disks to write to then reply with an error
+	if len(dests) == 0 {
+		bs.Resp <- model.GetBlockResp{
+			Id:  req.Id,
+			Err: errors.New("no dests"),
+		}
+	}
+
+	firstDest := dests[0]
+	dests = dests[1:]
+
 	// Request state hold a list of dests we haven't tried yet
-	requestState[req.Id] = dests
+	requestState[req.Id] = state{
+		req:   req,
+		dests: dests,
+	}
 
 	getFromDisk := GetFromDiskReq{
 		Caller: bs.NodeId,
-		Dest:   dest,
+		Dest:   firstDest,
 		Req: model.GetBlockReq{
 			Id:      req.Id,
 			BlockId: req.BlockId,
 		},
 	}
 
-	// If the destination is this node send to the local disk, otherwise send to remote node
-	if dest.NodeId == bs.NodeId {
+	bs.sendToLocalOrRemote(&getFromDisk)
+}
+
+func (bs *BlockReader) sendToLocalOrRemote(getFromDisk *GetFromDiskReq) {
+	if getFromDisk.Dest.NodeId == bs.NodeId {
 		bs.LocalDest <- getFromDisk
 	} else {
 		bs.RemoteDest <- getFromDisk
 	}
 }
 
-func (bs *BlockReader) handleGetResp(requestState map[model.GetBlockId]set.Set[model.DiskId], resp GetFromDiskResp) {
+func (bs *BlockReader) handleGetResp(requestState map[model.GetBlockId]state, resp GetFromDiskResp) {
 	// If we get a save response that we don't have record of one of the other destinations must have already failed
 	// so we can safely ignore any other responses
 	if _, ok := requestState[resp.Resp.Id]; ok {
@@ -114,14 +136,17 @@ func (bs *BlockReader) handleGetResp(requestState map[model.GetBlockId]set.Set[m
 		} else {
 			// If the response is a success remove the record. If all records are removed that means
 			// all save requests were successful so we can respond that the save was successful
-			state := requestState[resp.Resp.Id]
-			state.Remove(resp.Dest.DiskId)
-			if state.Len() == 0 {
-				delete(requestState, resp.Resp.Id)
-				bs.Resp <- model.GetBlockResp{
-					Id:    resp.Resp.Id,
-					Block: resp.Resp.Block,
+			reqId := resp.Resp.Id
+			if len(requestState[reqId].dests) > 0 {
+				dest := requestState[reqId].dests[0]
+				getFromDisk := GetFromDiskReq{
+					Caller: bs.NodeId,
+					Dest:   dest,
+					Req:    requestState[reqId].req,
 				}
+				bs.sendToLocalOrRemote(&getFromDisk)
+			} else {
+
 			}
 		}
 	}

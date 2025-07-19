@@ -39,7 +39,7 @@ func TestBlockSaver(t *testing.T) {
 	remoteNodeId := model.NewNodeId()
 	remoteDiskId := model.DiskId(uuid.NewString())
 
-	distributer := dist.NewMirrorDistributer()
+	distributer := dist.NewMirrorDistributer(localNodeId)
 	distributer.SetWeight(localNodeId, localDiskId, 1)
 	distributer.SetWeight(remoteNodeId, remoteDiskId, 1)
 
