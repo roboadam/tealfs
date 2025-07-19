@@ -235,10 +235,13 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 	m.ConnectToNodeReqs = connReqs
 	custodianCommands := make(chan custodian.Command, chanSize)
 	m.CustodianCommands = custodianCommands
+	addedDisk := make(chan *disk.Disk)
+	m.AddedDisk = addedDisk
 	m.Start()
 
 	for _, path := range paths {
 		m.UiMgrDisk <- model.NewAddDiskReq(path, m.NodeId, 1)
+		<-addedDisk
 		<-m.MgrUiDiskStatuses
 	}
 	var nodesInCluster []connectedNode
