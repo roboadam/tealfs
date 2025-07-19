@@ -141,12 +141,12 @@ func handleWebdavMgrGets(ctx context.Context, channel chan model.GetBlockReq, re
 			blockData, exists := data[req.BlockId]
 			if exists {
 				respChan <- model.GetBlockResp{
-					Id:    req.Id(),
+					Id:    req.Id,
 					Block: model.Block{Id: req.BlockId, Data: blockData},
 				}
 			} else {
 				respChan <- model.GetBlockResp{
-					Id:    req.Id(),
+					Id:    req.Id,
 					Block: model.Block{Id: req.BlockId, Data: []byte{}},
 				}
 			}
@@ -165,7 +165,7 @@ func handleWebdavMgrPuts(ctx context.Context, channel chan model.PutBlockReq, re
 		case req := <-channel:
 			mux.Lock()
 			data[req.Block.Id] = req.Block.Data
-			result <- model.PutBlockResp{Id: req.Id()}
+			result <- model.PutBlockResp{Id: req.Id}
 			mux.Unlock()
 		}
 	}

@@ -111,11 +111,11 @@ func (w *Webdav) eventLoop() {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
 		case r := <-w.fileSystem.ReadReqResp:
-			chanutil.Send(w.ctx, w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id()))
-			w.pendingReads[r.Req.Id()] = r.Resp
+			chanutil.Send(w.ctx, w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id))
+			w.pendingReads[r.Req.Id] = r.Resp
 		case r := <-w.fileSystem.WriteReqResp:
 			chanutil.Send(w.ctx, w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
-			w.pendingPuts[r.Req.Id()] = r.Resp
+			w.pendingPuts[r.Req.Id] = r.Resp
 		}
 	}
 }

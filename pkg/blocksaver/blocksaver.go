@@ -83,12 +83,12 @@ func (bs *BlockSaver) Start(ctx context.Context) {
 func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model.PutBlockId]set.Set[model.DiskId]) {
 	// Find all disk destinations for the block
 	dests := bs.destsFor(req)
-	requestState[req.Id()] = set.NewSet[model.DiskId]()
+	requestState[req.Id] = set.NewSet[model.DiskId]()
 
 	// For each disk
 	for _, dest := range dests {
 		// Save each request so we know when we've received all responses
-		state := requestState[req.Id()]
+		state := requestState[req.Id]
 		state.Add(dest.DiskId)
 
 		saveToDisk := SaveToDiskReq{Dest: dest, Req: req, Caller: bs.NodeId}

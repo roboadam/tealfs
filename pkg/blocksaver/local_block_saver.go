@@ -55,7 +55,7 @@ func convertSaveReq(req *SaveToDiskReq) *model.WriteRequest {
 			},
 			Data: req.Req.Block.Data,
 		},
-		ReqId: req.Req.Id(),
+		ReqId: req.Req.Id,
 	}
 }
 

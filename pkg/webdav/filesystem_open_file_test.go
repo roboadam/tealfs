@@ -250,7 +250,7 @@ func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux 
 			blockData, exists := data[req.Req.BlockId]
 			if exists {
 				req.Resp <- model.GetBlockResp{
-					Id: req.Req.Id(),
+					Id: req.Req.Id,
 					Block: model.Block{
 						Id:   req.Req.BlockId,
 						Data: blockData,
@@ -259,7 +259,7 @@ func handleFetchBlockReq(ctx context.Context, reqs chan webdav.ReadReqResp, mux 
 				}
 			} else {
 				req.Resp <- model.GetBlockResp{
-					Id: req.Req.Id(),
+					Id: req.Req.Id,
 					Block: model.Block{
 						Id:   req.Req.BlockId,
 						Data: []byte{},
@@ -280,7 +280,7 @@ func handlePushBlockReq(ctx context.Context, reqs chan webdav.WriteReqResp, mux 
 		case req := <-reqs:
 			mux.Lock()
 			data[req.Req.Block.Id] = req.Req.Block.Data
-			req.Resp <- model.PutBlockResp{Id: req.Req.Id()}
+			req.Resp <- model.PutBlockResp{Id: req.Req.Id}
 			mux.Unlock()
 		}
 	}

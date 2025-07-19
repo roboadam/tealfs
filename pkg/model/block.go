@@ -32,12 +32,12 @@ type DiskPointer struct {
 }
 
 type GetBlockReq struct {
-	id      GetBlockId
+	Id      GetBlockId
 	BlockId BlockId
 }
 
 type PutBlockReq struct {
-	id    PutBlockId
+	Id    PutBlockId
 	Block Block
 }
 
@@ -49,14 +49,6 @@ func NewGetBlockReq(blockId BlockId) GetBlockReq {
 func NewPutBlockReq(block Block) PutBlockReq {
 	id := PutBlockId(uuid.New().String())
 	return PutBlockReq{id, block}
-}
-
-func (g *GetBlockReq) Id() GetBlockId {
-	return g.id
-}
-
-func (p *PutBlockReq) Id() PutBlockId {
-	return p.id
 }
 
 type GetBlockId string

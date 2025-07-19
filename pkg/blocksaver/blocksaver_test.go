@@ -63,13 +63,13 @@ func TestBlockSaver(t *testing.T) {
 	req <- putBlockReq
 
 	localReq := <-localDest
-	if localReq.Req.Id() != putBlockReq.Id() || localReq.Caller != localNodeId {
+	if localReq.Req.Id != putBlockReq.Id || localReq.Caller != localNodeId {
 		t.Error("unexpected req id 1")
 		return
 	}
 
 	remoteReq := <-remoteDest
-	if remoteReq.Req.Id() != putBlockReq.Id() || remoteReq.Caller != localNodeId {
+	if remoteReq.Req.Id != putBlockReq.Id || remoteReq.Caller != localNodeId {
 		t.Error("unexpected req id 2")
 		return
 	}
@@ -81,7 +81,7 @@ func TestBlockSaver(t *testing.T) {
 			DiskId: localDiskId,
 		},
 		Resp: model.PutBlockResp{
-			Id:  localReq.Req.Id(),
+			Id:  localReq.Req.Id,
 			Err: nil,
 		},
 	}
@@ -99,14 +99,14 @@ func TestBlockSaver(t *testing.T) {
 			DiskId: remoteDiskId,
 		},
 		Resp: model.PutBlockResp{
-			Id:  remoteReq.Req.Id(),
+			Id:  remoteReq.Req.Id,
 			Err: nil,
 		},
 	}
 
 	msg := <-resp
 
-	if msg.Id != putBlockReq.Id() {
+	if msg.Id != putBlockReq.Id {
 		t.Error("didn't get final response")
 	}
 
@@ -121,14 +121,14 @@ func TestBlockSaver(t *testing.T) {
 			DiskId: localDiskId,
 		},
 		Resp: model.PutBlockResp{
-			Id:  localReq.Req.Id(),
+			Id:  localReq.Req.Id,
 			Err: errors.New("some error putting the first one"),
 		},
 	}
 
 	msg = <-resp
 
-	if msg.Id != putBlockReq.Id() || msg.Err == nil {
+	if msg.Id != putBlockReq.Id || msg.Err == nil {
 		t.Error("didn't get error response")
 	}
 }

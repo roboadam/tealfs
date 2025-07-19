@@ -45,7 +45,7 @@ func (rbs *RemoteBlockSaver) Start(ctx context.Context) {
 					Caller: req.Caller,
 					Dest:   req.Dest,
 					Resp: model.PutBlockResp{
-						Id:  req.Req.Id(),
+						Id:  req.Req.Id,
 						Err: errors.New("No connection to node " + string(req.Dest.NodeId)),
 					},
 				}
