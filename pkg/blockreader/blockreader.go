@@ -65,45 +65,44 @@ func (bs *BlockReader) Start(ctx context.Context) {
 	for {
 		select {
 		case req := <-bs.Req:
-			bs.handlePutReq(req, requestState)
+			bs.handleGetReq(req, requestState)
 		case resp := <-bs.InResp:
-			bs.handleSaveResp(requestState, resp)
+			bs.handleGetResp(requestState, resp)
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (bs *BlockReader) handlePutReq(req model.GetBlockReq, requestState map[model.GetBlockId]set.Set[model.DiskId]) {
+func (bs *BlockReader) handleGetReq(req model.GetBlockReq, requestState map[model.GetBlockId]set.Set[model.DiskId]) {
 	// Find all disk destinations for the block
 	dests := bs.destsFor(req)
 	requestState[req.Id] = set.NewSet[model.DiskId]()
+	state := requestState[req.Id]
 
 	// For each disk
 	for _, dest := range dests {
 		// Save each request so we know when we've received all responses
-		state := requestState[req.Id]
 		state.Add(dest.DiskId)
+	}
+	getFromDisk := GetFromDiskReq{
+		Caller: bs.NodeId,
+		Dest:   dest,
+		Req: model.GetBlockReq{
+			Id:      req.Id,
+			BlockId: req.BlockId,
+		},
+	}
 
-		getFromDisk := GetFromDiskReq{
-			Caller: bs.NodeId,
-			Dest:   dest,
-			Req: model.GetBlockReq{
-				Id:      req.Id,
-				BlockId: req.BlockId,
-			},
-		}
-
-		// If the destination is this node send to the local disk, otherwise send to remote node
-		if dest.NodeId == bs.NodeId {
-			bs.LocalDest <- getFromDisk
-		} else {
-			bs.RemoteDest <- getFromDisk
-		}
+	// If the destination is this node send to the local disk, otherwise send to remote node
+	if dest.NodeId == bs.NodeId {
+		bs.LocalDest <- getFromDisk
+	} else {
+		bs.RemoteDest <- getFromDisk
 	}
 }
 
-func (bs *BlockReader) handleSaveResp(requestState map[model.GetBlockId]set.Set[model.DiskId], resp GetFromDiskResp) {
+func (bs *BlockReader) handleGetResp(requestState map[model.GetBlockId]set.Set[model.DiskId], resp GetFromDiskResp) {
 	// If we get a save response that we don't have record of one of the other destinations must have already failed
 	// so we can safely ignore any other responses
 	if _, ok := requestState[resp.Resp.Id]; ok {

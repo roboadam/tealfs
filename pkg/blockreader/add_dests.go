@@ -18,7 +18,7 @@ import "tealfs/pkg/model"
 
 func (b *BlockReader) destsFor(req model.GetBlockReq) []Dest {
 	dests := make([]Dest, 0, 2)
-	ptrs := b.Distributer.WritePointersForId(req.BlockId)
+	ptrs := b.Distributer.ReadPointersForId(req.BlockId)
 	for _, ptr := range ptrs {
 		dests = append(dests, Dest{
 			NodeId: ptr.NodeId,
