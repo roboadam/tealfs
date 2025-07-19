@@ -61,7 +61,7 @@ func (s *GetFromDiskResp) Type() model.PayloadType {
 }
 
 func (bs *BlockReader) Start(ctx context.Context) {
-	requestState := make(map[model.GetBlockId]set.Set[model.DiskId])
+	requestState := make(map[model.GetBlockId][]Dest)
 	for {
 		select {
 		case req := <-bs.Req:
@@ -74,17 +74,13 @@ func (bs *BlockReader) Start(ctx context.Context) {
 	}
 }
 
-func (bs *BlockReader) handleGetReq(req model.GetBlockReq, requestState map[model.GetBlockId]set.Set[model.DiskId]) {
-	// Find all disk destinations for the block
+func (bs *BlockReader) handleGetReq(req model.GetBlockReq, requestState map[model.GetBlockId][]Dest) {
+	// Find all potential disk destinations for the block
 	dests := bs.destsFor(req)
-	requestState[req.Id] = set.NewSet[model.DiskId]()
-	state := requestState[req.Id]
 
-	// For each disk
-	for _, dest := range dests {
-		// Save each request so we know when we've received all responses
-		state.Add(dest.DiskId)
-	}
+	// Request state hold a list of dests we haven't tried yet
+	requestState[req.Id] = dests
+
 	getFromDisk := GetFromDiskReq{
 		Caller: bs.NodeId,
 		Dest:   dest,
