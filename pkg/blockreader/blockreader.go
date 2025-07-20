@@ -19,6 +19,8 @@ import (
 	"errors"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type BlockReader struct {
@@ -114,40 +116,39 @@ func (bs *BlockReader) handleGetReq(req model.GetBlockReq, requestState map[mode
 
 func (bs *BlockReader) sendToLocalOrRemote(getFromDisk *GetFromDiskReq) {
 	if getFromDisk.Dest.NodeId == bs.NodeId {
-		bs.LocalDest <- getFromDisk
+		bs.LocalDest <- *getFromDisk
 	} else {
-		bs.RemoteDest <- getFromDisk
+		bs.RemoteDest <- *getFromDisk
 	}
 }
 
 func (bs *BlockReader) handleGetResp(requestState map[model.GetBlockId]state, resp GetFromDiskResp) {
-	// If we get a save response that we don't have record of one of the other destinations must have already failed
-	// so we can safely ignore any other responses
+	// If we get a response that we don't have record of there isn't much we can do
 	if _, ok := requestState[resp.Resp.Id]; ok {
-		if resp.Resp.Err != nil {
-			// If a response is an error then we don't have enough redundancy so ignore all following responses and send back
-			// an error
+		s := requestState[resp.Resp.Id]
+		if resp.Resp.Err == nil {
+			// We got the data so we can send it back to the filesystem
+			bs.Resp <- resp.Resp
+			delete(requestState, resp.Resp.Id)
+		} else if len(s.dests) <= 1 {
+			// If there are no more disks that may have the data we return an error
 			delete(requestState, resp.Resp.Id)
 			bs.Resp <- model.GetBlockResp{
 				Id:    resp.Resp.Id,
 				Block: resp.Resp.Block,
-				Err:   resp.Resp.Err,
+				Err:   errors.New("cannot fetch block"),
 			}
 		} else {
-			// If the response is a success remove the record. If all records are removed that means
-			// all save requests were successful so we can respond that the save was successful
-			reqId := resp.Resp.Id
-			if len(requestState[reqId].dests) > 0 {
-				dest := requestState[reqId].dests[0]
-				getFromDisk := GetFromDiskReq{
-					Caller: bs.NodeId,
-					Dest:   dest,
-					Req:    requestState[reqId].req,
-				}
-				bs.sendToLocalOrRemote(&getFromDisk)
-			} else {
-
-			}
+			// If a response is an error then we want to try the next potential dest
+			nextDest := s.dests[0]
+			s.dests = s.dests[1:]
+			bs.sendToLocalOrRemote(&GetFromDiskReq{
+				Caller: bs.NodeId,
+				Dest:   nextDest,
+				Req:    s.req,
+			})
 		}
+	} else {
+		log.Warn("Unknown get response")
 	}
 }
