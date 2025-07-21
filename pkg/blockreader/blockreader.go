@@ -91,6 +91,7 @@ func (bs *BlockReader) handleGetReq(req model.GetBlockReq, requestState map[mode
 			Id:  req.Id,
 			Err: errors.New("no dests"),
 		}
+		return
 	}
 
 	firstDest := dests[0]
