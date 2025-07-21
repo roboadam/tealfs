@@ -188,8 +188,71 @@ func TestLocalErrorRemoteSuccess(t *testing.T) {
 	}
 
 	remoteSuccessResp := <-resp
-	if remoteSuccessReq.Id != remoteSuccessResp.Id {
-		t.Error("Invalid request id")
+	if remoteSuccessReq.Id != remoteSuccessResp.Id || remoteSuccessResp.Err != nil {
+		t.Error("Invalid request id or error resp")
+		return
+	}
+}
+
+func TestLocalErrorRemoteError(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	req := make(chan model.GetBlockReq)
+	remoteDest := make(chan GetFromDiskReq)
+	localDest := make(chan GetFromDiskReq)
+	inResp := make(chan GetFromDiskResp)
+	resp := make(chan model.GetBlockResp)
+	localNodeId := model.NewNodeId()
+	localDiskId := model.DiskId(uuid.NewString())
+	remoteNodeId := model.NewNodeId()
+	remoteDiskId := model.DiskId(uuid.NewString())
+	distributer := dist.NewMirrorDistributer(localNodeId)
+
+	br := BlockReader{
+		Req:         req,
+		RemoteDest:  remoteDest,
+		LocalDest:   localDest,
+		InResp:      inResp,
+		Resp:        resp,
+		Distributer: &distributer,
+		NodeId:      localNodeId,
+	}
+
+	go br.Start(ctx)
+
+	distributer.SetWeight(localNodeId, localDiskId, 1)
+	distributer.SetWeight(remoteNodeId, remoteDiskId, 1)
+
+	blockId := model.NewBlockId()
+	remoteSuccessReq := model.NewGetBlockReq(blockId)
+	req <- remoteSuccessReq
+
+	localReq := <-localDest
+
+	inResp <- GetFromDiskResp{
+		Caller: localReq.Caller,
+		Dest:   localReq.Dest,
+		Resp: model.GetBlockResp{
+			Id:  localReq.Req.Id,
+			Err: errors.New("some error on the local disk"),
+		},
+	}
+
+	remoteReq := <-remoteDest
+
+	inResp <- GetFromDiskResp{
+		Caller: localNodeId,
+		Dest:   remoteReq.Dest,
+		Resp: model.GetBlockResp{
+			Id:  remoteReq.Req.Id,
+			Err: errors.New("some error on the remote disk"),
+		},
+	}
+
+	remoteError := <-resp
+	if remoteSuccessReq.Id != remoteError.Id || remoteError.Err == nil {
+		t.Error("Invalid request id or not error")
 		return
 	}
 }

@@ -131,7 +131,7 @@ func (bs *BlockReader) handleGetResp(requestState map[model.GetBlockId]state, re
 			// We got the data so we can send it back to the filesystem
 			bs.Resp <- resp.Resp
 			delete(requestState, resp.Resp.Id)
-		} else if len(s.dests) <= 1 {
+		} else if len(s.dests) == 0 {
 			// If there are no more disks that may have the data we return an error
 			delete(requestState, resp.Resp.Id)
 			bs.Resp <- model.GetBlockResp{
@@ -143,6 +143,7 @@ func (bs *BlockReader) handleGetResp(requestState map[model.GetBlockId]state, re
 			// If a response is an error then we want to try the next potential dest
 			nextDest := s.dests[0]
 			s.dests = s.dests[1:]
+			requestState[resp.Resp.Id] = s
 			bs.sendToLocalOrRemote(&GetFromDiskReq{
 				Caller: bs.NodeId,
 				Dest:   nextDest,
