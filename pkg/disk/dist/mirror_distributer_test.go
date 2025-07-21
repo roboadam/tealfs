@@ -22,7 +22,7 @@ import (
 )
 
 func TestMirror(t *testing.T) {
-	d := dist.NewMirrorDistributer()
+	d := dist.NewMirrorDistributer(model.NewNodeId())
 	node1 := model.NewNodeId()
 	disk1 := model.DiskId("disk1")
 	node2 := model.NewNodeId()

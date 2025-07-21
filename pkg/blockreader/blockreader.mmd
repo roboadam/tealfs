@@ -2,3 +2,5 @@ flowchart TD
         A["WebDav"]
         A -->|GetBlockReq| B("BlockReader")
         B -->|GetBlockResp| A
+        B -->|GetFromDiskReq| C("LocalBlockReader")
+        B -->|GetFromDiskReq| D("RemoteBlockReader")

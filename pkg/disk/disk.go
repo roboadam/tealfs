@@ -41,7 +41,7 @@ func New(
 		id:        id,
 		diskId:    diskId,
 		InWrites:  make(chan model.WriteRequest, 1),
-		inReads:   mgrDiskReads,
+		InReads:   mgrDiskReads,
 		outReads:  diskMgrReads,
 		OutWrites: make(chan model.WriteResult, 1),
 		ctx:       ctx,
@@ -57,7 +57,7 @@ type Disk struct {
 	outReads  chan model.ReadResult
 	OutWrites chan model.WriteResult
 	InWrites  chan model.WriteRequest
-	inReads   chan model.ReadRequest
+	InReads   chan model.ReadRequest
 	ctx       context.Context
 }
 
@@ -77,7 +77,7 @@ func (d *Disk) consumeChannels() {
 				wr := model.NewWriteResultErr(err.Error(), s.Caller, s.ReqId)
 				chanutil.Send(d.ctx, d.OutWrites, wr, "disk: save failure")
 			}
-		case r := <-d.inReads:
+		case r := <-d.InReads:
 			if len(r.Ptrs) == 0 {
 				rr := model.NewReadResultErr("no pointers in read request", r.Caller, r.ReqId, r.BlockId)
 				chanutil.Send(d.ctx, d.outReads, rr, "disk: no pointers in read request")

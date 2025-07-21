@@ -92,7 +92,7 @@ func New(
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
-		MirrorDistributer:       dist.NewMirrorDistributer(),
+		MirrorDistributer:       dist.NewMirrorDistributer(nodeId),
 		nodeAddress:             nodeAddress,
 		savePath:                globalPath,
 		fileOps:                 fileOps,
