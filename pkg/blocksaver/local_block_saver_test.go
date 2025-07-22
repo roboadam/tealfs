@@ -92,8 +92,6 @@ func mockDisk(nodeId model.NodeId, ctx context.Context) *disk.Disk {
 		p,
 		nodeId,
 		model.DiskId(uuid.NewString()),
-		make(chan model.ReadRequest),
-		make(chan model.ReadResult),
 		ctx,
 	)
 	return &d

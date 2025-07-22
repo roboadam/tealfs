@@ -46,9 +46,13 @@ func (l *LocalBlockReader) Start(ctx context.Context) {
 
 func convertReadReq(req *GetFromDiskReq) *model.ReadRequest {
 	return &model.ReadRequest{
-		Caller:  req.Caller,
-		ReqId:   req.Req.Id,
-		Ptrs:    []model.DiskPointer{},
+		Caller: req.Caller,
+		ReqId:  req.Req.Id,
+		Ptrs: []model.DiskPointer{{
+			NodeId:   req.Caller,
+			Disk:     req.Dest.DiskId,
+			FileName: string(req.Req.BlockId),
+		}},
 		BlockId: req.Req.BlockId,
 	}
 }

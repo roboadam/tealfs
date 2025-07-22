@@ -153,14 +153,7 @@ func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
 		}
 	}
 	p := disk.NewPath(path, m.fileOps)
-	d := disk.New(
-		p,
-		m.NodeId,
-		id,
-		m.MgrDiskReads[id],
-		m.DiskMgrReads,
-		m.ctx,
-	)
+	d := disk.New(p, m.NodeId, id, m.ctx)
 	m.Disks.Add(d)
 	m.AddedDisk <- &d
 	return true

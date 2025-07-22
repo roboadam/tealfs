@@ -118,8 +118,6 @@ func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.No
 	path := disk.NewPath("/some/fake/path", &f)
 	id := model.NewNodeId()
 	diskId := model.DiskId(uuid.New().String())
-	mgrDiskReads := make(chan model.ReadRequest)
-	diskMgrReads := make(chan model.ReadResult)
-	d := disk.New(path, id, diskId, mgrDiskReads, diskMgrReads, ctx)
-	return &f, path, id, d.InWrites, mgrDiskReads, d.OutWrites, diskMgrReads, d
+	d := disk.New(path, id, diskId, ctx)
+	return &f, path, id, d.InWrites, d.InReads, d.OutWrites, d.OutReads, d
 }

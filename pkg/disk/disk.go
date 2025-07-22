@@ -32,8 +32,6 @@ func New(
 	path Path,
 	id model.NodeId,
 	diskId model.DiskId,
-	mgrDiskReads chan model.ReadRequest,
-	diskMgrReads chan model.ReadResult,
 	ctx context.Context,
 ) Disk {
 	p := Disk{
@@ -41,8 +39,8 @@ func New(
 		id:        id,
 		diskId:    diskId,
 		InWrites:  make(chan model.WriteRequest, 1),
-		InReads:   mgrDiskReads,
-		outReads:  diskMgrReads,
+		InReads:   make(chan model.ReadRequest, 1),
+		OutReads:  make(chan model.ReadResult, 1),
 		OutWrites: make(chan model.WriteResult, 1),
 		ctx:       ctx,
 	}
@@ -54,7 +52,7 @@ type Disk struct {
 	path      Path
 	id        model.NodeId
 	diskId    model.DiskId
-	outReads  chan model.ReadResult
+	OutReads  chan model.ReadResult
 	OutWrites chan model.WriteResult
 	InWrites  chan model.WriteRequest
 	InReads   chan model.ReadRequest
@@ -80,15 +78,15 @@ func (d *Disk) consumeChannels() {
 		case r := <-d.InReads:
 			if len(r.Ptrs) == 0 {
 				rr := model.NewReadResultErr("no pointers in read request", r.Caller, r.ReqId, r.BlockId)
-				chanutil.Send(d.ctx, d.outReads, rr, "disk: no pointers in read request")
+				chanutil.Send(d.ctx, d.OutReads, rr, "disk: no pointers in read request")
 			} else {
 				data, err := d.path.Read(r.Ptrs[0])
 				if err == nil {
 					rr := model.NewReadResultOk(r.Caller, r.Ptrs[1:], data, r.ReqId, r.BlockId)
-					chanutil.Send(d.ctx, d.outReads, rr, "disk: read success")
+					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read success")
 				} else {
 					rr := model.NewReadResultErr(err.Error(), r.Caller, r.ReqId, r.BlockId)
-					chanutil.Send(d.ctx, d.outReads, rr, "disk: read failure")
+					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read failure")
 				}
 			}
 		}
