@@ -43,7 +43,7 @@ func TestRemoteBlockReader(t *testing.T) {
 
 	go br.Start(ctx)
 
-	req <- GetFromDiskReq{
+	gfdr := GetFromDiskReq{
 		Caller: nodeId,
 		Dest: Dest{
 			NodeId: nodeId,
@@ -54,10 +54,27 @@ func TestRemoteBlockReader(t *testing.T) {
 			BlockId: blockId,
 		},
 	}
+	req <- gfdr
 
 	resp := <-noConnResp
 	if resp.Resp.Err == nil || resp.Resp.Id != reqId {
 		t.Error("should be an error")
+		return
+	}
+
+	br.NodeConnMap.SetAll(0, "someAddress:123", nodeId)
+
+	req <- gfdr
+	sent := <-sends
+	payload := sent.Payload
+
+	if g, ok := payload.(*GetFromDiskReq); ok {
+		if g.Req.Id != gfdr.Req.Id {
+			t.Error("invalid send")
+			return
+		}
+	} else {
+		t.Error("invalid type")
 		return
 	}
 }
