@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package blocksaver
+package blockreader
 
 import (
 	"context"
@@ -24,73 +24,49 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestLocalBlockSaver(t *testing.T) {
+func TestLocalBlockReader(t *testing.T) {
 	nodeId := model.NewNodeId()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	req := make(chan SaveToDiskReq)
+	req := make(chan GetFromDiskReq)
 
-	disk1 := mockDisk(nodeId, ctx)
-	disk2 := mockDisk(nodeId, ctx)
+	disk1, blockId1 := mockDisk(nodeId, ctx)
+	disk2, _ := mockDisk(nodeId, ctx)
 	disks := set.NewSet[disk.Disk]()
 	disks.Add(*disk1)
 	disks.Add(*disk2)
 
-	lbs := LocalBlockSaver{
+	lbs := LocalBlockReader{
 		Req:   req,
 		Disks: &disks,
 	}
 
 	go lbs.Start(ctx)
 
-	req <- SaveToDiskReq{
+	blockReq := model.NewGetBlockReq(blockId1)
+	req <- GetFromDiskReq{
 		Caller: model.NewNodeId(),
 		Dest: Dest{
 			NodeId: nodeId,
 			DiskId: disk1.Id(),
 		},
-		Req: model.NewPutBlockReq(model.Block{
-			Id:   model.NewBlockId(),
-			Data: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-		}),
+		Req: blockReq,
 	}
 
-	result := <-disk1.OutWrites
+	result := <-disk1.OutReads
 	if !result.Ok {
-		t.Errorf("Expected write to succeed, got error: %s", result.Message)
+		t.Errorf("Expected read to succeed, got error: %s", result.Message)
 		return
 	}
 
-	if result.Ptr.NodeId != nodeId || result.Ptr.Disk != disk1.Id() {
-		t.Errorf("Expected DiskPointer to match, got %v", result.Ptr)
-		return
-	}
-
-	req <- SaveToDiskReq{
-		Caller: model.NewNodeId(),
-		Dest: Dest{
-			NodeId: nodeId,
-			DiskId: disk2.Id(),
-		},
-		Req: model.NewPutBlockReq(model.Block{
-			Id:   model.NewBlockId(),
-			Data: []byte{10, 9, 8, 7, 6, 5, 4, 3, 2, 1},
-		}),
-	}
-	result = <-disk2.OutWrites
-	if !result.Ok {
-		t.Errorf("Expected write to succeed, got error: %s", result.Message)
-		return
-	}
-	if result.Ptr.NodeId != nodeId || result.Ptr.Disk != disk2.Id() {
-		t.Errorf("Expected DiskPointer to match, got %v", result.Ptr)
-		return
+	if result.ReqId != blockReq.Id {
+		t.Errorf("Expected different block id")
 	}
 }
 
-func mockDisk(nodeId model.NodeId, ctx context.Context) *disk.Disk {
+func mockDisk(nodeId model.NodeId, ctx context.Context) (*disk.Disk, model.BlockId) {
 	p := disk.NewPath("/test", &disk.MockFileOps{})
 	d := disk.New(
 		p,
@@ -98,5 +74,19 @@ func mockDisk(nodeId model.NodeId, ctx context.Context) *disk.Disk {
 		model.DiskId(uuid.NewString()),
 		ctx,
 	)
-	return &d
+	blockId := model.NewBlockId()
+	d.InWrites <- model.WriteRequest{
+		Caller: "",
+		Data: model.RawData{
+			Ptr: model.DiskPointer{
+				NodeId:   nodeId,
+				Disk:     d.Id(),
+				FileName: string(blockId),
+			},
+			Data: []byte{1, 2, 3, 4, 5},
+		},
+		ReqId: "",
+	}
+	<-d.OutWrites
+	return &d, blockId
 }
