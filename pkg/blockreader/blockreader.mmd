@@ -8,3 +8,6 @@ flowchart TD
         E -->|ReadResult| F("LocalBlockReadResponse")
         F -->|GetFromDiskResp| B
         F -->|GetFromDiskResp| G["Conns"]
+        D -->|GetFromDiskReq| G
+        G -->|GetFromDiskReq| C
+        G -->|GetFromDiskResp| B
