@@ -88,81 +88,6 @@ func TestReceiveSyncNodes(t *testing.T) {
 	}
 }
 
-func TestWebdavGet(t *testing.T) {
-	const expectedAddress1 = "some-address:123"
-	const expectedConnectionId1 = 1
-	var expectedNodeId1 = model.NewNodeId()
-	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path", Node: expectedNodeId1}}
-	const expectedAddress2 = "some-address2:234"
-	const expectedConnectionId2 = 2
-	var expectedNodeId2 = model.NewNodeId()
-	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path", Node: expectedNodeId2}}
-	disks := []string{"disk"}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	m, fileOps, _ := mgrWithConnectedNodes(ctx, []connectedNode{
-		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
-		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
-	}, 0, t, disks, make(chan<- model.ConnectToNodeReq))
-
-	ids := []model.BlockId{}
-	for range 100 {
-		blockId := model.NewBlockId()
-		ids = append(ids, blockId)
-	}
-
-	oneCount := int32(0)
-	twoCount := int32(0)
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case s := <-m.MgrConnsSends:
-				switch readRequest := s.Payload.(type) {
-				case *model.ReadRequest:
-					switch s.ConnId {
-					case expectedConnectionId1:
-						atomic.AddInt32(&oneCount, 1)
-					case expectedConnectionId2:
-						atomic.AddInt32(&twoCount, 1)
-					}
-					data := model.RawData{
-						Ptr:  readRequest.Ptrs[0],
-						Data: []byte{1, 2, 3},
-					}
-					result := model.NewReadResultOk(
-						readRequest.Caller,
-						readRequest.Ptrs[1:],
-						data,
-						readRequest.ReqId,
-						readRequest.BlockId,
-					)
-					m.ConnsMgrReceives <- model.ConnsMgrReceive{
-						ConnId:  s.ConnId,
-						Payload: &result,
-					}
-				}
-			}
-		}
-	}()
-
-	for _, blockId := range ids {
-		m.WebdavMgrGets <- model.NewGetBlockReq(blockId)
-		w := <-m.MgrWebdavGets
-		if w.Block.Id != blockId {
-			t.Error("Expected", blockId, "got", w.Block.Id)
-			return
-		}
-	}
-	if fileOps.WriteCount == 0 || oneCount == 0 || twoCount == 0 {
-		t.Error("Expected everyone to get some data")
-		return
-	}
-}
-
 func TestBroadcast(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
@@ -236,7 +161,7 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 	custodianCommands := make(chan custodian.Command, chanSize)
 	m.CustodianCommands = custodianCommands
 	addedDisk := make(chan *disk.Disk)
-	m.AddedDisk = addedDisk
+	m.AddedDisk = []chan<- *disk.Disk{addedDisk}
 	m.Start()
 
 	for _, path := range paths {

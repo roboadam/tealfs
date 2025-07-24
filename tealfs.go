@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"tealfs/pkg/blockreader"
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/custodian"
@@ -97,8 +98,12 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		ctx,
 	)
 
-	addedDisks := make(chan *disk.Disk)
-	m.AddedDisk = addedDisks
+	addedDisksSaver := make(chan *disk.Disk)
+	addedDisksReader := make(chan *disk.Disk)
+	m.AddedDisk = []chan<- *disk.Disk{
+		addedDisksSaver,
+		addedDisksReader,
+	}
 
 	webdavPutReq := make(chan model.PutBlockReq)
 	webdavPutResp := make(chan model.PutBlockResp)
@@ -136,7 +141,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go rbs.Start(ctx)
 
 	lbsr := blocksaver.LocalBlockSaveResponses{
-		InDisks:             addedDisks,
+		InDisks:             addedDisksSaver,
 		LocalWriteResponses: saveResp,
 		Sends:               m.MgrConnsSends,
 		NodeConnMap:         nodeConnMapper,
@@ -144,12 +149,52 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	}
 	go lbsr.Start(ctx)
 
+	webdavGetReq := make(chan model.GetBlockReq)
+	webdavGetResp := make(chan model.GetBlockResp)
+	localReadDest := make(chan blockreader.GetFromDiskReq)
+	remoteReadDest := make(chan blockreader.GetFromDiskReq)
+	readResp := make(chan blockreader.GetFromDiskResp)
+
+	br := blockreader.BlockReader{
+		Req:         webdavGetReq,
+		RemoteDest:  remoteReadDest,
+		LocalDest:   localReadDest,
+		InResp:      readResp,
+		Resp:        webdavGetResp,
+		Distributer: &m.MirrorDistributer,
+		NodeId:      m.NodeId,
+	}
+	go br.Start(ctx)
+
+	lbr := blockreader.LocalBlockReader{
+		Req:   localReadDest,
+		Disks: &m.Disks,
+	}
+	go lbr.Start(ctx)
+
+	rbr := blockreader.RemoteBlockReader{
+		Req:         remoteReadDest,
+		Sends:       m.MgrConnsSends,
+		NoConnResp:  readResp,
+		NodeConnMap: nodeConnMapper,
+	}
+	go rbr.Start(ctx)
+
+	lbrr := blockreader.LocalBlockReadResponses{
+		InDisks:            addedDisksReader,
+		LocalReadResponses: readResp,
+		Sends:              m.MgrConnsSends,
+		NodeConnMap:        nodeConnMapper,
+		NodeId:             m.NodeId,
+	}
+	go lbrr.Start(ctx)
+
 	_ = webdav.New(
 		m.NodeId,
-		m.WebdavMgrGets,
+		webdavGetReq,
 		webdavPutReq,
 		m.WebdavMgrBroadcast,
-		m.MgrWebdavGets,
+		webdavGetResp,
 		webdavPutResp,
 		m.MgrWebdavBroadcast,
 		webdavAddress,

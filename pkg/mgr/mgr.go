@@ -29,23 +29,20 @@ import (
 	"tealfs/pkg/set"
 
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 type Mgr struct {
 	ConnectToNodeReqs       chan<- model.ConnectToNodeReq
-	AddedDisk               chan<- *disk.Disk
+	AddedDisk               []chan<- *disk.Disk
 	UiMgrDisk               chan model.AddDiskReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
 	DiskMgrReads            chan model.ReadResult
-	WebdavMgrGets           chan model.GetBlockReq
 	WebdavMgrBroadcast      chan model.Broadcast
 	MgrConnsSends           chan model.MgrConnsSend
 	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
 	MgrUiConnectionStatuses chan model.UiConnectionStatus
 	MgrUiDiskStatuses       chan model.UiDiskStatus
-	MgrWebdavGets           chan model.GetBlockResp
 	MgrWebdavBroadcast      chan model.Broadcast
 	CustodianCommands       chan<- custodian.Command
 
@@ -82,13 +79,11 @@ func New(
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrReads:            make(chan model.ReadResult, chanSize),
-		WebdavMgrGets:           make(chan model.GetBlockReq, chanSize),
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
 		MgrDiskReads:            make(map[model.DiskId]chan model.ReadRequest),
 		MgrUiConnectionStatuses: make(chan model.UiConnectionStatus, chanSize),
 		MgrUiDiskStatuses:       make(chan model.UiDiskStatus, chanSize),
-		MgrWebdavGets:           make(chan model.GetBlockResp, chanSize),
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
@@ -155,7 +150,9 @@ func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
 	p := disk.NewPath(path, m.fileOps)
 	d := disk.New(p, m.NodeId, id, m.ctx)
 	m.Disks.Add(d)
-	m.AddedDisk <- &d
+	for _, dChan := range m.AddedDisk {
+		dChan <- &d
+	}
 	return true
 }
 
@@ -248,10 +245,6 @@ func (m *Mgr) eventLoop() {
 			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
-		case r := <-m.DiskMgrReads:
-			m.handleDiskReadResult(r)
-		case r := <-m.WebdavMgrGets:
-			m.handleWebdavGets(r)
 		case r := <-m.WebdavMgrBroadcast:
 			m.handleWebdavMgrBroadcast(r)
 		}
@@ -349,45 +342,12 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 			chanutil.Send(m.ctx, m.ConnectToNodeReqs, mct, "mgr: handleReceives: connect to")
 
 		}
-	case *model.ReadRequest:
-		if len(p.Ptrs) == 0 {
-			log.Error("No pointers to read from")
-		} else {
-			chanutil.Send(m.ctx, m.MgrDiskReads[p.Ptrs[0].Disk], *p, "mgr: handleReceives: read request")
-		}
-	case *model.ReadResult:
-		m.handleDiskReadResult(*p)
 	case *model.Broadcast:
 		chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
 	case *model.AddDiskReq:
 		m.handleAddDiskReq(*p)
 	default:
 		panic("Received unknown payload")
-	}
-}
-
-func (m *Mgr) handleDiskReadResult(r model.ReadResult) {
-	if r.Ok {
-		if r.Caller == m.NodeId {
-			br := model.GetBlockResp{
-				Id: r.ReqId,
-				Block: model.Block{
-					Id:   r.BlockId,
-					Data: r.Data.Data,
-				},
-			}
-			chanutil.Send(m.ctx, m.MgrWebdavGets, br, "mgr: handleDiskReadResult: to local webdav")
-		} else {
-			c, ok := m.nodeConnMapper.ConnForNode(r.Caller)
-			if ok {
-				mcs := model.MgrConnsSend{ConnId: c, Payload: &r}
-				chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReadResult: to remote webdav")
-			} else {
-				log.Warn("handleDiskReadResult: not connected")
-			}
-		}
-	} else {
-		m.handleWebdavGetsWithPtrs(r.Ptrs, r.ReqId, r.BlockId)
 	}
 }
 

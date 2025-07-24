@@ -19,6 +19,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"tealfs/pkg/blockreader"
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
@@ -28,21 +29,23 @@ import (
 )
 
 type Conns struct {
-	netConns          map[model.ConnId]tnet.RawNet
-	netConnsMux       *sync.RWMutex
-	nextId            model.ConnId
-	acceptedConns     chan AcceptedConns
-	outStatuses       chan model.NetConnectionStatus
-	outReceives       chan model.ConnsMgrReceive
-	OutSaveToDiskReq  chan<- blocksaver.SaveToDiskReq
-	OutSaveToDiskResp chan<- blocksaver.SaveToDiskResp
-	inConnectTo       <-chan model.ConnectToNodeReq
-	inSends           <-chan model.MgrConnsSend
-	Address           string
-	provider          ConnectionProvider
-	nodeId            model.NodeId
-	listener          net.Listener
-	ctx               context.Context
+	netConns           map[model.ConnId]tnet.RawNet
+	netConnsMux        *sync.RWMutex
+	nextId             model.ConnId
+	acceptedConns      chan AcceptedConns
+	outStatuses        chan model.NetConnectionStatus
+	outReceives        chan model.ConnsMgrReceive
+	OutSaveToDiskReq   chan<- blocksaver.SaveToDiskReq
+	OutSaveToDiskResp  chan<- blocksaver.SaveToDiskResp
+	OutGetFromDiskReq  chan<- blockreader.GetFromDiskReq
+	OutGetFromDiskResp chan<- blockreader.GetFromDiskResp
+	inConnectTo        <-chan model.ConnectToNodeReq
+	inSends            <-chan model.MgrConnsSend
+	Address            string
+	provider           ConnectionProvider
+	nodeId             model.NodeId
+	listener           net.Listener
+	ctx                context.Context
 }
 
 func NewConns(
@@ -212,6 +215,10 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.OutSaveToDiskReq <- *p
 			case *blocksaver.SaveToDiskResp:
 				c.OutSaveToDiskResp <- *p
+			case *blockreader.GetFromDiskReq:
+				c.OutGetFromDiskReq <- *p
+			case *blockreader.GetFromDiskResp:
+				c.OutGetFromDiskResp <- *p
 			default:
 				cmr := model.ConnsMgrReceive{
 					ConnId:  conn,
