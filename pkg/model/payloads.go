@@ -28,6 +28,8 @@ const (
 	AddDiskRequestType PayloadType = 8
 	SaveToDiskReq      PayloadType = 9
 	SaveToDiskResp     PayloadType = 10
+	GetFromDiskReq     PayloadType = 11
+	GetFromDiskResp    PayloadType = 12
 )
 
 type Payload interface {

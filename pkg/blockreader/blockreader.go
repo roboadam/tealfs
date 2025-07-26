@@ -49,7 +49,7 @@ type GetFromDiskReq struct {
 }
 
 func (s *GetFromDiskReq) Type() model.PayloadType {
-	return model.SaveToDiskReq
+	return model.GetFromDiskReq
 }
 
 type GetFromDiskResp struct {
@@ -59,7 +59,7 @@ type GetFromDiskResp struct {
 }
 
 func (s *GetFromDiskResp) Type() model.PayloadType {
-	return model.SaveToDiskResp
+	return model.GetFromDiskResp
 }
 
 func (bs *BlockReader) Start(ctx context.Context) {
