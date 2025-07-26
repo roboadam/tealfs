@@ -155,6 +155,9 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	remoteReadDest := make(chan blockreader.GetFromDiskReq)
 	readResp := make(chan blockreader.GetFromDiskResp)
 
+	conns.OutGetFromDiskReq = localReadDest
+	conns.OutGetFromDiskResp = readResp
+
 	br := blockreader.BlockReader{
 		Req:         webdavGetReq,
 		RemoteDest:  remoteReadDest,
