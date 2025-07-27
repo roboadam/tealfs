@@ -245,31 +245,31 @@ func (m *Mgr) eventLoop() {
 // 	}
 // }
 
-func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
-	if i.Node == m.NodeId {
-		id := model.DiskId(uuid.New().String())
-		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path, Node: m.NodeId})
-		m.syncDisksAndIds()
-		err := m.saveSettings()
-		if err != nil {
-			panic("error saving disk settings")
-		}
+// func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
+// 	if i.Node == m.NodeId {
+// 		id := model.DiskId(uuid.New().String())
+// 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path, Node: m.NodeId})
+// 		m.syncDisksAndIds()
+// 		err := m.saveSettings()
+// 		if err != nil {
+// 			panic("error saving disk settings")
+// 		}
 
-		connections := m.nodeConnMapper.Connections()
-		for _, conn := range connections.GetValues() {
-			iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
-			mcs := model.MgrConnsSend{
-				ConnId:  conn,
-				Payload: &iam,
-			}
-			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
-		}
-	} else {
-		if conn, exists := m.nodeConnMapper.ConnForNode(i.Node); exists {
-			chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: conn, Payload: &i}, "send add disk to node")
-		}
-	}
-}
+// 		connections := m.nodeConnMapper.Connections()
+// 		for _, conn := range connections.GetValues() {
+// 			iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
+// 			mcs := model.MgrConnsSend{
+// 				ConnId:  conn,
+// 				Payload: &iam,
+// 			}
+// 			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
+// 		}
+// 	} else {
+// 		if conn, exists := m.nodeConnMapper.ConnForNode(i.Node); exists {
+// 			chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: conn, Payload: &i}, "send add disk to node")
+// 		}
+// 	}
+// }
 
 func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 	result := model.NewSyncNodes()
