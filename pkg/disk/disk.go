@@ -28,12 +28,6 @@ type Path struct {
 	ops FileOps
 }
 
-type AddDiskReq struct {
-	Path   Path
-	Id     model.NodeId
-	DiskId model.DiskId
-}
-
 func New(
 	path Path,
 	id model.NodeId,

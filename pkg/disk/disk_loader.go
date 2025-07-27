@@ -15,29 +15,47 @@
 package disk
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/fs"
 	"path/filepath"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 )
 
 type DiskLoader struct {
 	FileOps  FileOps
 	SavePath string
+
+	OutAddDisk chan<- model.DiskIdPath
 }
 
-func (d *DiskLoader) LoadDiskIds() (set.Set[model.DiskIdPath], error) {
+func (d *DiskLoader) LoadDisks(ctx context.Context) {
 	diskInfo := []model.DiskIdPath{}
-	data, err := d.FileOps.ReadFile(filepath.Join(d.SavePath, "disks.json"))
-	if err == nil {
-		err = json.Unmarshal(data, &diskInfo)
-		if err != nil {
-			return set.NewSet[model.DiskIdPath](), err
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			data, err := d.FileOps.ReadFile(filepath.Join(d.SavePath, "disks.json"))
+
+			if errors.Is(err, fs.ErrNotExist) {
+				return
+			}
+
+			if err == nil {
+				err = json.Unmarshal(data, &diskInfo)
+				if err == nil {
+					d.sendToDiskAdder(&diskInfo)
+				}
+			}
 		}
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return set.NewSet[model.DiskIdPath](), err
 	}
-	return set.NewSetFromSlice(diskInfo), nil
+}
+
+func (d *DiskLoader) sendToDiskAdder(disks *[]model.DiskIdPath) {
+	for _, dip := range *disks {
+		d.OutAddDisk <- dip
+	}
 }

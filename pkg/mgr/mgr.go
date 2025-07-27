@@ -24,8 +24,6 @@ import (
 	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
-
-	"github.com/google/uuid"
 )
 
 type Mgr struct {
@@ -221,8 +219,8 @@ func (m *Mgr) eventLoop() {
 		select {
 		case <-m.ctx.Done():
 			return
-		case r := <-m.UiMgrDisk:
-			m.handleAddDiskReq(r)
+		// case r := <-m.UiMgrDisk:
+		// 	m.handleAddDiskReq(r)
 		case r := <-m.ConnsMgrStatuses:
 			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
@@ -326,8 +324,8 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		}
 	case *model.Broadcast:
 		chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
-	case *model.AddDiskReq:
-		m.handleAddDiskReq(*p)
+	// case *model.AddDiskReq:
+	// 	m.handleAddDiskReq(*p)
 	default:
 		panic("Received unknown payload")
 	}
@@ -339,9 +337,9 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 	if err != nil {
 		return err
 	}
-	for _, disk := range iam.Disks {
-		m.MirrorDistributer.SetWeight(iam.NodeId, disk.Id, int(iam.FreeBytes))
-	}
+	// for _, disk := range iam.Disks {
+	// 	m.MirrorDistributer.SetWeight(iam.NodeId, disk.Id, int(iam.FreeBytes))
+	// }
 	return nil
 }
 
