@@ -16,7 +16,6 @@ package mgr
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -124,32 +123,32 @@ func (m *Mgr) connectToUnconnected() {
 	}
 }
 
-func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
-	for _, disk := range m.Disks.GetValues() {
-		if disk.Id() == id {
-			return false
-		}
-	}
-	p := disk.NewPath(path, m.fileOps)
-	d := disk.New(p, m.NodeId, id, m.ctx)
-	m.Disks.Add(d)
-	for _, dChan := range m.AddedDisk {
-		dChan <- &d
-	}
-	return true
-}
+// func (m *Mgr) createLocalDisk(id model.DiskId, path string) bool {
+// 	for _, disk := range m.Disks.GetValues() {
+// 		if disk.Id() == id {
+// 			return false
+// 		}
+// 	}
+// 	p := disk.NewPath(path, m.fileOps)
+// 	d := disk.New(p, m.NodeId, id, m.ctx)
+// 	m.Disks.Add(d)
+// 	for _, dChan := range m.AddedDisk {
+// 		dChan <- &d
+// 	}
+// 	return true
+// }
 
-func (m *Mgr) markLocalDiskAvailable(id model.DiskId, path string, size int) {
-	m.MirrorDistributer.SetWeight(m.NodeId, id, size)
-	status := model.UiDiskStatus{
-		Localness:     model.Local,
-		Availableness: model.Available,
-		Node:          m.NodeId,
-		Id:            id,
-		Path:          path,
-	}
-	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: local disk available")
-}
+// func (m *Mgr) markLocalDiskAvailable(id model.DiskId, path string, size int) {
+// 	m.MirrorDistributer.SetWeight(m.NodeId, id, size)
+// 	status := model.UiDiskStatus{
+// 		Localness:     model.Local,
+// 		Availableness: model.Available,
+// 		Node:          m.NodeId,
+// 		Id:            id,
+// 		Path:          path,
+// 	}
+// 	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, status, "mgr: local disk available")
+// }
 
 func (m *Mgr) markRemoteDiskUnknown(id model.DiskId, node model.NodeId, path string) {
 	status := model.UiDiskStatus{
@@ -176,35 +175,35 @@ func (m *Mgr) loadSettings() error {
 		m.nodeConnMapper = mapper
 	}
 
-	data, err = m.fileOps.ReadFile(filepath.Join(m.savePath, "disks.json"))
-	if err == nil {
-		err = json.Unmarshal(data, &m.DiskIds)
-		if err != nil {
-			return err
-		}
-	} else if errors.Is(err, fs.ErrNotExist) {
-		m.DiskIds = []model.DiskIdPath{}
-	} else {
-		return err
-	}
+	// data, err = m.fileOps.ReadFile(filepath.Join(m.savePath, "disks.json"))
+	// if err == nil {
+	// 	err = json.Unmarshal(data, &m.DiskIds)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// } else if errors.Is(err, fs.ErrNotExist) {
+	// 	m.DiskIds = []model.DiskIdPath{}
+	// } else {
+	// 	return err
+	// }
 
-	m.syncDisksAndIds()
+	// m.syncDisksAndIds()
 
 	return nil
 }
 
 func (m *Mgr) saveSettings() error {
-	data, err := json.Marshal(m.DiskIds)
-	if err != nil {
-		return err
-	}
+	// data, err := json.Marshal(m.DiskIds)
+	// if err != nil {
+	// 	return err
+	// }
 
-	err = m.fileOps.WriteFile(filepath.Join(m.savePath, "disks.json"), data)
-	if err != nil {
-		return err
-	}
+	// err = m.fileOps.WriteFile(filepath.Join(m.savePath, "disks.json"), data)
+	// if err != nil {
+	// 	return err
+	// }
 
-	data, err = m.nodeConnMapper.Marshal()
+	data, err := m.nodeConnMapper.Marshal()
 	if err != nil {
 		return err
 	}
@@ -234,43 +233,43 @@ func (m *Mgr) eventLoop() {
 	}
 }
 
-func (m *Mgr) syncDisksAndIds() {
-	for _, diskIdPath := range m.DiskIds {
-		if diskIdPath.Node == m.NodeId {
-			m.createDiskChannels(diskIdPath.Id)
-			m.createLocalDisk(diskIdPath.Id, diskIdPath.Path)
-			m.markLocalDiskAvailable(diskIdPath.Id, diskIdPath.Path, 1)
-		} else {
-			m.markRemoteDiskUnknown(diskIdPath.Id, diskIdPath.Node, diskIdPath.Path)
-		}
-	}
-}
+// func (m *Mgr) syncDisksAndIds() {
+// 	for _, diskIdPath := range m.DiskIds {
+// 		if diskIdPath.Node == m.NodeId {
+// 			m.createDiskChannels(diskIdPath.Id)
+// 			m.createLocalDisk(diskIdPath.Id, diskIdPath.Path)
+// 			m.markLocalDiskAvailable(diskIdPath.Id, diskIdPath.Path, 1)
+// 		} else {
+// 			m.markRemoteDiskUnknown(diskIdPath.Id, diskIdPath.Node, diskIdPath.Path)
+// 		}
+// 	}
+// }
 
-func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
-	if i.Node == m.NodeId {
-		id := model.DiskId(uuid.New().String())
-		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path, Node: m.NodeId})
-		m.syncDisksAndIds()
-		err := m.saveSettings()
-		if err != nil {
-			panic("error saving disk settings")
-		}
+// func (m *Mgr) handleAddDiskReq(i model.AddDiskReq) {
+// 	if i.Node == m.NodeId {
+// 		id := model.DiskId(uuid.New().String())
+// 		m.DiskIds = append(m.DiskIds, model.DiskIdPath{Id: id, Path: i.Path, Node: m.NodeId})
+// 		m.syncDisksAndIds()
+// 		err := m.saveSettings()
+// 		if err != nil {
+// 			panic("error saving disk settings")
+// 		}
 
-		connections := m.nodeConnMapper.Connections()
-		for _, conn := range connections.GetValues() {
-			iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
-			mcs := model.MgrConnsSend{
-				ConnId:  conn,
-				Payload: &iam,
-			}
-			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
-		}
-	} else {
-		if conn, exists := m.nodeConnMapper.ConnForNode(i.Node); exists {
-			chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: conn, Payload: &i}, "send add disk to node")
-		}
-	}
-}
+// 		connections := m.nodeConnMapper.Connections()
+// 		for _, conn := range connections.GetValues() {
+// 			iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
+// 			mcs := model.MgrConnsSend{
+// 				ConnId:  conn,
+// 				Payload: &iam,
+// 			}
+// 			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleDiskReq: added disk")
+// 		}
+// 	} else {
+// 		if conn, exists := m.nodeConnMapper.ConnForNode(i.Node); exists {
+// 			chanutil.Send(m.ctx, m.MgrConnsSends, model.MgrConnsSend{ConnId: conn, Payload: &i}, "send add disk to node")
+// 		}
+// 	}
+// }
 
 func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 	result := model.NewSyncNodes()
