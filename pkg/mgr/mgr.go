@@ -28,7 +28,7 @@ import (
 
 type Mgr struct {
 	ConnectToNodeReqs       chan<- model.ConnectToNodeReq
-	UiMgrDisk               chan model.AddDiskReq
+	UiMgrDisk               chan model.AddNewDiskReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
 	DiskMgrReads            chan model.ReadResult
@@ -65,7 +65,7 @@ func New(
 	}
 
 	mgr := Mgr{
-		UiMgrDisk:               make(chan model.AddDiskReq, chanSize),
+		UiMgrDisk:               make(chan model.AddNewDiskReq, chanSize),
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrReads:            make(chan model.ReadResult, chanSize),
