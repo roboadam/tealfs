@@ -112,7 +112,7 @@ func NewNodeId() NodeId {
 
 type DiskId string
 
-type DiskIdPath struct {
+type AddDiskReq struct {
 	Id   DiskId
 	Path string
 	Node NodeId

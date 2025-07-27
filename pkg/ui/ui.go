@@ -129,7 +129,7 @@ func (ui *Ui) handleRoot() {
 	ui.ops.HandleFunc("/add-disk", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			ui.addDiskGet(w, tmpl, ui.remotes.ToSlice(), ui.nodeId)
+			ui.addDiskGet(w, tmpl, ui.remotes.GetValues(), ui.nodeId)
 		case http.MethodPut:
 			diskPath := r.FormValue("diskPath")
 			node := r.FormValue("node")

@@ -184,11 +184,11 @@ func TestGetData(t *testing.T) {
 	defer cancel()
 	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest(ctx)
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
-	disks := []model.DiskIdPath{{Id: "disk1", Path: "disk1path", Node: "node1"}}
+	disks := []model.AddDiskReq{{Id: "disk1", Path: "disk1path", Node: "node1"}}
 
 	buffer := ClosableBuffer{}
 	rawNet := tnet.NewRawNet(&buffer)
-	iam := model.NewIam("nodeId", disks, "localAddress:123", 1)
+	iam := model.NewIam("nodeId", disks, "localAddress:123")
 	var payload model.Payload = &iam
 	err := rawNet.SendPayload(payload)
 	if err != nil {

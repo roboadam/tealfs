@@ -32,11 +32,11 @@ func TestConnectToSuccess(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()
-	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path", Node: expectedNodeId1}}
+	disks1 := []model.AddDiskReq{{Id: model.DiskId("disk1"), Path: "disk1path", Node: expectedNodeId1}}
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = model.NewNodeId()
-	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path", Node: expectedNodeId2}}
+	disks2 := []model.AddDiskReq{{Id: model.DiskId("disk2"), Path: "disk2path", Node: expectedNodeId2}}
 	disks := []string{"disk"}
 
 	_, _, _ = mgrWithConnectedNodes(
@@ -53,11 +53,11 @@ func TestReceiveSyncNodes(t *testing.T) {
 	const sharedAddress = "some-address:123"
 	const sharedConnectionId = 1
 	var sharedNodeId = model.NewNodeId()
-	disks1 := []model.DiskIdPath{{Id: model.DiskId("disk1"), Path: "disk1path", Node: sharedNodeId}}
+	disks1 := []model.AddDiskReq{{Id: model.DiskId("disk1"), Path: "disk1path", Node: sharedNodeId}}
 	const localAddress = "some-address2:234"
 	const localConnectionId = 2
 	var localNodeId = model.NewNodeId()
-	disks2 := []model.DiskIdPath{{Id: model.DiskId("disk2"), Path: "disk2path", Node: localNodeId}}
+	disks2 := []model.AddDiskReq{{Id: model.DiskId("disk2"), Path: "disk2path", Node: localNodeId}}
 	const remoteAddress = "some-address3:345"
 	var remoteNodeId = model.NewNodeId()
 	disks := []string{"disk"}
@@ -92,11 +92,11 @@ func TestBroadcast(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
 	var expectedNodeId1 = model.NewNodeId()
-	disks1 := []model.DiskIdPath{{Id: "disk1", Path: "disk1path", Node: expectedNodeId1}}
+	disks1 := []model.AddDiskReq{{Id: "disk1", Path: "disk1path", Node: expectedNodeId1}}
 	const expectedAddress2 = "some-address2:234"
 	const expectedConnectionId2 = 2
 	var expectedNodeId2 = model.NewNodeId()
-	disks2 := []model.DiskIdPath{{Id: "disk2", Path: "disk2path", Node: expectedNodeId2}}
+	disks2 := []model.AddDiskReq{{Id: "disk2", Path: "disk2path", Node: expectedNodeId2}}
 	maxNumberOfWritesInOnePass := 2
 	paths := []string{"path1"}
 
@@ -150,13 +150,13 @@ type connectedNode struct {
 	address string
 	conn    model.ConnId
 	node    model.NodeId
-	disks   []model.DiskIdPath
+	disks   []model.AddDiskReq
 }
 
 func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, t *testing.T, paths []string, connReqs chan<- model.ConnectToNodeReq) (*Mgr, *disk.MockFileOps, chan custodian.Command) {
 	fileOps := disk.MockFileOps{}
 	nodeConnMapper := model.NewNodeConnectionMapper()
-	m := New(chanSize, "dummyAddress", "dummyPath", &fileOps, 1, nodeConnMapper, ctx)
+	m := New(chanSize, "dummyAddress", "dummyPath", &fileOps, nodeConnMapper, ctx)
 	m.ConnectToNodeReqs = connReqs
 	custodianCommands := make(chan custodian.Command, chanSize)
 	m.CustodianCommands = custodianCommands
@@ -201,7 +201,7 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 
 		// Send a message to Mgr indicating the newly
 		// connected node has sent us an Iam payload
-		iamPayload := model.NewIam(n.node, n.disks, n.address, 1)
+		iamPayload := model.NewIam(n.node, n.disks, n.address)
 		m.ConnsMgrReceives <- model.ConnsMgrReceive{
 			ConnId:  n.conn,
 			Payload: &iamPayload,

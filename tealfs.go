@@ -21,7 +21,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strconv"
 	"tealfs/pkg/blockreader"
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
@@ -47,28 +46,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(os.Args) < 5 {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<webdav address> <ui address> <node address> <free bytes>")
+	if len(os.Args) < 4 {
+		fmt.Fprintln(os.Stderr, os.Args[0], "<webdav address> <ui address> <node address>")
 		os.Exit(1)
 	}
 
-	val, err := strconv.ParseUint(os.Args[4], 10, 32)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<webdav address> <ui address> <node address> <free bytes>")
-		os.Exit(1)
-	}
-
-	freeBytes := uint32(val)
-
-	_ = startTealFs(configDir, os.Args[1], os.Args[2], os.Args[3], freeBytes, context.Background())
+	_ = startTealFs(configDir, os.Args[1], os.Args[2], os.Args[3], context.Background())
 }
 
-func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
+func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, ctx context.Context) error {
 	log.SetLevel(log.DebugLevel)
 	chansize := 0
 	connReqs := make(chan model.ConnectToNodeReq)
 	nodeConnMapper := model.NewNodeConnectionMapper()
-	m := mgr.New(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, freeBytes, nodeConnMapper, ctx)
+	m := mgr.New(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, nodeConnMapper, ctx)
 	m.ConnectToNodeReqs = connReqs
 
 	custodianCommands := make(chan custodian.Command, chansize)

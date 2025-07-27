@@ -46,7 +46,6 @@ type Mgr struct {
 	savePath           string
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
-	freeBytes          uint32
 	ctx                context.Context
 }
 
@@ -55,7 +54,6 @@ func New(
 	nodeAddress string,
 	globalPath string,
 	fileOps disk.FileOps,
-	freeBytes uint32,
 	nodeConnMapper *model.NodeConnectionMapper,
 	ctx context.Context,
 ) *Mgr {
@@ -80,7 +78,6 @@ func New(
 		savePath:                globalPath,
 		fileOps:                 fileOps,
 		pendingBlockWrites:      newPendingBlockWrites(),
-		freeBytes:               freeBytes,
 		ctx:                     ctx,
 	}
 
@@ -346,7 +343,7 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
-		iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress, m.freeBytes)
+		iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress)
 		mcs := model.MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &iam,

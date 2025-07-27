@@ -48,19 +48,6 @@ func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
 	return result
 }
 
-func (s *Set[K]) ToSlice() []K {
-	s.initMux()
-	s.mux.RLock()
-	defer s.mux.RUnlock()
-	result := make([]K, len(s.Data))
-	i := 0
-	for k := range s.Data {
-		result[i] = k
-		i++
-	}
-	return result
-}
-
 func (s *Set[K]) initMux() {
 	if s.mux == nil {
 		s.mux = &sync.RWMutex{}

@@ -27,11 +27,11 @@ type DiskLoader struct {
 	FileOps  FileOps
 	SavePath string
 
-	OutAddDisk chan<- model.DiskIdPath
+	OutAddDisk chan<- model.AddDiskReq
 }
 
 func (d *DiskLoader) LoadDisks(ctx context.Context) {
-	diskInfo := []model.DiskIdPath{}
+	diskInfo := []model.AddDiskReq{}
 
 	for {
 		select {
@@ -54,7 +54,7 @@ func (d *DiskLoader) LoadDisks(ctx context.Context) {
 	}
 }
 
-func (d *DiskLoader) sendToDiskAdder(disks *[]model.DiskIdPath) {
+func (d *DiskLoader) sendToDiskAdder(disks *[]model.AddDiskReq) {
 	for _, dip := range *disks {
 		d.OutAddDisk <- dip
 	}

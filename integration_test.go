@@ -43,7 +43,7 @@ func TestOneNodeCluster(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(configPath, webdavAddress, uiAddress, nodeAddress, 1, ctx)
+	go startTealFs(configPath, webdavAddress, uiAddress, nodeAddress, ctx)
 	time.Sleep(time.Second)
 
 	submitForm(ctx, t, addDiskUrl, addDiskContents)
@@ -100,8 +100,8 @@ func TestTwoNodeCluster(t *testing.T) {
 	defer cancel1()
 	defer cancel2()
 
-	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx1)
-	go startTealFs(configPath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx2)
+	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, ctx1)
+	go startTealFs(configPath2, webdavAddress2, uiAddress2, nodeAddress2, ctx2)
 
 	time.Sleep(time.Second)
 
@@ -172,7 +172,7 @@ func TestTwoNodeCluster(t *testing.T) {
 	ctx1, cancel1 = context.WithCancel(context.Background())
 	defer cancel1()
 
-	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx1)
+	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, ctx1)
 
 	time.Sleep(time.Second)
 
@@ -299,8 +299,8 @@ func TestTwoNodeOneStorageCluster(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, 0, ctx)
-	go startTealFs(configPath2, webdavAddress2, uiAddress2, nodeAddress2, 1, ctx)
+	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, ctx)
+	go startTealFs(configPath2, webdavAddress2, uiAddress2, nodeAddress2, ctx)
 	time.Sleep(time.Second)
 	submitForm(ctx, t, addDiskToUrl2, diskPathContents3)
 	submitForm(ctx, t, addDiskToUrl2, diskPathContents4)
@@ -386,7 +386,7 @@ func TestTwoNodeClusterLotsOfFiles(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, 1, ctx)
+	go startTealFs(configPath1, webdavAddress1, uiAddress1, nodeAddress1, ctx)
 
 	time.Sleep(time.Millisecond * 500)
 	submitForm(ctx, t, addDiskToUrl, diskPathContents)

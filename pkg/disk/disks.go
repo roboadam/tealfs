@@ -23,19 +23,20 @@ import (
 
 type Disks struct {
 	Distributer dist.MirrorDistributer
-	AllDiskIds  set.Set[model.DiskIdPath]
+	AllDiskIds  set.Set[model.AddDiskReq]
 	Disks       set.Set[Disk]
 	NodeId      model.NodeId
 	FileOps     FileOps
 
-	InAddDisk       <-chan model.DiskIdPath
-	OutAddLocalDisk []chan<- *Disk
-	OutStatus       chan<- model.UiDiskStatus
+	InAddDiskReq        <-chan model.AddDiskReq
+	OutRemoteAddDiskReq chan<- model.AddDiskReq
+	OutAddLocalDisk     []chan<- *Disk
+	OutIamDisksUpdate   chan<- model.IAm
 }
 
 func NewDisks(nodeId model.NodeId) *Disks {
 	distributer := dist.NewMirrorDistributer(nodeId)
-	allDiskIds := set.NewSet[model.DiskIdPath]()
+	allDiskIds := set.NewSet[model.AddDiskReq]()
 	disks := set.NewSet[Disk]()
 	return &Disks{
 		Distributer: distributer,
@@ -48,14 +49,14 @@ func (d *Disks) Start(ctx context.Context) {
 	select {
 	case <-ctx.Done():
 		return
-	case add := <-d.InAddDisk:
+	case add := <-d.InAddDiskReq:
 		if !d.AllDiskIds.Contains(add) {
 			d.addDisk(ctx, add)
 		}
 	}
 }
 
-func (d *Disks) addDisk(ctx context.Context, add model.DiskIdPath) {
+func (d *Disks) addDisk(ctx context.Context, add model.AddDiskReq) {
 	if add.Node == d.NodeId {
 		d.addLocalDisk(ctx, add)
 	} else {
@@ -63,7 +64,7 @@ func (d *Disks) addDisk(ctx context.Context, add model.DiskIdPath) {
 	}
 }
 
-func (d *Disks) addLocalDisk(ctx context.Context, add model.DiskIdPath) {
+func (d *Disks) addLocalDisk(ctx context.Context, add model.AddDiskReq) {
 	path := NewPath(add.Path, d.FileOps)
 	disk := New(path, add.Node, add.Id, ctx)
 
@@ -74,9 +75,13 @@ func (d *Disks) addLocalDisk(ctx context.Context, add model.DiskIdPath) {
 	for _, diskChan := range d.OutAddLocalDisk {
 		diskChan <- &disk
 	}
+
+	d.OutIamDisksUpdate <- model.IAm{
+		Disks: d.AllDiskIds.GetValues(),
+	}
 }
 
-func (d *Disks) addRemoteDisk(add model.DiskIdPath) {
+func (d *Disks) addRemoteDisk(add model.AddDiskReq) {
 	d.Distributer.SetWeight(add.Node, add.Id, 1)
 	d.AllDiskIds.Add(add)
 }
