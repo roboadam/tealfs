@@ -16,13 +16,14 @@ package cluster
 
 import (
 	"context"
-	"tealfs/pkg/chanutil"
+	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 )
 
 type Cluster struct {
-	Mapper   model.NodeConnectionMapper
-	Incoming <-chan IncomingConn
+	Mapper      model.NodeConnectionMapper
+	Incoming    <-chan IncomingConn
+	Distributer *dist.MirrorDistributer
 }
 
 type IncomingConn struct {
@@ -46,26 +47,26 @@ func (c *Cluster) Start(ctx context.Context) {
 }
 
 func (c *Cluster) handleIam(incoming *IncomingConn) {
-	c.Mapper.SetAll(incoming.ConnId, incoming.Iam.Address, incoming.Iam.NodeId)
-	// TODO: make Connection status in ui just read from mapper
-	_ = m.addNodeToCluster(*p, i.ConnId)
-	for _, d := range p.Disks {
-		diskStatus := model.UiDiskStatus{
-			Localness:     model.Remote,
-			Availableness: model.Available,
-			Node:          p.NodeId,
-			Id:            d.Id,
-			Path:          d.Path,
-		}
-		chanutil.Send(m.ctx, m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")
-	}
-	syncNodes := m.syncNodesPayloadToSend()
-	connections := m.nodeConnMapper.Connections()
-	for _, connId := range connections.GetValues() {
-		mcs := model.MgrConnsSend{
-			ConnId:  connId,
-			Payload: &syncNodes,
-		}
-		chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleReceives: sync nodes")
-	}
+	// c.Mapper.SetAll(incoming.ConnId, incoming.Iam.Address, incoming.Iam.NodeId)
+	// // TODO: make Connection status in ui just read from mapper
+	// _ = m.addNodeToCluster(*p, i.ConnId)
+	// for _, d := range p.Disks {
+	// 	diskStatus := model.UiDiskStatus{
+	// 		Localness:     model.Remote,
+	// 		Availableness: model.Available,
+	// 		Node:          p.NodeId,
+	// 		Id:            d.Id,
+	// 		Path:          d.Path,
+	// 	}
+	// 	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")
+	// }
+	// syncNodes := m.syncNodesPayloadToSend()
+	// connections := m.nodeConnMapper.Connections()
+	// for _, connId := range connections.GetValues() {
+	// 	mcs := model.MgrConnsSend{
+	// 		ConnId:  connId,
+	// 		Payload: &syncNodes,
+	// 	}
+	// 	chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleReceives: sync nodes")
+	// }
 }
