@@ -22,11 +22,24 @@ import (
 )
 
 type Disks struct {
-	Distributer   dist.MirrorDistributer
-	AllDiskIds    set.Set[model.DiskIdPath]
-	Disks         set.Set[Disk]
+	Distributer dist.MirrorDistributer
+	AllDiskIds  set.Set[model.DiskIdPath]
+	Disks       set.Set[Disk]
+
 	AddLocalDisk  <-chan AddDiskReq
 	AddRemoteDisk <-chan AddRemoteDiskReq
+	AddedDisk     []chan<- *Disk
+}
+
+func NewDisks(nodeId model.NodeId) *Disks {
+	distributer := dist.NewMirrorDistributer(nodeId)
+	allDiskIds := set.NewSet[model.DiskIdPath]()
+	disks := set.NewSet[Disk]()
+	return &Disks{
+		Distributer: distributer,
+		AllDiskIds:  allDiskIds,
+		Disks:       disks,
+	}
 }
 
 type AddRemoteDiskReq struct {
@@ -48,6 +61,10 @@ func (d *Disks) Start(ctx context.Context) {
 			Path: add.Path.String(),
 			Node: add.Id,
 		})
+		for _, diskChan := range d.AddedDisk {
+			diskChan <- &disk
+		}
+
 	case add := <-d.AddRemoteDisk:
 		d.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
 		d.AllDiskIds.Add(model.DiskIdPath{

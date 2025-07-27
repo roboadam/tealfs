@@ -24,23 +24,19 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 
 	"github.com/google/uuid"
 )
 
 type Mgr struct {
 	ConnectToNodeReqs       chan<- model.ConnectToNodeReq
-	AddedDisk               []chan<- *disk.Disk
 	UiMgrDisk               chan model.AddDiskReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
 	DiskMgrReads            chan model.ReadResult
 	WebdavMgrBroadcast      chan model.Broadcast
 	MgrConnsSends           chan model.MgrConnsSend
-	MgrDiskReads            map[model.DiskId]chan model.ReadRequest
 	MgrUiConnectionStatuses chan model.UiConnectionStatus
 	MgrUiDiskStatuses       chan model.UiDiskStatus
 	MgrWebdavBroadcast      chan model.Broadcast
@@ -49,14 +45,11 @@ type Mgr struct {
 	nodeConnMapper *model.NodeConnectionMapper
 
 	NodeId             model.NodeId
-	MirrorDistributer  dist.MirrorDistributer
 	nodeAddress        string
 	savePath           string
 	fileOps            disk.FileOps
 	pendingBlockWrites pendingBlockWrites
 	freeBytes          uint32
-	DiskIds            []model.DiskIdPath
-	Disks              set.Set[disk.Disk]
 	ctx                context.Context
 }
 
@@ -81,20 +74,16 @@ func New(
 		DiskMgrReads:            make(chan model.ReadResult, chanSize),
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
-		MgrDiskReads:            make(map[model.DiskId]chan model.ReadRequest),
 		MgrUiConnectionStatuses: make(chan model.UiConnectionStatus, chanSize),
 		MgrUiDiskStatuses:       make(chan model.UiDiskStatus, chanSize),
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
-		MirrorDistributer:       dist.NewMirrorDistributer(nodeId),
 		nodeAddress:             nodeAddress,
 		savePath:                globalPath,
 		fileOps:                 fileOps,
 		pendingBlockWrites:      newPendingBlockWrites(),
 		freeBytes:               freeBytes,
-		DiskIds:                 []model.DiskIdPath{},
-		Disks:                   set.NewSet[disk.Disk](),
 		ctx:                     ctx,
 	}
 
@@ -132,12 +121,6 @@ func (m *Mgr) connectToUnconnected() {
 	addresses := m.nodeConnMapper.AddressesWithoutConnections()
 	for _, address := range addresses.GetValues() {
 		m.ConnectToNodeReqs <- model.ConnectToNodeReq{Address: address}
-	}
-}
-
-func (m *Mgr) createDiskChannels(diskId model.DiskId) {
-	if _, ok := m.MgrDiskReads[diskId]; !ok {
-		m.MgrDiskReads[diskId] = make(chan model.ReadRequest)
 	}
 }
 
