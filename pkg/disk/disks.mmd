@@ -1,11 +1,13 @@
 flowchart TD
     A[Ui] -->|AddDiskReq| B(Disks)
-    B -->|RemoteAddDiskReq| C[Conns]
+    B -->|AddDiskReq| I(LocalDiskAdder)
+    B -->|AddDiskReq| J(RemoteDiskAdder)
+    J -->|AddDiskReq| C[Conns]
     C -->|AddDiskReq| B
     D(DiskLoader) -->|AddDiskReq| B
-    B --> |IamDisksUpdate| E(IamSender)
+    I --> |IamDisksUpdate| E(IamSender)
     E -->|Iam| C
     C --> F(IamReceiver)
     F --> |AddDiskReq|B
-    B --> |Disk| G[LocalBlockReadResponse]
-    B --> |Disk| H[LocalBlockSaveResponse]
+    I --> |Disk| G[LocalBlockReadResponse]
+    I --> |Disk| H[LocalBlockSaveResponse]
