@@ -81,28 +81,6 @@ type MgrDiskSave struct {
 	Data []byte
 }
 
-type AddNewDiskReq struct {
-	Path      string
-	Node      NodeId
-	FreeBytes int
-}
-
-func (a *AddNewDiskReq) Type() PayloadType {
-	return AddDiskRequestType
-}
-
-func NewAddDiskReq(
-	path string,
-	node NodeId,
-	freeBytes int,
-) AddNewDiskReq {
-	return AddNewDiskReq{
-		Path:      path,
-		Node:      node,
-		FreeBytes: freeBytes,
-	}
-}
-
 type NodeId string
 
 func NewNodeId() NodeId {
@@ -116,4 +94,8 @@ type AddDiskReq struct {
 	Id   DiskId
 	Path string
 	Node NodeId
+}
+
+func (a *AddDiskReq) Type() PayloadType {
+	return AddDiskRequestType
 }

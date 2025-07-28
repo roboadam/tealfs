@@ -73,7 +73,7 @@ func (r *RawNet) ReadPayload() (model.Payload, error) {
 		err = r.decoder.Decode(&payload)
 		return &payload, err
 	case model.AddDiskRequestType:
-		var payload model.AddNewDiskReq
+		var payload model.AddDiskReq
 		err = r.decoder.Decode(&payload)
 		return &payload, err
 	case model.SyncType:
