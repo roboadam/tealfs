@@ -14,3 +14,25 @@
 
 package disk
 
+import (
+	"context"
+	"tealfs/pkg/model"
+)
+
+type IamReceiver struct {
+	InIam         <-chan model.IAm
+	OutAddDiskReq chan<- model.AddDiskReq
+}
+
+func (i *IamReceiver) Start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case iam := <-i.InIam:
+			for _, d := range iam.Disks {
+				i.OutAddDiskReq <- d
+			}
+		}
+	}
+}
