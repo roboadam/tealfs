@@ -21,6 +21,8 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	"github.com/google/uuid"
 )
 
 type Ui struct {
@@ -136,7 +138,11 @@ func (ui *Ui) handleRoot() {
 			if node == "" {
 				node = string(ui.nodeId)
 			}
-			req := model.NewAddDiskReq(diskPath, model.NodeId(node), 1)
+			req := model.AddDiskReq{
+				Id:   model.DiskId(uuid.NewString()),
+				Path: diskPath,
+				Node: model.NodeId(node),
+			}
 			chanutil.Send(ui.ctx, ui.addDiskReq, req, "ui: add disk req")
 			ui.connectionStatus(w, tmpl)
 		default:

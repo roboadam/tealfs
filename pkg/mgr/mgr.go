@@ -24,10 +24,11 @@ import (
 	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type Mgr struct {
-	ConnectToNodeReqs       chan<- model.ConnectToNodeReq
+	ConnectToNodeReqs chan<- model.ConnectToNodeReq
 	// UiMgrDisk               chan model.AddNewDiskReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
@@ -38,6 +39,7 @@ type Mgr struct {
 	MgrUiDiskStatuses       chan model.UiDiskStatus
 	MgrWebdavBroadcast      chan model.Broadcast
 	CustodianCommands       chan<- custodian.Command
+	AllDiskIds              *set.Set[model.AddDiskReq]
 
 	nodeConnMapper *model.NodeConnectionMapper
 
@@ -343,7 +345,7 @@ func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 	switch cs.Type {
 	case model.Connected:
-		iam := model.NewIam(m.NodeId, m.DiskIds, m.nodeAddress)
+		iam := model.NewIam(m.NodeId, m.AllDiskIds.GetValues(), m.nodeAddress)
 		mcs := model.MgrConnsSend{
 			ConnId:  cs.Id,
 			Payload: &iam,

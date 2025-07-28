@@ -26,8 +26,10 @@ import (
 	"tealfs/pkg/conns"
 	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
+	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
 
@@ -78,10 +80,12 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		m.NodeId,
 		ctx,
 	)
+
+	newAddDiskReqs := make(chan model.AddDiskReq)
 	_ = ui.NewUi(
 		connReqs,
 		m.MgrUiConnectionStatuses,
-		m.UiMgrDisk,
+		newAddDiskReqs,
 		m.MgrUiDiskStatuses,
 		&ui.HttpHtmlOps{},
 		m.NodeId,
@@ -91,10 +95,28 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	addedDisksSaver := make(chan *disk.Disk)
 	addedDisksReader := make(chan *disk.Disk)
-	m.AddedDisk = []chan<- *disk.Disk{
-		addedDisksSaver,
-		addedDisksReader,
+
+	localAddDiskReqs := make(chan model.AddDiskReq)
+	remoteAddDiskReqs := make(chan model.AddDiskReq)
+
+	disks := disk.NewDisks(m.NodeId)
+	disks.InAddDiskReq = newAddDiskReqs
+	disks.OutLocalAddDiskReq = localAddDiskReqs
+	disks.OutRemoteAddDiskReq = remoteAddDiskReqs
+
+	localDiskAdder := disk.LocalDiskAdder{
+		InAddDiskReq: localAddDiskReqs,
+		OutAddLocalDisk: []chan<- *disk.Disk{
+			addedDisksSaver,
+			addedDisksReader,
+		},
+		OutIamDiskUpdate: make(chan<- []model.AddDiskReq),
+		FileOps:          &disk.DiskFileOps{},
+		Disks:            &set.Set[disk.Disk]{},
+		Distributer:      &dist.MirrorDistributer{},
+		AllDiskIds:       &set.Set[model.AddDiskReq]{},
 	}
+	go localDiskAdder.Start(ctx)
 
 	webdavPutReq := make(chan model.PutBlockReq)
 	webdavPutResp := make(chan model.PutBlockResp)

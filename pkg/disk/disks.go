@@ -40,6 +40,7 @@ func NewDisks(nodeId model.NodeId) *Disks {
 		Distributer: distributer,
 		AllDiskIds:  allDiskIds,
 		Disks:       disks,
+		NodeId:      nodeId,
 	}
 }
 
