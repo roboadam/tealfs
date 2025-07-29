@@ -39,6 +39,8 @@ type Conns struct {
 	OutSaveToDiskResp  chan<- blocksaver.SaveToDiskResp
 	OutGetFromDiskReq  chan<- blockreader.GetFromDiskReq
 	OutGetFromDiskResp chan<- blockreader.GetFromDiskResp
+	OutAddDiskReq      chan<- model.AddDiskReq
+	OutIam             chan<- model.IAm
 	inConnectTo        <-chan model.ConnectToNodeReq
 	inSends            <-chan model.MgrConnsSend
 	Address            string
@@ -219,6 +221,15 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.OutGetFromDiskReq <- *p
 			case *blockreader.GetFromDiskResp:
 				c.OutGetFromDiskResp <- *p
+			case *model.AddDiskReq:
+				c.OutAddDiskReq <- *p
+			case *model.IAm:
+				c.OutIam <- *p
+				cmr := model.ConnsMgrReceive{
+					ConnId:  conn,
+					Payload: payload,
+				}
+				chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 			default:
 				cmr := model.ConnsMgrReceive{
 					ConnId:  conn,

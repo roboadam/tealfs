@@ -26,10 +26,8 @@ import (
 	"tealfs/pkg/conns"
 	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
 
@@ -99,10 +97,13 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	localAddDiskReqs := make(chan model.AddDiskReq)
 	remoteAddDiskReqs := make(chan model.AddDiskReq)
 
+	conns.OutAddDiskReq = newAddDiskReqs
 	disks := disk.NewDisks(m.NodeId)
 	disks.InAddDiskReq = newAddDiskReqs
 	disks.OutLocalAddDiskReq = localAddDiskReqs
 	disks.OutRemoteAddDiskReq = remoteAddDiskReqs
+
+	iamDiskUpdates := make(chan []model.AddDiskReq)
 
 	localDiskAdder := disk.LocalDiskAdder{
 		InAddDiskReq: localAddDiskReqs,
@@ -110,13 +111,30 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 			addedDisksSaver,
 			addedDisksReader,
 		},
-		OutIamDiskUpdate: make(chan<- []model.AddDiskReq),
+		OutIamDiskUpdate: iamDiskUpdates,
 		FileOps:          &disk.DiskFileOps{},
-		Disks:            &set.Set[disk.Disk]{},
-		Distributer:      &dist.MirrorDistributer{},
-		AllDiskIds:       &set.Set[model.AddDiskReq]{},
+		Disks:            &disks.Disks,
+		Distributer:      &disks.Distributer,
+		AllDiskIds:       &disks.AllDiskIds,
 	}
 	go localDiskAdder.Start(ctx)
+
+	iamSender := disk.IamSender{
+		InIamDiskUpdate: iamDiskUpdates,
+		OutSends:        m.MgrConnsSends,
+		Mapper:          nodeConnMapper,
+		NodeId:          m.NodeId,
+		Address:         webdavAddress,
+	}
+	go iamSender.Start(ctx)
+
+	iams := make(chan model.IAm)
+	conns.OutIam = iams
+	iamReceiver := disk.IamReceiver{
+		InIam:         iams,
+		OutAddDiskReq: newAddDiskReqs,
+	}
+	go iamReceiver.Start(ctx)
 
 	webdavPutReq := make(chan model.PutBlockReq)
 	webdavPutResp := make(chan model.PutBlockResp)
@@ -134,14 +152,14 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		LocalDest:   localSave,
 		InResp:      saveResp,
 		Resp:        webdavPutResp,
-		Distributer: &m.MirrorDistributer,
+		Distributer: &disks.Distributer,
 		NodeId:      m.NodeId,
 	}
 	go bs.Start(ctx)
 
 	lbs := blocksaver.LocalBlockSaver{
 		Req:   localSave,
-		Disks: &m.Disks,
+		Disks: &disks.Disks,
 	}
 	go lbs.Start(ctx)
 
@@ -177,14 +195,14 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		LocalDest:   localReadDest,
 		InResp:      readResp,
 		Resp:        webdavGetResp,
-		Distributer: &m.MirrorDistributer,
+		Distributer: &disks.Distributer,
 		NodeId:      m.NodeId,
 	}
 	go br.Start(ctx)
 
 	lbr := blockreader.LocalBlockReader{
 		Req:   localReadDest,
-		Disks: &m.Disks,
+		Disks: &disks.Disks,
 	}
 	go lbr.Start(ctx)
 
