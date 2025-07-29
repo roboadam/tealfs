@@ -20,10 +20,13 @@ import (
 	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 	"time"
 
 	"context"
+
+	"github.com/google/uuid"
 )
 
 func TestConnectToSuccess(t *testing.T) {
@@ -160,14 +163,16 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 	m.ConnectToNodeReqs = connReqs
 	custodianCommands := make(chan custodian.Command, chanSize)
 	m.CustodianCommands = custodianCommands
-	addedDisk := make(chan *disk.Disk)
-	m.AddedDisk = []chan<- *disk.Disk{addedDisk}
+	disks := set.NewSet[model.AddDiskReq]()
+	m.AllDiskIds = &disks
 	m.Start()
 
 	for _, path := range paths {
-		m.UiMgrDisk <- model.NewAddDiskReq(path, m.NodeId, 1)
-		<-addedDisk
-		<-m.MgrUiDiskStatuses
+		disks.Add(model.AddDiskReq{
+			Id:   model.DiskId(uuid.NewString()),
+			Path: path,
+			Node: m.NodeId,
+		})
 	}
 	var nodesInCluster []connectedNode
 

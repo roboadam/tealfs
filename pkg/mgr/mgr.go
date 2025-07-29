@@ -28,8 +28,7 @@ import (
 )
 
 type Mgr struct {
-	ConnectToNodeReqs chan<- model.ConnectToNodeReq
-	// UiMgrDisk               chan model.AddNewDiskReq
+	ConnectToNodeReqs       chan<- model.ConnectToNodeReq
 	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
 	DiskMgrReads            chan model.ReadResult
@@ -43,12 +42,11 @@ type Mgr struct {
 
 	nodeConnMapper *model.NodeConnectionMapper
 
-	NodeId             model.NodeId
-	nodeAddress        string
-	savePath           string
-	fileOps            disk.FileOps
-	pendingBlockWrites pendingBlockWrites
-	ctx                context.Context
+	NodeId      model.NodeId
+	nodeAddress string
+	savePath    string
+	fileOps     disk.FileOps
+	ctx         context.Context
 }
 
 func New(
@@ -79,7 +77,6 @@ func New(
 		nodeAddress:             nodeAddress,
 		savePath:                globalPath,
 		fileOps:                 fileOps,
-		pendingBlockWrites:      newPendingBlockWrites(),
 		ctx:                     ctx,
 	}
 
