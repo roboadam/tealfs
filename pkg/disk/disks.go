@@ -45,12 +45,14 @@ func NewDisks(nodeId model.NodeId) *Disks {
 }
 
 func (d *Disks) Start(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-		return
-	case add := <-d.InAddDiskReq:
-		if !d.AllDiskIds.Contains(add) {
-			d.addDisk(add)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case add := <-d.InAddDiskReq:
+			if !d.AllDiskIds.Contains(add) {
+				d.addDisk(add)
+			}
 		}
 	}
 }
