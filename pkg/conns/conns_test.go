@@ -27,7 +27,7 @@ import (
 func TestAcceptConn(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, status, _, _, _, provider := newConnsTest(ctx)
+	_, status, _, _, _, _, provider := newConnsTest(ctx)
 	provider.Listener.accept <- true
 	s := <-status
 	if s.Type != model.Connected {
@@ -38,7 +38,7 @@ func TestAcceptConn(t *testing.T) {
 func TestConnectToConns(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, outStatus, _, inConnectTo, _, _ := newConnsTest(ctx)
+	_, outStatus, _, inConnectTo, _, _, _ := newConnsTest(ctx)
 	const expectedAddress = "expectedAddress:1234"
 	status := connectTo(expectedAddress, outStatus, inConnectTo)
 	if status.Type != model.Connected {
@@ -49,7 +49,7 @@ func TestConnectToConns(t *testing.T) {
 func TestSendData(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, outStatus, _, inConnectTo, inSend, provider := newConnsTest(ctx)
+	_, outStatus, _, inConnectTo, inSend, _, provider := newConnsTest(ctx)
 	caller := model.NewNodeId()
 	data := model.RawData{
 		Ptr:  model.DiskPointer{NodeId: "destNode", Disk: "disk1", FileName: "blockId"},
@@ -83,7 +83,7 @@ func TestSendData(t *testing.T) {
 func TestSendReadRequestNoConnected(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, _, outReceives, _, inSend, _ := newConnsTest(ctx)
+	_, _, outReceives, _, inSend, _, _ := newConnsTest(ctx)
 	caller := model.NodeId("caller1")
 	ptrs := []model.DiskPointer{
 		{NodeId: "nodeId1", Disk: "disk1", FileName: "filename1"},
@@ -121,7 +121,7 @@ func TestSendReadRequestNoConnected(t *testing.T) {
 func TestSendReadRequestSendFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, outStatus, outReceives, inConnectTo, inSend, connProvider := newConnsTest(ctx)
+	_, outStatus, outReceives, inConnectTo, inSend, _, connProvider := newConnsTest(ctx)
 	status := connectTo("address:123", outStatus, inConnectTo)
 	connProvider.Conn.WriteError = errors.New("some error writing")
 	var req model.Payload
@@ -165,7 +165,7 @@ func TestSendReadRequestSendFailure(t *testing.T) {
 func TestConnectionError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, outStatus, _, inConnectTo, _, provider := newConnsTest(ctx)
+	_, outStatus, _, inConnectTo, _, _, provider := newConnsTest(ctx)
 	provider.Conn.ReadError = errors.New("some error reading")
 	firstStatus := connectTo("address:123", outStatus, inConnectTo)
 	if firstStatus.Type != model.Connected {
@@ -182,7 +182,7 @@ func TestConnectionError(t *testing.T) {
 func TestGetData(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, outStatus, cmr, inConnectTo, _, provider := newConnsTest(ctx)
+	_, outStatus, cmr, inConnectTo, _, outIam, provider := newConnsTest(ctx)
 	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
 	disks := []model.AddDiskReq{{Id: "disk1", Path: "disk1path", Node: "node1"}}
 
@@ -198,9 +198,15 @@ func TestGetData(t *testing.T) {
 	provider.Conn.dataToRead <- buffer
 
 	result := <-cmr
+	iamReceived := <-outIam
 
 	if result.ConnId != status.Id || !reflect.DeepEqual(result.Payload, payload) {
 		t.Error("We didn't pass the message")
+		return
+	}
+
+	if !reflect.DeepEqual(iam, iamReceived) {
+		t.Error("Didn't get the Iam message")
 		return
 	}
 }
@@ -210,12 +216,22 @@ func connectTo(address string, outStatus chan model.NetConnectionStatus, inConne
 	return <-outStatus
 }
 
-func newConnsTest(ctx context.Context) (*Conns, chan model.NetConnectionStatus, chan model.ConnsMgrReceive, chan model.ConnectToNodeReq, chan model.MgrConnsSend, *MockConnectionProvider) {
-	outStatuses := make(chan model.NetConnectionStatus)
-	outReceives := make(chan model.ConnsMgrReceive)
-	inConnectTo := make(chan model.ConnectToNodeReq)
-	inSends := make(chan model.MgrConnsSend)
+func newConnsTest(ctx context.Context) (
+	*Conns,
+	chan model.NetConnectionStatus,
+	chan model.ConnsMgrReceive,
+	chan model.ConnectToNodeReq,
+	chan model.MgrConnsSend,
+	chan model.IAm,
+	*MockConnectionProvider,
+) {
+	outStatuses := make(chan model.NetConnectionStatus, 1)
+	outReceives := make(chan model.ConnsMgrReceive, 1)
+	inConnectTo := make(chan model.ConnectToNodeReq, 1)
+	inSends := make(chan model.MgrConnsSend, 1)
+	outIam := make(chan model.IAm, 1)
 	provider := NewMockConnectionProvider()
 	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)
-	return c, outStatuses, outReceives, inConnectTo, inSends, &provider
+	c.OutIam = outIam
+	return c, outStatuses, outReceives, inConnectTo, inSends, outIam, &provider
 }
