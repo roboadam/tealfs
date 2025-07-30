@@ -91,9 +91,9 @@ func NewNodeId() NodeId {
 type DiskId string
 
 type AddDiskReq struct {
-	Id   DiskId
-	Path string
-	Node NodeId
+	DiskId DiskId
+	Path   string
+	NodeId NodeId
 }
 
 func (a *AddDiskReq) Type() PayloadType {

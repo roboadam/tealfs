@@ -32,7 +32,7 @@ func (r *RemoteDiskAdder) Start(ctx context.Context) {
 	case <-ctx.Done():
 		return
 	case add := <-r.InAddDiskReq:
-		connId, ok := r.NodeConnMap.ConnForNode(add.Node)
+		connId, ok := r.NodeConnMap.ConnForNode(add.NodeId)
 		if ok {
 			r.OutSends <- model.MgrConnsSend{
 				ConnId:  connId,

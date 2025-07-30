@@ -38,10 +38,10 @@ func (l *LocalDiskAdder) Start(ctx context.Context) {
 		return
 	case add := <-l.InAddDiskReq:
 		path := NewPath(add.Path, l.FileOps)
-		disk := New(path, add.Node, add.Id, ctx)
+		disk := New(path, add.NodeId, add.DiskId, ctx)
 
 		l.Disks.Add(disk)
-		l.Distributer.SetWeight(add.Node, add.Id, 1)
+		l.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
 		l.AllDiskIds.Add(add)
 
 		for _, diskChan := range l.OutAddLocalDisk {

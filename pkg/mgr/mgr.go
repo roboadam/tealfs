@@ -191,7 +191,7 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 				Localness:     model.Remote,
 				Availableness: model.Available,
 				Node:          p.NodeId,
-				Id:            d.Id,
+				Id:            d.DiskId,
 				Path:          d.Path,
 			}
 			chanutil.Send(m.ctx, m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")

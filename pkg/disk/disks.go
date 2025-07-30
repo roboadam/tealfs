@@ -56,7 +56,7 @@ func (d *Disks) Start(ctx context.Context) {
 }
 
 func (d *Disks) addDisk(add model.AddDiskReq) {
-	if add.Node == d.NodeId {
+	if add.NodeId == d.NodeId {
 		d.OutLocalAddDiskReq <- add
 	} else {
 		d.OutRemoteAddDiskReq <- add

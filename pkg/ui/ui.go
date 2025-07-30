@@ -139,9 +139,9 @@ func (ui *Ui) handleRoot() {
 				node = string(ui.nodeId)
 			}
 			req := model.AddDiskReq{
-				Id:   model.DiskId(uuid.NewString()),
-				Path: diskPath,
-				Node: model.NodeId(node),
+				DiskId: model.DiskId(uuid.NewString()),
+				Path:   diskPath,
+				NodeId: model.NodeId(node),
 			}
 			chanutil.Send(ui.ctx, ui.addDiskReq, req, "ui: add disk req")
 			ui.connectionStatus(w, tmpl)
