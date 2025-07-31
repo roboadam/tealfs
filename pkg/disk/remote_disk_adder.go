@@ -28,18 +28,20 @@ type RemoteDiskAdder struct {
 }
 
 func (r *RemoteDiskAdder) Start(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-		return
-	case add := <-r.InAddDiskReq:
-		connId, ok := r.NodeConnMap.ConnForNode(add.NodeId)
-		if ok {
-			r.OutSends <- model.MgrConnsSend{
-				ConnId:  connId,
-				Payload: &add,
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case add := <-r.InAddDiskReq:
+			connId, ok := r.NodeConnMap.ConnForNode(add.NodeId)
+			if ok {
+				r.OutSends <- model.MgrConnsSend{
+					ConnId:  connId,
+					Payload: &add,
+				}
+			} else {
+				log.Warn("No connection")
 			}
-		} else {
-			log.Warn("No connection")
 		}
 	}
 }

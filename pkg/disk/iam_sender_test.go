@@ -51,26 +51,26 @@ func TestIamSender(t *testing.T) {
 		},
 	}
 	inIamDiskUpdate <- disks
-	output1 := <- outSends
-	output2 := <- outSends
+	output1 := <-outSends
+	output2 := <-outSends
 
 	select {
-	case <- outSends:
+	case <-outSends:
 		t.Error("too many sends")
 	default:
 	}
 
 	if iam1, ok := output1.Payload.(*model.IAm); ok {
-		if iam1.NodeId != disks[0].NodeId {
-			t.Error("wrong iam")
+		if len(iam1.Disks) != 2 {
+			t.Error("wrong number of disks")
 		}
 	} else {
 		t.Error("wrong type")
 	}
 
 	if iam2, ok := output2.Payload.(*model.IAm); ok {
-		if iam2.NodeId != disks[1].NodeId {
-			t.Error("wrong iam")
+		if len(iam2.Disks) != 2 {
+			t.Error("wrong number of disks")
 		}
 	} else {
 		t.Error("wrong type")

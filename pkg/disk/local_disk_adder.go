@@ -33,21 +33,23 @@ type LocalDiskAdder struct {
 }
 
 func (l *LocalDiskAdder) Start(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-		return
-	case add := <-l.InAddDiskReq:
-		path := NewPath(add.Path, l.FileOps)
-		disk := New(path, add.NodeId, add.DiskId, ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case add := <-l.InAddDiskReq:
+			path := NewPath(add.Path, l.FileOps)
+			disk := New(path, add.NodeId, add.DiskId, ctx)
 
-		l.Disks.Add(disk)
-		l.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
-		l.AllDiskIds.Add(add)
+			l.Disks.Add(disk)
+			l.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
+			l.AllDiskIds.Add(add)
 
-		for _, diskChan := range l.OutAddLocalDisk {
-			diskChan <- &disk
+			for _, diskChan := range l.OutAddLocalDisk {
+				diskChan <- &disk
+			}
+
+			l.OutIamDiskUpdate <- l.AllDiskIds.GetValues()
 		}
-
-		l.OutIamDiskUpdate <- l.AllDiskIds.GetValues()
 	}
 }
