@@ -102,6 +102,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	disks.InAddDiskReq = newAddDiskReqs
 	disks.OutLocalAddDiskReq = localAddDiskReqs
 	disks.OutRemoteAddDiskReq = remoteAddDiskReqs
+	m.AllDiskIds = &disks.AllDiskIds
+	go disks.Start(ctx)
 
 	iamDiskUpdates := make(chan []model.AddDiskReq)
 
@@ -131,8 +133,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	iams := make(chan model.IAm)
 	conns.OutIam = iams
 	iamReceiver := disk.IamReceiver{
-		InIam:         iams,
-		OutAddDiskReq: newAddDiskReqs,
+		InIam:       iams,
+		Distributer: &disks.Distributer,
 	}
 	go iamReceiver.Start(ctx)
 

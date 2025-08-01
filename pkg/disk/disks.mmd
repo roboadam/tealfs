@@ -8,6 +8,5 @@ flowchart TD
     I --> |IamDisksUpdate| E(IamSender)
     E -->|Iam| C
     C --> F(IamReceiver)
-    F --> |AddDiskReq|B
     I --> |Disk| G[LocalBlockReadResponse]
     I --> |Disk| H[LocalBlockSaveResponse]

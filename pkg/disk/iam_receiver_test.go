@@ -16,7 +16,7 @@ package disk
 
 import (
 	"context"
-	"reflect"
+	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"testing"
 
@@ -28,10 +28,10 @@ func TestIamReceiver(t *testing.T) {
 	defer cancel()
 
 	inIam := make(chan model.IAm)
-	outAddDiskReq := make(chan model.AddDiskReq)
+	distributer := dist.NewMirrorDistributer("localNodeId")
 	receiver := IamReceiver{
-		InIam:         inIam,
-		OutAddDiskReq: outAddDiskReq,
+		InIam:       inIam,
+		Distributer: &distributer,
 	}
 	go receiver.Start(ctx)
 
@@ -50,22 +50,8 @@ func TestIamReceiver(t *testing.T) {
 	}
 	address := "someAddress"
 	inIam <- model.NewIam(nodeId, disks, address)
-	disk1Received := <- outAddDiskReq
-	disk2Received := <- outAddDiskReq
 
-	select {
-	case <- outAddDiskReq:
-		t.Error("should be just two disk requests")
-		return
-	default:
-	}
-
-	if !reflect.DeepEqual(disks[0], disk1Received) {
-		t.Error("invalid first disk")
-		return
-	}
-	if !reflect.DeepEqual(disks[1], disk2Received) {
-		t.Error("invalid second disk")
-		return
+	if len(distributer.ReadPointersForId(model.NewBlockId())) != 2 {
+		t.Error("Didn't add enough disks to the distributer")
 	}
 }
