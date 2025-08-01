@@ -10,3 +10,5 @@ flowchart TD
     C --> F(IamReceiver)
     I --> |Disk| G[LocalBlockReadResponse]
     I --> |Disk| H[LocalBlockSaveResponse]
+    I --> |Save| K(DiskSaver)
+    F --> |Save| K(DiskSaver)

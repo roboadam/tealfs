@@ -18,6 +18,7 @@ import (
 	"context"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 
 	"github.com/google/uuid"
@@ -29,9 +30,11 @@ func TestIamReceiver(t *testing.T) {
 
 	inIam := make(chan model.IAm)
 	distributer := dist.NewMirrorDistributer("localNodeId")
+	allDiskIds := set.NewSet[model.AddDiskReq]()
 	receiver := IamReceiver{
 		InIam:       inIam,
 		Distributer: &distributer,
+		AllDiskIds:  &allDiskIds,
 	}
 	go receiver.Start(ctx)
 
@@ -53,5 +56,9 @@ func TestIamReceiver(t *testing.T) {
 
 	if len(distributer.ReadPointersForId(model.NewBlockId())) != 2 {
 		t.Error("Didn't add enough disks to the distributer")
+	}
+
+	if allDiskIds.Len() != 2 {
+		t.Error("Didn't add enough disks to allDiskIds")
 	}
 }

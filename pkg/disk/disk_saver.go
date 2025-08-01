@@ -16,26 +16,36 @@ package disk
 
 import (
 	"context"
-	"tealfs/pkg/disk/dist"
+	"encoding/json"
+	"path/filepath"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	"github.com/sirupsen/logrus"
 )
 
-type IamReceiver struct {
-	InIam       <-chan model.IAm
-	Distributer *dist.MirrorDistributer
-	AllDiskIds  *set.Set[model.AddDiskReq]
+type DiskSaver struct {
+	FileOps    FileOps
+	LoadPath   string
+	AllDiskIds *set.Set[model.AddDiskReq]
+
+	Save <-chan struct{}
 }
 
-func (i *IamReceiver) Start(ctx context.Context) {
+func (d *DiskSaver) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case iam := <-i.InIam:
-			for _, d := range iam.Disks {
-				i.Distributer.SetWeight(d.NodeId, d.DiskId, 1)
-				i.AllDiskIds.Add(d)
+		case <-d.Save:
+			data, err := json.Marshal(d.AllDiskIds.GetValues())
+			if err != nil {
+				logrus.Errorf("Error saving disk ids %v", err)
+			}
+
+			err = d.FileOps.WriteFile(filepath.Join(d.LoadPath, "disks.json"), data)
+			if err != nil {
+				logrus.Errorf("Error saving disk ids %v", err)
 			}
 		}
 	}
