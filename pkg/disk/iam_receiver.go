@@ -23,6 +23,7 @@ import (
 
 type IamReceiver struct {
 	InIam       <-chan model.IAm
+	OutSave     chan<- struct{}
 	Distributer *dist.MirrorDistributer
 	AllDiskIds  *set.Set[model.AddDiskReq]
 }
@@ -37,6 +38,7 @@ func (i *IamReceiver) Start(ctx context.Context) {
 				i.Distributer.SetWeight(d.NodeId, d.DiskId, 1)
 				i.AllDiskIds.Add(d)
 			}
+			i.OutSave <- struct{}{}
 		}
 	}
 }

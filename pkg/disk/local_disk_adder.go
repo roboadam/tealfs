@@ -25,6 +25,7 @@ type LocalDiskAdder struct {
 	InAddDiskReq     <-chan model.AddDiskReq
 	OutAddLocalDisk  []chan<- *Disk
 	OutIamDiskUpdate chan<- []model.AddDiskReq
+	OutSave          chan<- struct{}
 
 	FileOps     FileOps
 	Disks       *set.Set[Disk]
@@ -44,6 +45,7 @@ func (l *LocalDiskAdder) Start(ctx context.Context) {
 			l.Disks.Add(disk)
 			l.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
 			l.AllDiskIds.Add(add)
+			l.OutSave <- struct{}{}
 
 			for _, diskChan := range l.OutAddLocalDisk {
 				diskChan <- &disk

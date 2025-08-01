@@ -31,6 +31,7 @@ func TestLocalDiskAdder(t *testing.T) {
 	diskChan2 := make(chan *Disk, 1)
 	outAddLocalDisk := []chan<- *Disk{diskChan1, diskChan2}
 	outIamDiskUpdate := make(chan []model.AddDiskReq, 1)
+	outSave := make(chan struct{}, 1)
 
 	nodeId := model.NewNodeId()
 	fileOps := MockFileOps{}
@@ -42,6 +43,7 @@ func TestLocalDiskAdder(t *testing.T) {
 		InAddDiskReq:     inAddDiskReq,
 		OutAddLocalDisk:  outAddLocalDisk,
 		OutIamDiskUpdate: outIamDiskUpdate,
+		OutSave:          outSave,
 
 		FileOps:     &fileOps,
 		Disks:       &disks,
@@ -58,7 +60,8 @@ func TestLocalDiskAdder(t *testing.T) {
 
 	disk1 := <-diskChan1
 	disk2 := <-diskChan2
-	iamUpdate := <- outIamDiskUpdate
+	iamUpdate := <-outIamDiskUpdate
+	<-outSave
 
 	if disk1.diskId != "diskId1" || disk2.diskId != "diskId1" {
 		t.Error("invalid disk")
@@ -73,7 +76,8 @@ func TestLocalDiskAdder(t *testing.T) {
 		NodeId: nodeId,
 	}
 
-	iamUpdate = <- outIamDiskUpdate
+	iamUpdate = <-outIamDiskUpdate
+	<-outSave
 
 	if len(iamUpdate) != 2 {
 		t.Error("invalid number of disks")

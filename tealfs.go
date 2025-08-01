@@ -28,6 +28,7 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
 
@@ -105,7 +106,23 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	m.AllDiskIds = &disks.AllDiskIds
 	go disks.Start(ctx)
 
-	iamDiskUpdates := make(chan []model.AddDiskReq)
+	diskLoader := disk.DiskLoader{
+		FileOps:    &disk.DiskFileOps{},
+		SavePath:   globalPath,
+		OutAddDisk: newAddDiskReqs,
+	}
+	go diskLoader.LoadDisks(ctx)
+
+	iamDiskUpdates := make(chan []model.AddDiskReq, 1)
+	saveDisks := make(chan struct{}, 1)
+
+	diskSaver := disk.DiskSaver{
+		FileOps:    &disk.DiskFileOps{},
+		LoadPath:   globalPath,
+		AllDiskIds: &set.Set[model.AddDiskReq]{},
+		Save:       saveDisks,
+	}
+	go diskSaver.Start(ctx)
 
 	localDiskAdder := disk.LocalDiskAdder{
 		InAddDiskReq: localAddDiskReqs,
@@ -114,6 +131,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 			addedDisksReader,
 		},
 		OutIamDiskUpdate: iamDiskUpdates,
+		OutSave:          saveDisks,
 		FileOps:          &disk.DiskFileOps{},
 		Disks:            &disks.Disks,
 		Distributer:      &disks.Distributer,
@@ -134,7 +152,9 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	conns.OutIam = iams
 	iamReceiver := disk.IamReceiver{
 		InIam:       iams,
+		OutSave:     saveDisks,
 		Distributer: &disks.Distributer,
+		AllDiskIds:  &disks.AllDiskIds,
 	}
 	go iamReceiver.Start(ctx)
 
@@ -240,6 +260,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		chansize,
 	)
 	m.Start()
+
 	<-ctx.Done()
 	return nil
 }
