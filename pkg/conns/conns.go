@@ -48,6 +48,7 @@ type Conns struct {
 	nodeId             model.NodeId
 	listener           net.Listener
 	ctx                context.Context
+	nodeConnMapper     model.NodeConnectionMapper
 }
 
 func NewConns(
@@ -65,18 +66,19 @@ func NewConns(
 		panic(err)
 	}
 	c := Conns{
-		netConns:      make(map[model.ConnId]tnet.RawNet),
-		netConnsMux:   &sync.RWMutex{},
-		nextId:        model.ConnId(0),
-		acceptedConns: make(chan AcceptedConns),
-		outStatuses:   outStatuses,
-		outReceives:   outReceives,
-		inConnectTo:   inConnectTo,
-		inSends:       inSends,
-		provider:      provider,
-		nodeId:        nodeId,
-		listener:      listener,
-		ctx:           ctx,
+		netConns:       make(map[model.ConnId]tnet.RawNet),
+		netConnsMux:    &sync.RWMutex{},
+		nextId:         model.ConnId(0),
+		acceptedConns:  make(chan AcceptedConns),
+		outStatuses:    outStatuses,
+		outReceives:    outReceives,
+		inConnectTo:    inConnectTo,
+		inSends:        inSends,
+		provider:       provider,
+		nodeId:         nodeId,
+		listener:       listener,
+		ctx:            ctx,
+		nodeConnMapper: *model.NewNodeConnectionMapper(),
 	}
 
 	go c.consumeChannels()
@@ -225,6 +227,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.OutAddDiskReq <- *p
 			case *model.IAm:
 				c.OutIam <- *p
+				c.nodeConnMapper.SetAll(conn, p.Address, p.NodeId)
 				cmr := model.ConnsMgrReceive{
 					ConnId:  conn,
 					Payload: payload,

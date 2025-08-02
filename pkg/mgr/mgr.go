@@ -63,7 +63,6 @@ func New(
 	}
 
 	mgr := Mgr{
-		// UiMgrDisk:               make(chan model.AddNewDiskReq, chanSize),
 		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrReads:            make(chan model.ReadResult, chanSize),
@@ -178,24 +177,24 @@ func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
 func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
 	case *model.IAm:
-		m.nodeConnMapper.SetAll(i.ConnId, p.Address, p.NodeId)
-		status := model.UiConnectionStatus{
-			Type:          model.Connected,
-			RemoteAddress: p.Address,
-			Id:            p.NodeId,
-		}
-		chanutil.Send(m.ctx, m.MgrUiConnectionStatuses, status, "mgr: handleReceives: ui status")
+		// m.nodeConnMapper.SetAll(i.ConnId, p.Address, p.NodeId)
+		// status := model.UiConnectionStatus{
+		// 	Type:          model.Connected,
+		// 	RemoteAddress: p.Address,
+		// 	Id:            p.NodeId,
+		// }
+		// chanutil.Send(m.ctx, m.MgrUiConnectionStatuses, status, "mgr: handleReceives: ui status")
 		_ = m.addNodeToCluster(*p, i.ConnId)
-		for _, d := range p.Disks {
-			diskStatus := model.UiDiskStatus{
-				Localness:     model.Remote,
-				Availableness: model.Available,
-				Node:          p.NodeId,
-				Id:            d.DiskId,
-				Path:          d.Path,
-			}
-			chanutil.Send(m.ctx, m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")
-		}
+		// for _, d := range p.Disks {
+		// 	diskStatus := model.UiDiskStatus{
+		// 		Localness:     model.Remote,
+		// 		Availableness: model.Available,
+		// 		Node:          p.NodeId,
+		// 		Id:            d.DiskId,
+		// 		Path:          d.Path,
+		// 	}
+		// 	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")
+		// }
 		syncNodes := m.syncNodesPayloadToSend()
 		connections := m.nodeConnMapper.Connections()
 		for _, connId := range connections.GetValues() {
