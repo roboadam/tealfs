@@ -28,7 +28,6 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
 
@@ -119,7 +118,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	diskSaver := disk.DiskSaver{
 		FileOps:    &disk.DiskFileOps{},
 		LoadPath:   globalPath,
-		AllDiskIds: &set.Set[model.AddDiskReq]{},
+		AllDiskIds: &disks.AllDiskIds,
 		Save:       saveDisks,
 	}
 	go diskSaver.Start(ctx)
