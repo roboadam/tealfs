@@ -133,19 +133,19 @@ func (m *Mgr) loadSettings() error {
 	return nil
 }
 
-func (m *Mgr) saveSettings() error {
-	data, err := m.nodeConnMapper.Marshal()
-	if err != nil {
-		return err
-	}
+// func (m *Mgr) saveSettings() error {
+// 	data, err := m.nodeConnMapper.Marshal()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	err = m.fileOps.WriteFile(filepath.Join(m.savePath, "cluster.json"), data)
-	if err != nil {
-		return err
-	}
+// 	err = m.fileOps.WriteFile(filepath.Join(m.savePath, "cluster.json"), data)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func (m *Mgr) eventLoop() {
 	for {

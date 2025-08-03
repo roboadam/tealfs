@@ -228,11 +228,11 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			case *model.IAm:
 				c.OutIam <- *p
 				c.nodeConnMapper.SetAll(conn, p.Address, p.NodeId)
-				cmr := model.ConnsMgrReceive{
-					ConnId:  conn,
-					Payload: payload,
-				}
-				chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
+				// cmr := model.ConnsMgrReceive{
+				// 	ConnId:  conn,
+				// 	Payload: payload,
+				// }
+				// chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 			default:
 				cmr := model.ConnsMgrReceive{
 					ConnId:  conn,
