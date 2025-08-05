@@ -116,37 +116,6 @@ func (m *Mgr) connectToUnconnected() {
 	}
 }
 
-func (m *Mgr) loadSettings() error {
-	data, err := m.fileOps.ReadFile(filepath.Join(m.savePath, "cluster.json"))
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
-	}
-	if len(data) > 0 {
-		mapper, err := model.NodeConnectionMapperUnmarshal(data)
-		if err != nil {
-			return err
-		}
-		mapper.UnsetConnections()
-		m.nodeConnMapper = mapper
-	}
-
-	return nil
-}
-
-// func (m *Mgr) saveSettings() error {
-// 	data, err := m.nodeConnMapper.Marshal()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	err = m.fileOps.WriteFile(filepath.Join(m.savePath, "cluster.json"), data)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
 func (m *Mgr) eventLoop() {
 	for {
 		select {
@@ -162,48 +131,8 @@ func (m *Mgr) eventLoop() {
 	}
 }
 
-func (m *Mgr) syncNodesPayloadToSend() model.SyncNodes {
-	result := model.NewSyncNodes()
-	addressesAndNodes := m.nodeConnMapper.AddressesAndNodes()
-	for _, an := range addressesAndNodes.GetValues() {
-		result.Nodes.Add(struct {
-			Node    model.NodeId
-			Address string
-		}{Node: an.NodeId, Address: an.Address})
-	}
-	return result
-}
-
 func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
-	case *model.IAm:
-		// m.nodeConnMapper.SetAll(i.ConnId, p.Address, p.NodeId)
-		// status := model.UiConnectionStatus{
-		// 	Type:          model.Connected,
-		// 	RemoteAddress: p.Address,
-		// 	Id:            p.NodeId,
-		// }
-		// chanutil.Send(m.ctx, m.MgrUiConnectionStatuses, status, "mgr: handleReceives: ui status")
-		_ = m.addNodeToCluster(*p, i.ConnId)
-		// for _, d := range p.Disks {
-		// 	diskStatus := model.UiDiskStatus{
-		// 		Localness:     model.Remote,
-		// 		Availableness: model.Available,
-		// 		Node:          p.NodeId,
-		// 		Id:            d.DiskId,
-		// 		Path:          d.Path,
-		// 	}
-		// 	chanutil.Send(m.ctx, m.MgrUiDiskStatuses, diskStatus, "mgr: handleReceives: ui disk status")
-		// }
-		syncNodes := m.syncNodesPayloadToSend()
-		connections := m.nodeConnMapper.Connections()
-		for _, connId := range connections.GetValues() {
-			mcs := model.MgrConnsSend{
-				ConnId:  connId,
-				Payload: &syncNodes,
-			}
-			chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleReceives: sync nodes")
-		}
 	case *model.SyncNodes:
 		remoteNodes := p.GetNodes()
 		localNodes := m.nodeConnMapper.Nodes()
@@ -220,15 +149,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	default:
 		panic("Received unknown payload")
 	}
-}
-
-func (m *Mgr) addNodeToCluster(iam model.IAm, c model.ConnId) error {
-	m.nodeConnMapper.SetAll(c, iam.Address, iam.NodeId)
-	err := m.saveSettings()
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {

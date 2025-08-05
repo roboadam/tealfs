@@ -88,6 +88,20 @@ func (n *NodeConnectionMapper) RemoveConn(connId ConnId) {
 	n.removeConn(connId)
 }
 
+func (n *NodeConnectionMapper) Clear() {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	n.addressConnMap.Clear()
+	n.addressNodeMap.Clear()
+	n.connNodeMap.Clear()
+}
+
+func (n *NodeConnectionMapper) SetNodeAddress(nodeId NodeId, address string) {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	n.addressNodeMap.Add(address, nodeId)
+}
+
 func (n *NodeConnectionMapper) removeConn(connId ConnId) {
 	n.addressConnMap.Remove2(connId)
 	n.connNodeMap.Remove1(connId)
