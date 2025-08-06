@@ -21,6 +21,9 @@ import (
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type ClusterLoader struct {
@@ -29,13 +32,19 @@ type ClusterLoader struct {
 	SavePath       string
 }
 
-func Load(ctx context.Context) {
+func (c *ClusterLoader) Load(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-
+			err := c.loadSettings()
+			if err == nil {
+				return
+			} else {
+				logrus.Warnf("unable to load cluster.json: %v", err)
+				time.Sleep(time.Millisecond * 500)
+			}
 		}
 	}
 }
@@ -51,9 +60,9 @@ func (c *ClusterLoader) loadSettings() error {
 			return err
 		}
 		c.NodeConnMapper.Clear()
-		c.NodeConnMapper.
-
-		m.nodeConnMapper = mapper
+		for _, na := range mapper.NodesWithAddress() {
+			c.NodeConnMapper.SetNodeAddress(na.J, na.K)
+		}
 	}
 
 	return nil

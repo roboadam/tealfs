@@ -19,43 +19,33 @@ import (
 	"tealfs/pkg/model"
 )
 
-type SendSyncNodes struct {
-	InSendSyncNodes <-chan struct{}
-	OutSendPayloads chan<- model.MgrConnsSend
+type ReceiveSyncNodes struct {
+	InSyncNodes  <-chan model.SyncNodes
+	OutConnectTo chan<- model.ConnectToNodeReq
 
 	NodeConnMapper *model.NodeConnectionMapper
+	NodeId         model.NodeId
 }
 
-func (s *SendSyncNodes) Start(ctx context.Context) {
+func (r *ReceiveSyncNodes) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-s.InSendSyncNodes:
-			s.send(s.syncNodesPayloadToSend())
+		case syncNodes := <-r.InSyncNodes:
+			r.handleSyncNodes(&syncNodes)
 		}
 	}
 }
 
-func (s *SendSyncNodes) send(syncNodes *model.SyncNodes) {
-	connections := s.NodeConnMapper.Connections()
-	for _, connId := range connections.GetValues() {
-		s.OutSendPayloads <- model.MgrConnsSend{
-			ConnId:  connId,
-			Payload: syncNodes,
-		}
-
+func (r *ReceiveSyncNodes) handleSyncNodes(syncNodes *model.SyncNodes) {
+	remoteNodes := syncNodes.GetNodes()
+	localNodes := r.NodeConnMapper.Nodes()
+	localNodes.Add(r.NodeId)
+	missing := remoteNodes.Minus(&localNodes)
+	for _, n := range missing.GetValues() {
+		address := syncNodes.AddressForNode(n)
+		mct := model.ConnectToNodeReq{Address: address}
+		r.OutConnectTo <- mct
 	}
-}
-
-func (s *SendSyncNodes) syncNodesPayloadToSend() *model.SyncNodes {
-	result := model.NewSyncNodes()
-	addressesAndNodes := s.NodeConnMapper.NodesWithAddress()
-	for _, an := range addressesAndNodes {
-		result.Nodes.Add(struct {
-			Node    model.NodeId
-			Address string
-		}{Node: an.J, Address: an.K})
-	}
-	return &result
 }

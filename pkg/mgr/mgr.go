@@ -17,7 +17,6 @@ package mgr
 import (
 	"context"
 	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"tealfs/pkg/chanutil"
@@ -133,17 +132,6 @@ func (m *Mgr) eventLoop() {
 
 func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 	switch p := i.Payload.(type) {
-	case *model.SyncNodes:
-		remoteNodes := p.GetNodes()
-		localNodes := m.nodeConnMapper.Nodes()
-		localNodes.Add(m.NodeId)
-		missing := remoteNodes.Minus(&localNodes)
-		for _, n := range missing.GetValues() {
-			address := p.AddressForNode(n)
-			mct := model.ConnectToNodeReq{Address: address}
-			chanutil.Send(m.ctx, m.ConnectToNodeReqs, mct, "mgr: handleReceives: connect to")
-
-		}
 	case *model.Broadcast:
 		chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
 	default:
