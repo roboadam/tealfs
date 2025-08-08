@@ -40,7 +40,7 @@ func (n *NodeConnectionMapper) NodesWithAddress() []struct {
 	J NodeId
 } {
 	n.mux.RLock()
-	defer n.mux.Unlock()
+	defer n.mux.RUnlock()
 	return n.addressNodeMap.AllValues()
 }
 
