@@ -20,8 +20,20 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
-	"time"
 )
+
+type synchronizingMockFileOps struct {
+	disk.MockFileOps
+	writeDone chan struct{}
+}
+
+func (m *synchronizingMockFileOps) WriteFile(path string, data []byte) error {
+	err := m.MockFileOps.WriteFile(path, data)
+	if m.writeDone != nil {
+		m.writeDone <- struct{}{}
+	}
+	return err
+}
 
 func TestClusterSaver(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -30,18 +42,20 @@ func TestClusterSaver(t *testing.T) {
 	save := make(chan struct{})
 	nodeConnMapper := model.NewNodeConnectionMapper()
 	savePath := ""
-	fileOps := disk.MockFileOps{}
+	fileOps := &synchronizingMockFileOps{
+		writeDone: make(chan struct{}, 1),
+	}
 
 	clusterSaver := ClusterSaver{
 		Save:           save,
 		NodeConnMapper: nodeConnMapper,
 		SavePath:       savePath,
-		FileOps:        &fileOps,
+		FileOps:        fileOps,
 	}
 	go clusterSaver.Start(ctx)
 
 	save <- struct{}{}
-	time.Sleep(time.Millisecond * 100)
+	<-fileOps.writeDone
 
 	bytes, err := fileOps.ReadFile(filepath.Join(savePath, "cluster.json"))
 	if err != nil {
