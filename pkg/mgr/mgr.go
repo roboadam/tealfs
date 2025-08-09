@@ -99,10 +99,6 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 
 func (m *Mgr) Start() {
 	go func() {
-		err := m.loadSettings()
-		if err != nil {
-			panic("Unable to load settings " + err.Error())
-		}
 		go m.eventLoop()
 		m.connectToUnconnected()
 	}()
