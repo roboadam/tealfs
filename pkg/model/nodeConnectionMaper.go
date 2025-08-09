@@ -146,28 +146,6 @@ func NodeConnectionMapperUnmarshal(data []byte) (*NodeConnectionMapper, error) {
 	return &result, nil
 }
 
-// func (n *NodeConnectionMapper) AddressesAndNodes() set.Set[struct {
-// 	Address string
-// 	NodeId  NodeId
-// }] {
-// 	n.mux.RLock()
-// 	defer n.mux.RUnlock()
-// 	result := set.NewSet[struct {
-// 		Address string
-// 		NodeId  NodeId
-// 	}]()
-// 	for _, values := range n.addressNodeMap.AllValues() {
-// 		result.Add(struct {
-// 			Address string
-// 			NodeId  NodeId
-// 		}{
-// 			Address: values.K,
-// 			NodeId:  values.J,
-// 		})
-// 	}
-// 	return result
-// }
-
 func (n *NodeConnectionMapper) SetAll(conn ConnId, address string, node NodeId) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
