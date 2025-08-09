@@ -33,11 +33,13 @@ type IamConnId struct {
 }
 
 func (i *IamReceiver) Start(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-		return
-	case iam := <-i.InIam:
-		i.handleIam(&iam)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case iam := <-i.InIam:
+			i.handleIam(&iam)
+		}
 	}
 }
 

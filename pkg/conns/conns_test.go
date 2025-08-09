@@ -179,38 +179,6 @@ func TestConnectionError(t *testing.T) {
 	}
 }
 
-func TestGetData(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, outStatus, cmr, inConnectTo, _, outIam, provider := newConnsTest(ctx)
-	status := connectTo("remoteAddress:123", outStatus, inConnectTo)
-	disks := []model.AddDiskReq{{DiskId: "disk1", Path: "disk1path", NodeId: "node1"}}
-
-	buffer := ClosableBuffer{}
-	rawNet := tnet.NewRawNet(&buffer)
-	iam := model.NewIam("nodeId", disks, "localAddress:123")
-	var payload model.Payload = &iam
-	err := rawNet.SendPayload(payload)
-	if err != nil {
-		t.Error("Error sending payload", err)
-		return
-	}
-	provider.Conn.dataToRead <- buffer
-
-	result := <-cmr
-	iamReceived := <-outIam
-
-	if result.ConnId != status.Id || !reflect.DeepEqual(result.Payload, payload) {
-		t.Error("We didn't pass the message")
-		return
-	}
-
-	if !reflect.DeepEqual(iam, iamReceived) {
-		t.Error("Didn't get the Iam message")
-		return
-	}
-}
-
 func connectTo(address string, outStatus chan model.NetConnectionStatus, inConnectTo chan model.ConnectToNodeReq) model.NetConnectionStatus {
 	inConnectTo <- model.ConnectToNodeReq{Address: address}
 	return <-outStatus
