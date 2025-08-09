@@ -109,6 +109,7 @@ func (n *NodeConnectionMapper) SetNodeAddress(nodeId NodeId, address string) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 	n.addressNodeMap.Add(address, nodeId)
+	n.addresses.Add(address)
 }
 
 func (n *NodeConnectionMapper) removeConn(connId ConnId) {
