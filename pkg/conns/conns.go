@@ -42,6 +42,7 @@ type Conns struct {
 	OutAddDiskReq      chan<- model.AddDiskReq
 	OutIam             chan<- model.IAm
 	OutIamConnId       chan<- IamConnId
+	OutSyncNodes       chan<- model.SyncNodes
 	inConnectTo        <-chan model.ConnectToNodeReq
 	inSends            <-chan model.MgrConnsSend
 	Address            string
@@ -229,6 +230,8 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			case *model.IAm:
 				c.OutIam <- *p
 				c.OutIamConnId <- IamConnId{Iam: *p, ConnId: conn}
+			case *model.SyncNodes:
+				c.OutSyncNodes <- *p
 			default:
 				cmr := model.ConnsMgrReceive{
 					ConnId:  conn,

@@ -68,7 +68,12 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	custodian.Commands = custodianCommands
 	custodian.Start(ctx)
 
-	conns := conns.NewConns(
+	iamConnIds := make(chan conns.IamConnId, 1)
+	incomingSyncNodes := make(chan model.SyncNodes, 1)
+	sendSyncNodes := make(chan struct{}, 1)
+	saveCluster := make(chan struct{}, 1)
+
+	connsMain := conns.NewConns(
 		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
 		connReqs,
@@ -78,6 +83,47 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		m.NodeId,
 		ctx,
 	)
+
+	connsMain.OutIamConnId = iamConnIds
+	connsMain.OutSyncNodes = incomingSyncNodes
+
+	connsIamReceiver := conns.IamReceiver{
+		InIam:            iamConnIds,
+		OutSendSyncNodes: sendSyncNodes,
+		OutSaveCluster:   saveCluster,
+		Mapper:           nodeConnMapper,
+	}
+	go connsIamReceiver.Start(ctx)
+
+	clusterSaver := conns.ClusterSaver{
+		Save:           saveCluster,
+		NodeConnMapper: nodeConnMapper,
+		SavePath:       globalPath,
+		FileOps:        &disk.DiskFileOps{},
+	}
+	go clusterSaver.Start(ctx)
+
+	receiveSyncNodes := conns.ReceiveSyncNodes{
+		InSyncNodes:    incomingSyncNodes,
+		OutConnectTo:   connReqs,
+		NodeConnMapper: nodeConnMapper,
+		NodeId:         m.NodeId,
+	}
+	go receiveSyncNodes.Start(ctx)
+
+	sendSyncNodesProc := conns.SendSyncNodes{
+		InSendSyncNodes: sendSyncNodes,
+		OutSendPayloads: m.MgrConnsSends,
+		NodeConnMapper:  nodeConnMapper,
+	}
+	go sendSyncNodesProc.Start(ctx)
+
+	clusterLoader := conns.ClusterLoader{
+		NodeConnMapper: nodeConnMapper,
+		FileOps:        &disk.DiskFileOps{},
+		SavePath:       globalPath,
+	}
+	go clusterLoader.Load(ctx)
 
 	newAddDiskReqs := make(chan model.AddDiskReq)
 	_ = ui.NewUi(
@@ -97,7 +143,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	localAddDiskReqs := make(chan model.AddDiskReq)
 	remoteAddDiskReqs := make(chan model.AddDiskReq)
 
-	conns.OutAddDiskReq = newAddDiskReqs
+	connsMain.OutAddDiskReq = newAddDiskReqs
 	disks := disk.NewDisks(m.NodeId)
 	disks.InAddDiskReq = newAddDiskReqs
 	disks.OutLocalAddDiskReq = localAddDiskReqs
@@ -148,7 +194,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go iamSender.Start(ctx)
 
 	iams := make(chan model.IAm)
-	conns.OutIam = iams
+	connsMain.OutIam = iams
 	iamReceiver := disk.IamReceiver{
 		InIam:       iams,
 		OutSave:     saveDisks,
@@ -164,8 +210,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	remoteSave := make(chan blocksaver.SaveToDiskReq)
 	saveResp := make(chan blocksaver.SaveToDiskResp)
 
-	conns.OutSaveToDiskReq = localSave
-	conns.OutSaveToDiskResp = saveResp
+	connsMain.OutSaveToDiskReq = localSave
+	connsMain.OutSaveToDiskResp = saveResp
 
 	bs := blocksaver.BlockSaver{
 		Req:         webdavPutReq,
@@ -207,8 +253,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	remoteReadDest := make(chan blockreader.GetFromDiskReq)
 	readResp := make(chan blockreader.GetFromDiskResp)
 
-	conns.OutGetFromDiskReq = localReadDest
-	conns.OutGetFromDiskResp = readResp
+	connsMain.OutGetFromDiskReq = localReadDest
+	connsMain.OutGetFromDiskResp = readResp
 
 	br := blockreader.BlockReader{
 		Req:         webdavGetReq,
