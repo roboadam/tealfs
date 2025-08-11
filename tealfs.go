@@ -130,7 +130,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		connReqs,
 		m.MgrUiConnectionStatuses,
 		newAddDiskReqs,
-		m.MgrUiDiskStatuses,
+		make(chan model.UiDiskStatus),
 		&ui.HttpHtmlOps{},
 		m.NodeId,
 		uiAddress,

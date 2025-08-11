@@ -50,47 +50,6 @@ func TestConnectToSuccess(t *testing.T) {
 		}, 0, t, disks, make(chan<- model.ConnectToNodeReq))
 }
 
-func TestReceiveSyncNodes(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	const sharedAddress = "some-address:123"
-	const sharedConnectionId = 1
-	var sharedNodeId = model.NewNodeId()
-	disks1 := []model.AddDiskReq{{DiskId: model.DiskId("disk1"), Path: "disk1path", NodeId: sharedNodeId}}
-	const localAddress = "some-address2:234"
-	const localConnectionId = 2
-	var localNodeId = model.NewNodeId()
-	disks2 := []model.AddDiskReq{{DiskId: model.DiskId("disk2"), Path: "disk2path", NodeId: localNodeId}}
-	const remoteAddress = "some-address3:345"
-	var remoteNodeId = model.NewNodeId()
-	disks := []string{"disk"}
-	connReqs := make(chan model.ConnectToNodeReq)
-
-	m, _, _ := mgrWithConnectedNodes(ctx, []connectedNode{
-		{address: sharedAddress, conn: sharedConnectionId, node: sharedNodeId, disks: disks1},
-		{address: localAddress, conn: localConnectionId, node: localNodeId, disks: disks2},
-	}, 0, t, disks, connReqs)
-
-	sn := model.NewSyncNodes()
-	sn.Nodes.Add(struct {
-		Node    model.NodeId
-		Address string
-	}{Node: sharedNodeId, Address: sharedAddress})
-	sn.Nodes.Add(struct {
-		Node    model.NodeId
-		Address string
-	}{Node: remoteNodeId, Address: remoteAddress})
-	m.ConnsMgrReceives <- model.ConnsMgrReceive{
-		ConnId:  sharedConnectionId,
-		Payload: &sn,
-	}
-
-	expectedConnectTo := <-connReqs
-	if expectedConnectTo.Address != remoteAddress {
-		t.Error("expected to connect to", remoteAddress)
-	}
-}
-
 func TestBroadcast(t *testing.T) {
 	const expectedAddress1 = "some-address:123"
 	const expectedConnectionId1 = 1
@@ -174,7 +133,6 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 			NodeId: m.NodeId,
 		})
 	}
-	var nodesInCluster []connectedNode
 
 	for _, n := range nodes {
 		// Send a message to Mgr indicating another
@@ -183,6 +141,8 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 			Type: model.Connected,
 			Id:   n.conn,
 		}
+
+		nodeConnMapper.SetAll(n.conn, n.address, n.node)
 
 		// Then Mgr should send an Iam payload to
 		// the appropriate connection id with its
@@ -204,101 +164,7 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 			panic("Unexpected payload")
 		}
 
-		// Send a message to Mgr indicating the newly
-		// connected node has sent us an Iam payload
-		iamPayload := model.NewIam(n.node, n.disks, n.address)
-		m.ConnsMgrReceives <- model.ConnsMgrReceive{
-			ConnId:  n.conn,
-			Payload: &iamPayload,
-		}
-
-		<-m.MgrUiConnectionStatuses
-		for range n.disks {
-			<-m.MgrUiDiskStatuses
-		}
-
-		nodesInCluster = append(nodesInCluster, n)
-		var payloadsFromMgr []model.MgrConnsSend
-
-		for range nodesInCluster {
-			payloadsFromMgr = append(payloadsFromMgr, <-m.MgrConnsSends)
-		}
-
-		expectedSyncNodes := expectedSyncNodesForCluster(nodesInCluster)
-		syncNodesWeSent := assertAllPayloadsSyncNodes(t, payloadsFromMgr)
-
-		if !cIdSnSliceEquals(expectedSyncNodes, syncNodesWeSent) {
-			t.Error("Expected sync nodes to match", expectedSyncNodes, syncNodesWeSent)
-			panic("Expected sync nodes to match")
-		}
 	}
 
 	return m, &fileOps, custodianCommands
-}
-
-func assertAllPayloadsSyncNodes(t *testing.T, mcs []model.MgrConnsSend) []connIdAndSyncNodes {
-	var results []connIdAndSyncNodes
-	for _, mc := range mcs {
-		switch p := mc.Payload.(type) {
-		case *model.SyncNodes:
-			results = append(results, struct {
-				ConnId  model.ConnId
-				Payload model.SyncNodes
-			}{ConnId: mc.ConnId, Payload: *p})
-		default:
-			t.Error("Unexpected payload", p)
-			panic("Unexpected payload")
-		}
-	}
-	return results
-}
-
-type connIdAndSyncNodes struct {
-	ConnId  model.ConnId
-	Payload model.SyncNodes
-}
-
-func cIdSnSliceEquals(a, b []connIdAndSyncNodes) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		oneEqual := false
-		for j := range b {
-			if cIdSnEquals(a[i], b[j]) {
-				oneEqual = true
-			}
-		}
-		if !oneEqual {
-			return false
-		}
-	}
-	return true
-}
-
-func cIdSnEquals(a, b connIdAndSyncNodes) bool {
-	if a.ConnId != b.ConnId {
-		return false
-	}
-	return reflect.DeepEqual(a.Payload, b.Payload)
-}
-
-func expectedSyncNodesForCluster(cluster []connectedNode) []connIdAndSyncNodes {
-	var results []connIdAndSyncNodes
-
-	sn := model.NewSyncNodes()
-	for _, node := range cluster {
-		sn.Nodes.Add(struct {
-			Node    model.NodeId
-			Address string
-		}{Node: node.node, Address: node.address})
-	}
-
-	for _, node := range cluster {
-		results = append(results, struct {
-			ConnId  model.ConnId
-			Payload model.SyncNodes
-		}{ConnId: node.conn, Payload: sn})
-	}
-	return results
 }

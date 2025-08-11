@@ -34,7 +34,6 @@ type Mgr struct {
 	WebdavMgrBroadcast      chan model.Broadcast
 	MgrConnsSends           chan model.MgrConnsSend
 	MgrUiConnectionStatuses chan model.UiConnectionStatus
-	MgrUiDiskStatuses       chan model.UiDiskStatus
 	MgrWebdavBroadcast      chan model.Broadcast
 	CustodianCommands       chan<- custodian.Command
 	AllDiskIds              *set.Set[model.AddDiskReq]
@@ -68,7 +67,6 @@ func New(
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
 		MgrUiConnectionStatuses: make(chan model.UiConnectionStatus, chanSize),
-		MgrUiDiskStatuses:       make(chan model.UiDiskStatus, chanSize),
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
