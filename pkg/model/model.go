@@ -20,12 +20,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type UiConnectionStatus struct {
-	Type          ConnectedStatus
-	RemoteAddress string
-	Msg           string
-	Id            NodeId
-}
 type UiDiskStatus struct {
 	Localness     Localness
 	Availableness DiskAvailableness

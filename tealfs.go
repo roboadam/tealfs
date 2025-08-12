@@ -126,9 +126,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go clusterLoader.Load(ctx)
 
 	newAddDiskReqs := make(chan model.AddDiskReq)
-	_ = ui.NewUi(
+	u := ui.NewUi(
 		connReqs,
-		m.MgrUiConnectionStatuses,
 		newAddDiskReqs,
 		make(chan model.UiDiskStatus),
 		&ui.HttpHtmlOps{},
@@ -136,6 +135,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		uiAddress,
 		ctx,
 	)
+	u.NodeConnMap = nodeConnMapper
 
 	addedDisksSaver := make(chan *disk.Disk)
 	addedDisksReader := make(chan *disk.Disk)

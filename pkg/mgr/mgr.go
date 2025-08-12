@@ -33,7 +33,6 @@ type Mgr struct {
 	DiskMgrReads            chan model.ReadResult
 	WebdavMgrBroadcast      chan model.Broadcast
 	MgrConnsSends           chan model.MgrConnsSend
-	MgrUiConnectionStatuses chan model.UiConnectionStatus
 	MgrWebdavBroadcast      chan model.Broadcast
 	CustodianCommands       chan<- custodian.Command
 	AllDiskIds              *set.Set[model.AddDiskReq]
@@ -66,7 +65,6 @@ func New(
 		DiskMgrReads:            make(chan model.ReadResult, chanSize),
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
 		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
-		MgrUiConnectionStatuses: make(chan model.UiConnectionStatus, chanSize),
 		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
 		nodeConnMapper:          nodeConnMapper,
 		NodeId:                  nodeId,
@@ -143,16 +141,7 @@ func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
 		}
 		chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleNetConnectedStatus: connected")
 	case model.NotConnected:
-		address, _ := m.nodeConnMapper.AddressForConn(cs.Id)
-		id, _ := m.nodeConnMapper.NodeForConn(cs.Id)
 		m.nodeConnMapper.RemoveConn(cs.Id)
-		m.MgrUiConnectionStatuses <- model.UiConnectionStatus{
-			Type:          model.NotConnected,
-			RemoteAddress: address,
-			Msg:           "Disconnected",
-			Id:            id,
-		}
-		// Todo: Need to periodically try to reconnect to unconnected nodes
 	}
 }
 

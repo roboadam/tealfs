@@ -35,6 +35,13 @@ type NodeConnectionMapperExport struct {
 	AddressNodeMap map[string]NodeId
 }
 
+type ConnectionTriple struct {
+	ConnId      ConnId
+	Address     string
+	NodeId      NodeId
+	IsConnected bool
+}
+
 func (n *NodeConnectionMapper) NodesWithAddress() []struct {
 	K string
 	J NodeId
@@ -42,6 +49,27 @@ func (n *NodeConnectionMapper) NodesWithAddress() []struct {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.addressNodeMap.AllValues()
+}
+
+func (n *NodeConnectionMapper) ConnectionTriples() []ConnectionTriple {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	result := []ConnectionTriple{}
+	for _, address := range n.addresses.GetValues() {
+		triple := ConnectionTriple{Address: address}
+		if conn, ok := n.addressConnMap.Get1(address); ok {
+			triple.ConnId = conn
+		} else {
+			triple.IsConnected = false
+		}
+
+		if node, ok := n.addressNodeMap.Get1(address); ok {
+			triple.NodeId = node
+		}
+		result = append(result, triple)
+
+	}
+	return result
 }
 
 func (n *NodeConnectionMapper) AddressesWithoutConnections() set.Set[string] {
