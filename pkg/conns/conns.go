@@ -33,7 +33,6 @@ type Conns struct {
 	netConnsMux        *sync.RWMutex
 	nextId             model.ConnId
 	acceptedConns      chan AcceptedConns
-	outStatuses        chan model.NetConnectionStatus
 	outReceives        chan model.ConnsMgrReceive
 	OutSaveToDiskReq   chan<- blocksaver.SaveToDiskReq
 	OutSaveToDiskResp  chan<- blocksaver.SaveToDiskResp
@@ -54,7 +53,6 @@ type Conns struct {
 }
 
 func NewConns(
-	outStatuses chan model.NetConnectionStatus,
 	outReceives chan model.ConnsMgrReceive,
 	inConnectTo <-chan model.ConnectToNodeReq,
 	inSends <-chan model.MgrConnsSend,
@@ -72,7 +70,6 @@ func NewConns(
 		netConnsMux:    &sync.RWMutex{},
 		nextId:         model.ConnId(0),
 		acceptedConns:  make(chan AcceptedConns),
-		outStatuses:    outStatuses,
 		outReceives:    outReceives,
 		inConnectTo:    inConnectTo,
 		inSends:        inSends,
@@ -115,6 +112,8 @@ func (c *Conns) consumeChannels() {
 			return
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
+			c.nodeConnMapper.SetAll(id, c.Address, c.nodeId)
+			send iam
 			status := model.NetConnectionStatus{
 				Type: model.Connected,
 				Msg:  "Success",
