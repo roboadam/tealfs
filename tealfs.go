@@ -74,7 +74,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	saveCluster := make(chan struct{}, 1)
 
 	connsMain := conns.NewConns(
-		m.ConnsMgrStatuses,
 		m.ConnsMgrReceives,
 		connReqs,
 		m.MgrConnsSends,

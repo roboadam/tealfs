@@ -27,7 +27,7 @@ import (
 func TestAcceptConn(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, status, _, _, _, _, provider := newConnsTest(ctx)
+	_, _, _, _, _, provider := newConnsTest(ctx)
 	provider.Listener.accept <- true
 	s := <-status
 	if s.Type != model.Connected {
@@ -186,20 +186,18 @@ func connectTo(address string, outStatus chan model.NetConnectionStatus, inConne
 
 func newConnsTest(ctx context.Context) (
 	*Conns,
-	chan model.NetConnectionStatus,
 	chan model.ConnsMgrReceive,
 	chan model.ConnectToNodeReq,
 	chan model.MgrConnsSend,
 	chan model.IAm,
 	*MockConnectionProvider,
 ) {
-	outStatuses := make(chan model.NetConnectionStatus, 1)
 	outReceives := make(chan model.ConnsMgrReceive, 1)
 	inConnectTo := make(chan model.ConnectToNodeReq, 1)
 	inSends := make(chan model.MgrConnsSend, 1)
 	outIam := make(chan model.IAm, 1)
 	provider := NewMockConnectionProvider()
-	c := NewConns(outStatuses, outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)
+	c := NewConns(outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)
 	c.OutIam = outIam
-	return c, outStatuses, outReceives, inConnectTo, inSends, outIam, &provider
+	return c, outReceives, inConnectTo, inSends, outIam, &provider
 }

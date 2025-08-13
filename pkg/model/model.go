@@ -42,18 +42,6 @@ const (
 	Unknown
 )
 
-type NetConnectionStatus struct {
-	Type ConnectedStatus
-	Msg  string
-	Id   ConnId
-}
-type ConnectedStatus int
-
-const (
-	Connected ConnectedStatus = iota
-	NotConnected
-)
-
 type ConnId int32
 
 type ConnectToNodeReq struct {

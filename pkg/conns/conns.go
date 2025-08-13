@@ -42,6 +42,7 @@ type Conns struct {
 	OutIam             chan<- model.IAm
 	OutIamConnId       chan<- IamConnId
 	OutSyncNodes       chan<- model.SyncNodes
+	OutSendIam         chan<- model.ConnId
 	inConnectTo        <-chan model.ConnectToNodeReq
 	inSends            <-chan model.MgrConnsSend
 	Address            string
@@ -112,25 +113,12 @@ func (c *Conns) consumeChannels() {
 			return
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
-			c.nodeConnMapper.SetAll(id, c.Address, c.nodeId)
-			send iam
-			status := model.NetConnectionStatus{
-				Type: model.Connected,
-				Msg:  "Success",
-				Id:   id,
-			}
-			chanutil.Send(c.ctx, c.outStatuses, status, "conns accepted connection sending success status")
+			c.OutSendIam <- id
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
-			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
-				status := model.NetConnectionStatus{
-					Type: model.Connected,
-					Msg:  "Success",
-					Id:   id,
-				}
-				chanutil.Send(c.ctx, c.outStatuses, status, "conns connected sending success status")
+				c.OutSendIam <- id
 				go c.consumeData(id)
 			}
 		case sendReq := <-c.inSends:
@@ -193,13 +181,6 @@ type AcceptedConns struct {
 }
 
 func (c *Conns) consumeData(conn model.ConnId) {
-	ncs := model.NetConnectionStatus{
-		Type: model.NotConnected,
-		Msg:  "Connection closed",
-		Id:   conn,
-	}
-	defer chanutil.Send(c.ctx, c.outStatuses, ncs, "conns connection closed sent status")
-
 	for {
 		select {
 		case <-c.ctx.Done():

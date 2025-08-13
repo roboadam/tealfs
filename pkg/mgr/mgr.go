@@ -28,7 +28,6 @@ import (
 
 type Mgr struct {
 	ConnectToNodeReqs       chan<- model.ConnectToNodeReq
-	ConnsMgrStatuses        chan model.NetConnectionStatus
 	ConnsMgrReceives        chan model.ConnsMgrReceive
 	DiskMgrReads            chan model.ReadResult
 	WebdavMgrBroadcast      chan model.Broadcast
@@ -60,7 +59,6 @@ func New(
 	}
 
 	mgr := Mgr{
-		ConnsMgrStatuses:        make(chan model.NetConnectionStatus, chanSize),
 		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
 		DiskMgrReads:            make(chan model.ReadResult, chanSize),
 		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
@@ -112,8 +110,6 @@ func (m *Mgr) eventLoop() {
 		select {
 		case <-m.ctx.Done():
 			return
-		case r := <-m.ConnsMgrStatuses:
-			m.handleNetConnectedStatus(r)
 		case r := <-m.ConnsMgrReceives:
 			m.handleReceives(r)
 		case r := <-m.WebdavMgrBroadcast:
@@ -128,20 +124,6 @@ func (m *Mgr) handleReceives(i model.ConnsMgrReceive) {
 		chanutil.Send(m.ctx, m.MgrWebdavBroadcast, *p, "mgr: handleReceives: forward broadcast to webdav")
 	default:
 		panic("Received unknown payload")
-	}
-}
-
-func (m *Mgr) handleNetConnectedStatus(cs model.NetConnectionStatus) {
-	switch cs.Type {
-	case model.Connected:
-		iam := model.NewIam(m.NodeId, m.AllDiskIds.GetValues(), m.nodeAddress)
-		mcs := model.MgrConnsSend{
-			ConnId:  cs.Id,
-			Payload: &iam,
-		}
-		chanutil.Send(m.ctx, m.MgrConnsSends, mcs, "mgr: handleNetConnectedStatus: connected")
-	case model.NotConnected:
-		m.nodeConnMapper.RemoveConn(cs.Id)
 	}
 }
 
