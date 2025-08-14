@@ -135,13 +135,6 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 	}
 
 	for _, n := range nodes {
-		// Send a message to Mgr indicating another
-		// node has connected
-		m.ConnsMgrStatuses <- model.NetConnectionStatus{
-			Type: model.Connected,
-			Id:   n.conn,
-		}
-
 		nodeConnMapper.SetAll(n.conn, n.address, n.node)
 
 		// Then Mgr should send an Iam payload to
