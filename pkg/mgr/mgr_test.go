@@ -136,27 +136,6 @@ func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize 
 
 	for _, n := range nodes {
 		nodeConnMapper.SetAll(n.conn, n.address, n.node)
-
-		// Then Mgr should send an Iam payload to
-		// the appropriate connection id with its
-		// own node id
-		expectedIam := <-m.MgrConnsSends
-		payload := expectedIam.Payload
-		switch p := payload.(type) {
-		case *model.IAm:
-			if p.NodeId != m.NodeId {
-				t.Error("Unexpected nodeId")
-				panic("Unexpected nodeId")
-			}
-			if expectedIam.ConnId != n.conn {
-				t.Error("Unexpected connId")
-				panic("Unexpected connId")
-			}
-		default:
-			t.Error("Unexpected payload", p)
-			panic("Unexpected payload")
-		}
-
 	}
 
 	return m, &fileOps, custodianCommands

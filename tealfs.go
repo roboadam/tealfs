@@ -94,6 +94,17 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	}
 	go connsIamReceiver.Start(ctx)
 
+	sendIam := make(chan model.ConnId, 1)
+	connsMain.OutSendIam = sendIam
+	connsIamSender := conns.IamSender{
+		InSendIam: sendIam,
+		OutIam:    make(chan<- model.MgrConnsSend),
+		NodeId:    m.NodeId,
+		Address:   webdavAddress,
+		Disks:     &set.Set[model.AddDiskReq]{},
+	}
+	go connsIamSender.Start(ctx)
+
 	clusterSaver := conns.ClusterSaver{
 		Save:           saveCluster,
 		NodeConnMapper: nodeConnMapper,
