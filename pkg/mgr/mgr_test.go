@@ -47,7 +47,7 @@ func TestConnectToSuccess(t *testing.T) {
 		[]connectedNode{
 			{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 			{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
-		}, 0, t, disks, make(chan<- model.ConnectToNodeReq))
+		}, 0, disks)
 }
 
 func TestBroadcast(t *testing.T) {
@@ -68,7 +68,7 @@ func TestBroadcast(t *testing.T) {
 	m, _, _ := mgrWithConnectedNodes(ctx, []connectedNode{
 		{address: expectedAddress1, conn: expectedConnectionId1, node: expectedNodeId1, disks: disks1},
 		{address: expectedAddress2, conn: expectedConnectionId2, node: expectedNodeId2, disks: disks2},
-	}, maxNumberOfWritesInOnePass, t, paths, make(chan<- model.ConnectToNodeReq))
+	}, maxNumberOfWritesInOnePass, paths)
 
 	testMsg := model.NewBroadcast([]byte{1, 2, 3})
 	outMsgCounter := int32(0)
@@ -115,15 +115,12 @@ type connectedNode struct {
 	disks   []model.AddDiskReq
 }
 
-func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, t *testing.T, paths []string, connReqs chan<- model.ConnectToNodeReq) (*Mgr, *disk.MockFileOps, chan custodian.Command) {
+func mgrWithConnectedNodes(ctx context.Context, nodes []connectedNode, chanSize int, paths []string) (*Mgr, *disk.MockFileOps, chan custodian.Command) {
 	fileOps := disk.MockFileOps{}
 	nodeConnMapper := model.NewNodeConnectionMapper()
 	m := New(chanSize, "dummyAddress", "dummyPath", &fileOps, nodeConnMapper, ctx)
-	m.ConnectToNodeReqs = connReqs
 	custodianCommands := make(chan custodian.Command, chanSize)
-	m.CustodianCommands = custodianCommands
 	disks := set.NewSet[model.AddDiskReq]()
-	m.AllDiskIds = &disks
 	m.Start()
 
 	for _, path := range paths {

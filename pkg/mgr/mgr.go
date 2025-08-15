@@ -20,21 +20,15 @@ import (
 	"os"
 	"path/filepath"
 	"tealfs/pkg/chanutil"
-	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 )
 
 type Mgr struct {
-	ConnectToNodeReqs       chan<- model.ConnectToNodeReq
-	ConnsMgrReceives        chan model.ConnsMgrReceive
-	DiskMgrReads            chan model.ReadResult
-	WebdavMgrBroadcast      chan model.Broadcast
-	MgrConnsSends           chan model.MgrConnsSend
-	MgrWebdavBroadcast      chan model.Broadcast
-	CustodianCommands       chan<- custodian.Command
-	AllDiskIds              *set.Set[model.AddDiskReq]
+	ConnsMgrReceives   chan model.ConnsMgrReceive
+	WebdavMgrBroadcast chan model.Broadcast
+	MgrConnsSends      chan model.MgrConnsSend
+	MgrWebdavBroadcast chan model.Broadcast
 
 	nodeConnMapper *model.NodeConnectionMapper
 
@@ -59,17 +53,16 @@ func New(
 	}
 
 	mgr := Mgr{
-		ConnsMgrReceives:        make(chan model.ConnsMgrReceive, chanSize),
-		DiskMgrReads:            make(chan model.ReadResult, chanSize),
-		WebdavMgrBroadcast:      make(chan model.Broadcast, chanSize),
-		MgrConnsSends:           make(chan model.MgrConnsSend, chanSize),
-		MgrWebdavBroadcast:      make(chan model.Broadcast, chanSize),
-		nodeConnMapper:          nodeConnMapper,
-		NodeId:                  nodeId,
-		nodeAddress:             nodeAddress,
-		savePath:                globalPath,
-		fileOps:                 fileOps,
-		ctx:                     ctx,
+		ConnsMgrReceives:   make(chan model.ConnsMgrReceive, chanSize),
+		WebdavMgrBroadcast: make(chan model.Broadcast, chanSize),
+		MgrConnsSends:      make(chan model.MgrConnsSend, chanSize),
+		MgrWebdavBroadcast: make(chan model.Broadcast, chanSize),
+		nodeConnMapper:     nodeConnMapper,
+		NodeId:             nodeId,
+		nodeAddress:        nodeAddress,
+		savePath:           globalPath,
+		fileOps:            fileOps,
+		ctx:                ctx,
 	}
 
 	return &mgr
@@ -94,15 +87,7 @@ func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
 func (m *Mgr) Start() {
 	go func() {
 		go m.eventLoop()
-		m.connectToUnconnected()
 	}()
-}
-
-func (m *Mgr) connectToUnconnected() {
-	addresses := m.nodeConnMapper.AddressesWithoutConnections()
-	for _, address := range addresses.GetValues() {
-		m.ConnectToNodeReqs <- model.ConnectToNodeReq{Address: address}
-	}
 }
 
 func (m *Mgr) eventLoop() {

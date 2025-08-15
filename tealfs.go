@@ -24,7 +24,6 @@ import (
 	"tealfs/pkg/blockreader"
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
-	"tealfs/pkg/custodian"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/mgr"
 	"tealfs/pkg/model"
@@ -57,16 +56,9 @@ func main() {
 func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, ctx context.Context) error {
 	log.SetLevel(log.DebugLevel)
 	chansize := 0
-	connReqs := make(chan model.ConnectToNodeReq)
+	connReqs := make(chan model.ConnectToNodeReq, 1)
 	nodeConnMapper := model.NewNodeConnectionMapper()
 	m := mgr.New(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, nodeConnMapper, ctx)
-	m.ConnectToNodeReqs = connReqs
-
-	custodianCommands := make(chan custodian.Command, chansize)
-	m.CustodianCommands = custodianCommands
-	custodian := custodian.NewCustodian(chansize)
-	custodian.Commands = custodianCommands
-	custodian.Start(ctx)
 
 	iamConnIds := make(chan conns.IamConnId, 1)
 	incomingSyncNodes := make(chan model.SyncNodes, 1)
@@ -153,7 +145,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	disks.InAddDiskReq = newAddDiskReqs
 	disks.OutLocalAddDiskReq = localAddDiskReqs
 	disks.OutRemoteAddDiskReq = remoteAddDiskReqs
-	m.AllDiskIds = &disks.AllDiskIds
 	go disks.Start(ctx)
 
 	diskLoader := disk.DiskLoader{
