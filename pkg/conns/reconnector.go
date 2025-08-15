@@ -17,6 +17,7 @@ package conns
 import (
 	"context"
 	"tealfs/pkg/model"
+	"time"
 )
 
 type Reconnector struct {
@@ -26,11 +27,14 @@ type Reconnector struct {
 }
 
 func (r *Reconnector) Start(ctx context.Context) {
+	r.reConnect()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-ticker.C:
 			r.reConnect()
 		}
 	}

@@ -124,6 +124,12 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	}
 	go clusterLoader.Load(ctx)
 
+	reconnector := conns.Reconnector{
+		OutConnectTo: connReqs,
+		Mapper:       nodeConnMapper,
+	}
+	go reconnector.Start(ctx)
+
 	newAddDiskReqs := make(chan model.AddDiskReq)
 	u := ui.NewUi(
 		connReqs,
