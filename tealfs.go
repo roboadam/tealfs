@@ -205,7 +205,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		InSendIam: sendIam,
 		OutIam:    m.MgrConnsSends,
 		NodeId:    m.NodeId,
-		Address:   webdavAddress,
+		Address:   nodeAddress,
 		Disks:     &disks.AllDiskIds,
 	}
 	go connsIamSender.Start(ctx)
