@@ -4,6 +4,13 @@
 - [x] Break up big blocks
 - [ ] Rebalance on disk changes
     - [ ] Elect a primary node
+        - [x] Create Bully messages (Election, Alive, Victory)
+        - [ ] Method to convert NodeId to a number
+        - [ ] Rule 1: If P has the highest process ID, it sends a Victory message to all other processes and becomes the new Coordinator. Otherwise, P broadcasts an Election message to all other processes with higher process IDs than itself.
+        - [ ] Rule 2: If P receives no Alive after sending an Election message, then it broadcasts a Victory message to all other processes and becomes the Coordinator.
+        - [ ] Rule 3: If P receives an Alive from a process with a higher ID, it sends no further messages for this election and waits for a Victory message. (If there is no Victory message after a period of time, it restarts the process at the beginning.)
+        - [ ] Rule 4: If P receives an Election message from another process with a lower ID it sends an Alive message back and if it has not already started an election, it starts the election process at the beginning, by sending an Election message to higher-numbered processes.
+        - [ ] Rule 5: If P receives a Victory message, it treats the sender as the coordinator.
     - [ ] Collect all on-disk block ids from other nodes on primary
     - [ ] Emit all block Id pointers from filesystem on primary node
     - [ ] Delete all block Ids that don't have a pointer

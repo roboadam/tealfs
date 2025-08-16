@@ -30,6 +30,9 @@ const (
 	SaveToDiskResp     PayloadType = 10
 	GetFromDiskReq     PayloadType = 11
 	GetFromDiskResp    PayloadType = 12
+	Election           PayloadType = 13
+	Alive              PayloadType = 14
+	Victory            PayloadType = 15
 )
 
 type Payload interface {
