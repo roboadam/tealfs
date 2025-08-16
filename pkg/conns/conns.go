@@ -125,20 +125,20 @@ func (c *Conns) consumeChannels() {
 		case sendReq := <-c.inSends:
 			_, ok := c.netConns[sendReq.ConnId]
 			if !ok {
-				c.handleSendFailure(sendReq, errors.New("connection not found"))
+				c.handleSendFailure(errors.New("connection not found"))
 			} else {
 				//Todo maybe this should be async
 				rawNet := c.netConns[sendReq.ConnId]
 				err := rawNet.SendPayload(sendReq.Payload)
 				if err != nil {
-					c.handleSendFailure(sendReq, err)
+					c.handleSendFailure(err)
 				}
 			}
 		}
 	}
 }
 
-func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
+func (c *Conns) handleSendFailure(err error) {
 	log.Warn("Error sending ", err)
 }
 

@@ -34,17 +34,19 @@ func TestCreateEmptyFile(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	nodeId := model.NewNodeId()
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
+	inBroadcast := make(chan webdav.FileBroadcast)
+	outBroadcast := make(chan model.MgrConnsSend)
 	fs := webdav.NewFileSystem(
 		nodeId,
 		inBroadcast,
-		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
 		ctx,
 	)
+	fs.OutSends = outBroadcast
+	fs.Mapper = model.NewNodeConnectionMapper()
+
 	name := "/hello-world.txt"
 	bytesInWrite := []byte{6, 5, 4, 3, 2}
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
@@ -85,19 +87,21 @@ func TestCreateEmptyFile(t *testing.T) {
 }
 
 func TestFileNotFound(t *testing.T) {
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
+	inBroadcast := make(chan webdav.FileBroadcast)
+	outBroadcast := make(chan model.MgrConnsSend)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	fs := webdav.NewFileSystem(
 		model.NewNodeId(),
 		inBroadcast,
-		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
 		ctx,
 	)
+	fs.OutSends = outBroadcast
+	fs.Mapper = model.NewNodeConnectionMapper()
+
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
 	if err == nil {
@@ -110,17 +114,19 @@ func TestFileNotFound(t *testing.T) {
 func TestOpenRoot(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
+	inBroadcast := make(chan webdav.FileBroadcast)
+	outBroadcast := make(chan model.MgrConnsSend)
 	filesystem := webdav.NewFileSystem(
 		model.NewNodeId(),
 		inBroadcast,
-		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
 		ctx,
 	)
+	filesystem.OutSends = outBroadcast
+	filesystem.Mapper = model.NewNodeConnectionMapper()
+
 	mockPushesAndPulls(ctx, &filesystem, outBroadcast)
 	root, err := filesystem.OpenFile(context.Background(), "/", os.O_RDONLY, fs.ModeDir)
 	if err != nil {
@@ -150,17 +156,19 @@ func TestCreateBigFile(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	nodeId := model.NewNodeId()
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
+	inBroadcast := make(chan webdav.FileBroadcast)
+	outBroadcast := make(chan model.MgrConnsSend)
 	fs := webdav.NewFileSystem(
 		nodeId,
 		inBroadcast,
-		outBroadcast,
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
 		ctx,
 	)
+	fs.OutSends = outBroadcast
+	fs.Mapper = model.NewNodeConnectionMapper()
+
 	name := "/hello-bigFile.txt"
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
@@ -286,7 +294,7 @@ func handlePushBlockReq(ctx context.Context, reqs chan webdav.WriteReqResp, mux 
 	}
 }
 
-func handleOutBroadcast(ctx context.Context, out chan model.Broadcast) {
+func handleOutBroadcast(ctx context.Context, out chan model.MgrConnsSend) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -299,11 +307,11 @@ func handleOutBroadcast(ctx context.Context, out chan model.Broadcast) {
 func mockPushesAndPulls(
 	ctx context.Context,
 	fs *webdav.FileSystem,
-	outBroadcast chan model.Broadcast,
+	outSends chan model.MgrConnsSend,
 ) {
 	mux := sync.Mutex{}
 	mockStorage := make(map[model.BlockId][]byte)
 	go handleFetchBlockReq(ctx, fs.ReadReqResp, &mux, mockStorage)
 	go handlePushBlockReq(ctx, fs.WriteReqResp, &mux, mockStorage)
-	go handleOutBroadcast(ctx, outBroadcast)
+	go handleOutBroadcast(ctx, outSends)
 }

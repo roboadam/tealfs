@@ -26,10 +26,13 @@ import (
 func TestSerializeFileHolder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
-	mockPushesAndPulls(ctx, &fs, outBroadcast)
+	inBroadcast := make(chan webdav.FileBroadcast, 1)
+	outSends := make(chan model.MgrConnsSend, 1)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
+	fs.OutSends = outSends
+	fs.Mapper = model.NewNodeConnectionMapper()
+
+	mockPushesAndPulls(ctx, &fs, outSends)
 
 	path1, _ := webdav.PathFromName("/hello/world")
 	path2, _ := webdav.PathFromName("/hello/planet")

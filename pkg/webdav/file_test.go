@@ -28,9 +28,12 @@ import (
 func TestRead(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
+	inBroadcast := make(chan webdav.FileBroadcast, 1)
+	outBroadcast := make(chan model.MgrConnsSend, 1)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
+	fs.OutSends = outBroadcast
+	fs.Mapper = model.NewNodeConnectionMapper()
+
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
 	file := webdav.File{
@@ -84,9 +87,11 @@ func TestRead(t *testing.T) {
 func TestSeek(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	inBroadcast := make(chan model.Broadcast)
-	outBroadcast := make(chan model.Broadcast)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, outBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
+	inBroadcast := make(chan webdav.FileBroadcast, 1)
+	outBroadcast := make(chan model.MgrConnsSend, 1)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
+	fs.OutSends = outBroadcast
+	fs.Mapper = model.NewNodeConnectionMapper()
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 
 	file := webdav.File{
@@ -144,13 +149,15 @@ func TestSerialize(t *testing.T) {
 	nodeId := model.NewNodeId()
 	fileSystem := webdav.NewFileSystem(
 		nodeId,
-		make(chan model.Broadcast),
-		make(chan model.Broadcast),
+		make(chan webdav.FileBroadcast),
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
 		ctx,
 	)
+	fileSystem.OutSends = make(chan model.MgrConnsSend)
+	fileSystem.Mapper = model.NewNodeConnectionMapper()
+
 	path, _ := webdav.PathFromName("/hello/world")
 	file := webdav.File{
 		SizeValue: 123,

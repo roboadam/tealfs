@@ -31,7 +31,6 @@ type Webdav struct {
 	webdavMgrPuts chan model.PutBlockReq
 	mgrWebdavGets chan model.GetBlockResp
 	mgrWebdavPuts chan model.PutBlockResp
-	outSends      chan model.MgrConnsSend
 
 	fileSystem   FileSystem
 	nodeId       model.NodeId
@@ -40,7 +39,6 @@ type Webdav struct {
 	lockSystem   webdav.LockSystem
 	bindAddress  string
 	server       *http.Server
-	mapper       *model.NodeConnectionMapper
 
 	ctx context.Context
 }

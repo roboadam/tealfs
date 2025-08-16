@@ -53,11 +53,6 @@ type MgrConnsSend struct {
 	Payload Payload
 }
 
-type ConnsMgrReceive struct {
-	ConnId  ConnId
-	Payload Payload
-}
-
 type MgrDiskSave struct {
 	Hash hash.Hash
 	Data []byte

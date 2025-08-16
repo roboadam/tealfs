@@ -16,7 +16,6 @@ package conns
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
@@ -27,7 +26,7 @@ import (
 func TestAcceptConn(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, _, _, _, _, outSendIam, provider := newConnsTest(ctx)
+	_, _, _, _, outSendIam, provider := newConnsTest(ctx)
 	provider.Listener.accept <- true
 
 	<-outSendIam
@@ -36,7 +35,7 @@ func TestAcceptConn(t *testing.T) {
 func TestConnectToConns(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, _, inConnectTo, _, _, sendIam, connProvider := newConnsTest(ctx)
+	_, inConnectTo, _, _, sendIam, connProvider := newConnsTest(ctx)
 	const expectedAddress = "expectedAddress:1234"
 	inConnectTo <- model.ConnectToNodeReq{Address: expectedAddress}
 
@@ -54,7 +53,7 @@ func TestConnectToConns(t *testing.T) {
 func TestSendData(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, _, inConnectTo, inSend, _, sendIam, provider := newConnsTest(ctx)
+	_, inConnectTo, inSend, _, sendIam, provider := newConnsTest(ctx)
 	caller := model.NewNodeId()
 	data := model.RawData{
 		Ptr:  model.DiskPointer{NodeId: "destNode", Disk: "disk1", FileName: "blockId"},
@@ -88,109 +87,21 @@ func TestSendData(t *testing.T) {
 	}
 }
 
-func TestSendReadRequestNoConnected(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, outReceives, _, inSend, _, _, _ := newConnsTest(ctx)
-	caller := model.NodeId("caller1")
-	ptrs := []model.DiskPointer{
-		{NodeId: "nodeId1", Disk: "disk1", FileName: "filename1"},
-		{NodeId: "nodeId2", Disk: "disk2", FileName: "filename2"},
-	}
-	blockId := model.BlockId("blockId1")
-	reqId := model.GetBlockId("reqId")
-	var request model.Payload = &model.ReadRequest{Caller: caller, Ptrs: ptrs, BlockId: blockId, ReqId: reqId}
-
-	inSend <- model.MgrConnsSend{
-		ConnId:  0,
-		Payload: request,
-	}
-	outReceive := <-outReceives
-	if outReceive.ConnId != 0 {
-		t.Error("Expected ConnId to be 0")
-		return
-	}
-	switch p := outReceive.Payload.(type) {
-	case *model.ReadRequest:
-		if p.BlockId != blockId || p.Caller != caller {
-			t.Error("unexpected read request not equal")
-			return
-		}
-		if len(p.Ptrs) != 1 || p.Ptrs[0] != ptrs[1] {
-			t.Error("Expected ptrs to be equal")
-			return
-		}
-	default:
-		t.Error("Unexpected payload", p)
-		return
-	}
-}
-
-func TestSendReadRequestSendFailure(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, outReceives, inConnectTo, inSend, _, sendIam, connProvider := newConnsTest(ctx)
-
-	inConnectTo <- model.ConnectToNodeReq{Address: "address:123"}
-	<-connProvider.DialedAddress
-	connId := <-sendIam
-
-	connProvider.Conn.WriteError = errors.New("some error writing")
-	var req model.Payload
-	caller := model.NodeId("caller1")
-	ptrs := []model.DiskPointer{
-		{NodeId: "nodeId1", Disk: "disk1", FileName: "filename1"},
-		{NodeId: "nodeId2", Disk: "disk2", FileName: "filename2"},
-	}
-	blockId := model.BlockId("blockId1")
-	req = &model.ReadRequest{
-		Caller:  caller,
-		Ptrs:    ptrs,
-		BlockId: blockId,
-		ReqId:   "getBlockId1",
-	}
-	inSend <- model.MgrConnsSend{
-		ConnId:  connId,
-		Payload: req,
-	}
-	outReceive := <-outReceives
-	if outReceive.ConnId != 0 {
-		t.Error("Expected ConnId to be 0")
-		return
-	}
-	switch p := outReceive.Payload.(type) {
-	case *model.ReadRequest:
-		if p.BlockId != blockId || p.Caller != caller {
-			t.Error("unexpected read request not equal")
-			return
-		}
-		if len(p.Ptrs) != 1 || p.Ptrs[0] != ptrs[1] {
-			t.Error("Expected ptrs to be equal")
-			return
-		}
-	default:
-		t.Error("Unexpected payload", p)
-		return
-	}
-}
-
 func newConnsTest(ctx context.Context) (
 	*Conns,
-	chan model.ConnsMgrReceive,
 	chan model.ConnectToNodeReq,
 	chan model.MgrConnsSend,
 	chan model.IAm,
 	chan model.ConnId,
 	*MockConnectionProvider,
 ) {
-	outReceives := make(chan model.ConnsMgrReceive, 1)
 	inConnectTo := make(chan model.ConnectToNodeReq, 1)
 	inSends := make(chan model.MgrConnsSend, 1)
 	outIam := make(chan model.IAm, 1)
 	outSendIam := make(chan model.ConnId, 1)
 	provider := NewMockConnectionProvider()
-	c := NewConns(outReceives, inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)
+	c := NewConns(inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)
 	c.OutIam = outIam
 	c.OutSendIam = outSendIam
-	return c, outReceives, inConnectTo, inSends, outIam, outSendIam, &provider
+	return c, inConnectTo, inSends, outIam, outSendIam, &provider
 }
