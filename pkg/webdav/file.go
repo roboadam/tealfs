@@ -370,7 +370,7 @@ func write(wreq writeReq) writeResp {
 
 	f.Position += int64(bytesWritten)
 
-	err := f.FileSystem.persistFileIndexAndBroadcast(f, upsertFile)
+	err := f.FileSystem.persistFileIndexAndBroadcast(f, UpsertFile)
 	if err != nil {
 		return writeResp{n: bytesWritten, err: err}
 	}

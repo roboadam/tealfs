@@ -14,35 +14,20 @@
 
 package webdav
 
-import (
-	"bytes"
-	"tealfs/pkg/model"
-)
+import "tealfs/pkg/model"
 
-type broadcastType uint32
+type FileBroadcastType uint32
 
 const (
-	upsertFile = iota
-	deleteFile
+	UpsertFile = iota
+	DeleteFile
 )
 
-type broadcastMessage struct {
-	bType broadcastType
-	file  File
+type FileBroadcast struct {
+	UpdateType FileBroadcastType
+	FileBytes  []byte
 }
 
-func (b *broadcastMessage) toBytes() []byte {
-	bType := model.IntToBytes(uint32(b.bType))
-	file := model.BytesToBytes(b.file.ToBytes())
-	return bytes.Join([][]byte{bType, file}, []byte{})
-}
-
-func broadcastMessageFromBytes(raw []byte, fileSystem *FileSystem) (broadcastMessage, error) {
-	bType, remainder := model.IntFromBytes(raw)
-	rawFile, _ := model.BytesFromBytes(remainder)
-	file, _, err := FileFromBytes(rawFile, fileSystem)
-	if err != nil {
-		return broadcastMessage{}, err
-	}
-	return broadcastMessage{bType: broadcastType(bType), file: file}, nil
+func (f *FileBroadcast) Type() model.PayloadType {
+	return model.FileBroadcastType
 }

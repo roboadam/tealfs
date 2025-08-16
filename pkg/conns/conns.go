@@ -24,16 +24,17 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
+	"tealfs/pkg/webdav"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type Conns struct {
-	netConns           map[model.ConnId]tnet.RawNet
-	netConnsMux        *sync.RWMutex
-	nextId             model.ConnId
-	acceptedConns      chan AcceptedConns
-	outReceives        chan model.ConnsMgrReceive
+	netConns      map[model.ConnId]tnet.RawNet
+	netConnsMux   *sync.RWMutex
+	nextId        model.ConnId
+	acceptedConns chan AcceptedConns
+	// outReceives        chan model.ConnsMgrReceive
 	OutSaveToDiskReq   chan<- blocksaver.SaveToDiskReq
 	OutSaveToDiskResp  chan<- blocksaver.SaveToDiskResp
 	OutGetFromDiskReq  chan<- blockreader.GetFromDiskReq
@@ -43,6 +44,7 @@ type Conns struct {
 	OutIamConnId       chan<- IamConnId
 	OutSyncNodes       chan<- model.SyncNodes
 	OutSendIam         chan<- model.ConnId
+	OutFileBroadcasts  chan<- webdav.FileBroadcast
 	inConnectTo        <-chan model.ConnectToNodeReq
 	inSends            <-chan model.MgrConnsSend
 	Address            string
@@ -54,7 +56,7 @@ type Conns struct {
 }
 
 func NewConns(
-	outReceives chan model.ConnsMgrReceive,
+	// outReceives chan model.ConnsMgrReceive,
 	inConnectTo <-chan model.ConnectToNodeReq,
 	inSends <-chan model.MgrConnsSend,
 	provider ConnectionProvider,
@@ -71,7 +73,6 @@ func NewConns(
 		netConnsMux:    &sync.RWMutex{},
 		nextId:         model.ConnId(0),
 		acceptedConns:  make(chan AcceptedConns),
-		outReceives:    outReceives,
 		inConnectTo:    inConnectTo,
 		inSends:        inSends,
 		provider:       provider,
@@ -139,26 +140,6 @@ func (c *Conns) consumeChannels() {
 
 func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
 	log.Warn("Error sending ", err)
-	payload := sendReq.Payload
-	switch p := payload.(type) {
-	case *model.ReadRequest:
-		if len(p.Ptrs) > 0 {
-			ptrs := p.Ptrs[1:]
-			rr := model.ReadRequest{Caller: p.Caller, Ptrs: ptrs, BlockId: p.BlockId, ReqId: p.ReqId}
-			cmr := model.ConnsMgrReceive{
-				ConnId:  sendReq.ConnId,
-				Payload: &rr,
-			}
-			chanutil.Send(c.ctx, c.outReceives, cmr, "conns failed to send read request, sending new read request")
-		} else {
-			result := model.NewReadResultErr("no pointers in read request", p.Caller, p.ReqId, p.BlockId)
-			cmr := model.ConnsMgrReceive{
-				ConnId:  sendReq.ConnId,
-				Payload: &result,
-			}
-			chanutil.Send(c.ctx, c.outReceives, cmr, "conns: failed to send read request sent failure status")
-		}
-	}
 }
 
 func (c *Conns) listen() {
@@ -212,12 +193,10 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.OutIamConnId <- IamConnId{Iam: *p, ConnId: conn}
 			case *model.SyncNodes:
 				c.OutSyncNodes <- *p
+			case *webdav.FileBroadcast:
+				c.OutFileBroadcasts <- *p
 			default:
-				cmr := model.ConnsMgrReceive{
-					ConnId:  conn,
-					Payload: payload,
-				}
-				chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
+				panic("Unknown payload")
 			}
 		}
 	}

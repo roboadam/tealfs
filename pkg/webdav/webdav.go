@@ -31,36 +31,42 @@ type Webdav struct {
 	webdavMgrPuts chan model.PutBlockReq
 	mgrWebdavGets chan model.GetBlockResp
 	mgrWebdavPuts chan model.PutBlockResp
-	fileSystem    FileSystem
-	nodeId        model.NodeId
-	pendingReads  map[model.GetBlockId]chan model.GetBlockResp
-	pendingPuts   map[model.PutBlockId]chan model.PutBlockResp
-	lockSystem    webdav.LockSystem
-	bindAddress   string
-	server        *http.Server
-	ctx           context.Context
+	outSends      chan model.MgrConnsSend
+
+	fileSystem   FileSystem
+	nodeId       model.NodeId
+	pendingReads map[model.GetBlockId]chan model.GetBlockResp
+	pendingPuts  map[model.PutBlockId]chan model.PutBlockResp
+	lockSystem   webdav.LockSystem
+	bindAddress  string
+	server       *http.Server
+	mapper       *model.NodeConnectionMapper
+
+	ctx context.Context
 }
 
 func New(
 	nodeId model.NodeId,
 	webdavMgrGets chan model.GetBlockReq,
 	webdavMgrPuts chan model.PutBlockReq,
-	webdavMgrBroadcast chan model.Broadcast,
 	mgrWebdavGets chan model.GetBlockResp,
 	mgrWebdavPuts chan model.PutBlockResp,
-	mgrWebdavBroadcast chan model.Broadcast,
+	outSends chan model.MgrConnsSend,
+
+	mgrWebdavBroadcast chan FileBroadcast,
 	bindAddress string,
 	ctx context.Context,
 	fileOps disk.FileOps,
 	indexPath string,
 	chansize int,
+	mapper *model.NodeConnectionMapper,
 ) Webdav {
 	w := Webdav{
 		webdavMgrGets: webdavMgrGets,
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
-		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, webdavMgrBroadcast, fileOps, indexPath, chansize, ctx),
+		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, ctx),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
@@ -68,6 +74,8 @@ func New(
 		bindAddress:   bindAddress,
 		ctx:           ctx,
 	}
+	w.fileSystem.OutSends = outSends
+	w.fileSystem.Mapper = mapper
 	w.start()
 	return w
 }

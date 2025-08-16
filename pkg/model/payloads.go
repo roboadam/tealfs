@@ -24,7 +24,7 @@ const (
 	WriteResultType    PayloadType = 4
 	ReadRequestType    PayloadType = 5
 	ReadResultType     PayloadType = 6
-	BroadcastType      PayloadType = 7
+	FileBroadcastType  PayloadType = 7
 	AddDiskRequestType PayloadType = 8
 	SaveToDiskReq      PayloadType = 9
 	SaveToDiskResp     PayloadType = 10

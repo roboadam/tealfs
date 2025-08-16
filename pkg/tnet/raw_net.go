@@ -21,6 +21,7 @@ import (
 	"tealfs/pkg/blockreader"
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/model"
+	"tealfs/pkg/webdav"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -68,8 +69,8 @@ func (r *RawNet) ReadPayload() (model.Payload, error) {
 		var payload model.ReadResult
 		err = r.decoder.Decode(&payload)
 		return &payload, err
-	case model.BroadcastType:
-		var payload model.Broadcast
+	case model.FileBroadcastType:
+		var payload webdav.FileBroadcast
 		err = r.decoder.Decode(&payload)
 		return &payload, err
 	case model.AddDiskRequestType:
