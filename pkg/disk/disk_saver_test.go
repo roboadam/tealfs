@@ -27,7 +27,7 @@ func TestDiskSaver(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	fileOps := MockFileOps{}
+	fileOps := MockFileOps{DataWritten: make(chan struct{})}
 	allDiskIds := set.NewSet[model.AddDiskReq]()
 	save := make(chan struct{})
 
@@ -51,17 +51,18 @@ func TestDiskSaver(t *testing.T) {
 	})
 
 	save <- struct{}{}
+	<-fileOps.DataWritten
 
 	bytes, err := fileOps.ReadFile(filepath.Join(saver.LoadPath, "disks.json"))
 	if err != nil {
-		t.Errorf("Didn't write a file %v", err)
+		t.Errorf("Didn't write a file: %v", err)
 		return
 	}
 
 	loadedDisks := []model.AddDiskReq{}
 	err = json.Unmarshal(bytes, &loadedDisks)
 	if err != nil {
-		t.Errorf("unable to parse file %v", err)
+		t.Errorf("unable to parse file: %v", err)
 		return
 	}
 	loadedDisksSet := set.NewSetFromSlice(loadedDisks)

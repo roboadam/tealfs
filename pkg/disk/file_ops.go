@@ -35,11 +35,12 @@ func (d *DiskFileOps) WriteFile(name string, data []byte) error {
 }
 
 type MockFileOps struct {
-	ReadError  error
-	WriteError error
-	WriteCount int
-	mockFS     map[string][]byte
-	mux        sync.Mutex
+	ReadError   error
+	WriteError  error
+	WriteCount  int
+	mockFS      map[string][]byte
+	mux         sync.Mutex
+	DataWritten chan struct{}
 }
 
 func (m *MockFileOps) ReadFile(name string) ([]byte, error) {
@@ -68,5 +69,8 @@ func (m *MockFileOps) WriteFile(name string, data []byte) error {
 	}
 	m.mockFS[name] = data
 	m.WriteCount++
+	if m.DataWritten != nil {
+		m.DataWritten <- struct{}{}
+	}
 	return nil
 }
