@@ -28,9 +28,7 @@ func TestSerializeFileHolder(t *testing.T) {
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast, 1)
 	outSends := make(chan model.MgrConnsSend, 1)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, ctx)
-	fs.OutSends = outSends
-	fs.Mapper = model.NewNodeConnectionMapper()
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outSends, model.NewNodeConnectionMapper(), ctx)
 
 	mockPushesAndPulls(ctx, &fs, outSends)
 

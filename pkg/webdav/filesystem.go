@@ -63,6 +63,8 @@ func NewFileSystem(
 	fileOps disk.FileOps,
 	indexPath string,
 	chansize int,
+	outSends chan model.MgrConnsSend,
+	mapper *model.NodeConnectionMapper,
 	ctx context.Context,
 ) FileSystem {
 	filesystem := FileSystem{
@@ -89,6 +91,8 @@ func NewFileSystem(
 		nodeId:       nodeId,
 		fileOps:      fileOps,
 		indexPath:    indexPath,
+		OutSends:     outSends,
+		Mapper:       mapper,
 		Ctx:          ctx,
 	}
 	block := model.Block{Id: model.NewBlockId(), Data: []byte{}}

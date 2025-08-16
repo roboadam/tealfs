@@ -42,10 +42,10 @@ func TestCreateEmptyFile(t *testing.T) {
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
+		outBroadcast,
+		model.NewNodeConnectionMapper(),
 		ctx,
 	)
-	fs.OutSends = outBroadcast
-	fs.Mapper = model.NewNodeConnectionMapper()
 
 	name := "/hello-world.txt"
 	bytesInWrite := []byte{6, 5, 4, 3, 2}
@@ -97,10 +97,10 @@ func TestFileNotFound(t *testing.T) {
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
+		outBroadcast,
+		model.NewNodeConnectionMapper(),
 		ctx,
 	)
-	fs.OutSends = outBroadcast
-	fs.Mapper = model.NewNodeConnectionMapper()
 
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
@@ -122,10 +122,10 @@ func TestOpenRoot(t *testing.T) {
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
+		outBroadcast,
+		model.NewNodeConnectionMapper(),
 		ctx,
 	)
-	filesystem.OutSends = outBroadcast
-	filesystem.Mapper = model.NewNodeConnectionMapper()
 
 	mockPushesAndPulls(ctx, &filesystem, outBroadcast)
 	root, err := filesystem.OpenFile(context.Background(), "/", os.O_RDONLY, fs.ModeDir)
@@ -164,10 +164,10 @@ func TestCreateBigFile(t *testing.T) {
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
+		outBroadcast,
+		model.NewNodeConnectionMapper(),
 		ctx,
 	)
-	fs.OutSends = outBroadcast
-	fs.Mapper = model.NewNodeConnectionMapper()
 
 	name := "/hello-bigFile.txt"
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
