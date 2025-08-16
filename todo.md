@@ -3,10 +3,12 @@
 - [x] UI setup
 - [x] Break up big blocks
 - [ ] Rebalance on disk changes
-    - [ ] Create balancer service
-    - [ ] Maintain a global block list on all nodes
-    - [ ] Have main node make sure nodes are in the right place
-    - [ ] Have all nodes loop through their local disk nodes and delete those not in the global list
+    - [ ] Elect a primary node
+    - [ ] Collect all on-disk block ids from other nodes on primary
+    - [ ] Emit all block Id pointers from filesystem on primary node
+    - [ ] Delete all block Ids that don't have a pointer
+    - [ ] Find real disk location of each block id pointer
+    - [ ] Perform necessary moves
 - [ ] Update Readme
 - [ ] Check for race conditions in tests
 - [ ] Hash as filename
