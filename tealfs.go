@@ -21,10 +21,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strconv"
+	"tealfs/pkg/blockreader"
+	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/disk"
-	"tealfs/pkg/mgr"
 	"tealfs/pkg/model"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
@@ -44,63 +44,296 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(os.Args) < 5 {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<webdav address> <ui address> <node address> <free bytes>")
+	if len(os.Args) < 4 {
+		fmt.Fprintln(os.Stderr, os.Args[0], "<webdav address> <ui address> <node address>")
 		os.Exit(1)
 	}
 
-	val, err := strconv.ParseUint(os.Args[4], 10, 32)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, os.Args[0], "<webdav address> <ui address> <node address> <free bytes>")
-		os.Exit(1)
-	}
-
-	freeBytes := uint32(val)
-
-	_ = startTealFs(configDir, os.Args[1], os.Args[2], os.Args[3], freeBytes, context.Background())
+	_ = startTealFs(configDir, os.Args[1], os.Args[2], os.Args[3], context.Background())
 }
 
-func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, freeBytes uint32, ctx context.Context) error {
+func startTealFs(globalPath string, webdavAddress string, uiAddress string, nodeAddress string, ctx context.Context) error {
 	log.SetLevel(log.DebugLevel)
 	chansize := 0
-	connReqs := make(chan model.ConnectToNodeReq)
+	connReqs := make(chan model.ConnectToNodeReq, 1)
 	nodeConnMapper := model.NewNodeConnectionMapper()
-	m := mgr.NewWithChanSize(chansize, nodeAddress, globalPath, &disk.DiskFileOps{}, model.Mirrored, freeBytes, nodeConnMapper, ctx)
-	m.ConnectToNodeReqs = connReqs
-	_ = conns.NewConns(
-		m.ConnsMgrStatuses,
-		m.ConnsMgrReceives,
+
+	nodeId, err := readNodeId(globalPath, &disk.DiskFileOps{})
+	if err != nil {
+		log.Fatal("Unable to read Node Id")
+	}
+
+	iamConnIds := make(chan conns.IamConnId, 1)
+	incomingSyncNodes := make(chan model.SyncNodes, 1)
+	sendSyncNodes := make(chan struct{}, 1)
+	saveCluster := make(chan struct{}, 1)
+	netSends := make(chan model.MgrConnsSend, 1)
+
+	connsMain := conns.NewConns(
 		connReqs,
-		m.MgrConnsSends,
+		netSends,
 		&conns.TcpConnectionProvider{},
 		nodeAddress,
-		m.NodeId,
+		nodeId,
 		ctx,
 	)
-	_ = ui.NewUi(
+
+	connsMain.OutIamConnId = iamConnIds
+	connsMain.OutSyncNodes = incomingSyncNodes
+
+	connsIamReceiver := conns.IamReceiver{
+		InIam:            iamConnIds,
+		OutSendSyncNodes: sendSyncNodes,
+		OutSaveCluster:   saveCluster,
+		Mapper:           nodeConnMapper,
+	}
+	go connsIamReceiver.Start(ctx)
+
+	clusterSaver := conns.ClusterSaver{
+		Save:           saveCluster,
+		NodeConnMapper: nodeConnMapper,
+		SavePath:       globalPath,
+		FileOps:        &disk.DiskFileOps{},
+	}
+	go clusterSaver.Start(ctx)
+
+	receiveSyncNodes := conns.ReceiveSyncNodes{
+		InSyncNodes:    incomingSyncNodes,
+		OutConnectTo:   connReqs,
+		NodeConnMapper: nodeConnMapper,
+		NodeId:         nodeId,
+	}
+	go receiveSyncNodes.Start(ctx)
+
+	sendSyncNodesProc := conns.SendSyncNodes{
+		InSendSyncNodes: sendSyncNodes,
+		OutSendPayloads: netSends,
+		NodeConnMapper:  nodeConnMapper,
+	}
+	go sendSyncNodesProc.Start(ctx)
+
+	clusterLoader := conns.ClusterLoader{
+		NodeConnMapper: nodeConnMapper,
+		FileOps:        &disk.DiskFileOps{},
+		SavePath:       globalPath,
+	}
+	go clusterLoader.Load(ctx)
+
+	reconnector := conns.Reconnector{
+		OutConnectTo: connReqs,
+		Mapper:       nodeConnMapper,
+	}
+	go reconnector.Start(ctx)
+
+	newAddDiskReqs := make(chan model.AddDiskReq)
+	u := ui.NewUi(
 		connReqs,
-		m.MgrUiConnectionStatuses,
-		m.UiMgrDisk,
-		m.MgrUiDiskStatuses,
+		newAddDiskReqs,
+		make(chan model.UiDiskStatus),
 		&ui.HttpHtmlOps{},
-		m.NodeId,
+		nodeId,
 		uiAddress,
 		ctx,
 	)
+	u.NodeConnMap = nodeConnMapper
+
+	addedDisksSaver := make(chan *disk.Disk)
+	addedDisksReader := make(chan *disk.Disk)
+
+	localAddDiskReqs := make(chan model.AddDiskReq)
+	remoteAddDiskReqs := make(chan model.AddDiskReq)
+
+	connsMain.OutAddDiskReq = newAddDiskReqs
+	disks := disk.NewDisks(nodeId)
+	disks.InAddDiskReq = newAddDiskReqs
+	disks.OutLocalAddDiskReq = localAddDiskReqs
+	disks.OutRemoteAddDiskReq = remoteAddDiskReqs
+	go disks.Start(ctx)
+
+	diskLoader := disk.DiskLoader{
+		FileOps:    &disk.DiskFileOps{},
+		SavePath:   globalPath,
+		OutAddDisk: newAddDiskReqs,
+	}
+	go diskLoader.LoadDisks(ctx)
+
+	iamDiskUpdates := make(chan []model.AddDiskReq, 1)
+	saveDisks := make(chan struct{}, 1)
+
+	diskSaver := disk.DiskSaver{
+		FileOps:    &disk.DiskFileOps{},
+		LoadPath:   globalPath,
+		AllDiskIds: &disks.AllDiskIds,
+		Save:       saveDisks,
+	}
+	go diskSaver.Start(ctx)
+
+	localDiskAdder := disk.LocalDiskAdder{
+		InAddDiskReq: localAddDiskReqs,
+		OutAddLocalDisk: []chan<- *disk.Disk{
+			addedDisksSaver,
+			addedDisksReader,
+		},
+		OutIamDiskUpdate: iamDiskUpdates,
+		OutSave:          saveDisks,
+		FileOps:          &disk.DiskFileOps{},
+		Disks:            &disks.Disks,
+		Distributer:      &disks.Distributer,
+		AllDiskIds:       &disks.AllDiskIds,
+	}
+	go localDiskAdder.Start(ctx)
+
+	iamSender := disk.IamSender{
+		InIamDiskUpdate: iamDiskUpdates,
+		OutSends:        netSends,
+		Mapper:          nodeConnMapper,
+		NodeId:          nodeId,
+		Address:         webdavAddress,
+	}
+	go iamSender.Start(ctx)
+
+	iams := make(chan model.IAm)
+	connsMain.OutIam = iams
+	iamReceiver := disk.IamReceiver{
+		InIam:       iams,
+		OutSave:     saveDisks,
+		Distributer: &disks.Distributer,
+		AllDiskIds:  &disks.AllDiskIds,
+	}
+	go iamReceiver.Start(ctx)
+
+	sendIam := make(chan model.ConnId, 1)
+	connsMain.OutSendIam = sendIam
+	connsIamSender := conns.IamSender{
+		InSendIam: sendIam,
+		OutIam:    netSends,
+		NodeId:    nodeId,
+		Address:   nodeAddress,
+		Disks:     &disks.AllDiskIds,
+	}
+	go connsIamSender.Start(ctx)
+
+	webdavPutReq := make(chan model.PutBlockReq)
+	webdavPutResp := make(chan model.PutBlockResp)
+
+	localSave := make(chan blocksaver.SaveToDiskReq)
+	remoteSave := make(chan blocksaver.SaveToDiskReq)
+	saveResp := make(chan blocksaver.SaveToDiskResp)
+
+	connsMain.OutSaveToDiskReq = localSave
+	connsMain.OutSaveToDiskResp = saveResp
+
+	bs := blocksaver.BlockSaver{
+		Req:         webdavPutReq,
+		RemoteDest:  remoteSave,
+		LocalDest:   localSave,
+		InResp:      saveResp,
+		Resp:        webdavPutResp,
+		Distributer: &disks.Distributer,
+		NodeId:      nodeId,
+	}
+	go bs.Start(ctx)
+
+	lbs := blocksaver.LocalBlockSaver{
+		Req:   localSave,
+		Disks: &disks.Disks,
+	}
+	go lbs.Start(ctx)
+
+	rbs := blocksaver.RemoteBlockSaver{
+		Req:         remoteSave,
+		Sends:       netSends,
+		NoConnResp:  saveResp,
+		NodeConnMap: nodeConnMapper,
+	}
+	go rbs.Start(ctx)
+
+	lbsr := blocksaver.LocalBlockSaveResponses{
+		InDisks:             addedDisksSaver,
+		LocalWriteResponses: saveResp,
+		Sends:               netSends,
+		NodeConnMap:         nodeConnMapper,
+		NodeId:              nodeId,
+	}
+	go lbsr.Start(ctx)
+
+	webdavGetReq := make(chan model.GetBlockReq)
+	webdavGetResp := make(chan model.GetBlockResp)
+	localReadDest := make(chan blockreader.GetFromDiskReq)
+	remoteReadDest := make(chan blockreader.GetFromDiskReq)
+	readResp := make(chan blockreader.GetFromDiskResp)
+
+	connsMain.OutGetFromDiskReq = localReadDest
+	connsMain.OutGetFromDiskResp = readResp
+
+	br := blockreader.BlockReader{
+		Req:         webdavGetReq,
+		RemoteDest:  remoteReadDest,
+		LocalDest:   localReadDest,
+		InResp:      readResp,
+		Resp:        webdavGetResp,
+		Distributer: &disks.Distributer,
+		NodeId:      nodeId,
+	}
+	go br.Start(ctx)
+
+	lbr := blockreader.LocalBlockReader{
+		Req:   localReadDest,
+		Disks: &disks.Disks,
+	}
+	go lbr.Start(ctx)
+
+	rbr := blockreader.RemoteBlockReader{
+		Req:         remoteReadDest,
+		Sends:       netSends,
+		NoConnResp:  readResp,
+		NodeConnMap: nodeConnMapper,
+	}
+	go rbr.Start(ctx)
+
+	lbrr := blockreader.LocalBlockReadResponses{
+		InDisks:            addedDisksReader,
+		LocalReadResponses: readResp,
+		Sends:              netSends,
+		NodeConnMap:        nodeConnMapper,
+		NodeId:             nodeId,
+	}
+	go lbrr.Start(ctx)
+
+	inFileBroadcasts := make(chan webdav.FileBroadcast, 1)
+	connsMain.OutFileBroadcasts = inFileBroadcasts
 	_ = webdav.New(
-		m.NodeId,
-		m.WebdavMgrGets,
-		m.WebdavMgrPuts,
-		m.WebdavMgrBroadcast,
-		m.MgrWebdavGets,
-		m.MgrWebdavPuts,
-		m.MgrWebdavBroadcast,
+		nodeId,
+		webdavGetReq,
+		webdavPutReq,
+		webdavGetResp,
+		webdavPutResp,
+		netSends,
+		inFileBroadcasts,
 		webdavAddress,
 		ctx,
 		&disk.DiskFileOps{},
 		globalPath,
 		chansize,
+		nodeConnMapper,
 	)
+
 	<-ctx.Done()
 	return nil
+}
+
+func readNodeId(savePath string, fileOps disk.FileOps) (model.NodeId, error) {
+	data, err := fileOps.ReadFile(filepath.Join(savePath, "node_id"))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			nodeId := model.NewNodeId()
+			err = fileOps.WriteFile(filepath.Join(savePath, "node_id"), []byte(nodeId))
+			if err != nil {
+				return "", err
+			}
+			return nodeId, nil
+		}
+		return "", err
+	}
+	return model.NodeId(data), nil
 }

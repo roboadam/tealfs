@@ -38,6 +38,8 @@ func (r *TcpConnectionProvider) GetListener(address string) (net.Listener, error
 type MockConnectionProvider struct {
 	Listener MockListener
 	Conn     MockConn
+
+	DialedAddress chan string
 }
 
 func NewMockConnectionProvider() MockConnectionProvider {
@@ -47,10 +49,12 @@ func NewMockConnectionProvider() MockConnectionProvider {
 			dataToRead:  make(chan ClosableBuffer, 1),
 			dataWritten: ClosableBuffer{},
 		},
+		DialedAddress: make(chan string, 1),
 	}
 }
 
 func (m *MockConnectionProvider) GetConnection(address string) (net.Conn, error) {
+	m.DialedAddress <- address
 	return &m.Conn, nil
 }
 

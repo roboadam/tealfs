@@ -12,16 +12,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package model
+package blockreader
 
-type Broadcast struct {
-	Msg []byte
-}
+import "tealfs/pkg/model"
 
-func (b *Broadcast) Type() PayloadType {
-	return BroadcastType
-}
-
-func NewBroadcast(msg []byte) Broadcast {
-	return Broadcast{Msg: msg}
+func (b *BlockReader) destsFor(req model.GetBlockReq) []Dest {
+	dests := make([]Dest, 0, 2)
+	ptrs := b.Distributer.ReadPointersForId(req.BlockId)
+	for _, ptr := range ptrs {
+		dests = append(dests, Dest{
+			NodeId: ptr.NodeId,
+			DiskId: ptr.Disk,
+		})
+	}
+	return dests
 }

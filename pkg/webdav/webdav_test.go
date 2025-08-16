@@ -32,10 +32,10 @@ func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
 	webdavMgrGets := make(chan model.GetBlockReq)
 	webdavMgrPuts := make(chan model.PutBlockReq)
-	webdavMgrBroadcast := make(chan model.Broadcast)
+	webdavMgrBroadcast := make(chan model.MgrConnsSend)
 	mgrWebdavGets := make(chan model.GetBlockResp)
 	mgrWebdavPuts := make(chan model.PutBlockResp)
-	mgrWebdavBroadcast := make(chan model.Broadcast)
+	mgrWebdavBroadcast := make(chan webdav.FileBroadcast)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -45,20 +45,22 @@ func TestCreateFile(t *testing.T) {
 	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, &mux, mockStorage)
 	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, &mux, mockStorage)
 	go handleOutBroadcast(ctx, webdavMgrBroadcast)
+	mapper := model.NewNodeConnectionMapper()
 
 	_ = webdav.New(
 		nodeId,
 		webdavMgrGets,
 		webdavMgrPuts,
-		webdavMgrBroadcast,
 		mgrWebdavGets,
 		mgrWebdavPuts,
+		webdavMgrBroadcast,
 		mgrWebdavBroadcast,
 		"localhost:7654",
 		ctx,
 		&disk.MockFileOps{},
 		"indexPath",
 		0,
+		mapper,
 	)
 	time.Sleep(1 * time.Second) //FIXME, need a better way to wait for listener to start
 
@@ -141,12 +143,12 @@ func handleWebdavMgrGets(ctx context.Context, channel chan model.GetBlockReq, re
 			blockData, exists := data[req.BlockId]
 			if exists {
 				respChan <- model.GetBlockResp{
-					Id:    req.Id(),
+					Id:    req.Id,
 					Block: model.Block{Id: req.BlockId, Data: blockData},
 				}
 			} else {
 				respChan <- model.GetBlockResp{
-					Id:    req.Id(),
+					Id:    req.Id,
 					Block: model.Block{Id: req.BlockId, Data: []byte{}},
 				}
 			}
@@ -165,7 +167,7 @@ func handleWebdavMgrPuts(ctx context.Context, channel chan model.PutBlockReq, re
 		case req := <-channel:
 			mux.Lock()
 			data[req.Block.Id] = req.Block.Data
-			result <- model.PutBlockResp{Id: req.Id()}
+			result <- model.PutBlockResp{Id: req.Id}
 			mux.Unlock()
 		}
 	}

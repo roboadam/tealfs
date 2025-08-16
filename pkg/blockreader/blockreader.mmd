@@ -1,0 +1,14 @@
+flowchart TD
+        A["WebDav"]
+        A -->|GetBlockReq| B("BlockReader")
+        B -->|GetBlockResp| A
+        B -->|GetFromDiskReq| C("LocalBlockReader")
+        B -->|GetFromDiskReq| D("RemoteBlockReader")
+        C -->|ReadRequest| E["Disk"]
+        E -->|ReadResult| F("LocalBlockReadResponse")
+        F -->|GetFromDiskResp| B
+        F -->|GetFromDiskResp| G["Conns"]
+        D -->|GetFromDiskReq| G
+        G -->|GetFromDiskReq| C
+        G -->|GetFromDiskResp| B
+        D -->|GetFromDiskResp| B

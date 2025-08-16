@@ -12,27 +12,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package mgr
+package blocksaver
 
-import (
-	"tealfs/pkg/model"
-)
+import "tealfs/pkg/model"
 
-type NodeConnMap struct {
-	nodeToConn map[model.NodeId]model.ConnId
-	connToNode map[model.ConnId]model.NodeId
-}
-
-func (n *NodeConnMap) Add(node model.NodeId, conn model.ConnId) {
-	n.nodeToConn[node] = conn
-	n.connToNode[conn] = node
-}
-
-func (n *NodeConnMap) Node(conn model.ConnId) (model.NodeId, bool) {
-	result, ok := n.connToNode[conn]
-	return result, ok
-}
-func (n *NodeConnMap) Conn(node model.NodeId) (model.ConnId, bool) {
-	result, ok := n.nodeToConn[node]
-	return result, ok
+func (b *BlockSaver) destsFor(req model.PutBlockReq) []Dest {
+	dests := make([]Dest, 0, 2)
+	ptrs := b.Distributer.WritePointersForId(req.Block.Id)
+	for _, ptr := range ptrs {
+		dests = append(dests, Dest{
+			NodeId: ptr.NodeId,
+			DiskId: ptr.Disk,
+		})
+	}
+	return dests
 }

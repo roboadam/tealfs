@@ -16,6 +16,7 @@ package ui
 
 import (
 	"net/http"
+	"sync"
 )
 
 type HtmlOps interface {
@@ -50,17 +51,43 @@ func (h *HttpHtmlOps) HandleFunc(pattern string, handler func(http.ResponseWrite
 }
 
 type MockHtmlOps struct {
-	BindAddr string
-	Handlers map[string]func(http.ResponseWriter, *http.Request)
+	bindAddr string
+	handlers map[string]func(http.ResponseWriter, *http.Request)
+	mux      *sync.Mutex
+}
+
+func NewMockHtmlOps(bindAddr string) *MockHtmlOps {
+	return &MockHtmlOps{
+		bindAddr: bindAddr,
+		handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
+		mux:      &sync.Mutex{},
+	}
+}
+
+func (m *MockHtmlOps) GetBindAddr() string {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	return m.bindAddr
+}
+
+func (m *MockHtmlOps) HandlerFor(pattern string) func(http.ResponseWriter, *http.Request) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	handler := m.handlers[pattern]
+	return handler
 }
 
 func (m *MockHtmlOps) ListenAndServe(addr string) error {
-	m.BindAddr = addr
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	m.bindAddr = addr
 	return nil
 }
 
 func (m *MockHtmlOps) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
-	m.Handlers[pattern] = handler
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	m.handlers[pattern] = handler
 }
 
 func (h *MockHtmlOps) Shutdown() error {

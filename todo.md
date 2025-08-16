@@ -1,0 +1,23 @@
+- [x] Robust block fetching - goes to backup on failure
+- [x] Everywhere blocks - for file index
+- [x] UI setup
+- [x] Break up big blocks
+- [ ] Rebalance on disk changes
+    - [ ] Elect a primary node
+    - [ ] Collect all on-disk block ids from other nodes on primary
+    - [ ] Emit all block Id pointers from filesystem on primary node
+    - [ ] Delete all block Ids that don't have a pointer
+    - [ ] Find real disk location of each block id pointer
+    - [ ] Perform necessary moves
+- [ ] Update Readme
+- [ ] Check for race conditions in tests
+- [ ] Hash as filename
+- [ ] Delete unused blocks
+- [ ] Automatically choose ports
+- [ ] Encryption in transit
+- [ ] Authentication
+- [ ] Combine small blocks
+- [ ] UI Refresh
+- [ ] XOR background process
+- [ ] Service discovery
+- [ ] CLI setup

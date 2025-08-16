@@ -1,0 +1,13 @@
+flowchart LR
+    A(Conns) -->|IamConnId| B(IamReceiver)
+    A(Conns) -->|Iam| C[Disks]
+    A(Conns) -->|AddDiskReq| C[Disks]
+    A(Conns) -->|SaveToDiskReq| D[BlockSaver]
+    A(Conns) -->|SaveToDiskResp| D[BlockSaver]
+    A(Conns) -->|GetFromDiskReq| E[BlockReader]
+    A(Conns) -->|GetFromDiskResp| E[BlockReader]
+    B(IamReceiver) --> F(ClusterSaver)
+    B(IamReceiver) --> G(SendSyncNodes)
+    G(SendSyncNodes) -->|MgrConnsSend| A(Conns)
+    A(Conns) -->|SyncNodes| H(ReceiveSyncNodes)
+    H(ReceiveSyncNodes) -->|ConnectToReq| A(Conns)

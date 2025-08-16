@@ -14,14 +14,18 @@
 
 package set
 
-import "maps"
+import (
+	"maps"
+	"sync"
+)
 
 type Set[K comparable] struct {
 	Data map[K]bool
+	mux  *sync.RWMutex
 }
 
 func NewSet[K comparable]() Set[K] {
-	return Set[K]{Data: make(map[K]bool)}
+	return Set[K]{Data: make(map[K]bool), mux: &sync.RWMutex{}}
 }
 
 func NewSetFromSlice[K comparable](input []K) Set[K] {
@@ -35,7 +39,7 @@ func NewSetFromSlice[K comparable](input []K) Set[K] {
 }
 
 func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
-	result := Set[K]{Data: make(map[K]bool)}
+	result := NewSet[K]()
 
 	for k := range input {
 		result.Add(k)
@@ -44,31 +48,36 @@ func NewSetFromMapKeys[K comparable, J any](input map[K]J) Set[K] {
 	return result
 }
 
-func (s *Set[K]) ToSlice() []K {
-	result := make([]K, len(s.Data))
-	i := 0
-	for k := range s.Data {
-		result[i] = k
-		i++
+func (s *Set[K]) initMux() {
+	if s.mux == nil {
+		s.mux = &sync.RWMutex{}
 	}
-	return result
 }
 
 func (s *Set[K]) Add(item K) {
+	s.initMux()
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	s.Data[item] = true
 }
 
 func (s *Set[K]) Remove(item K) {
+	s.initMux()
+	s.mux.Lock()
+	defer s.mux.Unlock()
 	delete(s.Data, item)
 }
 
 func (s *Set[K]) Equal(b *Set[K]) bool {
+	s.initMux()
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	if len(s.Data) != len(b.Data) {
 		return false
 	}
 
 	for key := range s.Data {
-		if !b.Contains(key) {
+		if !b.contains(key) {
 			return false
 		}
 	}
@@ -77,11 +86,21 @@ func (s *Set[K]) Equal(b *Set[K]) bool {
 }
 
 func (s *Set[K]) Contains(k K) bool {
+	s.initMux()
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	return s.contains(k)
+}
+
+func (s *Set[K]) contains(k K) bool {
 	_, exists := s.Data[k]
 	return exists
 }
 
 func (s *Set[K]) GetValues() []K {
+	s.initMux()
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	result := make([]K, len(s.Data))
 	i := 0
 	for k := range s.Data {
@@ -92,6 +111,9 @@ func (s *Set[K]) GetValues() []K {
 }
 
 func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
+	s.initMux()
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	result := NewSet[K]()
 	for k := range s.Data {
 		if !o.Contains(k) {
@@ -102,11 +124,18 @@ func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
 }
 
 func (s *Set[K]) Len() int {
+	s.initMux()
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	return len(s.Data)
 }
 
 func (s *Set[K]) Clone() Set[K] {
+	s.initMux()
+	s.mux.RLock()
+	defer s.mux.RUnlock()
 	return Set[K]{
 		Data: maps.Clone(s.Data),
+		mux:  &sync.RWMutex{},
 	}
 }

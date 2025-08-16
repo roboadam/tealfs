@@ -114,7 +114,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			FileSystem: f,
 		}
 		f.fileHolder.Add(file)
-		err := f.persistFileIndexAndBroadcast(file, upsertFile)
+		err := f.persistFileIndexAndBroadcast(file, UpsertFile)
 		if err != nil {
 			return openFileResp{err: err}
 		}

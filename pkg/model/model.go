@@ -20,12 +20,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type UiConnectionStatus struct {
-	Type          ConnectedStatus
-	RemoteAddress string
-	Msg           string
-	Id            NodeId
-}
 type UiDiskStatus struct {
 	Localness     Localness
 	Availableness DiskAvailableness
@@ -48,18 +42,6 @@ const (
 	Unknown
 )
 
-type NetConnectionStatus struct {
-	Type ConnectedStatus
-	Msg  string
-	Id   ConnId
-}
-type ConnectedStatus int
-
-const (
-	Connected ConnectedStatus = iota
-	NotConnected
-)
-
 type ConnId int32
 
 type ConnectToNodeReq struct {
@@ -71,36 +53,9 @@ type MgrConnsSend struct {
 	Payload Payload
 }
 
-type ConnsMgrReceive struct {
-	ConnId  ConnId
-	Payload Payload
-}
-
 type MgrDiskSave struct {
 	Hash hash.Hash
 	Data []byte
-}
-
-type AddDiskReq struct {
-	Path      string
-	Node      NodeId
-	FreeBytes int
-}
-
-func (a *AddDiskReq) Type() PayloadType {
-	return AddDiskRequestType
-}
-
-func NewAddDiskReq(
-	path string,
-	node NodeId,
-	freeBytes int,
-) AddDiskReq {
-	return AddDiskReq{
-		Path:      path,
-		Node:      node,
-		FreeBytes: freeBytes,
-	}
 }
 
 type NodeId string
@@ -112,8 +67,12 @@ func NewNodeId() NodeId {
 
 type DiskId string
 
-type DiskIdPath struct {
-	Id   DiskId
-	Path string
-	Node NodeId
+type AddDiskReq struct {
+	DiskId DiskId
+	Path   string
+	NodeId NodeId
+}
+
+func (a *AddDiskReq) Type() PayloadType {
+	return AddDiskRequestType
 }

@@ -44,6 +44,11 @@ func (b *Bimap[K, J]) ToMap() map[K]J {
 	return result
 }
 
+func (b *Bimap[K, J]) Clear() {
+	b.dataJk = make(map[J]K)
+	b.dataKj = make(map[K]J)
+}
+
 func (b *Bimap[K, J]) Add(item1 K, item2 J) {
 	b.Remove1(item1)
 	b.dataKj[item1] = item2

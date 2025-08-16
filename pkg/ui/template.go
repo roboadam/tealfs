@@ -1,3 +1,17 @@
+// Copyright (C) 2025 Adam Hess
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, version 3.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 package ui
 
 import (
@@ -35,7 +49,6 @@ func (ui *Ui) connectToGet(w http.ResponseWriter, tmpl *template.Template) {
 func (ui *Ui) addDiskGet(
 	w http.ResponseWriter,
 	tmpl *template.Template,
-	remotes []model.NodeId,
 	local model.NodeId,
 ) {
 	nodeData := []struct {
@@ -46,7 +59,8 @@ func (ui *Ui) addDiskGet(
 		Id   string
 		Name string
 	}{Id: string(local), Name: "local"})
-	for _, remote := range remotes {
+	remotes := ui.NodeConnMap.Nodes()
+	for _, remote := range remotes.GetValues() {
 		nodeData = append(nodeData, struct {
 			Id   string
 			Name string
@@ -59,16 +73,18 @@ func (ui *Ui) addDiskGet(
 }
 
 func (ui *Ui) connectionStatus(w http.ResponseWriter, tmpl *template.Template) {
-
+	ui.sMux.Lock()
+	defer ui.sMux.Unlock()
 	status := []struct {
 		Status  string
 		Address string
 	}{}
-	for _, value := range ui.statuses {
+	connections := ui.NodeConnMap.ConnectionTriples()
+	for _, value := range connections {
 		status = append(status, struct {
 			Status  string
 			Address string
-		}{Status: statusToString(value.Type), Address: value.RemoteAddress})
+		}{Status: statusToString(value), Address: value.Address})
 	}
 	sort.Slice(status, func(i, j int) bool {
 		if status[i].Status == status[j].Status {
@@ -139,15 +155,11 @@ func (ui *Ui) diskStatus(w http.ResponseWriter, tmpl *template.Template) {
 	}
 }
 
-func statusToString(status model.ConnectedStatus) string {
-	switch status {
-	case model.Connected:
+func statusToString(status model.ConnectionTriple) string {
+	if status.IsConnected {
 		return "Connected"
-	case model.NotConnected:
-		return "Disconnected"
-	default:
-		return "Unknown"
 	}
+	return "Disconnected"
 }
 
 func availablenessToString(status model.DiskAvailableness) string {

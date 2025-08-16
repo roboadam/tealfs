@@ -1,0 +1,14 @@
+flowchart TD
+        A["WebDav"]
+        A -->|PutBlockReq| B("BlockSaver")
+        B -->|SaveToDiskReq| C("LocalBlockSaver")
+        B -->|SaveToDiskReq| D("RemoteBlockSaver")
+        C -->|WriteRequest| E["Disk"]
+        E -->|WriteResult| F("LocalBlockSaveResponses")
+        F -->|SaveToDiskResp| G["Conns"]
+        F -->|SaveToDiskResp| B
+        D -->|SaveToDiskReq| G
+        D -->|SaveToDiskResp| B
+        G -->|SaveToDiskResp| B
+        G -->|SaveToDiskReq| C
+        B -->|PutBlockResp| A

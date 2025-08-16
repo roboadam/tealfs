@@ -27,12 +27,14 @@ import (
 type MirrorDistributer struct {
 	weights map[string]int
 	hasher  hash.Hash32
+	nodeId  model.NodeId
 }
 
-func NewMirrorDistributer() MirrorDistributer {
+func NewMirrorDistributer(nodeId model.NodeId) MirrorDistributer {
 	return MirrorDistributer{
 		weights: make(map[string]int),
 		hasher:  crc32.NewIEEE(),
+		nodeId:  nodeId,
 	}
 }
 
@@ -91,6 +93,9 @@ func (d *MirrorDistributer) generateNodeIds(id model.BlockId) []nodeAndDisk {
 	delete(weights2, node2)
 
 	result := []nodeAndDisk{fromString(node1), fromString(node2)}
+	if result[1].n == d.nodeId {
+		result = []nodeAndDisk{result[1], result[0]}
+	}
 
 	for nodeId := range weights2 {
 		result = append(result, fromString(nodeId))

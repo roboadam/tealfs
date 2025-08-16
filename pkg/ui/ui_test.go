@@ -27,8 +27,8 @@ import (
 func TestListenAddress(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, _, _, ops := NewUi(ctx)
-	if ops.BindAddr != "mockBindAddr:123" {
+	_, _, ops := NewUi(ctx)
+	if ops.GetBindAddr() != "mockBindAddr:123" {
 		t.Error("Didn't bind to mockBindAddr:123")
 	}
 }
@@ -36,7 +36,7 @@ func TestListenAddress(t *testing.T) {
 func TestConnectTo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, connToReq, _, ops := NewUi(ctx)
+	_, connToReq, ops := NewUi(ctx)
 	mockResponseWriter := ui.MockResponseWriter{}
 	request := http.Request{
 		Method:   http.MethodPut,
@@ -44,7 +44,7 @@ func TestConnectTo(t *testing.T) {
 	}
 	request.PostForm.Add("hostAndPort", "abcdef")
 
-	go ops.Handlers["/connect-to"](&mockResponseWriter, &request)
+	go ops.HandlerFor("/connect-to")(&mockResponseWriter, &request)
 	reqToMgr := <-connToReq
 	if reqToMgr.Address != "abcdef" {
 		t.Error("Didn't send proper request to Mgr")
@@ -54,25 +54,17 @@ func TestConnectTo(t *testing.T) {
 func TestAddDiskGet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, _, connToResp, ops := NewUi(ctx)
+	u, _, ops := NewUi(ctx)
 	mockResponseWriter := ui.MockResponseWriter{}
 	request := http.Request{Method: http.MethodGet}
 	nodeId1 := model.NewNodeId()
 	nodeId2 := model.NewNodeId()
 
-	connToResp <- model.UiConnectionStatus{
-		Type:          model.Connected,
-		RemoteAddress: "1234",
-		Id:            nodeId1,
-	}
-	connToResp <- model.UiConnectionStatus{
-		Type:          model.Connected,
-		RemoteAddress: "5678",
-		Id:            nodeId2,
-	}
+	u.NodeConnMap.SetAll(0, "1234", nodeId1)
+	u.NodeConnMap.SetAll(1, "5678", nodeId2)
 
 	waitForWrittenData(func() string {
-		ops.Handlers["/add-disk"](&mockResponseWriter, &request)
+		ops.HandlerFor("/add-disk")(&mockResponseWriter, &request)
 		return mockResponseWriter.WrittenData
 	}, []string{"local", string(nodeId1), string(nodeId2)})
 }
@@ -80,7 +72,7 @@ func TestAddDiskGet(t *testing.T) {
 func TestStatus(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, _, connToResp, ops := NewUi(ctx)
+	u, _, ops := NewUi(ctx)
 	mockResponseWriter := ui.MockResponseWriter{}
 	request := http.Request{
 		Method:   http.MethodGet,
@@ -88,19 +80,12 @@ func TestStatus(t *testing.T) {
 	}
 	request.PostForm.Add("hostAndPort", "abcdef")
 
-	connToResp <- model.UiConnectionStatus{
-		Type:          model.Connected,
-		RemoteAddress: "1234",
-		Id:            model.NewNodeId(),
-	}
-	connToResp <- model.UiConnectionStatus{
-		Type:          model.NotConnected,
-		RemoteAddress: "5678",
-		Id:            model.NewNodeId(),
-	}
+	u.NodeConnMap.SetAll(0, "1234", model.NewNodeId())
+	u.NodeConnMap.SetAll(1, "5678", model.NewNodeId())
+	u.NodeConnMap.RemoveConn(1)
 
 	waitForWrittenData(func() string {
-		ops.Handlers["/connection-status"](&mockResponseWriter, &request)
+		ops.HandlerFor("/connection-status")(&mockResponseWriter, &request)
 		return mockResponseWriter.WrittenData
 	}, []string{"1234", "5678"})
 }
@@ -121,15 +106,12 @@ func waitForWrittenData(handler func() string, values []string) {
 	}
 }
 
-func NewUi(ctx context.Context) (*ui.Ui, chan model.ConnectToNodeReq, chan model.UiConnectionStatus, *ui.MockHtmlOps) {
+func NewUi(ctx context.Context) (*ui.Ui, chan model.ConnectToNodeReq, *ui.MockHtmlOps) {
 	connToReq := make(chan model.ConnectToNodeReq)
-	connToResp := make(chan model.UiConnectionStatus)
 	diskAddReq := make(chan model.AddDiskReq)
 	diskStatus := make(chan model.UiDiskStatus)
-	ops := ui.MockHtmlOps{
-		BindAddr: "mockBindAddr:123",
-		Handlers: make(map[string]func(http.ResponseWriter, *http.Request)),
-	}
-	u := ui.NewUi(connToReq, connToResp, diskAddReq, diskStatus, &ops, "nodeId", "address", ctx)
-	return u, connToReq, connToResp, &ops
+	ops := ui.NewMockHtmlOps("mockBindAddr:123")
+	u := ui.NewUi(connToReq, diskAddReq, diskStatus, ops, "nodeId", "address", ctx)
+	u.NodeConnMap = model.NewNodeConnectionMapper()
+	return u, connToReq, ops
 }

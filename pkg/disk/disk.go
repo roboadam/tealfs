@@ -32,20 +32,16 @@ func New(
 	path Path,
 	id model.NodeId,
 	diskId model.DiskId,
-	mgrDiskWrites chan model.WriteRequest,
-	mgrDiskReads chan model.ReadRequest,
-	diskMgrWrites chan model.WriteResult,
-	diskMgrReads chan model.ReadResult,
 	ctx context.Context,
 ) Disk {
 	p := Disk{
 		path:      path,
 		id:        id,
 		diskId:    diskId,
-		inWrites:  mgrDiskWrites,
-		inReads:   mgrDiskReads,
-		outReads:  diskMgrReads,
-		outWrites: diskMgrWrites,
+		InWrites:  make(chan model.WriteRequest, 1),
+		InReads:   make(chan model.ReadRequest, 1),
+		OutReads:  make(chan model.ReadResult, 1),
+		OutWrites: make(chan model.WriteResult, 1),
 		ctx:       ctx,
 	}
 	go p.consumeChannels()
@@ -56,10 +52,10 @@ type Disk struct {
 	path      Path
 	id        model.NodeId
 	diskId    model.DiskId
-	outReads  chan model.ReadResult
-	outWrites chan model.WriteResult
-	inWrites  chan model.WriteRequest
-	inReads   chan model.ReadRequest
+	OutReads  chan model.ReadResult
+	OutWrites chan model.WriteResult
+	InWrites  chan model.WriteRequest
+	InReads   chan model.ReadRequest
 	ctx       context.Context
 }
 
@@ -70,27 +66,27 @@ func (d *Disk) consumeChannels() {
 		select {
 		case <-d.ctx.Done():
 			return
-		case s := <-d.inWrites:
+		case s := <-d.InWrites:
 			err := d.path.Save(s.Data)
 			if err == nil {
 				wr := model.NewWriteResultOk(s.Data.Ptr, s.Caller, s.ReqId)
-				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save success")
+				chanutil.Send(d.ctx, d.OutWrites, wr, "disk: save success")
 			} else {
 				wr := model.NewWriteResultErr(err.Error(), s.Caller, s.ReqId)
-				chanutil.Send(d.ctx, d.outWrites, wr, "disk: save failure")
+				chanutil.Send(d.ctx, d.OutWrites, wr, "disk: save failure")
 			}
-		case r := <-d.inReads:
+		case r := <-d.InReads:
 			if len(r.Ptrs) == 0 {
 				rr := model.NewReadResultErr("no pointers in read request", r.Caller, r.ReqId, r.BlockId)
-				chanutil.Send(d.ctx, d.outReads, rr, "disk: no pointers in read request")
+				chanutil.Send(d.ctx, d.OutReads, rr, "disk: no pointers in read request")
 			} else {
 				data, err := d.path.Read(r.Ptrs[0])
 				if err == nil {
 					rr := model.NewReadResultOk(r.Caller, r.Ptrs[1:], data, r.ReqId, r.BlockId)
-					chanutil.Send(d.ctx, d.outReads, rr, "disk: read success")
+					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read success")
 				} else {
 					rr := model.NewReadResultErr(err.Error(), r.Caller, r.ReqId, r.BlockId)
-					chanutil.Send(d.ctx, d.outReads, rr, "disk: read failure")
+					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read failure")
 				}
 			}
 		}

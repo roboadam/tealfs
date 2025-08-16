@@ -18,8 +18,10 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
-	"net"
+	"tealfs/pkg/blockreader"
+	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/model"
+	"tealfs/pkg/webdav"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -54,58 +56,50 @@ func (r *RawNet) ReadPayload() (model.Payload, error) {
 	case model.IAmType:
 		var payload model.IAm
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode IAm: " + err.Error())
-		}
 		return &payload, err
 	case model.WriteRequestType:
 		var payload model.WriteRequest
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode WriteRequest: " + err.Error())
-		}
 		return &payload, err
 	case model.ReadRequestType:
 		var payload model.ReadRequest
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode ReadRequest: " + err.Error())
-		}
 		return &payload, err
 	case model.ReadResultType:
 		var payload model.ReadResult
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode ReadResult: " + err.Error())
-		}
 		return &payload, err
-	case model.BroadcastType:
-		var payload model.Broadcast
+	case model.FileBroadcastType:
+		var payload webdav.FileBroadcast
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode Broadcast: " + err.Error())
-		}
 		return &payload, err
 	case model.AddDiskRequestType:
 		var payload model.AddDiskReq
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode AddDiskReq: " + err.Error())
-		}
 		return &payload, err
 	case model.SyncType:
 		var payload model.SyncNodes
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode SyncNodes: " + err.Error())
-		}
 		return &payload, err
 	case model.WriteResultType:
 		var payload model.WriteResult
 		err = r.decoder.Decode(&payload)
-		if err != nil {
-			log.Error("failed to decode WriteResult: " + err.Error())
-		}
+		return &payload, err
+	case model.SaveToDiskReq:
+		var payload blocksaver.SaveToDiskReq
+		err := r.decoder.Decode(&payload)
+		return &payload, err
+	case model.SaveToDiskResp:
+		var payload blocksaver.SaveToDiskResp
+		err := r.decoder.Decode(&payload)
+		return &payload, err
+	case model.GetFromDiskReq:
+		var payload blockreader.GetFromDiskReq
+		err := r.decoder.Decode(&payload)
+		return &payload, err
+	case model.GetFromDiskResp:
+		var payload blockreader.GetFromDiskResp
+		err := r.decoder.Decode(&payload)
 		return &payload, err
 	}
 
@@ -120,33 +114,6 @@ func (r *RawNet) SendPayload(payload model.Payload) error {
 	err = r.encoder.Encode(payload)
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-func ReadBytes(conn net.Conn, length uint32) ([]byte, error) {
-	buf := make([]byte, length)
-	offset := uint32(0)
-
-	for offset < length {
-		numBytes, err := conn.Read(buf[offset:])
-		if err != nil {
-			return nil, err
-		}
-		offset += uint32(numBytes)
-	}
-
-	return buf, nil
-}
-
-func SendBytes(conn net.Conn, data []byte) error {
-	bytesWritten := 0
-	for bytesWritten < len(data) {
-		numBytes, err := conn.Write(data[bytesWritten:])
-		if err != nil {
-			return err
-		}
-		bytesWritten += numBytes
 	}
 	return nil
 }

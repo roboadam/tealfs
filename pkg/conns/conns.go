@@ -18,61 +18,75 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
+	"tealfs/pkg/blockreader"
+	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
+	"tealfs/pkg/webdav"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type Conns struct {
 	netConns      map[model.ConnId]tnet.RawNet
+	netConnsMux   *sync.RWMutex
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
-	outStatuses   chan model.NetConnectionStatus
-	outReceives   chan model.ConnsMgrReceive
-	inConnectTo   <-chan model.ConnectToNodeReq
-	inSends       <-chan model.MgrConnsSend
-	Address       string
-	provider      ConnectionProvider
-	nodeId        model.NodeId
-	listener      net.Listener
-	ctx           context.Context
+	// outReceives        chan model.ConnsMgrReceive
+	OutSaveToDiskReq   chan<- blocksaver.SaveToDiskReq
+	OutSaveToDiskResp  chan<- blocksaver.SaveToDiskResp
+	OutGetFromDiskReq  chan<- blockreader.GetFromDiskReq
+	OutGetFromDiskResp chan<- blockreader.GetFromDiskResp
+	OutAddDiskReq      chan<- model.AddDiskReq
+	OutIam             chan<- model.IAm
+	OutIamConnId       chan<- IamConnId
+	OutSyncNodes       chan<- model.SyncNodes
+	OutSendIam         chan<- model.ConnId
+	OutFileBroadcasts  chan<- webdav.FileBroadcast
+	inConnectTo        <-chan model.ConnectToNodeReq
+	inSends            <-chan model.MgrConnsSend
+	Address            string
+	provider           ConnectionProvider
+	nodeId             model.NodeId
+	listener           net.Listener
+	ctx                context.Context
+	nodeConnMapper     model.NodeConnectionMapper
 }
 
 func NewConns(
-	outStatuses chan model.NetConnectionStatus,
-	outReceives chan model.ConnsMgrReceive,
+	// outReceives chan model.ConnsMgrReceive,
 	inConnectTo <-chan model.ConnectToNodeReq,
 	inSends <-chan model.MgrConnsSend,
 	provider ConnectionProvider,
 	address string,
 	nodeId model.NodeId,
 	ctx context.Context,
-) Conns {
+) *Conns {
 	listener, err := provider.GetListener(address)
 	if err != nil {
 		panic(err)
 	}
 	c := Conns{
-		netConns:      make(map[model.ConnId]tnet.RawNet),
-		nextId:        model.ConnId(0),
-		acceptedConns: make(chan AcceptedConns),
-		outStatuses:   outStatuses,
-		outReceives:   outReceives,
-		inConnectTo:   inConnectTo,
-		inSends:       inSends,
-		provider:      provider,
-		nodeId:        nodeId,
-		listener:      listener,
-		ctx:           ctx,
+		netConns:       make(map[model.ConnId]tnet.RawNet),
+		netConnsMux:    &sync.RWMutex{},
+		nextId:         model.ConnId(0),
+		acceptedConns:  make(chan AcceptedConns),
+		inConnectTo:    inConnectTo,
+		inSends:        inSends,
+		provider:       provider,
+		nodeId:         nodeId,
+		listener:       listener,
+		ctx:            ctx,
+		nodeConnMapper: *model.NewNodeConnectionMapper(),
 	}
 
 	go c.consumeChannels()
 	go c.listen()
 	go c.stopOnDone()
 
-	return c
+	return &c
 }
 
 func (c *Conns) stopOnDone() {
@@ -81,6 +95,8 @@ func (c *Conns) stopOnDone() {
 	if err != nil {
 		log.Warn("error closing listener")
 	}
+	c.netConnsMux.Lock()
+	defer c.netConnsMux.Unlock()
 	for connId := range c.netConns {
 		conn := c.netConns[connId]
 		err := conn.Close()
@@ -98,63 +114,32 @@ func (c *Conns) consumeChannels() {
 			return
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
-			status := model.NetConnectionStatus{
-				Type: model.Connected,
-				Msg:  "Success",
-				Id:   id,
-			}
-			chanutil.Send(c.ctx, c.outStatuses, status, "conns accepted connection sending success status")
+			c.OutSendIam <- id
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
-			// Todo: this needs to be non blocking
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
-				status := model.NetConnectionStatus{
-					Type: model.Connected,
-					Msg:  "Success",
-					Id:   id,
-				}
-				chanutil.Send(c.ctx, c.outStatuses, status, "conns connected sending success status")
+				c.OutSendIam <- id
 				go c.consumeData(id)
 			}
 		case sendReq := <-c.inSends:
 			_, ok := c.netConns[sendReq.ConnId]
 			if !ok {
-				c.handleSendFailure(sendReq, errors.New("connection not found"))
+				c.handleSendFailure(errors.New("connection not found"))
 			} else {
 				//Todo maybe this should be async
 				rawNet := c.netConns[sendReq.ConnId]
 				err := rawNet.SendPayload(sendReq.Payload)
 				if err != nil {
-					c.handleSendFailure(sendReq, err)
+					c.handleSendFailure(err)
 				}
 			}
 		}
 	}
 }
 
-func (c *Conns) handleSendFailure(sendReq model.MgrConnsSend, err error) {
+func (c *Conns) handleSendFailure(err error) {
 	log.Warn("Error sending ", err)
-	payload := sendReq.Payload
-	switch p := payload.(type) {
-	case *model.ReadRequest:
-		if len(p.Ptrs) > 0 {
-			ptrs := p.Ptrs[1:]
-			rr := model.ReadRequest{Caller: p.Caller, Ptrs: ptrs, BlockId: p.BlockId, ReqId: p.ReqId}
-			cmr := model.ConnsMgrReceive{
-				ConnId:  sendReq.ConnId,
-				Payload: &rr,
-			}
-			chanutil.Send(c.ctx, c.outReceives, cmr, "conns failed to send read request, sending new read request")
-		} else {
-			result := model.NewReadResultErr("no pointers in read request", p.Caller, p.ReqId, p.BlockId)
-			cmr := model.ConnsMgrReceive{
-				ConnId:  sendReq.ConnId,
-				Payload: &result,
-			}
-			chanutil.Send(c.ctx, c.outReceives, cmr, "conns: failed to send read request sent failure status")
-		}
-	}
 }
 
 func (c *Conns) listen() {
@@ -177,35 +162,56 @@ type AcceptedConns struct {
 }
 
 func (c *Conns) consumeData(conn model.ConnId) {
-	ncs := model.NetConnectionStatus{
-		Type: model.NotConnected,
-		Msg:  "Connection closed",
-		Id:   conn,
-	}
-	defer chanutil.Send(c.ctx, c.outStatuses, ncs, "conns connection closed sent status")
-
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
 		default:
-			netConn := c.netConns[conn]
+			netConn := c.rawNetForConnId(conn)
 			payload, err := netConn.ReadPayload()
 			if err != nil {
 				closeErr := netConn.Close()
 				if closeErr != nil {
 					log.Warn("Error closing connection", closeErr)
 				}
-				delete(c.netConns, conn)
+				c.deleteConn(conn)
 				return
 			}
-			cmr := model.ConnsMgrReceive{
-				ConnId:  conn,
-				Payload: payload,
+			switch p := (payload).(type) {
+			case *blocksaver.SaveToDiskReq:
+				c.OutSaveToDiskReq <- *p
+			case *blocksaver.SaveToDiskResp:
+				c.OutSaveToDiskResp <- *p
+			case *blockreader.GetFromDiskReq:
+				c.OutGetFromDiskReq <- *p
+			case *blockreader.GetFromDiskResp:
+				c.OutGetFromDiskResp <- *p
+			case *model.AddDiskReq:
+				c.OutAddDiskReq <- *p
+			case *model.IAm:
+				c.OutIam <- *p
+				c.OutIamConnId <- IamConnId{Iam: *p, ConnId: conn}
+			case *model.SyncNodes:
+				c.OutSyncNodes <- *p
+			case *webdav.FileBroadcast:
+				c.OutFileBroadcasts <- *p
+			default:
+				panic("Unknown payload")
 			}
-			chanutil.Send(c.ctx, c.outReceives, cmr, "conns received payload sent to connsMgr "+string(c.nodeId))
 		}
 	}
+}
+
+func (c *Conns) rawNetForConnId(connId model.ConnId) tnet.RawNet {
+	c.netConnsMux.RLock()
+	defer c.netConnsMux.RUnlock()
+	return c.netConns[connId]
+}
+
+func (c *Conns) deleteConn(connId model.ConnId) {
+	c.netConnsMux.Lock()
+	defer c.netConnsMux.Unlock()
+	delete(c.netConns, connId)
 }
 
 func (c *Conns) connectTo(address string) (model.ConnId, error) {
@@ -218,6 +224,8 @@ func (c *Conns) connectTo(address string) (model.ConnId, error) {
 }
 
 func (c *Conns) saveNetConn(netConn net.Conn) model.ConnId {
+	c.netConnsMux.Lock()
+	defer c.netConnsMux.Unlock()
 	rawNet := tnet.NewRawNet(netConn)
 	id := c.nextId
 	c.nextId++

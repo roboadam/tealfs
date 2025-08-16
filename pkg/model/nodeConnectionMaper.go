@@ -35,6 +35,43 @@ type NodeConnectionMapperExport struct {
 	AddressNodeMap map[string]NodeId
 }
 
+type ConnectionTriple struct {
+	ConnId      ConnId
+	Address     string
+	NodeId      NodeId
+	IsConnected bool
+}
+
+func (n *NodeConnectionMapper) NodesWithAddress() []struct {
+	K string
+	J NodeId
+} {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	return n.addressNodeMap.AllValues()
+}
+
+func (n *NodeConnectionMapper) ConnectionTriples() []ConnectionTriple {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	result := []ConnectionTriple{}
+	for _, address := range n.addresses.GetValues() {
+		triple := ConnectionTriple{Address: address}
+		if conn, ok := n.addressConnMap.Get1(address); ok {
+			triple.ConnId = conn
+		} else {
+			triple.IsConnected = false
+		}
+
+		if node, ok := n.addressNodeMap.Get1(address); ok {
+			triple.NodeId = node
+		}
+		result = append(result, triple)
+
+	}
+	return result
+}
+
 func (n *NodeConnectionMapper) AddressesWithoutConnections() set.Set[string] {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
@@ -88,6 +125,21 @@ func (n *NodeConnectionMapper) RemoveConn(connId ConnId) {
 	n.removeConn(connId)
 }
 
+func (n *NodeConnectionMapper) Clear() {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	n.addressConnMap.Clear()
+	n.addressNodeMap.Clear()
+	n.connNodeMap.Clear()
+}
+
+func (n *NodeConnectionMapper) SetNodeAddress(nodeId NodeId, address string) {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	n.addressNodeMap.Add(address, nodeId)
+	n.addresses.Add(address)
+}
+
 func (n *NodeConnectionMapper) removeConn(connId ConnId) {
 	n.addressConnMap.Remove2(connId)
 	n.connNodeMap.Remove1(connId)
@@ -97,7 +149,7 @@ func (n *NodeConnectionMapper) Marshal() ([]byte, error) {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	exportable := NodeConnectionMapperExport{
-		Addresses:      n.addresses.ToSlice(),
+		Addresses:      n.addresses.GetValues(),
 		AddressConnMap: n.addressConnMap.ToMap(),
 		ConnNodeMap:    n.connNodeMap.ToMap(),
 		AddressNodeMap: n.addressNodeMap.ToMap(),
@@ -122,27 +174,6 @@ func NodeConnectionMapperUnmarshal(data []byte) (*NodeConnectionMapper, error) {
 	return &result, nil
 }
 
-func (n *NodeConnectionMapper) AddressesAndNodes() set.Set[struct {
-	Address string
-	NodeId  NodeId
-}] {
-	n.mux.RLock()
-	defer n.mux.RUnlock()
-	result := set.NewSet[struct {
-		Address string
-		NodeId  NodeId
-	}]()
-	for _, values := range n.addressNodeMap.AllValues() {
-		result.Add(struct {
-			Address string
-			NodeId  NodeId
-		}{
-			Address: values.K,
-			NodeId:  values.J,
-		})
-	}
-	return result
-}
 func (n *NodeConnectionMapper) SetAll(conn ConnId, address string, node NodeId) {
 	n.mux.Lock()
 	defer n.mux.Unlock()

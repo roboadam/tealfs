@@ -20,27 +20,26 @@ import (
 	"sync"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
+
+	"github.com/google/uuid"
 )
 
 type Ui struct {
+	NodeConnMap *model.NodeConnectionMapper
+
 	connToReq   chan model.ConnectToNodeReq
-	connToResp  chan model.UiConnectionStatus
 	addDiskReq  chan model.AddDiskReq
 	addDiskResp chan model.UiDiskStatus
 
-	statuses     map[model.NodeId]model.UiConnectionStatus
 	diskStatuses map[model.DiskId]model.UiDiskStatus
-	remotes      set.Set[model.NodeId]
-	sMux         sync.Mutex
-	ops          HtmlOps
-	nodeId       model.NodeId
-	ctx          context.Context
+	sMux   sync.Mutex
+	ops    HtmlOps
+	nodeId model.NodeId
+	ctx    context.Context
 }
 
 func NewUi(
 	connToReq chan model.ConnectToNodeReq,
-	connToResp chan model.UiConnectionStatus,
 	addDiskReq chan model.AddDiskReq,
 	addDiskResp chan model.UiDiskStatus,
 	ops HtmlOps,
@@ -48,19 +47,15 @@ func NewUi(
 	bindAddr string,
 	ctx context.Context,
 ) *Ui {
-	statuses := make(map[model.NodeId]model.UiConnectionStatus)
 	diskStatuses := make(map[model.DiskId]model.UiDiskStatus)
 	ui := Ui{
 		connToReq:    connToReq,
-		connToResp:   connToResp,
 		addDiskReq:   addDiskReq,
 		addDiskResp:  addDiskResp,
-		statuses:     statuses,
 		diskStatuses: diskStatuses,
-		remotes:      set.NewSet[model.NodeId](),
-		ops:          ops,
-		nodeId:       nodeId,
-		ctx:          ctx,
+		ops:    ops,
+		nodeId: nodeId,
+		ctx:    ctx,
 	}
 	ui.handleRoot()
 	ui.start(bindAddr)
@@ -78,22 +73,9 @@ func (ui *Ui) handleMessages() {
 		case <-ui.ctx.Done():
 			ui.ops.Shutdown()
 			return
-		case status := <-ui.connToResp:
-			ui.saveStatus(status)
 		case diskStatus := <-ui.addDiskResp:
 			ui.saveDiskStatus(diskStatus)
 		}
-	}
-}
-
-func (ui *Ui) saveStatus(status model.UiConnectionStatus) {
-	ui.sMux.Lock()
-	defer ui.sMux.Unlock()
-	ui.statuses[status.Id] = status
-	if status.Type == model.Connected {
-		ui.remotes.Add(status.Id)
-	} else {
-		ui.remotes.Remove(status.Id)
 	}
 }
 
@@ -115,29 +97,35 @@ func (ui *Ui) handleRoot() {
 		ui.diskStatus(w, tmpl)
 	})
 	ui.ops.HandleFunc("/connect-to", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
+		switch r.Method {
+		case http.MethodGet:
 			ui.connectToGet(w, tmpl)
-		} else if r.Method == http.MethodPut {
+		case http.MethodPut:
 			hostAndPort := r.FormValue("hostAndPort")
 			ui.connToReq <- model.ConnectToNodeReq{Address: hostAndPort}
 			ui.connectionStatus(w, tmpl)
-		} else {
+		default:
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		}
 	})
 	ui.ops.HandleFunc("/add-disk", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			ui.addDiskGet(w, tmpl, ui.remotes.GetValues(), ui.nodeId)
-		} else if r.Method == http.MethodPut {
+		switch r.Method {
+		case http.MethodGet:
+			ui.addDiskGet(w, tmpl, ui.nodeId)
+		case http.MethodPut:
 			diskPath := r.FormValue("diskPath")
 			node := r.FormValue("node")
 			if node == "" {
 				node = string(ui.nodeId)
 			}
-			req := model.NewAddDiskReq(diskPath, model.NodeId(node), 1)
+			req := model.AddDiskReq{
+				DiskId: model.DiskId(uuid.NewString()),
+				Path:   diskPath,
+				NodeId: model.NodeId(node),
+			}
 			chanutil.Send(ui.ctx, ui.addDiskReq, req, "ui: add disk req")
 			ui.connectionStatus(w, tmpl)
-		} else {
+		default:
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		}
 	})

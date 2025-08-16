@@ -12,42 +12,39 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package webdav
+package conns
 
 import (
+	"context"
 	"tealfs/pkg/model"
-	"testing"
 	"time"
 )
 
-func TestSerializeBroadcast(t *testing.T) {
-	path, _ := PathFromName("/asdf")
-	msg := broadcastMessage{
-		bType: deleteFile,
-		file: File{
-			SizeValue: 5,
-			ModeValue: 4,
-			Modtime:   time.Now(),
-			Block: []model.Block{{
-				Id:   "blockId",
-				Type: model.Mirrored,
-			}},
-			HasData: []bool{true},
-			Path:    path,
-		},
+type Reconnector struct {
+	OutConnectTo chan<- model.ConnectToNodeReq
+
+	Mapper *model.NodeConnectionMapper
+}
+
+func (r *Reconnector) Start(ctx context.Context) {
+	r.reConnect()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			r.reConnect()
+		}
 	}
-	raw := msg.toBytes()
-	msg2, err := broadcastMessageFromBytes(raw, &FileSystem{})
-	if err != nil {
-		t.Error("error deserializing")
-		return
-	}
-	if msg2.bType != msg.bType {
-		t.Error("error with bType")
-		return
-	}
-	if msg2.file.Block[0].Id != msg.file.Block[0].Id {
-		t.Error("error with block id")
-		return
+}
+
+func (r *Reconnector) reConnect() {
+	addresses := r.Mapper.AddressesWithoutConnections()
+	for _, address := range addresses.GetValues() {
+		r.OutConnectTo <- model.ConnectToNodeReq{
+			Address: address,
+		}
 	}
 }

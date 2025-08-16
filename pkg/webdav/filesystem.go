@@ -48,8 +48,9 @@ type FileSystem struct {
 	sysReq       chan sysReq
 	ReadReqResp  chan ReadReqResp
 	WriteReqResp chan WriteReqResp
-	inBroadcast  chan model.Broadcast
-	outBroadcast chan model.Broadcast
+	inBroadcast  chan FileBroadcast
+	OutSends     chan model.MgrConnsSend
+	Mapper       *model.NodeConnectionMapper
 	nodeId       model.NodeId
 	fileOps      disk.FileOps
 	indexPath    string
@@ -58,11 +59,12 @@ type FileSystem struct {
 
 func NewFileSystem(
 	nodeId model.NodeId,
-	inBroadcast chan model.Broadcast,
-	outBroadcast chan model.Broadcast,
+	inBroadcast chan FileBroadcast,
 	fileOps disk.FileOps,
 	indexPath string,
 	chansize int,
+	outSends chan model.MgrConnsSend,
+	mapper *model.NodeConnectionMapper,
 	ctx context.Context,
 ) FileSystem {
 	filesystem := FileSystem{
@@ -86,10 +88,11 @@ func NewFileSystem(
 		ReadReqResp:  make(chan ReadReqResp, chansize),
 		WriteReqResp: make(chan WriteReqResp, chansize),
 		inBroadcast:  inBroadcast,
-		outBroadcast: outBroadcast,
 		nodeId:       nodeId,
 		fileOps:      fileOps,
 		indexPath:    indexPath,
+		OutSends:     outSends,
+		Mapper:       mapper,
 		Ctx:          ctx,
 	}
 	block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
@@ -124,7 +127,7 @@ type ReadReqResp struct {
 
 func (f *FileSystem) fetchBlock(req model.GetBlockReq) model.GetBlockResp {
 	resp := make(chan model.GetBlockResp)
-	chanutil.Send(f.Ctx, f.ReadReqResp, ReadReqResp{req, resp}, "filesystem fetchBlock "+string(req.Id()))
+	chanutil.Send(f.Ctx, f.ReadReqResp, ReadReqResp{req, resp}, "filesystem fetchBlock "+string(req.Id))
 	return <-resp
 }
 
@@ -182,21 +185,21 @@ func (f *FileSystem) run() {
 			chanutil.Send(f.Ctx, req.resp, isdir(req), "filesystem: isdir")
 		case req := <-f.sysReq:
 			chanutil.Send(f.Ctx, req.resp, sys(req), "filesystem: sys")
-		case r := <-f.inBroadcast:
-			msg, err := broadcastMessageFromBytes(r.Msg, f)
-			if err == nil {
-				switch msg.bType {
-				case upsertFile:
-					f.fileHolder.Upsert(&msg.file)
-				case deleteFile:
-					f.fileHolder.Delete(&msg.file)
+		case msg := <-f.inBroadcast:
+			file, _, err := FileFromBytes(msg.FileBytes, f)
+			if err != nil {
+				log.Error("Error decoding file update")
+			} else {
+				switch msg.UpdateType {
+				case UpsertFile:
+					f.fileHolder.Upsert(&file)
+				case DeleteFile:
+					f.fileHolder.Delete(&file)
 				}
-				err := f.persistFileIndex()
+				err = f.persistFileIndex()
 				if err != nil {
 					log.Error("Unable to persist file index:", err)
 				}
-			} else {
-				log.Warn("Unable to parse incoming broadcast message")
 			}
 		}
 	}
@@ -217,14 +220,17 @@ func (f *FileSystem) initFileIndex() error {
 	return f.fileHolder.UpdateFileHolderFromBytes(data, f)
 }
 
-func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType broadcastType) error {
+func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType FileBroadcastType) error {
 	err := f.persistFileIndex()
 	if err != nil {
 		log.Error("Error persisting index", err)
 		return err
 	}
-	msg := broadcastMessage{bType: updateType, file: *file}
-	chanutil.Send(f.Ctx, f.outBroadcast, model.NewBroadcast(msg.toBytes()), "filesystem: persistFileIndexAndBroadcast")
+	msg := FileBroadcast{UpdateType: updateType, FileBytes: file.ToBytes()}
+	conns := f.Mapper.Connections()
+	for _, connId := range conns.GetValues() {
+		f.OutSends <- model.MgrConnsSend{ConnId: connId, Payload: &msg}
+	}
 	return nil
 }
 
@@ -280,7 +286,7 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	}
 
 	f.fileHolder.Add(&dir)
-	err = f.persistFileIndexAndBroadcast(&dir, upsertFile)
+	err = f.persistFileIndexAndBroadcast(&dir, UpsertFile)
 	if err != nil {
 		return err
 	}
@@ -307,14 +313,14 @@ func (f *FileSystem) removeAll(req *removeAllReq) error {
 	for _, file := range f.fileHolder.AllFiles() {
 		if file.Path.startsWith(pathToDelete) {
 			f.fileHolder.Delete(file)
-			err = f.persistFileIndexAndBroadcast(file, deleteFile)
+			err = f.persistFileIndexAndBroadcast(file, DeleteFile)
 			if err != nil {
 				return err
 			}
 		}
 	}
 	f.fileHolder.Delete(baseFile)
-	f.persistFileIndexAndBroadcast(baseFile, deleteFile)
+	f.persistFileIndexAndBroadcast(baseFile, DeleteFile)
 
 	return nil
 }
@@ -372,14 +378,14 @@ func (f *FileSystem) rename(req *renameReq) error {
 				f.fileHolder.Delete(child)
 				child.Path = child.Path.swapPrefix(oldPath, newPath)
 				f.fileHolder.Add(child)
-				f.persistFileIndexAndBroadcast(child, upsertFile)
+				f.persistFileIndexAndBroadcast(child, UpsertFile)
 			}
 		}
 	} else {
 		f.fileHolder.Delete(file)
 		file.Path = newPath
 		f.fileHolder.Add(file)
-		f.persistFileIndexAndBroadcast(file, upsertFile)
+		f.persistFileIndexAndBroadcast(file, UpsertFile)
 	}
 
 	return nil
