@@ -5,7 +5,6 @@
 - [ ] Rebalance on disk changes
     - [ ] Elect a primary node
         - [x] Create Bully messages (Election, Alive, Victory)
-        - [ ] Method to convert NodeId to a number
         - [ ] Rule 1: If P has the highest process ID, it sends a Victory message to all other processes and becomes the new Coordinator. Otherwise, P broadcasts an Election message to all other processes with higher process IDs than itself.
         - [ ] Rule 2: If P receives no Alive after sending an Election message, then it broadcasts a Victory message to all other processes and becomes the Coordinator.
         - [ ] Rule 3: If P receives an Alive from a process with a higher ID, it sends no further messages for this election and waits for a Victory message. (If there is no Victory message after a period of time, it restarts the process at the beginning.)
