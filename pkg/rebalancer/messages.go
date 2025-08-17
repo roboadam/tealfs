@@ -14,36 +14,21 @@
 
 package rebalancer
 
-import (
-	"context"
-	"time"
-)
+import "tealfs/pkg/model"
 
-type ElectionResult struct {
-	InCollectResult <-chan struct{}
-	InAlive         <-chan Alive
-
-	end *time.Time
+type AllBlockIdReq struct {
+	Caller model.NodeId
 }
 
-const TIMEOUT = time.Second * 30
+func (a *AllBlockIdReq) Type() model.PayloadType {
+	return model.AllBlockIdReqType
+}
 
-func (e *ElectionResult) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-e.InCollectResult:
-			end := time.Now()
-			end.Add(TIMEOUT)
-		case a := <-e.InAlive:
-			if e.end == nil {
-				continue
-			}
-			if time.Now().After(*e.end) { 
-				e.end = nil
-			}
-			
-		}
-	}
+type AllBlockIdResp struct {
+	Caller   model.NodeId
+	BlockIds []model.BlockId
+}
+
+func (a *AllBlockIdResp) Type() model.PayloadType {
+	return model.AllBlockIdRespType
 }

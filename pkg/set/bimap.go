@@ -38,6 +38,10 @@ func NewBimapFromMap[K comparable, J comparable](input map[K]J) Bimap[K, J] {
 	return result
 }
 
+func (b *Bimap[K, J]) Len() int {
+	return len(b.dataKj)
+}
+
 func (b *Bimap[K, J]) ToMap() map[K]J {
 	result := make(map[K]J)
 	maps.Copy(result, b.dataKj)

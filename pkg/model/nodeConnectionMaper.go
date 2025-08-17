@@ -53,6 +53,12 @@ func (n *NodeConnectionMapper) ConnectedNodes() set.Set[NodeId] {
 	return result
 }
 
+func (n *NodeConnectionMapper) AreAllConnected() bool {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	return n.addresses.Len() == n.addressConnMap.Len()
+}
+
 func (n *NodeConnectionMapper) NodesWithAddress() []struct {
 	K string
 	J NodeId

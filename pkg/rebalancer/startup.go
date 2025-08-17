@@ -21,13 +21,12 @@ import (
 )
 
 type Startup struct {
+	InTrigger <-chan struct{}
+	OutSends  chan<- model.MgrConnsSend
+
 	NodeId model.NodeId
 	Mapper *model.NodeConnectionMapper
-
-	InTrigger        <-chan struct{}
-	OutSends         chan<- model.MgrConnsSend
-	OutSendVictory   chan<- struct{}
-	OutStartElection chan<- set.Set[model.NodeId]
+	Disks  *set.Set[model.AddDiskReq]
 }
 
 func (s *Startup) Start(ctx context.Context) {
@@ -36,23 +35,15 @@ func (s *Startup) Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-s.InTrigger:
-			n := s.greaterNodes()
-			if n.Len() == 0 {
-				s.OutSendVictory <- struct{}{}
-			} else {
-				s.OutStartElection <- n
+			if s.IAmPrimary() && s.Mapper.AreAllConnected() {
+				s.OutSends <- model.MgrConnsSend{
+					Payload: &AllBlockIdReq{Caller: s.NodeId},
+				}
 			}
 		}
 	}
 }
 
-func (s *Startup) greaterNodes() set.Set[model.NodeId] {
-	result := set.NewSet[model.NodeId]()
-	nodes := s.Mapper.ConnectedNodes()
-	for _, node := range nodes.GetValues() {
-		if node > s.NodeId {
-			result.Add(node)
-		}
-	}
-	return result
+func (s *Startup) IAmPrimary() bool {
+	return PrimaryNode(s.Disks) == s.NodeId
 }

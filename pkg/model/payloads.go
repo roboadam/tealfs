@@ -33,6 +33,8 @@ const (
 	Election           PayloadType = 13
 	Alive              PayloadType = 14
 	Victory            PayloadType = 15
+	AllBlockIdReqType  PayloadType = 16
+	AllBlockIdRespType PayloadType = 17
 )
 
 type Payload interface {

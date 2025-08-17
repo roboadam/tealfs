@@ -14,28 +14,20 @@
 
 package rebalancer
 
-import "tealfs/pkg/model"
+import (
+	"tealfs/pkg/model"
+	"tealfs/pkg/set"
+)
 
-type Election struct {
-	NodeID model.NodeId
-}
-
-func (e *Election) Type() model.PayloadType {
-	return model.Election
-}
-
-type Alive struct {
-	NodeID model.NodeId
-}
-
-func (a *Alive) Type() model.PayloadType {
-	return model.Alive
-}
-
-type Victory struct {
-	NodeID model.NodeId
-}
-
-func (v *Victory) Type() model.PayloadType {
-	return model.Victory
+func PrimaryNode(disks *set.Set[model.AddDiskReq]) model.NodeId {
+	if disks.Len() == 0 {
+		return ""
+	}
+	result := disks.GetValues()[0].NodeId
+	for _, disk := range disks.GetValues() {
+		if disk.NodeId > result {
+			result = disk.NodeId
+		}
+	}
+	return result
 }
