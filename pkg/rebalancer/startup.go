@@ -17,6 +17,7 @@ package rebalancer
 import (
 	"context"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type Startup struct {
@@ -25,6 +26,14 @@ type Startup struct {
 }
 
 func (s *Startup) Start(ctx context.Context) {
-	isPrimary := true
-	for 
+	greaterNodes := set.NewSet[model.NodeId]()
+
+	nodes := s.Mapper.ConnectedNodes()
+	for _, node := range nodes.GetValues() {
+		if node > s.NodeId {
+			greaterNodes.Add(node)
+		}
+	}
+
+	
 }

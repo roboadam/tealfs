@@ -42,6 +42,17 @@ type ConnectionTriple struct {
 	IsConnected bool
 }
 
+func (n *NodeConnectionMapper) ConnectedNodes() set.Set[NodeId] {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	result := set.NewSet[NodeId]()
+	connsNodes := n.connNodeMap.AllValues()
+	for _, value := range connsNodes {
+		result.Add(value.J)
+	}
+	return result
+}
+
 func (n *NodeConnectionMapper) NodesWithAddress() []struct {
 	K string
 	J NodeId
