@@ -16,8 +16,11 @@ package rebalancer
 
 import "tealfs/pkg/model"
 
+type AllBlockId string
+
 type AllBlockIdReq struct {
 	Caller model.NodeId
+	Id     AllBlockId
 }
 
 func (a *AllBlockIdReq) Type() model.PayloadType {
@@ -27,6 +30,7 @@ func (a *AllBlockIdReq) Type() model.PayloadType {
 type AllBlockIdResp struct {
 	Caller   model.NodeId
 	BlockIds []model.BlockId
+	Id       AllBlockId
 }
 
 func (a *AllBlockIdResp) Type() model.PayloadType {
