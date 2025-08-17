@@ -16,43 +16,34 @@ package rebalancer
 
 import (
 	"context"
-	"tealfs/pkg/model"
-	"tealfs/pkg/set"
+	"time"
 )
 
-type Startup struct {
-	NodeId model.NodeId
-	Mapper *model.NodeConnectionMapper
+type ElectionResult struct {
+	InCollectResult <-chan struct{}
+	InAlive         <-chan Alive
 
-	InTrigger        <-chan struct{}
-	OutSends         chan<- model.MgrConnsSend
-	OutSendVictory   chan<- struct{}
-	OutStartElection chan<- set.Set[model.NodeId]
+	end *time.Time
 }
 
-func (s *Startup) Start(ctx context.Context) {
+const TIMEOUT = time.Second * 30
+
+func (e *ElectionResult) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-s.InTrigger:
-			n := s.greaterNodes()
-			if n.Len() == 0 {
-				s.OutSendVictory <- struct{}{}
-			} else {
-				s.OutStartElection <- n
+		case <-e.InCollectResult:
+			end := time.Now()
+			end.Add(TIMEOUT)
+		case a := <-e.InAlive:
+			if e.end == nil {
+				continue
 			}
+			if time.Now().After(*e.end) { 
+				e.end = nil
+			}
+			
 		}
 	}
-}
-
-func (s *Startup) greaterNodes() set.Set[model.NodeId] {
-	result := set.NewSet[model.NodeId]()
-	nodes := s.Mapper.ConnectedNodes()
-	for _, node := range nodes.GetValues() {
-		if node > s.NodeId {
-			result.Add(node)
-		}
-	}
-	return result
 }

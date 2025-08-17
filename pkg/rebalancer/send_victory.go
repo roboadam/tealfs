@@ -17,42 +17,33 @@ package rebalancer
 import (
 	"context"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 )
 
-type Startup struct {
+type SendVictory struct {
 	NodeId model.NodeId
 	Mapper *model.NodeConnectionMapper
 
-	InTrigger        <-chan struct{}
-	OutSends         chan<- model.MgrConnsSend
-	OutSendVictory   chan<- struct{}
-	OutStartElection chan<- set.Set[model.NodeId]
+	InTrigger <-chan struct{}
+	OutSends  chan<- model.MgrConnsSend
 }
 
-func (s *Startup) Start(ctx context.Context) {
+func (s *SendVictory) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-s.InTrigger:
-			n := s.greaterNodes()
-			if n.Len() == 0 {
-				s.OutSendVictory <- struct{}{}
-			} else {
-				s.OutStartElection <- n
-			}
+			s.sendVictory()
 		}
 	}
 }
 
-func (s *Startup) greaterNodes() set.Set[model.NodeId] {
-	result := set.NewSet[model.NodeId]()
-	nodes := s.Mapper.ConnectedNodes()
-	for _, node := range nodes.GetValues() {
-		if node > s.NodeId {
-			result.Add(node)
+func (s *SendVictory) sendVictory() {
+	conns := s.Mapper.Connections()
+	for _, conn := range conns.GetValues() {
+		s.OutSends <- model.MgrConnsSend{
+			ConnId:  conn,
+			Payload: &Victory{NodeID: s.NodeId},
 		}
 	}
-	return result
 }

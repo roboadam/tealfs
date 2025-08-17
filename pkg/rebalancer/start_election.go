@@ -20,39 +20,32 @@ import (
 	"tealfs/pkg/set"
 )
 
-type Startup struct {
+type StartElection struct {
 	NodeId model.NodeId
 	Mapper *model.NodeConnectionMapper
 
-	InTrigger        <-chan struct{}
-	OutSends         chan<- model.MgrConnsSend
-	OutSendVictory   chan<- struct{}
-	OutStartElection chan<- set.Set[model.NodeId]
+	InNodes  <-chan set.Set[model.NodeId]
+	OutSends chan<- model.MgrConnsSend
 }
 
-func (s *Startup) Start(ctx context.Context) {
+func (s *StartElection) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-s.InTrigger:
-			n := s.greaterNodes()
-			if n.Len() == 0 {
-				s.OutSendVictory <- struct{}{}
-			} else {
-				s.OutStartElection <- n
-			}
+		case n := <-s.InNodes:
+			s.sendElection(n)
 		}
 	}
 }
 
-func (s *Startup) greaterNodes() set.Set[model.NodeId] {
-	result := set.NewSet[model.NodeId]()
-	nodes := s.Mapper.ConnectedNodes()
+func (s *StartElection) sendElection(nodes set.Set[model.NodeId]) {
 	for _, node := range nodes.GetValues() {
-		if node > s.NodeId {
-			result.Add(node)
+		if connId, ok := s.Mapper.ConnForNode(node); ok {
+			s.OutSends <- model.MgrConnsSend{
+				ConnId:  connId,
+				Payload: &Election{NodeID: s.NodeId},
+			}
 		}
 	}
-	return result
 }
