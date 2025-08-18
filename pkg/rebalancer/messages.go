@@ -21,6 +21,8 @@ import (
 
 type AllBlockId string
 
+type AllBlockId string
+
 type AllBlockIdReq struct {
 	Caller model.NodeId
 	Id     AllBlockId
