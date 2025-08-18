@@ -12,30 +12,24 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package rebalancer
+package disk
 
 import (
 	"tealfs/pkg/model"
+	"tealfs/pkg/rebalancer"
 	"tealfs/pkg/set"
 )
 
-type AllBlockId string
-
-type AllBlockIdReq struct {
-	Caller model.NodeId
-	Id     AllBlockId
+type AllBlockIdChanMgr struct {
+	ReqChans  set.Bimap[model.DiskId, chan rebalancer.AllBlockIdReq]
+	RespChans set.Bimap[model.DiskId, chan rebalancer.AllBlockIdResp]
 }
 
-func (a *AllBlockIdReq) Type() model.PayloadType {
-	return model.AllBlockIdReqType
-}
-
-type AllBlockIdResp struct {
-	Caller   model.NodeId
-	BlockIds set.Set[model.BlockId]
-	Id       AllBlockId
-}
-
-func (a *AllBlockIdResp) Type() model.PayloadType {
-	return model.AllBlockIdRespType
+func (a *AllBlockIdChanMgr) Add(
+	diskId model.DiskId,
+	reqChan chan rebalancer.AllBlockIdReq,
+	respChan chan rebalancer.AllBlockIdResp,
+) {
+	a.ReqChans.Add(diskId, reqChan)
+	a.RespChans.Add(diskId, respChan)
 }

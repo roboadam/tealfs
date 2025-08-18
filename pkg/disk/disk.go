@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type Path struct {
@@ -49,14 +50,16 @@ func New(
 }
 
 type Disk struct {
-	path      Path
-	id        model.NodeId
-	diskId    model.DiskId
-	OutReads  chan model.ReadResult
-	OutWrites chan model.WriteResult
-	InWrites  chan model.WriteRequest
-	InReads   chan model.ReadRequest
-	ctx       context.Context
+	path       Path
+	id         model.NodeId
+	diskId     model.DiskId
+	OutReads   chan model.ReadResult
+	OutWrites  chan model.WriteResult
+	InWrites   chan model.WriteRequest
+	InReads    chan model.ReadRequest
+	InListIds  <-chan struct{}
+	OutListIds chan<- []set.Set[model.BlockId]
+	ctx        context.Context
 }
 
 func (d *Disk) Id() model.DiskId { return d.diskId }

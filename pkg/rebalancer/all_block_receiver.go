@@ -14,28 +14,23 @@
 
 package rebalancer
 
-import (
-	"tealfs/pkg/model"
-	"tealfs/pkg/set"
-)
+import "context"
 
-type AllBlockId string
-
-type AllBlockIdReq struct {
-	Caller model.NodeId
-	Id     AllBlockId
+type AllBlockReceiver struct {
+	InAllBlockIdReq <-chan AllBlockIdReq
 }
 
-func (a *AllBlockIdReq) Type() model.PayloadType {
-	return model.AllBlockIdReqType
+func (a *AllBlockReceiver) Start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case req := <-a.InAllBlockIdReq:
+			a.handleAllBlockIdReq(req)
+		}
+	}
 }
 
-type AllBlockIdResp struct {
-	Caller   model.NodeId
-	BlockIds set.Set[model.BlockId]
-	Id       AllBlockId
-}
-
-func (a *AllBlockIdResp) Type() model.PayloadType {
-	return model.AllBlockIdRespType
+func (a *AllBlockReceiver) handleAllBlockIdReq(req AllBlockIdReq) {
+	panic("unimplemented")
 }
