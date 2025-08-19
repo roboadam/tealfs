@@ -61,6 +61,15 @@ func (s *Set[K]) Add(item K) {
 	s.Data[item] = true
 }
 
+func (s *Set[K]) AddAll(other *Set[K]) {
+	s.initMux()
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	for _, item := range other.GetValues() {
+		s.Data[item] = true
+	}
+}
+
 func (s *Set[K]) Remove(item K) {
 	s.initMux()
 	s.mux.Lock()

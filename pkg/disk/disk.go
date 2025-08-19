@@ -57,8 +57,8 @@ type Disk struct {
 	OutWrites  chan model.WriteResult
 	InWrites   chan model.WriteRequest
 	InReads    chan model.ReadRequest
-	InListIds  <-chan struct{}
-	OutListIds chan<- []set.Set[model.BlockId]
+	InListIds  chan struct{}
+	OutListIds chan set.Set[model.BlockId]
 	ctx        context.Context
 }
 

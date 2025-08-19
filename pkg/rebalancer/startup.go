@@ -27,7 +27,6 @@ type Startup struct {
 	NodeId model.NodeId
 	Mapper *model.NodeConnectionMapper
 	Disks  *set.Set[model.AddDiskReq]
-	BlockIdCollection 
 }
 
 func (s *Startup) Start(ctx context.Context) {

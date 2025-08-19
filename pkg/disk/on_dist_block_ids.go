@@ -16,6 +16,7 @@ package disk
 
 import (
 	"context"
+	"sync"
 	"tealfs/pkg/model"
 	"tealfs/pkg/rebalancer"
 	"tealfs/pkg/set"
@@ -25,31 +26,38 @@ type OnDiskBlockIds struct {
 	InFetchIds   <-chan rebalancer.AllBlockIdReq
 	OutIdResults chan<- rebalancer.AllBlockIdResp
 
-	outListIds   set.Set[chan<- rebalancer.AllBlockIdReq]
-	inIdResult   set.Set[<-chan rebalancer.AllBlockIdResp]
-
-	resultsHolder map[rebalancer.AllBlockId]rebalancer.AllBlockIdResp
+	Disks *set.Set[Disk]
 }
 
 func (o *OnDiskBlockIds) Start(ctx context.Context) {
-	o.resultsHolder = make(map[rebalancer.AllBlockId]rebalancer.AllBlockIdResp)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case req := <-o.InFetchIds:
-			o.forwardToDisks(req)
+			o.collectResults(req)
 		}
 	}
 }
 
-func (o *OnDiskBlockIds) forwardToDisks(req rebalancer.AllBlockIdReq) {
-	o.resultsHolder[req.Id] = rebalancer.AllBlockIdResp{
+func (o *OnDiskBlockIds) collectResults(req rebalancer.AllBlockIdReq) {
+	allIds := set.NewSet[model.BlockId]()
+	wg := sync.WaitGroup{}
+	for _, disk := range o.Disks.GetValues() {
+		wg.Add(1)
+		go o.readListFromDisk(&disk, &allIds, &wg)
+	}
+	wg.Wait()
+	o.OutIdResults <- rebalancer.AllBlockIdResp{
 		Caller:   req.Caller,
-		BlockIds: set.NewSet[model.BlockId](),
+		BlockIds: allIds,
 		Id:       req.Id,
 	}
-	for _, out := range o.OutListIds.GetValues() {
-		out <- req
-	}
+}
+
+func (o *OnDiskBlockIds) readListFromDisk(d *Disk, allIds *set.Set[model.BlockId], wg *sync.WaitGroup) {
+	defer wg.Done()
+	d.InListIds <- struct{}{}
+	ids := <-d.OutListIds
+	allIds.AddAll(&ids)
 }
