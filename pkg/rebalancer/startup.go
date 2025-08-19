@@ -44,6 +44,7 @@ func (s *Startup) Start(ctx context.Context) {
 					Id:     AllBlockId(uuid.NewString()),
 				}
 				conns := s.Mapper.Connections()
+				s.OutLocalReq <- req
 				for _, conn := range conns.GetValues() {
 					s.OutSends <- model.MgrConnsSend{
 						Payload: &req,
