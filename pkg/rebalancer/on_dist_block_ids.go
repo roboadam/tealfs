@@ -12,21 +12,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package disk
+package rebalancer
 
 import (
 	"context"
 	"sync"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
-	"tealfs/pkg/rebalancer"
 	"tealfs/pkg/set"
 )
 
 type OnDiskBlockIds struct {
-	InFetchIds   <-chan rebalancer.AllBlockIdReq
-	OutIdResults chan<- rebalancer.AllBlockIdResp
+	InFetchIds   <-chan AllBlockIdReq
+	OutIdResults chan<- AllBlockIdResp
 
-	Disks *set.Set[Disk]
+	Disks *set.Set[disk.Disk]
 }
 
 func (o *OnDiskBlockIds) Start(ctx context.Context) {
@@ -40,7 +40,7 @@ func (o *OnDiskBlockIds) Start(ctx context.Context) {
 	}
 }
 
-func (o *OnDiskBlockIds) collectResults(req rebalancer.AllBlockIdReq) {
+func (o *OnDiskBlockIds) collectResults(req AllBlockIdReq) {
 	allIds := set.NewSet[model.BlockId]()
 	wg := sync.WaitGroup{}
 	for _, disk := range o.Disks.GetValues() {
@@ -48,14 +48,14 @@ func (o *OnDiskBlockIds) collectResults(req rebalancer.AllBlockIdReq) {
 		go o.readListFromDisk(&disk, &allIds, &wg)
 	}
 	wg.Wait()
-	o.OutIdResults <- rebalancer.AllBlockIdResp{
+	o.OutIdResults <- AllBlockIdResp{
 		Caller:   req.Caller,
 		BlockIds: allIds,
 		Id:       req.Id,
 	}
 }
 
-func (o *OnDiskBlockIds) readListFromDisk(d *Disk, allIds *set.Set[model.BlockId], wg *sync.WaitGroup) {
+func (o *OnDiskBlockIds) readListFromDisk(d *disk.Disk, allIds *set.Set[model.BlockId], wg *sync.WaitGroup) {
 	defer wg.Done()
 	d.InListIds <- struct{}{}
 	ids := <-d.OutListIds

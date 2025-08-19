@@ -18,11 +18,14 @@ import (
 	"context"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	"github.com/google/uuid"
 )
 
 type Startup struct {
-	InTrigger <-chan struct{}
-	OutSends  chan<- model.MgrConnsSend
+	InTrigger   <-chan struct{}
+	OutSends    chan<- model.MgrConnsSend
+	OutLocalReq chan<- AllBlockIdReq
 
 	NodeId model.NodeId
 	Mapper *model.NodeConnectionMapper
@@ -36,8 +39,16 @@ func (s *Startup) Start(ctx context.Context) {
 			return
 		case <-s.InTrigger:
 			if s.IAmPrimary() && s.Mapper.AreAllConnected() {
-				s.OutSends <- model.MgrConnsSend{
-					Payload: &AllBlockIdReq{Caller: s.NodeId},
+				req := AllBlockIdReq{
+					Caller: s.NodeId,
+					Id:     AllBlockId(uuid.NewString()),
+				}
+				conns := s.Mapper.Connections()
+				for _, conn := range conns.GetValues() {
+					s.OutSends <- model.MgrConnsSend{
+						Payload: &req,
+						ConnId:  conn,
+					}
 				}
 			}
 		}

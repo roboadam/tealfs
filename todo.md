@@ -6,6 +6,7 @@
     - [x] Calculate primary node
     - [ ] Collect all on-disk block ids from other nodes on primary
         - [x] On primary node send AllBlockIdReq to other nodes
+        - [x] On primary node send AllBlockIdReq to yourself
         - [ ] All nodes respond to AllBlockIdReq with AllBlockIdResp
         - [ ] Once all nodes have responded kick off next step
     - [ ] Emit all block Id pointers from filesystem on primary node
