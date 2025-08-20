@@ -20,13 +20,18 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type LocalBlockIdLister struct {
-	InFetchIds   <-chan AllBlockIdReq
-	OutIdResults chan<- AllBlockIdResp
+	InFetchIds         <-chan AllBlockIdReq
+	OutIdLocalResults  chan<- AllBlockIdResp
+	OutIdRemoteResults chan<- model.MgrConnsSend
 
-	Disks *set.Set[disk.Disk]
+	Disks  *set.Set[disk.Disk]
+	NodeId model.NodeId
+	Mapper *model.NodeConnectionMapper
 }
 
 func (o *LocalBlockIdLister) Start(ctx context.Context) {
@@ -48,10 +53,26 @@ func (o *LocalBlockIdLister) collectResults(req AllBlockIdReq) {
 		go o.readListFromDisk(&disk, &allIds, &wg)
 	}
 	wg.Wait()
-	o.OutIdResults <- AllBlockIdResp{
+	o.sendResults(&AllBlockIdResp{
 		Caller:   req.Caller,
 		BlockIds: allIds,
 		Id:       req.Id,
+	})
+}
+
+func (o *LocalBlockIdLister) sendResults(resp *AllBlockIdResp) {
+	if resp.Caller == o.NodeId {
+		o.OutIdLocalResults <- *resp
+	} else {
+		connId, ok := o.Mapper.ConnForNode(resp.Caller)
+		if ok {
+			o.OutIdRemoteResults <- model.MgrConnsSend{
+				Payload: resp,
+				ConnId:  connId,
+			}
+		} else {
+			log.Warn("could not find connection for node")
+		}
 	}
 }
 
