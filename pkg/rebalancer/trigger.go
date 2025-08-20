@@ -22,7 +22,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type Startup struct {
+type Trigger struct {
 	InTrigger   <-chan struct{}
 	OutSends    chan<- model.MgrConnsSend
 	OutLocalReq chan<- AllBlockIdReq
@@ -32,7 +32,7 @@ type Startup struct {
 	Disks  *set.Set[model.AddDiskReq]
 }
 
-func (s *Startup) Start(ctx context.Context) {
+func (s *Trigger) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -56,6 +56,6 @@ func (s *Startup) Start(ctx context.Context) {
 	}
 }
 
-func (s *Startup) IAmPrimary() bool {
+func (s *Trigger) IAmPrimary() bool {
 	return PrimaryNode(s.Disks) == s.NodeId
 }

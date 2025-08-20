@@ -1,0 +1,18 @@
+flowchart TD
+    A(Trigger) -->|AllBlockIdReq| B[Conns]
+    A -->|AllBlockIdReq| C(LocalBlockIdLister)
+    B -->|AllBlockIdReq| C
+    C --> |AllBlockIdResp| B
+    C --> |AllBlockIdResp| D(Collector)
+    B --> |AllBlockIdResp| D
+    D --> |Done| E[FetchActiveIds]
+    E --> |AllBlockIdResp| D
+    D --> |Ping| F(DeleteUnused)
+    D --> |Ping| G(Validator)
+    G --> |MoveMsg| H(Mover)
+    F --> |Delete| I[DisksBlockDelete]
+    F --> |Delete| B
+    B --> |Delete| I
+    H --> |PutBlockReq| J[BlockSaver]
+    H --> |Delete| I
+    H --> |Delete| B

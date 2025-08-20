@@ -22,14 +22,14 @@ import (
 	"tealfs/pkg/set"
 )
 
-type OnDiskBlockIds struct {
+type LocalBlockIdLister struct {
 	InFetchIds   <-chan AllBlockIdReq
 	OutIdResults chan<- AllBlockIdResp
 
 	Disks *set.Set[disk.Disk]
 }
 
-func (o *OnDiskBlockIds) Start(ctx context.Context) {
+func (o *LocalBlockIdLister) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -40,7 +40,7 @@ func (o *OnDiskBlockIds) Start(ctx context.Context) {
 	}
 }
 
-func (o *OnDiskBlockIds) collectResults(req AllBlockIdReq) {
+func (o *LocalBlockIdLister) collectResults(req AllBlockIdReq) {
 	allIds := set.NewSet[model.BlockId]()
 	wg := sync.WaitGroup{}
 	for _, disk := range o.Disks.GetValues() {
@@ -55,7 +55,7 @@ func (o *OnDiskBlockIds) collectResults(req AllBlockIdReq) {
 	}
 }
 
-func (o *OnDiskBlockIds) readListFromDisk(d *disk.Disk, allIds *set.Set[model.BlockId], wg *sync.WaitGroup) {
+func (o *LocalBlockIdLister) readListFromDisk(d *disk.Disk, allIds *set.Set[model.BlockId], wg *sync.WaitGroup) {
 	defer wg.Done()
 	d.InListIds <- struct{}{}
 	ids := <-d.OutListIds
