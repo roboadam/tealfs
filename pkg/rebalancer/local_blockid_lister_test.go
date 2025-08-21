@@ -30,6 +30,7 @@ func TestLocalBlockIdLister(t *testing.T) {
 	outIdLocalResults := make(chan AllBlockIdResp)
 	outIdRemoteResults := make(chan model.MgrConnsSend)
 	disks := set.NewSet[disk.Disk]()
+	mapper := model.NewNodeConnectionMapper()
 
 	lister := LocalBlockIdLister{
 		InFetchIds:         inFetchIds,
@@ -37,7 +38,24 @@ func TestLocalBlockIdLister(t *testing.T) {
 		OutIdRemoteResults: outIdRemoteResults,
 		Disks:              &disks,
 		NodeId:             "node1",
-		Mapper:             &model.NodeConnectionMapper{},
+		Mapper:             mapper,
 	}
 	go lister.Start(ctx)
+
+	inFetchIds <- AllBlockIdReq{
+		Caller: "node1",
+		Id:     "id1",
+	}
+
+	outLocal := <-outIdLocalResults
+	if outLocal.Caller != "node1" {
+		t.Errorf("unexpected caller in local response: got %s, want %s", outLocal.Caller, "node1")
+	}
+	if outLocal.Id != "id1" {
+		t.Errorf("unexpected ID in local response: got %s, want %s", outLocal.Id, "id1")
+	}
+	if outLocal.BlockIds.Len() != 0 {
+		t.Errorf("unexpected number of block IDs in local response: got %d, want %d", outLocal.BlockIds.Len(), 0)
+	}
+
 }

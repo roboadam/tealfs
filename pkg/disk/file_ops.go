@@ -22,6 +22,7 @@ import (
 type FileOps interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte) error
+	ListFiles(path string) ([]string, error)
 }
 
 type DiskFileOps struct{}
@@ -32,6 +33,20 @@ func (d *DiskFileOps) ReadFile(name string) ([]byte, error) {
 
 func (d *DiskFileOps) WriteFile(name string, data []byte) error {
 	return os.WriteFile(name, data, 0644)
+}
+
+func (d *DiskFileOps) ListFiles(path string) ([]string, error) {
+	result := []string{}
+	files, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if !file.IsDir() {
+			result = append(result, file.Name())
+		}
+	}
+	return result, nil
 }
 
 type MockFileOps struct {
@@ -73,4 +88,17 @@ func (m *MockFileOps) WriteFile(name string, data []byte) error {
 		m.DataWritten <- struct{}{}
 	}
 	return nil
+}
+
+func (m *MockFileOps) ListFiles(path string) ([]string, error) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	if m.mockFS == nil {
+		m.mockFS = make(map[string][]byte)
+	}
+	result := []string{}
+	for name := range m.mockFS {
+		result = append(result, name)
+	}
+	return result, nil
 }

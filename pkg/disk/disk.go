@@ -92,6 +92,9 @@ func (d *Disk) consumeChannels() {
 					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read failure")
 				}
 			}
+		case <-d.InListIds:
+			allIds := set.NewSet[model.BlockId]()
+			
 		}
 	}
 }
