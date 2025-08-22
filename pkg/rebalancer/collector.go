@@ -20,36 +20,56 @@ import (
 	"tealfs/pkg/set"
 )
 
-type CollectAllBlockIds struct {
-	InAllBlockIdResp        <-chan AllBlockIdResp
+type Collector struct {
+	InDiskBlockIds          <-chan AllBlockIdResp
+	InFilesystemBlockIds    <-chan AllBlockIdResp
 	OutLocalAllBlockIdResp  chan<- AllBlockIdResp
 	OutRemoteAllBlockIdResp chan<- AllBlockIdResp
+	OutFetchActiveIds       chan<- struct{}
 
-	collector map[AllBlockId][]AllBlockIdResp
-	Mapper    *model.NodeConnectionMapper
-	NodeId    model.NodeId
+	OnDiskIds        set.Map[AllBlockId, AllBlockIdResp]
+	onDiskIdsCounter set.Map[AllBlockId, int]
+	OnFilesystemIds  set.Map[AllBlockId, AllBlockIdResp]
+	Mapper           *model.NodeConnectionMapper
+	NodeId           model.NodeId
 }
 
-func (c *CollectAllBlockIds) Start(ctx context.Context) {
-	c.collector = make(map[AllBlockId][]AllBlockIdResp)
+func (c *Collector) Start(ctx context.Context) {
+	c.OnDiskIds = set.NewMap[AllBlockId, AllBlockIdResp]()
+	c.onDiskIdsCounter = set.NewMap[AllBlockId, int]()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case resp := <-c.InAllBlockIdResp:
-			c.collector[resp.Id] = append(c.collector[resp.Id], resp)
-			conns := c.Mapper.Connections()
-			finalCount := 1 + conns.Len()
-			if len(c.collector[resp.Id]) == finalCount {
-				resps := c.collector[resp.Id]
-				delete(c.collector, resp.Id)
-				c.sendResp(aggregate(resps))
+		case resp := <-c.InDiskBlockIds:
+			all, ok := c.OnDiskIds.Get(resp.Id)
+			if !ok {
+				all = AllBlockIdResp{
+					Caller:   resp.Caller,
+					BlockIds: set.NewSet[model.BlockId](),
+					Id:       resp.Id,
+				}
 			}
+			all.BlockIds.AddAll(&resp.BlockIds)
+			c.OnDiskIds.Add(resp.Id, all)
+			c.onDiskIdsCounter.Get(resp.Id)
+			c.onDiskIdsCounter.Add(resp.Id, 1)
+
+			if c.
+			// c.collector[resp.Id] = append(c.collector[resp.Id], resp)
+			// conns := c.Mapper.Connections()
+			// finalCount := 1 + conns.Len()
+			// if len(c.collector[resp.Id]) == finalCount {
+			// 	resps := c.collector[resp.Id]
+			// 	delete(c.collector, resp.Id)
+			// 	c.sendResp(aggregate(resps))
+			// }
 		}
 	}
 }
 
-func (c *CollectAllBlockIds) sendResp(resp *AllBlockIdResp) {
+func (c *Collector) sendResp(resp *AllBlockIdResp) {
 	if c.NodeId == resp.Caller {
 		c.OutLocalAllBlockIdResp <- *resp
 	} else {

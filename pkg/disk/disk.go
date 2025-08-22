@@ -94,7 +94,13 @@ func (d *Disk) consumeChannels() {
 			}
 		case <-d.InListIds:
 			allIds := set.NewSet[model.BlockId]()
-			
+			files, err := d.path.ops.ListFiles(d.path.raw)
+			if err == nil {
+				for _, f := range files {
+					allIds.Add(model.BlockId(f))
+				}
+			}
+			d.OutListIds <- allIds
 		}
 	}
 }
