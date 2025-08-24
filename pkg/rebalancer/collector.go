@@ -21,11 +21,10 @@ import (
 )
 
 type Collector struct {
-	InDiskBlockIds          <-chan AllBlockIdResp
-	InFilesystemBlockIds    <-chan AllBlockIdResp
-	OutLocalAllBlockIdResp  chan<- AllBlockIdResp
-	OutRemoteAllBlockIdResp chan<- AllBlockIdResp
-	OutFetchActiveIds       chan<- struct{}
+	InDiskBlockIds       <-chan AllBlockIdResp
+	InFilesystemBlockIds <-chan AllBlockIdResp
+	OutFetchActiveIds    chan<- AllBlockId
+	OutRunCleanup        chan<- AllBlockId
 
 	OnDiskIds        set.Map[AllBlockId, AllBlockIdResp]
 	onDiskIdsCounter set.Map[AllBlockId, int]
@@ -53,41 +52,28 @@ func (c *Collector) Start(ctx context.Context) {
 			}
 			all.BlockIds.AddAll(&resp.BlockIds)
 			c.OnDiskIds.Add(resp.Id, all)
-			c.onDiskIdsCounter.Get(resp.Id)
-			c.onDiskIdsCounter.Add(resp.Id, 1)
-
-			if c.
-			// c.collector[resp.Id] = append(c.collector[resp.Id], resp)
-			// conns := c.Mapper.Connections()
-			// finalCount := 1 + conns.Len()
-			// if len(c.collector[resp.Id]) == finalCount {
-			// 	resps := c.collector[resp.Id]
-			// 	delete(c.collector, resp.Id)
-			// 	c.sendResp(aggregate(resps))
-			// }
+			count := c.increment(resp.Id)
+			if count >= c.expectedOnDiskMsgs() {
+				c.OutFetchActiveIds <- resp.Id
+			}
+		case resp := <-c.InFilesystemBlockIds:
+			c.OnFilesystemIds.Add(resp.Id, resp)
+			c.OutRunCleanup <- resp.Id
 		}
 	}
 }
 
-func (c *Collector) sendResp(resp *AllBlockIdResp) {
-	if c.NodeId == resp.Caller {
-		c.OutLocalAllBlockIdResp <- *resp
-	} else {
-		c.OutRemoteAllBlockIdResp <- *resp
-	}
+func (c *Collector) expectedOnDiskMsgs() int {
+	conns := c.Mapper.Connections()
+	return 1 + conns.Len()
 }
 
-func aggregate(resps []AllBlockIdResp) *AllBlockIdResp {
-	if len(resps) == 0 {
-		return &AllBlockIdResp{}
+func (c *Collector) increment(id AllBlockId) int {
+	count, ok := c.onDiskIdsCounter.Get(id)
+	if !ok {
+		count = 0
 	}
-	result := AllBlockIdResp{
-		BlockIds: set.NewSet[model.BlockId](),
-		Caller:   resps[0].Caller,
-		Id:       resps[0].Id,
-	}
-	for _, resp := range resps {
-		result.BlockIds.AddAll(&resp.BlockIds)
-	}
-	return &result
+	count++
+	c.onDiskIdsCounter.Add(id, count)
+	return count
 }
