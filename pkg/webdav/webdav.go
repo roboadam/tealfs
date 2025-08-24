@@ -32,7 +32,7 @@ type Webdav struct {
 	mgrWebdavGets chan model.GetBlockResp
 	mgrWebdavPuts chan model.PutBlockResp
 
-	fileSystem   FileSystem
+	FileSystem   FileSystem
 	nodeId       model.NodeId
 	pendingReads map[model.GetBlockId]chan model.GetBlockResp
 	pendingPuts  map[model.PutBlockId]chan model.PutBlockResp
@@ -64,7 +64,7 @@ func New(
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
-		fileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, outSends, mapper, ctx),
+		FileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, outSends, mapper, ctx),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
@@ -72,8 +72,8 @@ func New(
 		bindAddress:   bindAddress,
 		ctx:           ctx,
 	}
-	w.fileSystem.OutSends = outSends
-	w.fileSystem.Mapper = mapper
+	w.FileSystem.OutSends = outSends
+	w.FileSystem.Mapper = mapper
 	w.start()
 	return w
 }
@@ -83,7 +83,7 @@ func (w *Webdav) start() {
 
 	handler := &webdav.Handler{
 		Prefix:     "/",
-		FileSystem: &w.fileSystem,
+		FileSystem: &w.FileSystem,
 		LockSystem: w.lockSystem,
 	}
 
@@ -116,10 +116,10 @@ func (w *Webdav) eventLoop() {
 			} else {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
-		case r := <-w.fileSystem.ReadReqResp:
+		case r := <-w.FileSystem.ReadReqResp:
 			chanutil.Send(w.ctx, w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id))
 			w.pendingReads[r.Req.Id] = r.Resp
-		case r := <-w.fileSystem.WriteReqResp:
+		case r := <-w.FileSystem.WriteReqResp:
 			chanutil.Send(w.ctx, w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
 			w.pendingPuts[r.Req.Id] = r.Resp
 		}

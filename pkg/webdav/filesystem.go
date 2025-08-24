@@ -23,38 +23,42 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/rebalancer"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type FileSystem struct {
-	fileHolder   FileHolder
-	mkdirReq     chan mkdirReq
-	openFileReq  chan openFileReq
-	removeAllReq chan removeAllReq
-	renameReq    chan renameReq
-	writeReq     chan writeReq
-	readReq      chan readReq
-	seekReq      chan seekReq
-	closeReq     chan closeReq
-	readdirReq   chan readdirReq
-	statReq      chan statReq
-	nameReq      chan nameReq
-	sizeReq      chan sizeReq
-	modeReq      chan modeReq
-	modtimeReq   chan modtimeReq
-	isdirReq     chan isdirReq
-	sysReq       chan sysReq
-	ReadReqResp  chan ReadReqResp
-	WriteReqResp chan WriteReqResp
-	inBroadcast  chan FileBroadcast
-	OutSends     chan model.MgrConnsSend
-	Mapper       *model.NodeConnectionMapper
-	nodeId       model.NodeId
-	fileOps      disk.FileOps
-	indexPath    string
-	Ctx          context.Context
+	fileHolder     FileHolder
+	mkdirReq       chan mkdirReq
+	openFileReq    chan openFileReq
+	removeAllReq   chan removeAllReq
+	renameReq      chan renameReq
+	writeReq       chan writeReq
+	readReq        chan readReq
+	seekReq        chan seekReq
+	closeReq       chan closeReq
+	readdirReq     chan readdirReq
+	statReq        chan statReq
+	nameReq        chan nameReq
+	sizeReq        chan sizeReq
+	modeReq        chan modeReq
+	modtimeReq     chan modtimeReq
+	isdirReq       chan isdirReq
+	sysReq         chan sysReq
+	ReadReqResp    chan ReadReqResp
+	WriteReqResp   chan WriteReqResp
+	inBroadcast    chan FileBroadcast
+	OutSends       chan model.MgrConnsSend
+	InGetBlockIds  <-chan rebalancer.AllBlockId
+	OutAllBlockIds chan<- rebalancer.AllBlockIdResp
+
+	Mapper    *model.NodeConnectionMapper
+	nodeId    model.NodeId
+	fileOps   disk.FileOps
+	indexPath string
+	Ctx       context.Context
 }
 
 func NewFileSystem(
@@ -201,6 +205,13 @@ func (f *FileSystem) run() {
 					log.Error("Unable to persist file index:", err)
 				}
 			}
+		case reqId := <-f.InGetBlockIds:
+			resp := rebalancer.AllBlockIdResp{
+				Caller:   f.nodeId,
+				BlockIds: f.fileHolder.AllBlockIds(),
+				Id:       reqId,
+			}
+			f.OutAllBlockIds <- resp
 		}
 	}
 }
