@@ -16,6 +16,8 @@ package rebalancer
 
 import (
 	"context"
+	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 )
 
@@ -23,6 +25,19 @@ func TestCollector(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	collector := Collector{}
+	inDiskBlockIds := make(chan AllBlockIdResp)
+	inFilesystemBlockIds := make(chan AllBlockIdResp)
+	outFetchActiveIds := make(chan AllBlockId)
+	outRunCleanup := make(chan AllBlockId)
+
+	collector := Collector{
+		InDiskBlockIds:       inDiskBlockIds,
+		InFilesystemBlockIds: inFilesystemBlockIds,
+		OutFetchActiveIds:    outFetchActiveIds,
+		OutRunCleanup:        outRunCleanup,
+
+		Mapper:               &model.NodeConnectionMapper{},
+		NodeId:               "",
+	}
 	collector.Start(ctx)
 }
