@@ -36,8 +36,20 @@ func TestCollector(t *testing.T) {
 		OutFetchActiveIds:    outFetchActiveIds,
 		OutRunCleanup:        outRunCleanup,
 
-		Mapper:               &model.NodeConnectionMapper{},
-		NodeId:               "",
+		Mapper: model.NewNodeConnectionMapper(),
+		NodeId: "node1",
 	}
 	collector.Start(ctx)
+
+	collector.Mapper.SetAll(model.ConnId(1), "addr2", "node2")
+	collector.Mapper.SetAll(model.ConnId(1), "addr3", "node3")
+
+	blockIds := set.NewSet[model.BlockId]()
+	blockIds.Add("block1")
+	blockIds.Add("block2")
+	inDiskBlockIds <- AllBlockIdResp{
+		Caller:   "node1",
+		Id:       "id1",
+		BlockIds: blockIds,
+	}
 }
