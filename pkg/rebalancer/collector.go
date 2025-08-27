@@ -26,8 +26,8 @@ type Collector struct {
 	OutFetchActiveIds    chan<- AllBlockId
 	OutRunCleanup        chan<- AllBlockId
 
-	OnDiskIds        set.Map[AllBlockId, AllBlockIdResp]
 	onDiskIdsCounter set.Map[AllBlockId, int]
+	OnDiskIds        set.Map[AllBlockId, AllBlockIdResp]
 	OnFilesystemIds  set.Map[AllBlockId, AllBlockIdResp]
 	Mapper           *model.NodeConnectionMapper
 	NodeId           model.NodeId

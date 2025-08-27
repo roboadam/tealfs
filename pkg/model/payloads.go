@@ -35,6 +35,7 @@ const (
 	Victory            PayloadType = 15
 	AllBlockIdReqType  PayloadType = 16
 	AllBlockIdRespType PayloadType = 17
+	DeleteBlockId      PayloadType = 18
 )
 
 type Payload interface {

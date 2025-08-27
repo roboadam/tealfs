@@ -39,3 +39,11 @@ type AllBlockIdResp struct {
 func (a *AllBlockIdResp) Type() model.PayloadType {
 	return model.AllBlockIdRespType
 }
+
+type DeleteBlockId struct {
+	BlockId model.BlockId
+}
+
+func (d *DeleteBlockId) Type() model.PayloadType {
+	return model.DeleteBlockId
+}
