@@ -25,10 +25,10 @@ func TestCollector(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inDiskBlockIds := make(chan AllBlockIdResp)
-	inFilesystemBlockIds := make(chan AllBlockIdResp)
-	outFetchActiveIds := make(chan AllBlockId)
-	outRunCleanup := make(chan AllBlockId)
+	inDiskBlockIds := make(chan AllBlockIdResp, 1)
+	inFilesystemBlockIds := make(chan AllBlockIdResp, 1)
+	outFetchActiveIds := make(chan AllBlockId, 1)
+	outRunCleanup := make(chan AllBlockId, 1)
 
 	collector := Collector{
 		InDiskBlockIds:       inDiskBlockIds,
@@ -39,7 +39,7 @@ func TestCollector(t *testing.T) {
 		Mapper: model.NewNodeConnectionMapper(),
 		NodeId: "node1",
 	}
-	collector.Start(ctx)
+	go collector.Start(ctx)
 
 	collector.Mapper.SetAll(model.ConnId(1), "addr2", "node2")
 	collector.Mapper.SetAll(model.ConnId(1), "addr3", "node3")
@@ -48,8 +48,69 @@ func TestCollector(t *testing.T) {
 	blockIds.Add("block1")
 	blockIds.Add("block2")
 	inDiskBlockIds <- AllBlockIdResp{
+		Caller:   "node2",
+		Id:       "id1",
+		BlockIds: blockIds,
+	}
+
+	blockIds = set.NewSet[model.BlockId]()
+	blockIds.Add("block2")
+	blockIds.Add("block3")
+	inDiskBlockIds <- AllBlockIdResp{
 		Caller:   "node1",
 		Id:       "id1",
 		BlockIds: blockIds,
+	}
+
+	blockIds = set.NewSet[model.BlockId]()
+	blockIds.Add("block3")
+	blockIds.Add("block4")
+	inDiskBlockIds <- AllBlockIdResp{
+		Caller:   "node3",
+		Id:       "id1",
+		BlockIds: blockIds,
+	}
+
+	nextStep := <-outFetchActiveIds
+	if nextStep != "id1" {
+		t.Errorf("unexpected next step: got %s, want %s", nextStep, "id1")
+	}
+
+	blockIds = set.NewSet[model.BlockId]()
+	blockIds.Add("block1")
+	blockIds.Add("block2")
+	blockIds.Add("block3")
+	inFilesystemBlockIds <- AllBlockIdResp{
+		Caller:   "node1",
+		BlockIds: blockIds,
+		Id:       "id1",
+	}
+
+	lastStep := <-outRunCleanup
+	if lastStep != "id1" {
+		t.Errorf("unexpected last step: got %s, want %s", lastStep, "id1")
+	}
+
+	expectedIds := set.NewSet[model.BlockId]()
+	expectedIds.Add("block1")
+	expectedIds.Add("block2")
+	expectedIds.Add("block3")
+	expectedIds.Add("block4")
+
+	if resp, ok := collector.OnDiskIds.Get("id1"); ok {
+		if !resp.BlockIds.Equal(&expectedIds) {
+			t.Error("unexpected block IDs")
+		}
+	} else {
+		t.Error("expected block IDs not found")
+	}
+
+	expectedIds.Remove("block4")
+	if resp, ok := collector.OnFilesystemIds.Get("id1"); ok {
+		if !resp.BlockIds.Equal(&expectedIds) {
+			t.Error("unexpected block IDs")
+		}
+	} else {
+		t.Error("expected block IDs not found")
 	}
 }

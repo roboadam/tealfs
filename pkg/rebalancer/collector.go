@@ -35,6 +35,7 @@ type Collector struct {
 
 func (c *Collector) Start(ctx context.Context) {
 	c.OnDiskIds = set.NewMap[AllBlockId, AllBlockIdResp]()
+	c.OnFilesystemIds = set.NewMap[AllBlockId, AllBlockIdResp]()
 	c.onDiskIdsCounter = set.NewMap[AllBlockId, int]()
 
 	for {
