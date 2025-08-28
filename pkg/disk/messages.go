@@ -12,30 +12,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package rebalancer
+package disk
 
 import (
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 )
 
-type AllBlockId string
-
-type AllBlockIdReq struct {
-	Caller model.NodeId
-	Id     AllBlockId
+type DeleteBlockId struct {
+	BlockId model.BlockId
 }
 
-func (a *AllBlockIdReq) Type() model.PayloadType {
-	return model.AllBlockIdReqType
-}
-
-type AllBlockIdResp struct {
-	Caller   model.NodeId
-	BlockIds set.Set[model.BlockId]
-	Id       AllBlockId
-}
-
-func (a *AllBlockIdResp) Type() model.PayloadType {
-	return model.AllBlockIdRespType
+func (d *DeleteBlockId) Type() model.PayloadType {
+	return model.DeleteBlockId
 }

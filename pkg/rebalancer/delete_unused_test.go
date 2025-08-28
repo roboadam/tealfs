@@ -16,6 +16,7 @@ package rebalancer
 
 import (
 	"context"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 	"testing"
@@ -27,7 +28,7 @@ func TestDeleteUnused(t *testing.T) {
 
 	inRunCleanup := make(chan AllBlockId, 1)
 	outRemoteDelete := make(chan model.MgrConnsSend, 10)
-	outLocalDelete := make(chan DeleteBlockId, 10)
+	outLocalDelete := make(chan disk.DeleteBlockId, 10)
 
 	onDiskIds := set.NewMap[AllBlockId, AllBlockIdResp]()
 	onFilesystemIds := set.NewMap[AllBlockId, AllBlockIdResp]()
@@ -81,7 +82,7 @@ func TestDeleteUnused(t *testing.T) {
 	numRemoteDeletes := 2 * 2 // 2 blocks * 2 connections
 	for range numRemoteDeletes {
 		msg := <-outRemoteDelete
-		payload, _ := msg.Payload.(*DeleteBlockId)
+		payload, _ := msg.Payload.(*disk.DeleteBlockId)
 		if _, ok := remoteDeletes[msg.ConnId]; !ok {
 			emptySet := set.NewSet[model.BlockId]()
 			remoteDeletes[msg.ConnId] = &emptySet

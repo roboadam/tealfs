@@ -16,6 +16,7 @@ package rebalancer
 
 import (
 	"context"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
@@ -23,7 +24,7 @@ import (
 type DeleteUnused struct {
 	InRunCleanup    <-chan AllBlockId
 	OutRemoteDelete chan<- model.MgrConnsSend
-	OutLocalDelete  chan<- DeleteBlockId
+	OutLocalDelete  chan<- disk.DeleteBlockId
 
 	OnDiskIds       *set.Map[AllBlockId, AllBlockIdResp]
 	OnFilesystemIds *set.Map[AllBlockId, AllBlockIdResp]
@@ -41,7 +42,7 @@ func (d *DeleteUnused) Start(ctx context.Context) {
 			active := d.ActiveSet(req)
 			toDelete := onDisk.Minus(active)
 			for _, blockId := range toDelete.GetValues() {
-				deleteMsg := DeleteBlockId{BlockId: blockId}
+				deleteMsg := disk.DeleteBlockId{BlockId: blockId}
 				d.OutLocalDelete <- deleteMsg
 
 				connections := d.Mapper.Connections()

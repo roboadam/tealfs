@@ -23,6 +23,7 @@ type FileOps interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte) error
 	ListFiles(path string) ([]string, error)
+	Remove(name string) error
 }
 
 type DiskFileOps struct{}
@@ -33,6 +34,10 @@ func (d *DiskFileOps) ReadFile(name string) ([]byte, error) {
 
 func (d *DiskFileOps) WriteFile(name string, data []byte) error {
 	return os.WriteFile(name, data, 0644)
+}
+
+func (d *DiskFileOps) Remove(name string) error {
+	return os.Remove(name)
 }
 
 func (d *DiskFileOps) ListFiles(path string) ([]string, error) {
@@ -101,4 +106,11 @@ func (m *MockFileOps) ListFiles(path string) ([]string, error) {
 		result = append(result, name)
 	}
 	return result, nil
+}
+
+func (m *MockFileOps) Remove(name string) error {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	delete(m.mockFS, name)
+	return nil
 }

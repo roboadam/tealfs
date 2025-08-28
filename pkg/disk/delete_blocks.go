@@ -12,30 +12,27 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package rebalancer
+package disk
 
 import (
-	"tealfs/pkg/model"
+	"context"
 	"tealfs/pkg/set"
 )
 
-type AllBlockId string
+type DeleteBlocks struct {
+	InDelete <-chan DeleteBlockId
 
-type AllBlockIdReq struct {
-	Caller model.NodeId
-	Id     AllBlockId
+	Disks *set.Set[Disk]
 }
 
-func (a *AllBlockIdReq) Type() model.PayloadType {
-	return model.AllBlockIdReqType
-}
-
-type AllBlockIdResp struct {
-	Caller   model.NodeId
-	BlockIds set.Set[model.BlockId]
-	Id       AllBlockId
-}
-
-func (a *AllBlockIdResp) Type() model.PayloadType {
-	return model.AllBlockIdRespType
+func (d *DeleteBlocks) Start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-d.InDelete:
+			for _, disk := range d.Disks.GetValues() {
+			}
+		}
+	}
 }

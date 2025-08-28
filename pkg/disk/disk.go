@@ -59,6 +59,7 @@ type Disk struct {
 	InReads    chan model.ReadRequest
 	InListIds  chan struct{}
 	OutListIds chan set.Set[model.BlockId]
+	InDelete   chan string
 	ctx        context.Context
 }
 
