@@ -12,28 +12,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package disk
+package rebalancer
 
 import (
 	"context"
 	"tealfs/pkg/set"
 )
 
-type DeleteBlocks struct {
-	InDelete <-chan DeleteBlockId
+type FillMissing struct {
+	Start <-chan AllBlockId
 
-	Disks *set.Set[Disk]
+	OnFilesystemIds *set.Map[AllBlockId, AllBlockIdResp]
 }
 
-func (d *DeleteBlocks) Start(ctx context.Context) {
+func (f *FillMissing) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case idToDelete := <-d.InDelete:
-			for _, disk := range d.Disks.GetValues() {
-				disk.InDelete <- idToDelete.BlockId
-			}
+		case id := <-f.Start:
+			blockIds := 
 		}
 	}
 }

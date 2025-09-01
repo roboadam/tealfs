@@ -22,6 +22,8 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Path struct {
@@ -59,7 +61,7 @@ type Disk struct {
 	InReads    chan model.ReadRequest
 	InListIds  chan struct{}
 	OutListIds chan set.Set[model.BlockId]
-	InDelete   chan string
+	InDelete   chan model.BlockId
 	ctx        context.Context
 }
 
@@ -102,6 +104,12 @@ func (d *Disk) consumeChannels() {
 				}
 			}
 			d.OutListIds <- allIds
+		case idToDelete := <- d.InDelete:
+			filePath := filepath.Join(d.path.raw, string(idToDelete))
+			err := d.path.ops.Remove(filePath)
+			if err != nil {
+				log.Warn("Error deleting file")
+			}
 		}
 	}
 }
