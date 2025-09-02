@@ -16,22 +16,45 @@ package rebalancer
 
 import (
 	"context"
+	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	"github.com/google/uuid"
 )
 
 type FillMissing struct {
-	Start <-chan AllBlockId
+	InStart  <-chan AllBlockId
+	OutSends chan<- model.MgrConnsSend
 
 	OnFilesystemIds *set.Map[AllBlockId, AllBlockIdResp]
+	Mapper          *model.NodeConnectionMapper
+	NodeId          model.NodeId
+
+	requestMap map[AllBlockId]map[StoreItId]bool
 }
 
 func (f *FillMissing) Run(ctx context.Context) {
+	f.requestMap = make(map[AllBlockId]map[StoreItId]bool)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case id := <-f.Start:
-			blockIds := 
+		case rebalanceId := <-f.InStart:
+			blockIdsHolder, ok := f.OnFilesystemIds.Get(rebalanceId)
+			if ok {
+				blockIds := blockIdsHolder.BlockIds
+				f.requestMap[rebalanceId] = make(map[StoreItId]bool)
+				for _, blockId := range blockIds.GetValues() {
+					storeIdId := StoreItId(uuid.New().String())
+					f.requestMap[rebalanceId][storeIdId] = true
+					f.OutSends <- model.MgrConnsSend{
+						Payload: &StoreItCmd{
+							StoreItId: storeIdId,
+							BlockId:   blockId,
+							Caller:    f.NodeId,
+						},
+				}
+			}
 		}
 	}
 }

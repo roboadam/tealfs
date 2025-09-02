@@ -36,6 +36,8 @@ const (
 	AllBlockIdReqType  PayloadType = 16
 	AllBlockIdRespType PayloadType = 17
 	DeleteBlockId      PayloadType = 18
+	StoreItCmdType     PayloadType = 19
+	StoreItRespType    PayloadType = 20
 )
 
 type Payload interface {

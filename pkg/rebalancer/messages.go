@@ -39,3 +39,26 @@ type AllBlockIdResp struct {
 func (a *AllBlockIdResp) Type() model.PayloadType {
 	return model.AllBlockIdRespType
 }
+
+type StoreItCmd struct {
+	StoreItId StoreItId
+	BlockId   model.BlockId
+	Caller    model.NodeId
+}
+
+func (s *StoreItCmd) Type() model.PayloadType {
+	return model.StoreItCmdType
+}
+
+type StoreItResp struct {
+	StoreItId StoreItId
+	Caller    model.NodeId
+	Ok        bool
+	Msg       string
+}
+
+func (s *StoreItResp) Type() model.PayloadType {
+	return model.StoreItRespType
+}
+
+type StoreItId string
