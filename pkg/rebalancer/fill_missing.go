@@ -53,6 +53,8 @@ func (f *FillMissing) Run(ctx context.Context) {
 							BlockId:   blockId,
 							Caller:    f.NodeId,
 						},
+						ConnId: 0,
+					}
 				}
 			}
 		}
