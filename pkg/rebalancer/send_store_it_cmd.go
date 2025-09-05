@@ -14,11 +14,21 @@
 
 package rebalancer
 
-import "context"
+import (
+	"context"
+	"tealfs/pkg/disk/dist"
+	"tealfs/pkg/model"
+	"tealfs/pkg/set"
+)
 
-type SendStoreItCmd struct{
-	InStoreItCmd <-chan StoreItCmd
-	OutSends     chan<- model.MgrConnsSend
+type SendStoreItCmd struct {
+	InStoreItCmd    <-chan StoreItCmd
+	OutSends        chan<- model.MgrConnsSend
+	OutLocalStoreIt chan<- StoreItCmd
+
+	Distributer *dist.MirrorDistributer
+	Conns       *model.NodeConnectionMapper
+	NodeId      model.NodeId
 }
 
 func (s *SendStoreItCmd) Start(ctx context.Context) {
@@ -26,6 +36,32 @@ func (s *SendStoreItCmd) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case cmd := <-s.InStoreItCmd:
+			nodes := s.nodesForCmd(cmd)
+			if nodes.Contains(s.NodeId) {
+				s.OutLocalStoreIt <- cmd
+			} else {
+				s.remoteSend(&cmd, nodes)
+			}
 		}
 	}
+}
+
+func (s *SendStoreItCmd) remoteSend(cmd *StoreItCmd, nodes *set.Set[model.NodeId]) {
+	conns := s.Conns.ConnsForNodes(*nodes)
+	for _, conn := range conns.GetValues() {
+		s.OutSends <- model.MgrConnsSend{
+			Payload: cmd,
+			ConnId:  conn,
+		}
+	}
+}
+
+func (s *SendStoreItCmd) nodesForCmd(cmd StoreItCmd) *set.Set[model.NodeId] {
+	nodes := set.NewSet[model.NodeId]()
+	ptrs := s.Distributer.ReadPointersForId(cmd.BlockId)
+	for _, ptr := range ptrs {
+		nodes.Add(ptr.NodeId)
+	}
+	return &nodes
 }

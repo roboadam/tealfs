@@ -123,6 +123,18 @@ func (n *NodeConnectionMapper) ConnForNode(node NodeId) (ConnId, bool) {
 	return n.connNodeMap.Get2(node)
 }
 
+func (n *NodeConnectionMapper) ConnsForNodes(nodes set.Set[NodeId]) *set.Set[ConnId] {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	result := set.NewSet[ConnId]()
+	for _, node := range nodes.GetValues() {
+		if conn, ok := n.connNodeMap.Get2(node); ok {
+			result.Add(conn)
+		}
+	}
+	return &result
+}
+
 func (n *NodeConnectionMapper) NodeForConn(connId ConnId) (NodeId, bool) {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
