@@ -33,7 +33,11 @@ func (d *DiskFileOps) ReadFile(name string) ([]byte, error) {
 }
 
 func (d *DiskFileOps) WriteFile(name string, data []byte) error {
+	if _, err := os.Stat(name); err == nil {
+		return nil
+	}
 	return os.WriteFile(name, data, 0644)
+
 }
 
 func (d *DiskFileOps) Remove(name string) error {

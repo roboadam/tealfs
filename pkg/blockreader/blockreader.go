@@ -30,8 +30,9 @@ type BlockReader struct {
 	LocalDest  chan<- GetFromDiskReq
 
 	// Response phase
-	InResp <-chan GetFromDiskResp
-	Resp   chan<- model.GetBlockResp
+	InResp         <-chan GetFromDiskResp
+	OutSaveLocally chan<- GetFromDiskResp
+	Resp           chan<- model.GetBlockResp
 
 	Distributer *dist.MirrorDistributer
 	NodeId      model.NodeId
@@ -124,6 +125,9 @@ func (bs *BlockReader) sendToLocalOrRemote(getFromDisk *GetFromDiskReq) {
 }
 
 func (bs *BlockReader) handleGetResp(requestState map[model.GetBlockId]state, resp GetFromDiskResp) {
+	// Save it locally if we don't already have it
+	bs.OutSaveLocally <- resp
+
 	// If we get a response that we don't have record of there isn't much we can do
 	if _, ok := requestState[resp.Resp.Id]; ok {
 		s := requestState[resp.Resp.Id]
