@@ -14,4 +14,28 @@
 
 package rebalancer
 
+import (
+	"context"
+	"tealfs/pkg/model"
 
+	"github.com/google/uuid"
+)
+
+type LocalStoreItHandler struct {
+	InStoreItCmd   <-chan StoreItCmd
+	OutGetBlockReq chan<- model.GetBlockReq
+}
+
+func (l *LocalStoreItHandler) Start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case cmd := <-l.InStoreItCmd:
+			l.OutGetBlockReq <- model.GetBlockReq{
+				Id:      model.GetBlockId(uuid.NewString()),
+				BlockId: cmd.BlockId,
+			}
+		}
+	}
+}
