@@ -24,35 +24,37 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/rebalancer"
+	"tealfs/pkg/set"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type FileSystem struct {
-	fileHolder     FileHolder
-	mkdirReq       chan mkdirReq
-	openFileReq    chan openFileReq
-	removeAllReq   chan removeAllReq
-	renameReq      chan renameReq
-	writeReq       chan writeReq
-	readReq        chan readReq
-	seekReq        chan seekReq
-	closeReq       chan closeReq
-	readdirReq     chan readdirReq
-	statReq        chan statReq
-	nameReq        chan nameReq
-	sizeReq        chan sizeReq
-	modeReq        chan modeReq
-	modtimeReq     chan modtimeReq
-	isdirReq       chan isdirReq
-	sysReq         chan sysReq
-	ReadReqResp    chan ReadReqResp
-	WriteReqResp   chan WriteReqResp
-	inBroadcast    chan FileBroadcast
-	OutSends       chan model.MgrConnsSend
-	InGetBlockIds  <-chan rebalancer.BalanceReqId
-	OutAllBlockIds chan<- rebalancer.BlockIdList
+	fileHolder      FileHolder
+	mkdirReq        chan mkdirReq
+	openFileReq     chan openFileReq
+	removeAllReq    chan removeAllReq
+	renameReq       chan renameReq
+	writeReq        chan writeReq
+	readReq         chan readReq
+	seekReq         chan seekReq
+	closeReq        chan closeReq
+	readdirReq      chan readdirReq
+	statReq         chan statReq
+	nameReq         chan nameReq
+	sizeReq         chan sizeReq
+	modeReq         chan modeReq
+	modtimeReq      chan modtimeReq
+	isdirReq        chan isdirReq
+	sysReq          chan sysReq
+	listBlockIdsReq chan listBlockIdsReq
+	ReadReqResp     chan ReadReqResp
+	WriteReqResp    chan WriteReqResp
+	inBroadcast     chan FileBroadcast
+	OutSends        chan model.MgrConnsSend
+	InGetBlockIds   <-chan rebalancer.BalanceReqId
+	OutAllBlockIds  chan<- rebalancer.BlockIdList
 
 	Mapper    *model.NodeConnectionMapper
 	nodeId    model.NodeId
@@ -189,6 +191,8 @@ func (f *FileSystem) run() {
 			chanutil.Send(f.Ctx, req.resp, isdir(req), "filesystem: isdir")
 		case req := <-f.sysReq:
 			chanutil.Send(f.Ctx, req.resp, sys(req), "filesystem: sys")
+		case req := <-f.listBlockIdsReq:
+			f.listBlockIds(&req)
 		case msg := <-f.inBroadcast:
 			file, _, err := FileFromBytes(msg.FileBytes, f)
 			if err != nil {
@@ -303,6 +307,22 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	}
 
 	return nil
+}
+
+type listBlockIdsReq struct {
+	respChan chan set.Set[model.BlockId]
+}
+
+func (f *FileSystem) ListBlockIds() *set.Set[model.BlockId] {
+
+}
+
+func (f *FileSystem) listBlockIds(req *listBlockIdsReq) {
+	result := set.NewSet[model.BlockId]()
+	for blockId := range f.fileHolder.byBlockId {
+		result.Add(blockId)
+	}
+	req.respChan <- result
 }
 
 type removeAllReq struct {
