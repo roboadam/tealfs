@@ -21,45 +21,45 @@ import (
 )
 
 type Collector struct {
-	InDiskBlockIds       <-chan AllBlockIdResp
-	InFilesystemBlockIds <-chan AllBlockIdResp
-	OutFetchActiveIds    chan<- AllBlockId
-	OutRunCleanup        chan<- AllBlockId
+	InDiskBlockIds       <-chan BlockIdList
+	InFilesystemBlockIds <-chan BlockIdList
+	OutFetchActiveIds    chan<- BalanceReqId
+	OutRunCleanup        chan<- BalanceReqId
 
-	onDiskIdsCounter set.Map[AllBlockId, int]
-	OnDiskIds        set.Map[AllBlockId, AllBlockIdResp]
-	OnFilesystemIds  set.Map[AllBlockId, AllBlockIdResp]
+	onDiskIdsCounter set.Map[BalanceReqId, int]
+	OnDiskIds        set.Map[BalanceReqId, BlockIdList]
+	OnFilesystemIds  set.Map[BalanceReqId, BlockIdList]
 	Mapper           *model.NodeConnectionMapper
 	NodeId           model.NodeId
 }
 
 func (c *Collector) Start(ctx context.Context) {
-	c.OnDiskIds = set.NewMap[AllBlockId, AllBlockIdResp]()
-	c.OnFilesystemIds = set.NewMap[AllBlockId, AllBlockIdResp]()
-	c.onDiskIdsCounter = set.NewMap[AllBlockId, int]()
+	c.OnDiskIds = set.NewMap[BalanceReqId, BlockIdList]()
+	c.OnFilesystemIds = set.NewMap[BalanceReqId, BlockIdList]()
+	c.onDiskIdsCounter = set.NewMap[BalanceReqId, int]()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case resp := <-c.InDiskBlockIds:
-			all, ok := c.OnDiskIds.Get(resp.Id)
+			all, ok := c.OnDiskIds.Get(resp.BalanceReqId)
 			if !ok {
-				all = AllBlockIdResp{
-					Caller:   resp.Caller,
-					BlockIds: set.NewSet[model.BlockId](),
-					Id:       resp.Id,
+				all = BlockIdList{
+					Caller:       resp.Caller,
+					BlockIds:     set.NewSet[model.BlockId](),
+					BalanceReqId: resp.BalanceReqId,
 				}
 			}
 			all.BlockIds.AddAll(&resp.BlockIds)
-			c.OnDiskIds.Add(resp.Id, all)
-			count := c.increment(resp.Id)
+			c.OnDiskIds.Add(resp.BalanceReqId, all)
+			count := c.increment(resp.BalanceReqId)
 			if count >= c.expectedOnDiskMsgs() {
-				c.OutFetchActiveIds <- resp.Id
+				c.OutFetchActiveIds <- resp.BalanceReqId
 			}
 		case resp := <-c.InFilesystemBlockIds:
-			c.OnFilesystemIds.Add(resp.Id, resp)
-			c.OutRunCleanup <- resp.Id
+			c.OnFilesystemIds.Add(resp.BalanceReqId, resp)
+			c.OutRunCleanup <- resp.BalanceReqId
 		}
 	}
 }
@@ -69,7 +69,7 @@ func (c *Collector) expectedOnDiskMsgs() int {
 	return 1 + conns.Len()
 }
 
-func (c *Collector) increment(id AllBlockId) int {
+func (c *Collector) increment(id BalanceReqId) int {
 	count, ok := c.onDiskIdsCounter.Get(id)
 	if !ok {
 		count = 0

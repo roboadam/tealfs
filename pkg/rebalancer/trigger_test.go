@@ -22,10 +22,10 @@ import (
 	"time"
 )
 
-func newTriggerTest(ctx context.Context) (*Trigger, chan struct{}, chan model.MgrConnsSend, chan AllBlockIdReq) {
+func newTriggerTest(ctx context.Context) (*Trigger, chan struct{}, chan model.MgrConnsSend, chan BalanceReq) {
 	inTrigger := make(chan struct{})
 	outSends := make(chan model.MgrConnsSend)
-	outLocalReq := make(chan AllBlockIdReq)
+	outLocalReq := make(chan BalanceReq)
 	nodeId := model.NodeId("node1")
 	mapper := model.NewNodeConnectionMapper()
 	disks := set.NewSet[model.AddDiskReq]()
@@ -103,7 +103,7 @@ func TestTrigger(t *testing.T) {
 
 		inTrigger <- struct{}{}
 
-		var localReq AllBlockIdReq
+		var localReq BalanceReq
 		select {
 		case localReq = <-outLocalReq:
 		case <-time.After(100 * time.Millisecond):
@@ -120,12 +120,12 @@ func TestTrigger(t *testing.T) {
 			t.Errorf("unexpected ConnId for remote request: got %d, want %d", remoteReq.ConnId, 1)
 		}
 
-		payload, ok := remoteReq.Payload.(*AllBlockIdReq)
+		payload, ok := remoteReq.Payload.(*BalanceReq)
 		if !ok {
 			t.Fatalf("unexpected payload type: %T", remoteReq.Payload)
 		}
 
-		if payload.Id != localReq.Id {
+		if payload.BalanceReqId != localReq.BalanceReqId {
 			t.Error("local and remote request IDs do not match")
 		}
 		if payload.Caller != trigger.NodeId {
@@ -151,7 +151,7 @@ func TestTrigger(t *testing.T) {
 		// No other nodes, so AreAllConnected should be true.
 		inTrigger <- struct{}{}
 
-		var localReq AllBlockIdReq
+		var localReq BalanceReq
 		select {
 		case localReq = <-outLocalReq:
 			// good

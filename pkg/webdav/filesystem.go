@@ -51,8 +51,8 @@ type FileSystem struct {
 	WriteReqResp   chan WriteReqResp
 	inBroadcast    chan FileBroadcast
 	OutSends       chan model.MgrConnsSend
-	InGetBlockIds  <-chan rebalancer.AllBlockId
-	OutAllBlockIds chan<- rebalancer.AllBlockIdResp
+	InGetBlockIds  <-chan rebalancer.BalanceReqId
+	OutAllBlockIds chan<- rebalancer.BlockIdList
 
 	Mapper    *model.NodeConnectionMapper
 	nodeId    model.NodeId
@@ -206,10 +206,10 @@ func (f *FileSystem) run() {
 				}
 			}
 		case reqId := <-f.InGetBlockIds:
-			resp := rebalancer.AllBlockIdResp{
-				Caller:   f.nodeId,
-				BlockIds: f.fileHolder.AllBlockIds(),
-				Id:       reqId,
+			resp := rebalancer.BlockIdList{
+				Caller:       f.nodeId,
+				BlockIds:     f.fileHolder.AllBlockIds(),
+				BalanceReqId: reqId,
 			}
 			f.OutAllBlockIds <- resp
 		}

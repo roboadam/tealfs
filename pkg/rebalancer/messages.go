@@ -19,24 +19,24 @@ import (
 	"tealfs/pkg/set"
 )
 
-type AllBlockId string
+type BalanceReqId string
 
-type AllBlockIdReq struct {
-	Caller model.NodeId
-	Id     AllBlockId
+type BalanceReq struct {
+	Caller       model.NodeId
+	BalanceReqId BalanceReqId
 }
 
-func (a *AllBlockIdReq) Type() model.PayloadType {
+func (a *BalanceReq) Type() model.PayloadType {
 	return model.AllBlockIdReqType
 }
 
-type AllBlockIdResp struct {
-	Caller   model.NodeId
-	BlockIds set.Set[model.BlockId]
-	Id       AllBlockId
+type BlockIdList struct {
+	Caller       model.NodeId
+	BlockIds     set.Set[model.BlockId]
+	BalanceReqId BalanceReqId
 }
 
-func (a *AllBlockIdResp) Type() model.PayloadType {
+func (a *BlockIdList) Type() model.PayloadType {
 	return model.AllBlockIdRespType
 }
 

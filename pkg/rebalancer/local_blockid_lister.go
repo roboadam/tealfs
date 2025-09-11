@@ -25,48 +25,48 @@ import (
 )
 
 type LocalBlockIdLister struct {
-	InFetchIds         <-chan AllBlockIdReq
-	OutIdLocalResults  chan<- AllBlockIdResp
-	OutIdRemoteResults chan<- model.MgrConnsSend
+	InFetchIds       <-chan BalanceReq
+	OutLocalResults  chan<- BlockIdList
+	OutRemoteResults chan<- model.MgrConnsSend
 
 	Disks  *set.Set[disk.Disk]
 	NodeId model.NodeId
 	Mapper *model.NodeConnectionMapper
 }
 
-func (o *LocalBlockIdLister) Start(ctx context.Context) {
+func (l *LocalBlockIdLister) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case req := <-o.InFetchIds:
-			o.collectResults(req)
+		case req := <-l.InFetchIds:
+			l.collectResults(req)
 		}
 	}
 }
 
-func (o *LocalBlockIdLister) collectResults(req AllBlockIdReq) {
+func (l *LocalBlockIdLister) collectResults(req BalanceReq) {
 	allIds := set.NewSet[model.BlockId]()
 	wg := sync.WaitGroup{}
-	for _, disk := range o.Disks.GetValues() {
+	for _, disk := range l.Disks.GetValues() {
 		wg.Add(1)
-		go o.readListFromDisk(&disk, &allIds, &wg)
+		go l.readListFromDisk(&disk, &allIds, &wg)
 	}
 	wg.Wait()
-	o.sendResults(&AllBlockIdResp{
-		Caller:   req.Caller,
-		BlockIds: allIds,
-		Id:       req.Id,
+	l.sendResults(&BlockIdList{
+		Caller:       req.Caller,
+		BlockIds:     allIds,
+		BalanceReqId: req.BalanceReqId,
 	})
 }
 
-func (o *LocalBlockIdLister) sendResults(resp *AllBlockIdResp) {
-	if resp.Caller == o.NodeId {
-		o.OutIdLocalResults <- *resp
+func (l *LocalBlockIdLister) sendResults(resp *BlockIdList) {
+	if resp.Caller == l.NodeId {
+		l.OutLocalResults <- *resp
 	} else {
-		connId, ok := o.Mapper.ConnForNode(resp.Caller)
+		connId, ok := l.Mapper.ConnForNode(resp.Caller)
 		if ok {
-			o.OutIdRemoteResults <- model.MgrConnsSend{
+			l.OutRemoteResults <- model.MgrConnsSend{
 				Payload: resp,
 				ConnId:  connId,
 			}
@@ -76,7 +76,7 @@ func (o *LocalBlockIdLister) sendResults(resp *AllBlockIdResp) {
 	}
 }
 
-func (o *LocalBlockIdLister) readListFromDisk(d *disk.Disk, allIds *set.Set[model.BlockId], wg *sync.WaitGroup) {
+func (l *LocalBlockIdLister) readListFromDisk(d *disk.Disk, allIds *set.Set[model.BlockId], wg *sync.WaitGroup) {
 	defer wg.Done()
 	d.InListIds <- struct{}{}
 	ids := <-d.OutListIds

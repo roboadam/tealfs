@@ -23,18 +23,18 @@ import (
 )
 
 type FillMissing struct {
-	InStart  <-chan AllBlockId
+	InStart  <-chan BalanceReqId
 	OutSends chan<- model.MgrConnsSend
 
-	OnFilesystemIds *set.Map[AllBlockId, AllBlockIdResp]
+	OnFilesystemIds *set.Map[BalanceReqId, BlockIdList]
 	Mapper          *model.NodeConnectionMapper
 	NodeId          model.NodeId
 
-	requestMap map[AllBlockId]map[StoreItId]bool
+	requestMap map[BalanceReqId]map[StoreItId]bool
 }
 
 func (f *FillMissing) Run(ctx context.Context) {
-	f.requestMap = make(map[AllBlockId]map[StoreItId]bool)
+	f.requestMap = make(map[BalanceReqId]map[StoreItId]bool)
 	for {
 		select {
 		case <-ctx.Done():
