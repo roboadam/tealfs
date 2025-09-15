@@ -30,8 +30,8 @@ func TestDeleteUnused(t *testing.T) {
 	outRemoteDelete := make(chan model.MgrConnsSend, 10)
 	outLocalDelete := make(chan disk.DeleteBlockId, 10)
 
-	onDiskIds := set.NewMap[BalanceReqId, BlockIdList]()
-	onFilesystemIds := set.NewMap[BalanceReqId, BlockIdList]()
+	onDiskIds := set.NewMap[BalanceReqId, OnDiskBlockIdList]()
+	onFilesystemIds := set.NewMap[BalanceReqId, OnDiskBlockIdList]()
 	mapper := model.NewNodeConnectionMapper()
 	nodeId := model.NodeId("node1")
 
@@ -55,12 +55,12 @@ func TestDeleteUnused(t *testing.T) {
 	onDiskSet.Add("block2")
 	onDiskSet.Add("block3")
 	onDiskSet.Add("block4")
-	onDiskIds.Add("req1", BlockIdList{BlockIds: onDiskSet})
+	onDiskIds.Add("req1", OnDiskBlockIdList{BlockIds: onDiskSet})
 
 	activeSet := set.NewSet[model.BlockId]()
 	activeSet.Add("block1")
 	activeSet.Add("block3")
-	onFilesystemIds.Add("req1", BlockIdList{BlockIds: activeSet})
+	onFilesystemIds.Add("req1", OnDiskBlockIdList{BlockIds: activeSet})
 
 	inRunCleanup <- "req1"
 

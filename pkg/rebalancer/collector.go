@@ -21,21 +21,21 @@ import (
 )
 
 type Collector struct {
-	InDiskBlockIds       <-chan BlockIdList
-	InFilesystemBlockIds <-chan BlockIdList
+	InDiskBlockIds       <-chan OnDiskBlockIdList
+	InFilesystemBlockIds <-chan FilesystemBlockIdList
 	OutFetchActiveIds    chan<- BalanceReqId
 	OutRunCleanup        chan<- BalanceReqId
 
 	onDiskIdsCounter set.Map[BalanceReqId, int]
-	OnDiskIds        set.Map[BalanceReqId, BlockIdList]
-	OnFilesystemIds  set.Map[BalanceReqId, BlockIdList]
+	OnDiskIds        set.Map[BalanceReqId, OnDiskBlockIdList]
+	OnFilesystemIds  set.Map[BalanceReqId, FilesystemBlockIdList]
 	Mapper           *model.NodeConnectionMapper
 	NodeId           model.NodeId
 }
 
 func (c *Collector) Start(ctx context.Context) {
-	c.OnDiskIds = set.NewMap[BalanceReqId, BlockIdList]()
-	c.OnFilesystemIds = set.NewMap[BalanceReqId, BlockIdList]()
+	c.OnDiskIds = set.NewMap[BalanceReqId, OnDiskBlockIdList]()
+	c.OnFilesystemIds = set.NewMap[BalanceReqId, FilesystemBlockIdList]()
 	c.onDiskIdsCounter = set.NewMap[BalanceReqId, int]()
 
 	for {
@@ -45,7 +45,7 @@ func (c *Collector) Start(ctx context.Context) {
 		case resp := <-c.InDiskBlockIds:
 			all, ok := c.OnDiskIds.Get(resp.BalanceReqId)
 			if !ok {
-				all = BlockIdList{
+				all = OnDiskBlockIdList{
 					Caller:       resp.Caller,
 					BlockIds:     set.NewSet[model.BlockId](),
 					BalanceReqId: resp.BalanceReqId,

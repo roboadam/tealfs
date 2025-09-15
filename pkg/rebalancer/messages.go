@@ -27,17 +27,27 @@ type BalanceReq struct {
 }
 
 func (a *BalanceReq) Type() model.PayloadType {
-	return model.AllBlockIdReqType
+	return model.BalanceReqType
 }
 
-type BlockIdList struct {
+type OnDiskBlockIdList struct {
 	Caller       model.NodeId
 	BlockIds     set.Set[model.BlockId]
 	BalanceReqId BalanceReqId
 }
 
-func (a *BlockIdList) Type() model.PayloadType {
-	return model.AllBlockIdRespType
+func (a *OnDiskBlockIdList) Type() model.PayloadType {
+	return model.OnDiskBlockIdListType
+}
+
+type FilesystemBlockIdList struct {
+	Caller       model.NodeId
+	BlockIds     set.Set[model.BlockId]
+	BalanceReqId BalanceReqId
+}
+
+func (f *FilesystemBlockIdList) Type() model.PayloadType {
+	return model.FilesystemBlockIdListType
 }
 
 type StoreItCmd struct {

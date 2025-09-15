@@ -25,8 +25,8 @@ func TestCollector(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inDiskBlockIds := make(chan BlockIdList, 1)
-	inFilesystemBlockIds := make(chan BlockIdList, 1)
+	inDiskBlockIds := make(chan OnDiskBlockIdList, 1)
+	inFilesystemBlockIds := make(chan FilesystemBlockIdList, 1)
 	outFetchActiveIds := make(chan BalanceReqId, 1)
 	outRunCleanup := make(chan BalanceReqId, 1)
 
@@ -47,7 +47,7 @@ func TestCollector(t *testing.T) {
 	blockIds := set.NewSet[model.BlockId]()
 	blockIds.Add("block1")
 	blockIds.Add("block2")
-	inDiskBlockIds <- BlockIdList{
+	inDiskBlockIds <- OnDiskBlockIdList{
 		Caller:       "node2",
 		BalanceReqId: "id1",
 		BlockIds:     blockIds,
@@ -56,7 +56,7 @@ func TestCollector(t *testing.T) {
 	blockIds = set.NewSet[model.BlockId]()
 	blockIds.Add("block2")
 	blockIds.Add("block3")
-	inDiskBlockIds <- BlockIdList{
+	inDiskBlockIds <- OnDiskBlockIdList{
 		Caller:       "node1",
 		BalanceReqId: "id1",
 		BlockIds:     blockIds,
@@ -65,7 +65,7 @@ func TestCollector(t *testing.T) {
 	blockIds = set.NewSet[model.BlockId]()
 	blockIds.Add("block3")
 	blockIds.Add("block4")
-	inDiskBlockIds <- BlockIdList{
+	inDiskBlockIds <- OnDiskBlockIdList{
 		Caller:       "node3",
 		BalanceReqId: "id1",
 		BlockIds:     blockIds,
@@ -80,7 +80,7 @@ func TestCollector(t *testing.T) {
 	blockIds.Add("block1")
 	blockIds.Add("block2")
 	blockIds.Add("block3")
-	inFilesystemBlockIds <- BlockIdList{
+	inFilesystemBlockIds <- FilesystemBlockIdList{
 		Caller:       "node1",
 		BlockIds:     blockIds,
 		BalanceReqId: "id1",

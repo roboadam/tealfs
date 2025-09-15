@@ -17,27 +17,28 @@ package model
 type PayloadType uint16
 
 const (
-	NoOpType           PayloadType = 0
-	IAmType            PayloadType = 1
-	SyncType           PayloadType = 2
-	WriteRequestType   PayloadType = 3
-	WriteResultType    PayloadType = 4
-	ReadRequestType    PayloadType = 5
-	ReadResultType     PayloadType = 6
-	FileBroadcastType  PayloadType = 7
-	AddDiskRequestType PayloadType = 8
-	SaveToDiskReq      PayloadType = 9
-	SaveToDiskResp     PayloadType = 10
-	GetFromDiskReq     PayloadType = 11
-	GetFromDiskResp    PayloadType = 12
-	Election           PayloadType = 13
-	Alive              PayloadType = 14
-	Victory            PayloadType = 15
-	AllBlockIdReqType  PayloadType = 16
-	AllBlockIdRespType PayloadType = 17
-	DeleteBlockId      PayloadType = 18
-	StoreItCmdType     PayloadType = 19
-	StoreItRespType    PayloadType = 20
+	NoOpType                  PayloadType = 0
+	IAmType                   PayloadType = 1
+	SyncType                  PayloadType = 2
+	WriteRequestType          PayloadType = 3
+	WriteResultType           PayloadType = 4
+	ReadRequestType           PayloadType = 5
+	ReadResultType            PayloadType = 6
+	FileBroadcastType         PayloadType = 7
+	AddDiskRequestType        PayloadType = 8
+	SaveToDiskReq             PayloadType = 9
+	SaveToDiskResp            PayloadType = 10
+	GetFromDiskReq            PayloadType = 11
+	GetFromDiskResp           PayloadType = 12
+	Election                  PayloadType = 13
+	Alive                     PayloadType = 14
+	Victory                   PayloadType = 15
+	BalanceReqType            PayloadType = 16
+	OnDiskBlockIdListType     PayloadType = 17
+	DeleteBlockId             PayloadType = 18
+	StoreItCmdType            PayloadType = 19
+	StoreItRespType           PayloadType = 20
+	FilesystemBlockIdListType PayloadType = 21
 )
 
 type Payload interface {

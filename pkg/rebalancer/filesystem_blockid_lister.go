@@ -16,17 +16,14 @@ package rebalancer
 
 import (
 	"context"
-	"sync"
-	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type ActiveBlockIdLister struct {
 	InFetchIds       <-chan BalanceReq
-	OutLocalResults  chan<- BlockIdList
+	OutLocalResults  chan<- FilesystemBlockIdList
 	OutRemoteResults chan<- model.MgrConnsSend
 
 	NodeId model.NodeId
@@ -45,14 +42,14 @@ func (l *ActiveBlockIdLister) Start(ctx context.Context) {
 }
 
 func (l *ActiveBlockIdLister) collectResults(req BalanceReq) {
-	l.sendResults(&BlockIdList{
+	l.sendResults(&FilesystemBlockIdList{
 		Caller:       req.Caller,
 		BlockIds:     allIds,
 		BalanceReqId: req.BalanceReqId,
 	})
 }
 
-func (l *ActiveBlockIdLister) sendResults(resp *BlockIdList) {
+func (l *ActiveBlockIdLister) sendResults(resp *FilesystemBlockIdList) {
 	if resp.Caller == l.NodeId {
 		l.OutLocalResults <- *resp
 	} else {
@@ -66,11 +63,4 @@ func (l *ActiveBlockIdLister) sendResults(resp *BlockIdList) {
 			log.Warn("could not find connection for node")
 		}
 	}
-}
-
-func (l *ActiveBlockIdLister) readListFromDisk(d *disk.Disk, allIds *set.Set[model.BlockId], wg *sync.WaitGroup) {
-	defer wg.Done()
-	d.InListIds <- struct{}{}
-	ids := <-d.OutListIds
-	allIds.AddAll(&ids)
 }

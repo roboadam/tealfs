@@ -26,8 +26,8 @@ type DeleteUnused struct {
 	OutRemoteDelete chan<- model.MgrConnsSend
 	OutLocalDelete  chan<- disk.DeleteBlockId
 
-	OnDiskIds       *set.Map[BalanceReqId, BlockIdList]
-	OnFilesystemIds *set.Map[BalanceReqId, BlockIdList]
+	OnDiskIds       *set.Map[BalanceReqId, OnDiskBlockIdList]
+	OnFilesystemIds *set.Map[BalanceReqId, OnDiskBlockIdList]
 	Mapper          *model.NodeConnectionMapper
 	NodeId          model.NodeId
 }
@@ -65,7 +65,7 @@ func (d *DeleteUnused) ActiveSet(key BalanceReqId) *set.Set[model.BlockId] {
 	return setForResp(key, d.OnFilesystemIds)
 }
 
-func setForResp(key BalanceReqId, blockMap *set.Map[BalanceReqId, BlockIdList]) *set.Set[model.BlockId] {
+func setForResp(key BalanceReqId, blockMap *set.Map[BalanceReqId, OnDiskBlockIdList]) *set.Set[model.BlockId] {
 	resp, ok := blockMap.Get(key)
 	if !ok {
 		panic("don't know what to save")

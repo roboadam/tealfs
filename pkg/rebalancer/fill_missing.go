@@ -26,7 +26,7 @@ type FillMissing struct {
 	InStart  <-chan BalanceReqId
 	OutSends chan<- model.MgrConnsSend
 
-	OnFilesystemIds *set.Map[BalanceReqId, BlockIdList]
+	OnFilesystemIds *set.Map[BalanceReqId, OnDiskBlockIdList]
 	Mapper          *model.NodeConnectionMapper
 	NodeId          model.NodeId
 

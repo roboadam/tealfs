@@ -26,7 +26,7 @@ import (
 
 type LocalBlockIdLister struct {
 	InFetchIds       <-chan BalanceReq
-	OutLocalResults  chan<- BlockIdList
+	OutLocalResults  chan<- OnDiskBlockIdList
 	OutRemoteResults chan<- model.MgrConnsSend
 
 	Disks  *set.Set[disk.Disk]
@@ -53,14 +53,14 @@ func (l *LocalBlockIdLister) collectResults(req BalanceReq) {
 		go l.readListFromDisk(&disk, &allIds, &wg)
 	}
 	wg.Wait()
-	l.sendResults(&BlockIdList{
+	l.sendResults(&OnDiskBlockIdList{
 		Caller:       req.Caller,
 		BlockIds:     allIds,
 		BalanceReqId: req.BalanceReqId,
 	})
 }
 
-func (l *LocalBlockIdLister) sendResults(resp *BlockIdList) {
+func (l *LocalBlockIdLister) sendResults(resp *OnDiskBlockIdList) {
 	if resp.Caller == l.NodeId {
 		l.OutLocalResults <- *resp
 	} else {

@@ -27,7 +27,7 @@ func TestLocalBlockIdLister(t *testing.T) {
 	defer cancel()
 
 	inFetchIds := make(chan BalanceReq)
-	outIdLocalResults := make(chan BlockIdList)
+	outIdLocalResults := make(chan OnDiskBlockIdList)
 	outIdRemoteResults := make(chan model.MgrConnsSend)
 	disks := set.NewSet[disk.Disk]()
 	mapper := model.NewNodeConnectionMapper()
