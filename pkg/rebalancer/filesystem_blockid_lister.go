@@ -16,18 +16,14 @@ package rebalancer
 
 import (
 	"context"
-	"tealfs/pkg/model"
-
-	log "github.com/sirupsen/logrus"
+	"tealfs/pkg/webdav"
 )
 
 type ActiveBlockIdLister struct {
-	InFetchIds       <-chan BalanceReq
-	OutLocalResults  chan<- FilesystemBlockIdList
-	OutRemoteResults chan<- model.MgrConnsSend
+	InFetchIds      <-chan ListOnDiskBlockIdsCmd
+	OutLocalResults chan<- FilesystemBlockIdList
 
-	NodeId model.NodeId
-	Mapper *model.NodeConnectionMapper
+	FileSystem *webdav.FileSystem
 }
 
 func (l *ActiveBlockIdLister) Start(ctx context.Context) {
@@ -41,26 +37,11 @@ func (l *ActiveBlockIdLister) Start(ctx context.Context) {
 	}
 }
 
-func (l *ActiveBlockIdLister) collectResults(req BalanceReq) {
-	l.sendResults(&FilesystemBlockIdList{
+func (l *ActiveBlockIdLister) collectResults(req ListOnDiskBlockIdsCmd) {
+	allIds := l.FileSystem.ListBlockIds()
+	l.OutLocalResults <- FilesystemBlockIdList{
 		Caller:       req.Caller,
-		BlockIds:     allIds,
+		BlockIds:     *allIds,
 		BalanceReqId: req.BalanceReqId,
-	})
-}
-
-func (l *ActiveBlockIdLister) sendResults(resp *FilesystemBlockIdList) {
-	if resp.Caller == l.NodeId {
-		l.OutLocalResults <- *resp
-	} else {
-		connId, ok := l.Mapper.ConnForNode(resp.Caller)
-		if ok {
-			l.OutRemoteResults <- model.MgrConnsSend{
-				Payload: resp,
-				ConnId:  connId,
-			}
-		} else {
-			log.Warn("could not find connection for node")
-		}
 	}
 }

@@ -49,9 +49,10 @@ func (f *FillMissing) Run(ctx context.Context) {
 					f.requestMap[rebalanceId][storeIdId] = true
 					f.OutSends <- model.MgrConnsSend{
 						Payload: &StoreItCmd{
-							StoreItId: storeIdId,
-							BlockId:   blockId,
-							Caller:    f.NodeId,
+							StoreItId:    storeIdId,
+							BlockId:      blockId,
+							Caller:       f.NodeId,
+							BalanceReqId: rebalanceId,
 						},
 						ConnId: 0,
 					}

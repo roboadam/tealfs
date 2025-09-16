@@ -26,7 +26,7 @@ func TestLocalBlockIdLister(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inFetchIds := make(chan BalanceReq)
+	inFetchIds := make(chan ListOnDiskBlockIdsCmd)
 	outIdLocalResults := make(chan OnDiskBlockIdList)
 	outIdRemoteResults := make(chan model.MgrConnsSend)
 	disks := set.NewSet[disk.Disk]()
@@ -42,7 +42,7 @@ func TestLocalBlockIdLister(t *testing.T) {
 	}
 	go lister.Start(ctx)
 
-	inFetchIds <- BalanceReq{
+	inFetchIds <- ListOnDiskBlockIdsCmd{
 		Caller:       "node1",
 		BalanceReqId: "id1",
 	}

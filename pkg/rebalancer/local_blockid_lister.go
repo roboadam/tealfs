@@ -25,7 +25,7 @@ import (
 )
 
 type LocalBlockIdLister struct {
-	InFetchIds       <-chan BalanceReq
+	InFetchIds       <-chan ListOnDiskBlockIdsCmd
 	OutLocalResults  chan<- OnDiskBlockIdList
 	OutRemoteResults chan<- model.MgrConnsSend
 
@@ -45,7 +45,7 @@ func (l *LocalBlockIdLister) Start(ctx context.Context) {
 	}
 }
 
-func (l *LocalBlockIdLister) collectResults(req BalanceReq) {
+func (l *LocalBlockIdLister) collectResults(req ListOnDiskBlockIdsCmd) {
 	allIds := set.NewSet[model.BlockId]()
 	wg := sync.WaitGroup{}
 	for _, disk := range l.Disks.GetValues() {

@@ -21,12 +21,12 @@ import (
 
 type BalanceReqId string
 
-type BalanceReq struct {
+type ListOnDiskBlockIdsCmd struct {
 	Caller       model.NodeId
 	BalanceReqId BalanceReqId
 }
 
-func (a *BalanceReq) Type() model.PayloadType {
+func (a *ListOnDiskBlockIdsCmd) Type() model.PayloadType {
 	return model.BalanceReqType
 }
 
@@ -51,9 +51,10 @@ func (f *FilesystemBlockIdList) Type() model.PayloadType {
 }
 
 type StoreItCmd struct {
-	StoreItId StoreItId
-	BlockId   model.BlockId
-	Caller    model.NodeId
+	BalanceReqId BalanceReqId
+	StoreItId    StoreItId
+	BlockId      model.BlockId
+	Caller       model.NodeId
 }
 
 func (s *StoreItCmd) Type() model.PayloadType {

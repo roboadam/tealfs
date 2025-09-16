@@ -25,7 +25,7 @@ import (
 type Trigger struct {
 	InTrigger   <-chan struct{}
 	OutSends    chan<- model.MgrConnsSend
-	OutLocalReq chan<- BalanceReq
+	OutLocalReq chan<- ListOnDiskBlockIdsCmd
 
 	NodeId model.NodeId
 	Mapper *model.NodeConnectionMapper
@@ -39,7 +39,7 @@ func (s *Trigger) Start(ctx context.Context) {
 			return
 		case <-s.InTrigger:
 			if s.IAmPrimary() && s.Mapper.AreAllConnected() {
-				req := BalanceReq{
+				req := ListOnDiskBlockIdsCmd{
 					Caller:       s.NodeId,
 					BalanceReqId: BalanceReqId(uuid.NewString()),
 				}

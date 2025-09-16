@@ -32,6 +32,10 @@ func (l *LocalStoreItHandler) Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case cmd := <-l.InStoreItCmd:
+			// 1. Check if we already have the disk
+			// 2. Get a list of Node+Disks that could have the data
+			// 3. Save that list
+			// 2. If not send it a GetBlockForRebalanceReq
 			l.OutGetBlockReq <- model.GetBlockReq{
 				Id:      model.GetBlockId(uuid.NewString()),
 				BlockId: cmd.BlockId,

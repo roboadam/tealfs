@@ -23,7 +23,6 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
-	"tealfs/pkg/rebalancer"
 	"tealfs/pkg/set"
 	"time"
 
@@ -53,8 +52,6 @@ type FileSystem struct {
 	WriteReqResp    chan WriteReqResp
 	inBroadcast     chan FileBroadcast
 	OutSends        chan model.MgrConnsSend
-	InGetBlockIds   <-chan rebalancer.BalanceReqId
-	OutAllBlockIds  chan<- rebalancer.OnDiskBlockIdList
 
 	Mapper    *model.NodeConnectionMapper
 	nodeId    model.NodeId
@@ -209,13 +206,6 @@ func (f *FileSystem) run() {
 					log.Error("Unable to persist file index:", err)
 				}
 			}
-		case reqId := <-f.InGetBlockIds:
-			resp := rebalancer.OnDiskBlockIdList{
-				Caller:       f.nodeId,
-				BlockIds:     f.fileHolder.AllBlockIds(),
-				BalanceReqId: reqId,
-			}
-			f.OutAllBlockIds <- resp
 		}
 	}
 }
@@ -314,7 +304,10 @@ type listBlockIdsReq struct {
 }
 
 func (f *FileSystem) ListBlockIds() *set.Set[model.BlockId] {
-
+	req := listBlockIdsReq{respChan: make(chan set.Set[model.BlockId], 1)}
+	f.listBlockIdsReq <- req
+	resp := <-req.respChan
+	return &resp
 }
 
 func (f *FileSystem) listBlockIds(req *listBlockIdsReq) {
