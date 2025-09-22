@@ -1,18 +1,14 @@
 flowchart TD
-    A(Trigger) -->|AllBlockIdReq| B[Conns]
-    A -->|AllBlockIdReq| C(LocalBlockIdLister)
-    B -->|AllBlockIdReq| C
-    C --> |AllBlockIdResp| B
-    C --> |AllBlockIdResp| D(Collector)
-    B --> |AllBlockIdResp| D
-    D --> |Done| E[FetchActiveIds]
-    E --> |AllBlockIdResp| D
-    D --> |Ping| F(DeleteUnused)
-    D --> |Ping| G(Validator)
-    G --> |MoveMsg| H(Mover)
-    F --> |Delete| I[DisksBlockDelete]
-    F --> |Delete| B
-    B --> |Delete| I
-    H --> |PutBlockReq| J[BlockSaver]
-    H --> |Delete| I
-    H --> |Delete| B
+    A(Trigger) -->|ListOnDiskBlockIdsCmd| B[Conns]
+    A -->|ListOnDiskBlockIdsCmd| C(LocalBlockIdLister)
+    B -->|ListOnDiskBlockIdsCmd| C
+    C --> |OnDiskBlockIdList| B
+    C --> |OnDiskBlockIdList| D(Collector)
+    B --> |OnDiskBlockIdList| D
+    D --> |BalanceReqId| E[FetchActiveIds]
+    E --> |FilesystemBlockIdList| D
+    D --> |BalanceReqId| F(DeleteUnused)
+    D --> |BalanceReqId| G(FillMissing)
+    F --> |DeleteBlockId| I[DisksBlockDelete]
+    F --> |DeleteBlockId| B
+    B --> |DeleteBlockId| I

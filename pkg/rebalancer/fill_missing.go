@@ -24,7 +24,7 @@ import (
 
 type FillMissing struct {
 	InStart  <-chan BalanceReqId
-	OutSends chan<- model.MgrConnsSend
+	OutSends chan<- StoreItCmd
 
 	OnFilesystemIds *set.Map[BalanceReqId, OnDiskBlockIdList]
 	Mapper          *model.NodeConnectionMapper

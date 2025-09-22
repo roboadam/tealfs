@@ -25,6 +25,7 @@ type Collector struct {
 	InFilesystemBlockIds <-chan FilesystemBlockIdList
 	OutFetchActiveIds    chan<- BalanceReqId
 	OutRunCleanup        chan<- BalanceReqId
+	OutFillMissing       chan<- BalanceReqId
 
 	onDiskIdsCounter set.Map[BalanceReqId, int]
 	OnDiskIds        set.Map[BalanceReqId, OnDiskBlockIdList]
