@@ -12,3 +12,15 @@ flowchart TD
     F --> |DeleteBlockId| I[DisksBlockDelete]
     F --> |DeleteBlockId| B
     B --> |DeleteBlockId| I
+    G --> |ExistsReq| J(ExistsSender)
+    J --> M(DelSender)
+    J --> |ExistsReq| K(ExistsHandler)
+    K --> L[Disk]
+    L --> K
+    M --> N[DelHandler]
+    J --> O(StoreItSender)
+    O --> P(StoreItHandler)
+    P --> O
+    P --> Q(BlockToSaveHandler)
+    Q --> P
+    O --> M
