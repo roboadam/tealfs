@@ -39,6 +39,8 @@ const (
 	StoreItCmdType            PayloadType = 19
 	StoreItRespType           PayloadType = 20
 	FilesystemBlockIdListType PayloadType = 21
+	ExistsReqType             PayloadType = 22
+	ExistsRespType            PayloadType = 23
 )
 
 type Payload interface {

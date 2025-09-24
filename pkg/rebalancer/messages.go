@@ -73,3 +73,26 @@ func (s *StoreItResp) Type() model.PayloadType {
 }
 
 type StoreItId string
+
+type ExistsId string
+type ExistsReq struct {
+	Caller       model.NodeId
+	BalanceReqId BalanceReqId
+	ExistsId     ExistsId
+	BlockId      model.BlockId
+	DestNodeId   model.NodeId
+	DiskId       model.DiskId
+}
+
+func (e *ExistsReq) Type() model.PayloadType {
+	return model.ExistsReqType
+}
+
+type ExistsResp struct {
+	Req    ExistsReq
+	Exists bool
+}
+
+func (e *ExistsResp) Type() model.PayloadType {
+	return model.ExistsRespType
+}

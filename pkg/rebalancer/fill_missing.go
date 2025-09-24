@@ -23,40 +23,34 @@ import (
 )
 
 type FillMissing struct {
-	InStart  <-chan BalanceReqId
-	OutSends chan<- StoreItCmd
+	InStart      <-chan BalanceReqId
+	OutExistsReq chan<- ExistsReq
 
 	OnFilesystemIds *set.Map[BalanceReqId, OnDiskBlockIdList]
-	Mapper          *model.NodeConnectionMapper
 	NodeId          model.NodeId
-
-	requestMap map[BalanceReqId]map[StoreItId]bool
 }
 
 func (f *FillMissing) Run(ctx context.Context) {
-	f.requestMap = make(map[BalanceReqId]map[StoreItId]bool)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case rebalanceId := <-f.InStart:
-			blockIdsHolder, ok := f.OnFilesystemIds.Get(rebalanceId)
-			if ok {
-				blockIds := blockIdsHolder.BlockIds
-				f.requestMap[rebalanceId] = make(map[StoreItId]bool)
-				for _, blockId := range blockIds.GetValues() {
-					storeIdId := StoreItId(uuid.New().String())
-					f.requestMap[rebalanceId][storeIdId] = true
-					f.OutSends <- model.MgrConnsSend{
-						Payload: &StoreItCmd{
-							StoreItId:    storeIdId,
-							BlockId:      blockId,
-							Caller:       f.NodeId,
-							BalanceReqId: rebalanceId,
-						},
-						ConnId: 0,
-					}
-				}
+			f.StartExistsReqs(rebalanceId)
+		}
+	}
+}
+
+func (f *FillMissing) StartExistsReqs(rebalanceId BalanceReqId) {
+	list, ok := f.OnFilesystemIds.Get(rebalanceId)
+	if ok {
+		blockIds := list.BlockIds.GetValues()
+		for _, blockId := range blockIds {
+			f.OutExistsReq <- ExistsReq{
+				BalanceReqId: rebalanceId,
+				ExistsId:     ExistsId(uuid.NewString()),
+				BlockId:      blockId,
+				Caller:       f.NodeId,
 			}
 		}
 	}
