@@ -18,22 +18,24 @@ import (
 	"context"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
-type ExistsSender struct {
-	InReq     <-chan ExistsReq
-	InResp    <-chan ExistsResp
-	OutLocal  chan<- ExistsReq
-	OutRemote chan<- model.MgrConnsSend
+type Rebalancer struct {
+	InReq         <-chan ExistsReq
+	InResp        <-chan ExistsResp
+	OutLocal      chan<- ExistsReq
+	OutRemote     chan<- model.MgrConnsSend
+	OutStoreItCmd chan<- StoreItCmd
 
-	Distributer *dist.MirrorDistributer
-	NodeId      model.NodeId
-	Mapper      model.NodeConnectionMapper
-	sentMap     map[ExistsId]int
+	Distributer     *dist.MirrorDistributer
+	NodeId          model.NodeId
+	Mapper          model.NodeConnectionMapper
+	requests        map[ExistsId]set.Set[ExistsReq]
 }
 
-func (e *ExistsSender) Start(ctx context.Context) {
-	e.sentMap = make(map[ExistsId]int)
+func (e *Rebalancer) Start(ctx context.Context) {
+	e.requests = make(map[ExistsId]set.Set[ExistsReq])
 	for {
 		select {
 		case <-ctx.Done():
@@ -46,10 +48,13 @@ func (e *ExistsSender) Start(ctx context.Context) {
 	}
 }
 
-func (e *ExistsSender) handleResp(resp ExistsResp) {
+func (e *Rebalancer) handleResp(resp ExistsResp) {
+	if resp.Exists {
+		e.unverifiedCount[resp.Req.ExistsId]--
+	}
 }
 
-func (e *ExistsSender) send(req ExistsReq) {
+func (e *Rebalancer) send(req ExistsReq) {
 	writeNodes := e.Distributer.WritePointersForId(req.BlockId)
 	e.sentMap[req.ExistsId] = len(writeNodes)
 	for _, dest := range writeNodes {
@@ -63,7 +68,7 @@ func (e *ExistsSender) send(req ExistsReq) {
 	}
 }
 
-func (e *ExistsSender) sendRemote(req ExistsReq) {
+func (e *Rebalancer) sendRemote(req ExistsReq) {
 	connId, ok := e.Mapper.ConnForNode(req.DestNodeId)
 	if ok {
 		e.OutRemote <- model.MgrConnsSend{

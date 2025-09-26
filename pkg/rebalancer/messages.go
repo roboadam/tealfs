@@ -55,6 +55,7 @@ type StoreItCmd struct {
 	StoreItId    StoreItId
 	BlockId      model.BlockId
 	Caller       model.NodeId
+	Recipient    model.NodeId
 }
 
 func (s *StoreItCmd) Type() model.PayloadType {
@@ -62,10 +63,9 @@ func (s *StoreItCmd) Type() model.PayloadType {
 }
 
 type StoreItResp struct {
-	StoreItId StoreItId
-	Caller    model.NodeId
-	Ok        bool
-	Msg       string
+	StoreItCmd StoreItCmd
+	Ok         bool
+	Msg        string
 }
 
 func (s *StoreItResp) Type() model.PayloadType {
