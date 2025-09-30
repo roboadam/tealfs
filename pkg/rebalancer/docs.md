@@ -1,23 +1,32 @@
 ## Rebalancer
 
-1. Rebalance starts with a `BalanceReqId`
-2. Rebalancer sends a `BlockId` + `BalanceReqId` message to `ExistsSender`
-3. `ExistsSender` finds the two intended destinations for `BlockId`
-4. For each destination send an `ExistsReq`
+1. Rebalancer starts with a `BalanceReqId`
+2. For each `BlockId` in the filesystem find the destinations
+3. Rebalancer sends an `ExistsReq` message to the destination
 
 > `ExistsReq`
-> - BlockId
-> - DestNodeId
-> - DestDiskId
 > - ExistsId
 > - BalanceReqId
+> - DestNodeId
+> - DestDiskId
+> - BlockId
 
-5. And wait for an `ExistsResp`
+4. And wait for an `ExistsResp`
 
 > `ExistsResp`
 > - ExistsReq
 > - Exists (bool)
 
-6. In order to wait for the response save with a two dimensional map, first key is `BalanceReqId`, second key is `BlockId`, value is a set of `ExistsReq`
-7. When we get a response where `Exists == true` then remove that
+5. In order to wait for the response save with a two dimensional map, first key is `BalanceReqId`, second key is `BlockId`, value is a set of `ExistsReq`
+6. When we get a `ExistsResp` where `Exists == true` then remove that item from the set.
+7. If the set is empty send a `StoreItReq` to the `StoreItHandler`
+
+> `StoreItReq`
+> - StoreItId
+> - BalanceReqId
+> - DestNodeId
+> - DestDiskId
+> - BlockId
+
+8. If the `ExistsResp
 
