@@ -50,6 +50,15 @@ func (f *FilesystemBlockIdList) Type() model.PayloadType {
 	return model.FilesystemBlockIdListType
 }
 
+type StoreItReq struct {
+	Caller       model.NodeId
+	BalanceReqId BalanceReqId
+	StoreItId    StoreItId
+	DestNodeId   model.NodeId
+	DestDiskId   model.DiskId
+	DestBlockId  model.BlockId
+}
+
 type StoreItCmd struct {
 	BalanceReqId BalanceReqId
 	StoreItId    StoreItId
@@ -63,9 +72,9 @@ func (s *StoreItCmd) Type() model.PayloadType {
 }
 
 type StoreItResp struct {
-	StoreItCmd StoreItCmd
-	Ok         bool
-	Msg        string
+	Req StoreItReq
+	Ok  bool
+	Msg string
 }
 
 func (s *StoreItResp) Type() model.PayloadType {
@@ -79,9 +88,9 @@ type ExistsReq struct {
 	Caller       model.NodeId
 	BalanceReqId BalanceReqId
 	ExistsId     ExistsId
-	BlockId      model.BlockId
 	DestNodeId   model.NodeId
-	DiskId       model.DiskId
+	DestDiskId   model.DiskId
+	DestBlockId  model.BlockId
 }
 
 func (e *ExistsReq) Type() model.PayloadType {
@@ -89,8 +98,9 @@ func (e *ExistsReq) Type() model.PayloadType {
 }
 
 type ExistsResp struct {
-	Req    ExistsReq
-	Exists bool
+	Req ExistsReq
+	Ok  bool
+	Msg string
 }
 
 func (e *ExistsResp) Type() model.PayloadType {

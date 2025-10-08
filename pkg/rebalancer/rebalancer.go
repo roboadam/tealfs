@@ -19,29 +19,35 @@ import (
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Rebalancer struct {
-	InReq         <-chan ExistsReq
+	InStart      <-chan BalanceReqId
+	OutExistsReq chan<- ExistsReq
+
+	OnFilesystemIds *set.Map[BalanceReqId, FilesystemBlockIdList]
+	pendingExists   map[BalanceReqId]map[model.BlockId]*set.Set[ExistsReq]
+
+	//////////////////////
+
 	InResp        <-chan ExistsResp
-	OutLocal      chan<- ExistsReq
 	OutRemote     chan<- model.MgrConnsSend
 	OutStoreItCmd chan<- StoreItCmd
 
-	Distributer     *dist.MirrorDistributer
-	NodeId          model.NodeId
-	Mapper          model.NodeConnectionMapper
-	requests        map[ExistsId]set.Set[ExistsReq]
+	Distributer *dist.MirrorDistributer
+	NodeId      model.NodeId
 }
 
 func (e *Rebalancer) Start(ctx context.Context) {
-	e.requests = make(map[ExistsId]set.Set[ExistsReq])
+	e.pendingExists = make(map[BalanceReqId]map[model.BlockId]*set.Set[ExistsReq])
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case req := <-e.InReq:
-			e.send(req)
+		case req := <-e.InStart:
+			e.sendAllExistsReq(req)
 		case resp := <-e.InResp:
 			e.handleResp(resp)
 		}
@@ -49,31 +55,33 @@ func (e *Rebalancer) Start(ctx context.Context) {
 }
 
 func (e *Rebalancer) handleResp(resp ExistsResp) {
-	if resp.Exists {
-		e.unverifiedCount[resp.Req.ExistsId]--
-	}
 }
 
-func (e *Rebalancer) send(req ExistsReq) {
-	writeNodes := e.Distributer.WritePointersForId(req.BlockId)
-	e.sentMap[req.ExistsId] = len(writeNodes)
-	for _, dest := range writeNodes {
-		req.DestNodeId = dest.NodeId
-		req.DiskId = dest.Disk
-		if req.DestNodeId == e.NodeId {
-			e.OutLocal <- req
-		} else {
-			e.sendRemote(req)
-		}
-	}
-}
-
-func (e *Rebalancer) sendRemote(req ExistsReq) {
-	connId, ok := e.Mapper.ConnForNode(req.DestNodeId)
+func (e *Rebalancer) sendAllExistsReq(balanceReqId BalanceReqId) {
+	list, ok := e.OnFilesystemIds.Get(balanceReqId)
 	if ok {
-		e.OutRemote <- model.MgrConnsSend{
-			Payload: &req,
-			ConnId:  connId,
+		e.pendingExists[balanceReqId] = make(map[model.BlockId]*set.Set[ExistsReq])
+		for _, blockId := range list.BlockIds.GetValues() {
+			e.sendExistsReq(blockId, balanceReqId)
 		}
+	} else {
+		log.Warn("key not found")
+	}
+}
+
+func (e *Rebalancer) sendExistsReq(blockId model.BlockId, balanceReqId BalanceReqId) {
+	writeNodes := e.Distributer.WritePointersForId(blockId)
+	reqs := set.NewSet[ExistsReq]()
+	for _, dest := range writeNodes {
+		req := ExistsReq{
+			Caller:       e.NodeId,
+			BalanceReqId: balanceReqId,
+			ExistsId:     ExistsId(blockId),
+			DestNodeId:   dest.NodeId,
+			DestDiskId:   dest.Disk,
+			DestBlockId:  blockId,
+		}
+		reqs.Add(req)
+		e.OutExistsReq <- req
 	}
 }
