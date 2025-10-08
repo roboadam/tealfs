@@ -106,3 +106,8 @@ type ExistsResp struct {
 func (e *ExistsResp) Type() model.PayloadType {
 	return model.ExistsRespType
 }
+
+type Dest struct {
+	NodeId model.NodeId
+	DiskId model.DiskId
+}

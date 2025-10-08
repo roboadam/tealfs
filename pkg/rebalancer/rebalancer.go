@@ -29,6 +29,7 @@ type Rebalancer struct {
 
 	OnFilesystemIds *set.Map[BalanceReqId, FilesystemBlockIdList]
 	pendingExists   map[BalanceReqId]map[model.BlockId]*set.Set[ExistsReq]
+	toDelete        map[BalanceReqId]map[model.BlockId]*set.Set[Dest]
 
 	//////////////////////
 
@@ -61,7 +62,9 @@ func (e *Rebalancer) sendAllExistsReq(balanceReqId BalanceReqId) {
 	list, ok := e.OnFilesystemIds.Get(balanceReqId)
 	if ok {
 		e.pendingExists[balanceReqId] = make(map[model.BlockId]*set.Set[ExistsReq])
+		e.toDelete[balanceReqId] = make(map[model.BlockId]*set.Set[Dest])
 		for _, blockId := range list.BlockIds.GetValues() {
+			e.pendingExists[balanceReqId][blockId] = mak
 			e.sendExistsReq(blockId, balanceReqId)
 		}
 	} else {
@@ -70,9 +73,9 @@ func (e *Rebalancer) sendAllExistsReq(balanceReqId BalanceReqId) {
 }
 
 func (e *Rebalancer) sendExistsReq(blockId model.BlockId, balanceReqId BalanceReqId) {
-	writeNodes := e.Distributer.WritePointersForId(blockId)
+	writeAndEmpty := e.Distributer.WriteAndEmptyPtrs(blockId)
 	reqs := set.NewSet[ExistsReq]()
-	for _, dest := range writeNodes {
+	for _, dest := range writeAndEmpty.Write {
 		req := ExistsReq{
 			Caller:       e.NodeId,
 			BalanceReqId: balanceReqId,
@@ -83,5 +86,12 @@ func (e *Rebalancer) sendExistsReq(blockId model.BlockId, balanceReqId BalanceRe
 		}
 		reqs.Add(req)
 		e.OutExistsReq <- req
+	}
+	for _, dest := range writeAndEmpty.Empty {
+		d := Dest{
+			NodeId: dest.NodeId,
+			DiskId: dest.Disk,
+		}
+		e.toDelete[balanceReqId][blockId].Add(d)
 	}
 }
