@@ -27,9 +27,8 @@ type Rebalancer struct {
 	InStart      <-chan BalanceReqId
 	OutExistsReq chan<- ExistsReq
 
-	OnFilesystemIds *set.Map[BalanceReqId, FilesystemBlockIdList]
-	pendingExists   map[BalanceReqId]map[model.BlockId]*set.Set[ExistsReq]
-	toDelete        map[BalanceReqId]map[model.BlockId]*set.Set[Dest]
+	OnFilesystemIds      *set.Map[BalanceReqId, FilesystemBlockIdList]
+	rebalancerMessageMgr RebalancerMessageMgr
 
 	//////////////////////
 
@@ -42,7 +41,6 @@ type Rebalancer struct {
 }
 
 func (e *Rebalancer) Start(ctx context.Context) {
-	e.pendingExists = make(map[BalanceReqId]map[model.BlockId]*set.Set[ExistsReq])
 	for {
 		select {
 		case <-ctx.Done():
@@ -61,10 +59,7 @@ func (e *Rebalancer) handleResp(resp ExistsResp) {
 func (e *Rebalancer) sendAllExistsReq(balanceReqId BalanceReqId) {
 	list, ok := e.OnFilesystemIds.Get(balanceReqId)
 	if ok {
-		e.pendingExists[balanceReqId] = make(map[model.BlockId]*set.Set[ExistsReq])
-		e.toDelete[balanceReqId] = make(map[model.BlockId]*set.Set[Dest])
 		for _, blockId := range list.BlockIds.GetValues() {
-			e.pendingExists[balanceReqId][blockId] = mak
 			e.sendExistsReq(blockId, balanceReqId)
 		}
 	} else {
@@ -84,6 +79,7 @@ func (e *Rebalancer) sendExistsReq(blockId model.BlockId, balanceReqId BalanceRe
 			DestDiskId:   dest.Disk,
 			DestBlockId:  blockId,
 		}
+		e.rebalancerMessageMgr.addExistsReq(req)
 		reqs.Add(req)
 		e.OutExistsReq <- req
 	}
@@ -92,6 +88,6 @@ func (e *Rebalancer) sendExistsReq(blockId model.BlockId, balanceReqId BalanceRe
 			NodeId: dest.NodeId,
 			DiskId: dest.Disk,
 		}
-		e.toDelete[balanceReqId][blockId].Add(d)
+		e.rebalancerMessageMgr.addToDelete(balanceReqId, blockId, d.NodeId, d.DiskId)
 	}
 }
