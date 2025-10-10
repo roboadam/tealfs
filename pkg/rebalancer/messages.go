@@ -111,3 +111,8 @@ type Dest struct {
 	NodeId model.NodeId
 	DiskId model.DiskId
 }
+
+type SafeDelete struct {
+	BalanceReqId BalanceReqId
+	BlockId      model.BlockId
+}

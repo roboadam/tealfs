@@ -20,24 +20,21 @@ import (
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type Rebalancer struct {
-	InStart      <-chan BalanceReqId
-	OutExistsReq chan<- ExistsReq
+	InStart       <-chan BalanceReqId
+	InResp        <-chan ExistsResp
+	OutExistsReq  chan<- ExistsReq
+	OutSafeDelete chan<- SafeDelete
 
 	OnFilesystemIds      *set.Map[BalanceReqId, FilesystemBlockIdList]
+	NodeId               model.NodeId
 	rebalancerMessageMgr RebalancerMessageMgr
-
-	//////////////////////
-
-	InResp        <-chan ExistsResp
-	OutRemote     chan<- model.MgrConnsSend
-	OutStoreItCmd chan<- StoreItCmd
-
-	Distributer *dist.MirrorDistributer
-	NodeId      model.NodeId
+	OutStoreItReq        chan<- StoreItReq
+	Distributer          *dist.MirrorDistributer
 }
 
 func (e *Rebalancer) Start(ctx context.Context) {
@@ -54,6 +51,26 @@ func (e *Rebalancer) Start(ctx context.Context) {
 }
 
 func (e *Rebalancer) handleResp(resp ExistsResp) {
+	if resp.Ok {
+		e.rebalancerMessageMgr.removeExistsReq(resp.Req)
+		if !e.rebalancerMessageMgr.exists(resp.Req.BalanceReqId, resp.Req.DestBlockId) {
+			e.OutSafeDelete <- SafeDelete{
+				BalanceReqId: resp.Req.BalanceReqId,
+				BlockId:      resp.Req.DestBlockId,
+			}
+		}
+	} else {
+		s := StoreItReq{
+			Caller:       e.NodeId,
+			BalanceReqId: resp.Req.BalanceReqId,
+			StoreItId:    StoreItId(uuid.NewString()),
+			DestNodeId:   resp.Req.DestNodeId,
+			DestDiskId:   resp.Req.DestDiskId,
+			DestBlockId:  resp.Req.DestBlockId,
+		}
+		e.OutStoreItReq <- s
+	}
+
 }
 
 func (e *Rebalancer) sendAllExistsReq(balanceReqId BalanceReqId) {

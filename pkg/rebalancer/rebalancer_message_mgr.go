@@ -63,6 +63,12 @@ func (r *RebalancerMessageMgr) removeExistsReq(req ExistsReq) {
 	r.pendingExists[req.BalanceReqId][req.DestBlockId] = s
 }
 
+func (r *RebalancerMessageMgr) exists(balanceReqId BalanceReqId, blockId model.BlockId) bool {
+	r.initBlockId(balanceReqId, blockId)
+	s := r.pendingExists[balanceReqId][blockId]
+	return s.Len() == 0
+}
+
 func (r *RebalancerMessageMgr) addToDelete(balanceReqId BalanceReqId, blockId model.BlockId, nodeId model.NodeId, diskId model.DiskId) {
 	r.initBlockId(balanceReqId, blockId)
 	d := Dest{
