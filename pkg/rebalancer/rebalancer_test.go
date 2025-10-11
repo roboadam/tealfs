@@ -25,7 +25,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestRebalancer(t *testing.T) {
+func TestRebalancerStart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -57,14 +57,140 @@ func TestRebalancer(t *testing.T) {
 	idSet.Add("block3")
 
 	onFsIds.Add(balanceReqId, rebalancer.FilesystemBlockIdList{
-		BlockIds:     set.NewSet[model.BlockId](),
+		Caller:       nodeId,
+		BlockIds:     idSet,
 		BalanceReqId: balanceReqId,
 	})
+
+	diskId1 := model.DiskId(uuid.NewString())
+	diskId2 := model.DiskId(uuid.NewString())
+	diskId3 := model.DiskId(uuid.NewString())
+	distributer.SetWeight(nodeId, diskId1, 1)
+	distributer.SetWeight(nodeId, diskId2, 1)
+	distributer.SetWeight(nodeId, diskId3, 1)
 
 	go r.Start(ctx)
 	inStart <- rebalancer.BalanceReqId(balanceReqId)
 
-	<-outExistsReq
-	<-outExistsReq
-	<-outExistsReq
+	er1 := <-outExistsReq
+	er2 := <-outExistsReq
+	er3 := <-outExistsReq
+	er4 := <-outExistsReq
+	er5 := <-outExistsReq
+	er6 := <-outExistsReq
+
+	balanceReqIdCounter := set.Counter[rebalancer.BalanceReqId]{}
+	balanceReqIdCounter.Tick(er1.BalanceReqId)
+	balanceReqIdCounter.Tick(er2.BalanceReqId)
+	balanceReqIdCounter.Tick(er3.BalanceReqId)
+	balanceReqIdCounter.Tick(er4.BalanceReqId)
+	balanceReqIdCounter.Tick(er5.BalanceReqId)
+	balanceReqIdCounter.Tick(er6.BalanceReqId)
+
+	if balanceReqIdCounter.Count(balanceReqId) != 6 {
+		t.Error("invalid balance ids")
+	}
+
+	blockIdCounter := set.Counter[model.BlockId]{}
+	blockIdCounter.Tick(er1.DestBlockId)
+	blockIdCounter.Tick(er2.DestBlockId)
+	blockIdCounter.Tick(er3.DestBlockId)
+	blockIdCounter.Tick(er4.DestBlockId)
+	blockIdCounter.Tick(er5.DestBlockId)
+	blockIdCounter.Tick(er6.DestBlockId)
+
+	if blockIdCounter.Count("block1") != 2 {
+		t.Error("invalid block ids")
+	}
+	if blockIdCounter.Count("block2") != 2 {
+		t.Error("invalid block ids")
+	}
+	if blockIdCounter.Count("block3") != 2 {
+		t.Error("invalid block ids")
+	}
+}
+
+func TestRebalancerAllExist(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	inStart := make(chan rebalancer.BalanceReqId)
+	inResp := make(chan rebalancer.ExistsResp)
+	outExistsReq := make(chan rebalancer.ExistsReq)
+	outSafeDelete := make(chan rebalancer.SafeDelete)
+	onFsIds := set.NewMap[rebalancer.BalanceReqId, rebalancer.FilesystemBlockIdList]()
+	nodeId := model.NewNodeId()
+	outStoreItReq := make(chan rebalancer.StoreItReq)
+	distributer := dist.NewMirrorDistributer(nodeId)
+
+	r := rebalancer.Rebalancer{
+		InStart:         inStart,
+		InResp:          inResp,
+		OutExistsReq:    outExistsReq,
+		OutSafeDelete:   outSafeDelete,
+		OnFilesystemIds: &onFsIds,
+		NodeId:          nodeId,
+		OutStoreItReq:   outStoreItReq,
+		Distributer:     &distributer,
+	}
+
+	balanceReqId := rebalancer.BalanceReqId(uuid.NewString())
+
+	idSet := set.NewSet[model.BlockId]()
+	idSet.Add("block1")
+	idSet.Add("block2")
+	idSet.Add("block3")
+
+	onFsIds.Add(balanceReqId, rebalancer.FilesystemBlockIdList{
+		Caller:       nodeId,
+		BlockIds:     idSet,
+		BalanceReqId: balanceReqId,
+	})
+
+	diskId1 := model.DiskId(uuid.NewString())
+	diskId2 := model.DiskId(uuid.NewString())
+	diskId3 := model.DiskId(uuid.NewString())
+	distributer.SetWeight(nodeId, diskId1, 1)
+	distributer.SetWeight(nodeId, diskId2, 1)
+	distributer.SetWeight(nodeId, diskId3, 1)
+
+	go r.Start(ctx)
+	inStart <- rebalancer.BalanceReqId(balanceReqId)
+
+	er1 := <-outExistsReq
+	er2 := <-outExistsReq
+	er3 := <-outExistsReq
+	er4 := <-outExistsReq
+	er5 := <-outExistsReq
+	er6 := <-outExistsReq
+
+	balanceReqIdCounter := set.Counter[rebalancer.BalanceReqId]{}
+	balanceReqIdCounter.Tick(er1.BalanceReqId)
+	balanceReqIdCounter.Tick(er2.BalanceReqId)
+	balanceReqIdCounter.Tick(er3.BalanceReqId)
+	balanceReqIdCounter.Tick(er4.BalanceReqId)
+	balanceReqIdCounter.Tick(er5.BalanceReqId)
+	balanceReqIdCounter.Tick(er6.BalanceReqId)
+
+	if balanceReqIdCounter.Count(balanceReqId) != 6 {
+		t.Error("invalid balance ids")
+	}
+
+	blockIdCounter := set.Counter[model.BlockId]{}
+	blockIdCounter.Tick(er1.DestBlockId)
+	blockIdCounter.Tick(er2.DestBlockId)
+	blockIdCounter.Tick(er3.DestBlockId)
+	blockIdCounter.Tick(er4.DestBlockId)
+	blockIdCounter.Tick(er5.DestBlockId)
+	blockIdCounter.Tick(er6.DestBlockId)
+
+	if blockIdCounter.Count("block1") != 2 {
+		t.Error("invalid block ids")
+	}
+	if blockIdCounter.Count("block2") != 2 {
+		t.Error("invalid block ids")
+	}
+	if blockIdCounter.Count("block3") != 2 {
+		t.Error("invalid block ids")
+	}
 }

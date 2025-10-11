@@ -29,11 +29,11 @@ type Rebalancer struct {
 	InResp        <-chan ExistsResp
 	OutExistsReq  chan<- ExistsReq
 	OutSafeDelete chan<- SafeDelete
+	OutStoreItReq chan<- StoreItReq
 
 	OnFilesystemIds      *set.Map[BalanceReqId, FilesystemBlockIdList]
 	NodeId               model.NodeId
 	rebalancerMessageMgr RebalancerMessageMgr
-	OutStoreItReq        chan<- StoreItReq
 	Distributer          *dist.MirrorDistributer
 }
 
