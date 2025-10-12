@@ -168,3 +168,62 @@ func TestRebalancerAllExist(t *testing.T) {
 		t.Error("invalid block id")
 	}
 }
+
+func TestRebalancerNotExist(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	inStart := make(chan rebalancer.BalanceReqId)
+	inResp := make(chan rebalancer.ExistsResp)
+	outExistsReq := make(chan rebalancer.ExistsReq)
+	outSafeDelete := make(chan rebalancer.SafeDelete)
+	onFsIds := set.NewMap[rebalancer.BalanceReqId, rebalancer.FilesystemBlockIdList]()
+	nodeId := model.NewNodeId()
+	outStoreItReq := make(chan rebalancer.StoreItReq)
+	distributer := dist.NewMirrorDistributer(nodeId)
+
+	r := rebalancer.Rebalancer{
+		InStart:         inStart,
+		InResp:          inResp,
+		OutExistsReq:    outExistsReq,
+		OutSafeDelete:   outSafeDelete,
+		OnFilesystemIds: &onFsIds,
+		NodeId:          nodeId,
+		OutStoreItReq:   outStoreItReq,
+		Distributer:     &distributer,
+	}
+
+	balanceReqId := rebalancer.BalanceReqId(uuid.NewString())
+
+	idSet := set.NewSet[model.BlockId]()
+	idSet.Add("block1")
+
+	onFsIds.Add(balanceReqId, rebalancer.FilesystemBlockIdList{
+		Caller:       nodeId,
+		BlockIds:     idSet,
+		BalanceReqId: balanceReqId,
+	})
+
+	diskId1 := model.DiskId(uuid.NewString())
+	diskId2 := model.DiskId(uuid.NewString())
+	distributer.SetWeight(nodeId, diskId1, 1)
+	distributer.SetWeight(nodeId, diskId2, 1)
+
+	go r.Start(ctx)
+	inStart <- rebalancer.BalanceReqId(balanceReqId)
+
+	er1 := <-outExistsReq
+	er2 := <-outExistsReq
+
+	eResp1 := rebalancer.ExistsResp{Req: er1, Ok: true}
+	eResp2 := rebalancer.ExistsResp{Req: er2, Ok: false}
+
+	inResp <- eResp1
+	inResp <- eResp2
+
+	storeIt := <-outStoreItReq
+
+	if storeIt.DestBlockId != "block1" {
+		t.Error("invalid block id")
+	}
+}

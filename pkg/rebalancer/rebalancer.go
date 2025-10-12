@@ -53,7 +53,7 @@ func (e *Rebalancer) Start(ctx context.Context) {
 func (e *Rebalancer) handleResp(resp ExistsResp) {
 	if resp.Ok {
 		e.rebalancerMessageMgr.removeExistsReq(resp.Req)
-		if !e.rebalancerMessageMgr.exists(resp.Req.BalanceReqId, resp.Req.DestBlockId) {
+		if e.rebalancerMessageMgr.exists(resp.Req.BalanceReqId, resp.Req.DestBlockId) {
 			e.OutSafeDelete <- SafeDelete{
 				BalanceReqId: resp.Req.BalanceReqId,
 				BlockId:      resp.Req.DestBlockId,
