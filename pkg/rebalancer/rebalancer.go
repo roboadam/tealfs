@@ -86,7 +86,6 @@ func (e *Rebalancer) sendAllExistsReq(balanceReqId BalanceReqId) {
 
 func (e *Rebalancer) sendExistsReq(blockId model.BlockId, balanceReqId BalanceReqId) {
 	writeAndEmpty := e.Distributer.WriteAndEmptyPtrs(blockId)
-	reqs := set.NewSet[ExistsReq]()
 	for _, dest := range writeAndEmpty.Write {
 		req := ExistsReq{
 			Caller:       e.NodeId,
@@ -97,7 +96,6 @@ func (e *Rebalancer) sendExistsReq(blockId model.BlockId, balanceReqId BalanceRe
 			DestBlockId:  blockId,
 		}
 		e.rebalancerMessageMgr.addExistsReq(req)
-		reqs.Add(req)
 		e.OutExistsReq <- req
 	}
 	for _, dest := range writeAndEmpty.Empty {

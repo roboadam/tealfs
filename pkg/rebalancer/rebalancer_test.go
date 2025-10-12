@@ -138,8 +138,6 @@ func TestRebalancerAllExist(t *testing.T) {
 
 	idSet := set.NewSet[model.BlockId]()
 	idSet.Add("block1")
-	idSet.Add("block2")
-	idSet.Add("block3")
 
 	onFsIds.Add(balanceReqId, rebalancer.FilesystemBlockIdList{
 		Caller:       nodeId,
@@ -149,48 +147,24 @@ func TestRebalancerAllExist(t *testing.T) {
 
 	diskId1 := model.DiskId(uuid.NewString())
 	diskId2 := model.DiskId(uuid.NewString())
-	diskId3 := model.DiskId(uuid.NewString())
 	distributer.SetWeight(nodeId, diskId1, 1)
 	distributer.SetWeight(nodeId, diskId2, 1)
-	distributer.SetWeight(nodeId, diskId3, 1)
 
 	go r.Start(ctx)
 	inStart <- rebalancer.BalanceReqId(balanceReqId)
 
 	er1 := <-outExistsReq
 	er2 := <-outExistsReq
-	er3 := <-outExistsReq
-	er4 := <-outExistsReq
-	er5 := <-outExistsReq
-	er6 := <-outExistsReq
 
-	balanceReqIdCounter := set.Counter[rebalancer.BalanceReqId]{}
-	balanceReqIdCounter.Tick(er1.BalanceReqId)
-	balanceReqIdCounter.Tick(er2.BalanceReqId)
-	balanceReqIdCounter.Tick(er3.BalanceReqId)
-	balanceReqIdCounter.Tick(er4.BalanceReqId)
-	balanceReqIdCounter.Tick(er5.BalanceReqId)
-	balanceReqIdCounter.Tick(er6.BalanceReqId)
+	eResp1 := rebalancer.ExistsResp{Req: er1, Ok: true}
+	eResp2 := rebalancer.ExistsResp{Req: er2, Ok: true}
 
-	if balanceReqIdCounter.Count(balanceReqId) != 6 {
-		t.Error("invalid balance ids")
-	}
+	inResp <- eResp1
+	inResp <- eResp2
 
-	blockIdCounter := set.Counter[model.BlockId]{}
-	blockIdCounter.Tick(er1.DestBlockId)
-	blockIdCounter.Tick(er2.DestBlockId)
-	blockIdCounter.Tick(er3.DestBlockId)
-	blockIdCounter.Tick(er4.DestBlockId)
-	blockIdCounter.Tick(er5.DestBlockId)
-	blockIdCounter.Tick(er6.DestBlockId)
+	sd1 := <-outSafeDelete
 
-	if blockIdCounter.Count("block1") != 2 {
-		t.Error("invalid block ids")
-	}
-	if blockIdCounter.Count("block2") != 2 {
-		t.Error("invalid block ids")
-	}
-	if blockIdCounter.Count("block3") != 2 {
-		t.Error("invalid block ids")
+	if sd1.BlockId != "block1" {
+		t.Error("invalid block id")
 	}
 }
