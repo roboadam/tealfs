@@ -14,6 +14,43 @@
 
 package rebalancer
 
+import (
+	"context"
+	"tealfs/pkg/model"
+
+	"github.com/sirupsen/logrus"
+)
+
 type ExistsSender struct {
-	
+	InExistsReq        <-chan ExistsReq
+	OutLocalExistsReq  chan<- ExistsReq
+	OutRemoteExistsReq chan<- model.MgrConnsSend
+	NodeId             model.NodeId
+	NodeConnMap        *model.NodeConnectionMapper
+}
+
+func (e *ExistsSender) Start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case req := <-e.InExistsReq:
+			e.sendExistsReq(req)
+		}
+	}
+}
+
+func (e *ExistsSender) sendExistsReq(req ExistsReq) {
+	if req.DestNodeId == e.NodeId {
+		e.OutLocalExistsReq <- req
+	} else {
+		if conn, ok := e.NodeConnMap.ConnForNode(req.DestNodeId); ok {
+			e.OutRemoteExistsReq <- model.MgrConnsSend{
+				ConnId:  conn,
+				Payload: &req,
+			}
+		} else {
+			logrus.Error("Not connected")
+		}
+	}
 }
