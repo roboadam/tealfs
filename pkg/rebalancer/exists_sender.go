@@ -23,8 +23,10 @@ import (
 
 type ExistsSender struct {
 	InExistsReq        <-chan ExistsReq
+	InExistsResp       <-chan ExistsResp
 	OutLocalExistsReq  chan<- ExistsReq
-	OutRemoteExistsReq chan<- model.MgrConnsSend
+	OutLocalExistsResp chan<- ExistsResp
+	OutRemote          chan<- model.MgrConnsSend
 	NodeId             model.NodeId
 	NodeConnMap        *model.NodeConnectionMapper
 }
@@ -36,6 +38,8 @@ func (e *ExistsSender) Start(ctx context.Context) {
 			return
 		case req := <-e.InExistsReq:
 			e.sendExistsReq(req)
+		case resp := <-e.InExistsResp:
+			e.sendExistsResp(resp)
 		}
 	}
 }
@@ -43,14 +47,25 @@ func (e *ExistsSender) Start(ctx context.Context) {
 func (e *ExistsSender) sendExistsReq(req ExistsReq) {
 	if req.DestNodeId == e.NodeId {
 		e.OutLocalExistsReq <- req
-	} else {
-		if conn, ok := e.NodeConnMap.ConnForNode(req.DestNodeId); ok {
-			e.OutRemoteExistsReq <- model.MgrConnsSend{
-				ConnId:  conn,
-				Payload: &req,
-			}
-		} else {
-			logrus.Error("Not connected")
+	} else if conn, ok := e.NodeConnMap.ConnForNode(req.DestNodeId); ok {
+		e.OutRemote <- model.MgrConnsSend{
+			ConnId:  conn,
+			Payload: &req,
 		}
+	} else {
+		logrus.Error("Not connected")
+	}
+}
+
+func (e *ExistsSender) sendExistsResp(resp ExistsResp) {
+	if resp.Req.Caller == e.NodeId {
+		e.OutLocalExistsResp <- resp
+	} else if conn, ok := e.NodeConnMap.ConnForNode(resp.Req.DestNodeId); ok {
+		e.OutRemote <- model.MgrConnsSend{
+			ConnId:  conn,
+			Payload: &resp,
+		}
+	} else {
+		logrus.Error("Not connected")
 	}
 }
