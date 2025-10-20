@@ -26,8 +26,10 @@ func TestExistsSender(t *testing.T) {
 	defer cancel()
 
 	inExistsReq := make(chan rebalancer.ExistsReq)
+	inExistsResp := make(chan rebalancer.ExistsResp)
 	outLocalExistsReq := make(chan rebalancer.ExistsReq)
-	outRemoteExistsReq := make(chan model.MgrConnsSend)
+	outLocalExistsResp := make(chan rebalancer.ExistsResp)
+	outRemote := make(chan model.MgrConnsSend)
 	nodeId := model.NewNodeId()
 	remoteNodeId := model.NewNodeId()
 	nodeConnMap := model.NewNodeConnectionMapper()
@@ -35,8 +37,10 @@ func TestExistsSender(t *testing.T) {
 
 	existsSender := rebalancer.ExistsSender{
 		InExistsReq:        inExistsReq,
+		InExistsResp:       inExistsResp,
 		OutLocalExistsReq:  outLocalExistsReq,
-		OutRemoteExistsReq: outRemoteExistsReq,
+		OutLocalExistsResp: outLocalExistsResp,
+		OutRemote:          outRemote,
 		NodeId:             nodeId,
 		NodeConnMap:        nodeConnMap,
 	}
@@ -67,7 +71,7 @@ func TestExistsSender(t *testing.T) {
 	}
 
 	inExistsReq <- remoteExistsReq
-	r2 := <-outRemoteExistsReq
+	r2 := <-outRemote
 
 	if r2.Payload.Type() != model.ExistsReqType {
 		t.Error("invalid payload type")
@@ -91,7 +95,70 @@ func TestExistsSender(t *testing.T) {
 	select {
 	case <-outLocalExistsReq:
 		t.Error("unexpected message on outLocalExistsReq")
-	case <-outRemoteExistsReq:
+	case <-outRemote:
+		t.Error("unexpected message on outRemoteExistsReq")
+	default:
+	}
+
+	localExistsResp := rebalancer.ExistsResp{
+		Req: rebalancer.ExistsReq{
+			Caller:       nodeId,
+			BalanceReqId: "balanceReq3",
+			ExistsId:     "existsId3",
+			DestNodeId:   "node3",
+			DestDiskId:   "disk3",
+			DestBlockId:  "block3",
+		},
+		Ok: true,
+	}
+
+	inExistsResp <- localExistsResp
+	resp1 := <-outLocalExistsResp
+	if resp1.Req.DestBlockId != "block3" {
+		t.Error("invalid block id")
+	}
+
+	remoteExistsResp := rebalancer.ExistsResp{
+		Req: rebalancer.ExistsReq{
+			Caller:       remoteNodeId,
+			BalanceReqId: "balance4",
+			ExistsId:     "exists4",
+			DestNodeId:   "node4",
+			DestDiskId:   "disk4",
+			DestBlockId:  "block4",
+		},
+		Ok: true,
+	}
+
+	inExistsResp <- remoteExistsResp
+	mcs := <-outRemote
+
+	if resp2, ok := mcs.Payload.(*rebalancer.ExistsResp); ok {
+		if resp2.Req.DestBlockId != "block4" {
+			t.Error("invalid block id")
+		}
+	} else {
+		t.Error("invalid payload type")
+	}
+
+	remoteExistsRespNotConnected := rebalancer.ExistsResp{
+		Req: rebalancer.ExistsReq{
+			Caller:       "notConnectedNode",
+			BalanceReqId: "balance5",
+			ExistsId:     "exists5",
+			DestNodeId:   "node5",
+			DestDiskId:   "disk5",
+			DestBlockId:  "block5",
+		},
+		Ok: true,
+	}
+
+	inExistsResp <- remoteExistsRespNotConnected
+
+	select {
+	case <-outLocalExistsResp:
+		t.Error("unexpected message on outLocalExistsReq")
+	case <-outRemote:
 		t.Error("unexpected message on outRemoteExistsReq")
 	default:
 	}

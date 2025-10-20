@@ -24,6 +24,7 @@ type FileOps interface {
 	WriteFile(name string, data []byte) error
 	ListFiles(path string) ([]string, error)
 	Remove(name string) error
+	Exists(name string) bool
 }
 
 type DiskFileOps struct{}
@@ -56,6 +57,11 @@ func (d *DiskFileOps) ListFiles(path string) ([]string, error) {
 		}
 	}
 	return result, nil
+}
+
+func (d *DiskFileOps) Exists(name string) bool {
+	_, err := os.Stat(name)
+	return err == nil
 }
 
 type MockFileOps struct {
@@ -117,4 +123,14 @@ func (m *MockFileOps) Remove(name string) error {
 	defer m.mux.Unlock()
 	delete(m.mockFS, name)
 	return nil
+}
+
+func (m *MockFileOps) Exists(name string) bool {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	if m.mockFS == nil {
+		m.mockFS = make(map[string][]byte)
+	}
+	_, ok := m.mockFS[name]
+	return ok
 }

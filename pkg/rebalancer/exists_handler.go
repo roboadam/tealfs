@@ -14,11 +14,17 @@
 
 package rebalancer
 
-import "context"
+import (
+	"context"
+	"tealfs/pkg/disk"
+	"tealfs/pkg/set"
+)
 
 type ExistsHandler struct {
 	InExistsReq   <-chan ExistsReq
 	OutExistsResp chan<- ExistsResp
+
+	Disks *set.Set[disk.Disk]
 }
 
 func (e *ExistsHandler) Start(ctx context.Context) {
@@ -33,6 +39,15 @@ func (e *ExistsHandler) Start(ctx context.Context) {
 }
 
 func (e *ExistsHandler) handleExistsReq(req ExistsReq) {
+	for _, d := range e.Disks.GetValues() {
+		if d.Id() == req.DestDiskId {
+			diskExistsReq := disk.ExistsReq{
+				BlockId: req.DestBlockId,
+				Resp:    make(chan bool),
+			}
+		}
+	}
+
 	// TODO: Check if the block actually exists on the disk
 	e.OutExistsResp <- ExistsResp{
 		Req: req,

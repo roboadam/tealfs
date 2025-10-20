@@ -62,7 +62,13 @@ type Disk struct {
 	InListIds  chan struct{}
 	OutListIds chan set.Set[model.BlockId]
 	InDelete   chan model.BlockId
+	InExists   chan ExistsReq
 	ctx        context.Context
+}
+
+type ExistsReq struct {
+	BlockId model.BlockId
+	Resp    chan bool
 }
 
 func (d *Disk) Id() model.DiskId { return d.diskId }
@@ -104,12 +110,15 @@ func (d *Disk) consumeChannels() {
 				}
 			}
 			d.OutListIds <- allIds
-		case idToDelete := <- d.InDelete:
+		case idToDelete := <-d.InDelete:
 			filePath := filepath.Join(d.path.raw, string(idToDelete))
 			err := d.path.ops.Remove(filePath)
 			if err != nil {
 				log.Warn("Error deleting file")
 			}
+		case req := <-d.InExists:
+			filePath := filepath.Join(d.path.raw, string(req.BlockId))
+			req.Resp <- d.path.ops.Exists(filePath)
 		}
 	}
 }

@@ -60,7 +60,7 @@ func (e *ExistsSender) sendExistsReq(req ExistsReq) {
 func (e *ExistsSender) sendExistsResp(resp ExistsResp) {
 	if resp.Req.Caller == e.NodeId {
 		e.OutLocalExistsResp <- resp
-	} else if conn, ok := e.NodeConnMap.ConnForNode(resp.Req.DestNodeId); ok {
+	} else if conn, ok := e.NodeConnMap.ConnForNode(resp.Req.Caller); ok {
 		e.OutRemote <- model.MgrConnsSend{
 			ConnId:  conn,
 			Payload: &resp,
