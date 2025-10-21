@@ -41,17 +41,15 @@ func (e *ExistsHandler) Start(ctx context.Context) {
 func (e *ExistsHandler) handleExistsReq(req ExistsReq) {
 	for _, d := range e.Disks.GetValues() {
 		if d.Id() == req.DestDiskId {
-			diskExistsReq := disk.ExistsReq{
+			existsChan := make(chan bool)
+			d.InExists <- disk.ExistsReq{
 				BlockId: req.DestBlockId,
-				Resp:    make(chan bool),
+				Resp:    existsChan,
+			}
+			e.OutExistsResp <- ExistsResp{
+				Req: req,
+				Ok:  <-existsChan,
 			}
 		}
-	}
-
-	// TODO: Check if the block actually exists on the disk
-	e.OutExistsResp <- ExistsResp{
-		Req: req,
-		Ok:  true,
-		Msg: "Block exists",
 	}
 }

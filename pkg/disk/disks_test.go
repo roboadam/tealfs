@@ -78,3 +78,17 @@ func TestDisks(t *testing.T) {
 		t.Error("remote not equal")
 	}
 }
+
+func TestExists(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	path := NewPath("/", &MockFileOps{})
+	disk := New(path, "nodeId", "diskId", ctx)
+
+	req := ExistsReq{
+		BlockId: "blockId",
+		Resp:    make(chan bool),
+	}
+
+}
