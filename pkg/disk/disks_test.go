@@ -83,12 +83,29 @@ func TestExists(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	path := NewPath("/", &MockFileOps{})
+	fileOps := MockFileOps{}
+	path := NewPath("", &fileOps)
 	disk := New(path, "nodeId", "diskId", ctx)
+	resp := make(chan bool, 1)
 
 	req := ExistsReq{
 		BlockId: "blockId",
-		Resp:    make(chan bool),
+		Resp:    resp,
 	}
 
+	disk.InExists <- req
+	exists := <-resp
+
+	if exists {
+		t.Error("invalid response")
+	}
+
+	fileOps.WriteFile("blockId", []byte{1, 2, 3, 4, 5})
+
+	disk.InExists <- req
+	exists = <-resp
+
+	if !exists {
+		t.Error("invalid response")
+	}
 }

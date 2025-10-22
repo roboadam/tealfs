@@ -41,7 +41,7 @@ func (e *ExistsHandler) Start(ctx context.Context) {
 func (e *ExistsHandler) handleExistsReq(req ExistsReq) {
 	for _, d := range e.Disks.GetValues() {
 		if d.Id() == req.DestDiskId {
-			existsChan := make(chan bool)
+			existsChan := make(chan bool, 1)
 			d.InExists <- disk.ExistsReq{
 				BlockId: req.DestBlockId,
 				Resp:    existsChan,
