@@ -35,7 +35,7 @@ func TestExistsSender(t *testing.T) {
 	nodeConnMap := model.NewNodeConnectionMapper()
 	nodeConnMap.SetAll(0, "someAddress:123", remoteNodeId)
 
-	existsSender := rebalancer.ExistsSender{
+	existsSender := rebalancer.MsgSender{
 		InExistsReq:        inExistsReq,
 		InExistsResp:       inExistsResp,
 		OutLocalExistsReq:  outLocalExistsReq,

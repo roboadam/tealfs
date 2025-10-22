@@ -26,13 +26,12 @@ func TestExistsHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inExistsReq := make(chan rebalancer.ExistsReq)
-	outExistsResp := make(chan rebalancer.ExistsResp)
+	inExistsReq := make(chan rebalancer.ExistsReq, 1)
+	outExistsResp := make(chan rebalancer.ExistsResp, 1)
 	disks := set.NewSet[disk.Disk]()
 
 	path := disk.NewPath("", &disk.MockFileOps{})
 	d := disk.New(path, "nodeId", "diskId", ctx)
-	d.InExists = make(chan disk.ExistsReq, 1)
 	disks.Add(d)
 
 	existsHandler := rebalancer.ExistsHandler{

@@ -21,17 +21,26 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type ExistsSender struct {
-	InExistsReq        <-chan ExistsReq
-	InExistsResp       <-chan ExistsResp
+type MsgSender struct {
+	InExistsReq   <-chan ExistsReq
+	InExistsResp  <-chan ExistsResp
+	InStoreItReq  <-chan StoreItReq
+	InStoreItCmd  <-chan StoreItCmd
+	InStoreItResp <-chan StoreItResp
+
 	OutLocalExistsReq  chan<- ExistsReq
 	OutLocalExistsResp chan<- ExistsResp
-	OutRemote          chan<- model.MgrConnsSend
-	NodeId             model.NodeId
-	NodeConnMap        *model.NodeConnectionMapper
+	OutStoreItReq      chan<- StoreItReq
+	OutStoreItCmd      chan<- StoreItCmd
+	OutSoreItResp      chan<- StoreItResp
+
+	OutRemote chan<- model.MgrConnsSend
+
+	NodeId      model.NodeId
+	NodeConnMap *model.NodeConnectionMapper
 }
 
-func (e *ExistsSender) Start(ctx context.Context) {
+func (e *MsgSender) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -44,7 +53,7 @@ func (e *ExistsSender) Start(ctx context.Context) {
 	}
 }
 
-func (e *ExistsSender) sendExistsReq(req ExistsReq) {
+func (e *MsgSender) sendExistsReq(req ExistsReq) {
 	if req.DestNodeId == e.NodeId {
 		e.OutLocalExistsReq <- req
 	} else if conn, ok := e.NodeConnMap.ConnForNode(req.DestNodeId); ok {
@@ -57,7 +66,7 @@ func (e *ExistsSender) sendExistsReq(req ExistsReq) {
 	}
 }
 
-func (e *ExistsSender) sendExistsResp(resp ExistsResp) {
+func (e *MsgSender) sendExistsResp(resp ExistsResp) {
 	if resp.Req.Caller == e.NodeId {
 		e.OutLocalExistsResp <- resp
 	} else if conn, ok := e.NodeConnMap.ConnForNode(resp.Req.Caller); ok {
