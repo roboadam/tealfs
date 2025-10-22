@@ -36,11 +36,12 @@ const (
 	BalanceReqType            PayloadType = 16
 	OnDiskBlockIdListType     PayloadType = 17
 	DeleteBlockId             PayloadType = 18
-	StoreItCmdType            PayloadType = 19
-	StoreItRespType           PayloadType = 20
-	FilesystemBlockIdListType PayloadType = 21
-	ExistsReqType             PayloadType = 22
-	ExistsRespType            PayloadType = 23
+	StoreItReqType            PayloadType = 19
+	StoreItCmdType            PayloadType = 20
+	StoreItRespType           PayloadType = 21
+	FilesystemBlockIdListType PayloadType = 22
+	ExistsReqType             PayloadType = 23
+	ExistsRespType            PayloadType = 24
 )
 
 type Payload interface {

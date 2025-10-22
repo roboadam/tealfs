@@ -49,6 +49,8 @@ func (e *MsgSender) Start(ctx context.Context) {
 			e.sendExistsReq(req)
 		case resp := <-e.InExistsResp:
 			e.sendExistsResp(resp)
+		case req := <-e.InStoreItReq:
+			e.sendStoreItReq(req)
 		}
 	}
 }
@@ -73,6 +75,32 @@ func (e *MsgSender) sendExistsResp(resp ExistsResp) {
 		e.OutRemote <- model.MgrConnsSend{
 			ConnId:  conn,
 			Payload: &resp,
+		}
+	} else {
+		logrus.Error("Not connected")
+	}
+}
+
+func (e *MsgSender) sendStoreItReq(req StoreItReq) {
+	if req.DestNodeId == e.NodeId {
+		e.OutStoreItReq <- req
+	} else if conn, ok := e.NodeConnMap.ConnForNode(req.DestNodeId); ok {
+		e.OutRemote <- model.MgrConnsSend{
+			ConnId:  conn,
+			Payload: &req,
+		}
+	} else {
+		logrus.Error("Not connected")
+	}
+}
+
+func (e *MsgSender) sendStoreItCmd(cmd StoreItCmd) {
+	if cmd.Recipient == e.NodeId {
+		e.OutStoreItCmd <- cmd
+	} else if conn, ok := e.NodeConnMap.ConnForNode(cmd.Recipient); ok {
+		e.OutRemote <- model.MgrConnsSend{
+			ConnId:  conn,
+			Payload: &cmd,
 		}
 	} else {
 		logrus.Error("Not connected")

@@ -25,8 +25,9 @@ import (
 )
 
 type Rebalancer struct {
-	InStart       <-chan BalanceReqId
-	InResp        <-chan ExistsResp
+	InStart <-chan BalanceReqId
+	InResp  <-chan ExistsResp
+
 	OutExistsReq  chan<- ExistsReq
 	OutSafeDelete chan<- SafeDelete
 	OutStoreItReq chan<- StoreItReq

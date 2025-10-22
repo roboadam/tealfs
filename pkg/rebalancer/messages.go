@@ -59,6 +59,10 @@ type StoreItReq struct {
 	DestBlockId  model.BlockId
 }
 
+func (s *StoreItReq) Type() model.PayloadType {
+	return model.StoreItReqType
+}
+
 type StoreItCmd struct {
 	BalanceReqId BalanceReqId
 	StoreItId    StoreItId
