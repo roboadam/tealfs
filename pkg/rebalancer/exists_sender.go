@@ -95,9 +95,9 @@ func (e *MsgSender) sendStoreItReq(req StoreItReq) {
 }
 
 func (e *MsgSender) sendStoreItCmd(cmd StoreItCmd) {
-	if cmd.Recipient == e.NodeId {
+	if cmd.NodeId == e.NodeId {
 		e.OutStoreItCmd <- cmd
-	} else if conn, ok := e.NodeConnMap.ConnForNode(cmd.Recipient); ok {
+	} else if conn, ok := e.NodeConnMap.ConnForNode(cmd.NodeId); ok {
 		e.OutRemote <- model.MgrConnsSend{
 			ConnId:  conn,
 			Payload: &cmd,

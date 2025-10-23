@@ -64,11 +64,9 @@ func (s *StoreItReq) Type() model.PayloadType {
 }
 
 type StoreItCmd struct {
-	BalanceReqId BalanceReqId
-	StoreItId    StoreItId
-	BlockId      model.BlockId
-	Caller       model.NodeId
-	Recipient    model.NodeId
+	Req    StoreItReq
+	NodeId model.NodeId
+	DiskId model.DiskId
 }
 
 func (s *StoreItCmd) Type() model.PayloadType {
@@ -76,9 +74,10 @@ func (s *StoreItCmd) Type() model.PayloadType {
 }
 
 type StoreItResp struct {
-	Req StoreItReq
-	Ok  bool
-	Msg string
+	Req   StoreItReq
+	Block model.Block
+	Ok    bool
+	Msg   string
 }
 
 func (s *StoreItResp) Type() model.PayloadType {
