@@ -30,7 +30,7 @@ type Rebalancer struct {
 
 	OutExistsReq  chan<- ExistsReq
 	OutSafeDelete chan<- SafeDelete
-	OutStoreItReq chan<- StoreItCmd
+	OutStoreItCmd chan<- StoreItCmd
 
 	OnFilesystemIds      *set.Map[BalanceReqId, FilesystemBlockIdList]
 	NodeId               model.NodeId
@@ -69,7 +69,7 @@ func (e *Rebalancer) handleResp(resp ExistsResp) {
 			DestDiskId:   resp.Req.DestDiskId,
 			DestBlockId:  resp.Req.DestBlockId,
 		}
-		e.OutStoreItReq <- s
+		e.OutStoreItCmd <- s
 	}
 
 }

@@ -45,7 +45,7 @@ func TestRebalancerStart(t *testing.T) {
 		OutSafeDelete:   outSafeDelete,
 		OnFilesystemIds: &onFsIds,
 		NodeId:          nodeId,
-		OutStoreItReq:   outStoreItReq,
+		OutStoreItCmd:   outStoreItReq,
 		Distributer:     &distributer,
 	}
 
@@ -130,7 +130,7 @@ func TestRebalancerAllExist(t *testing.T) {
 		OutSafeDelete:   outSafeDelete,
 		OnFilesystemIds: &onFsIds,
 		NodeId:          nodeId,
-		OutStoreItReq:   outStoreItReq,
+		OutStoreItCmd:   outStoreItReq,
 		Distributer:     &distributer,
 	}
 
@@ -189,7 +189,7 @@ func TestRebalancerNotExist(t *testing.T) {
 		OutSafeDelete:   outSafeDelete,
 		OnFilesystemIds: &onFsIds,
 		NodeId:          nodeId,
-		OutStoreItReq:   outStoreItReq,
+		OutStoreItCmd:   outStoreItReq,
 		Distributer:     &distributer,
 	}
 
