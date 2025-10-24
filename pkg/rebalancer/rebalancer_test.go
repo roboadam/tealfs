@@ -35,7 +35,7 @@ func TestRebalancerStart(t *testing.T) {
 	outSafeDelete := make(chan rebalancer.SafeDelete)
 	onFsIds := set.NewMap[rebalancer.BalanceReqId, rebalancer.FilesystemBlockIdList]()
 	nodeId := model.NewNodeId()
-	outStoreItReq := make(chan rebalancer.StoreItReq)
+	outStoreItReq := make(chan rebalancer.StoreItCmd)
 	distributer := dist.NewMirrorDistributer(nodeId)
 
 	r := rebalancer.Rebalancer{
@@ -120,7 +120,7 @@ func TestRebalancerAllExist(t *testing.T) {
 	outSafeDelete := make(chan rebalancer.SafeDelete)
 	onFsIds := set.NewMap[rebalancer.BalanceReqId, rebalancer.FilesystemBlockIdList]()
 	nodeId := model.NewNodeId()
-	outStoreItReq := make(chan rebalancer.StoreItReq)
+	outStoreItReq := make(chan rebalancer.StoreItCmd)
 	distributer := dist.NewMirrorDistributer(nodeId)
 
 	r := rebalancer.Rebalancer{
@@ -179,7 +179,7 @@ func TestRebalancerNotExist(t *testing.T) {
 	outSafeDelete := make(chan rebalancer.SafeDelete)
 	onFsIds := set.NewMap[rebalancer.BalanceReqId, rebalancer.FilesystemBlockIdList]()
 	nodeId := model.NewNodeId()
-	outStoreItReq := make(chan rebalancer.StoreItReq)
+	outStoreItReq := make(chan rebalancer.StoreItCmd)
 	distributer := dist.NewMirrorDistributer(nodeId)
 
 	r := rebalancer.Rebalancer{

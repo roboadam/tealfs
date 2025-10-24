@@ -30,7 +30,7 @@ type Rebalancer struct {
 
 	OutExistsReq  chan<- ExistsReq
 	OutSafeDelete chan<- SafeDelete
-	OutStoreItReq chan<- StoreItReq
+	OutStoreItReq chan<- StoreItCmd
 
 	OnFilesystemIds      *set.Map[BalanceReqId, FilesystemBlockIdList]
 	NodeId               model.NodeId
@@ -61,7 +61,7 @@ func (e *Rebalancer) handleResp(resp ExistsResp) {
 			}
 		}
 	} else {
-		s := StoreItReq{
+		s := StoreItCmd{
 			Caller:       e.NodeId,
 			BalanceReqId: resp.Req.BalanceReqId,
 			StoreItId:    StoreItId(uuid.NewString()),

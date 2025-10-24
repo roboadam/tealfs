@@ -24,14 +24,14 @@ import (
 type MsgSender struct {
 	InExistsReq   <-chan ExistsReq
 	InExistsResp  <-chan ExistsResp
-	InStoreItReq  <-chan StoreItReq
-	InStoreItCmd  <-chan StoreItCmd
+	InStoreItReq  <-chan StoreItCmd
+	InStoreItCmd  <-chan StoreItReq
 	InStoreItResp <-chan StoreItResp
 
 	OutLocalExistsReq  chan<- ExistsReq
 	OutLocalExistsResp chan<- ExistsResp
-	OutStoreItReq      chan<- StoreItReq
-	OutStoreItCmd      chan<- StoreItCmd
+	OutStoreItReq      chan<- StoreItCmd
+	OutStoreItCmd      chan<- StoreItReq
 	OutSoreItResp      chan<- StoreItResp
 
 	OutRemote chan<- model.MgrConnsSend
@@ -81,7 +81,7 @@ func (e *MsgSender) sendExistsResp(resp ExistsResp) {
 	}
 }
 
-func (e *MsgSender) sendStoreItReq(req StoreItReq) {
+func (e *MsgSender) sendStoreItReq(req StoreItCmd) {
 	if req.DestNodeId == e.NodeId {
 		e.OutStoreItReq <- req
 	} else if conn, ok := e.NodeConnMap.ConnForNode(req.DestNodeId); ok {
@@ -94,7 +94,7 @@ func (e *MsgSender) sendStoreItReq(req StoreItReq) {
 	}
 }
 
-func (e *MsgSender) sendStoreItCmd(cmd StoreItCmd) {
+func (e *MsgSender) sendStoreItCmd(cmd StoreItReq) {
 	if cmd.NodeId == e.NodeId {
 		e.OutStoreItCmd <- cmd
 	} else if conn, ok := e.NodeConnMap.ConnForNode(cmd.NodeId); ok {

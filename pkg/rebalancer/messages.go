@@ -50,7 +50,7 @@ func (f *FilesystemBlockIdList) Type() model.PayloadType {
 	return model.FilesystemBlockIdListType
 }
 
-type StoreItReq struct {
+type StoreItCmd struct {
 	Caller       model.NodeId
 	BalanceReqId BalanceReqId
 	StoreItId    StoreItId
@@ -59,22 +59,22 @@ type StoreItReq struct {
 	DestBlockId  model.BlockId
 }
 
-func (s *StoreItReq) Type() model.PayloadType {
+func (s *StoreItCmd) Type() model.PayloadType {
 	return model.StoreItReqType
 }
 
-type StoreItCmd struct {
-	Req    StoreItReq
+type StoreItReq struct {
+	Req    StoreItCmd
 	NodeId model.NodeId
 	DiskId model.DiskId
 }
 
-func (s *StoreItCmd) Type() model.PayloadType {
+func (s *StoreItReq) Type() model.PayloadType {
 	return model.StoreItCmdType
 }
 
 type StoreItResp struct {
-	Req   StoreItReq
+	Req   StoreItCmd
 	Block model.Block
 	Ok    bool
 	Msg   string
