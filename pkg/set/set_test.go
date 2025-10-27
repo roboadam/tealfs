@@ -12,6 +12,41 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package set
+package set_test
 
-write test here
+import (
+	"tealfs/pkg/set"
+	"testing"
+)
+
+func TestSetPop(t *testing.T) {
+	s := set.NewSet[int]()
+	_, _, ok := s.Pop()
+
+	if ok {
+		t.Error("should be nothing to pop")
+	}
+
+	s.Add(1)
+	s.Add(2)
+	s.Add(3)
+	s.Add(4)
+
+	k, remainder, ok := s.Pop()
+
+	if !ok {
+		t.Error("should be something to pop")
+	}
+
+	if !s.Contains(k) {
+		t.Error("pop value not in original set")
+	}
+
+	if remainder.Contains(k) {
+		t.Error("pop value in remainder set")
+	}
+
+	if remainder.Len() != 3 {
+		t.Error("should only be 3 left")
+	}
+}

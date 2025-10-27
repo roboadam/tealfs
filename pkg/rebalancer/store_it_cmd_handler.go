@@ -16,6 +16,7 @@ package rebalancer
 
 import (
 	"context"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
@@ -26,6 +27,7 @@ type StoreItCmdHandler struct {
 	OutStoreItReq chan<- StoreItReq
 
 	AllDiskIds  *set.Set[model.AddDiskReq]
+	LocalDisks  *set.Set[disk.Disk]
 	bookKeeping map[BalanceReqId]map[model.BlockId]*set.Set[model.AddDiskReq]
 }
 
@@ -44,7 +46,17 @@ func (s *StoreItCmdHandler) Start(ctx context.Context) {
 }
 
 func (s *StoreItCmdHandler) handleStoreItResp(resp StoreItResp) {
-	if !resp.Ok {
+	if resp.Ok {
+		for _, d := range s.LocalDisks.GetValues() {
+			if d.Id() == resp.Req.DestDiskId {
+				d.InWrites <- model.WriteRequest{
+					Caller: "",
+					Data:   model.RawData{},
+					ReqId:  ",
+				}
+			}
+		}
+	} else {
 		s.sendNextStoreItReq(resp.Req)
 	}
 
