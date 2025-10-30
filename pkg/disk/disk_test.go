@@ -113,6 +113,22 @@ func TestReadNewFile(t *testing.T) {
 	}
 }
 
+func TestGet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	f := disk.MockFileOps{}
+	path := disk.NewPath("/some/fake/path", &f)
+	id := model.NewNodeId()
+	diskId := model.DiskId(uuid.New().String())
+	d := disk.New(path, id, diskId, ctx)
+
+	_, ok := d.Get("blockId")
+	if ok {
+		t.Error("should be no block")
+	}
+}
+
 func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
 	f := disk.MockFileOps{}
 	path := disk.NewPath("/some/fake/path", &f)

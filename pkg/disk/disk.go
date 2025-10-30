@@ -46,7 +46,14 @@ func New(
 		InExists:  make(chan ExistsReq, 1),
 		OutReads:  make(chan model.ReadResult, 1),
 		OutWrites: make(chan model.WriteResult, 1),
-		ctx:       ctx,
+		inGet: make(chan struct {
+			blockId model.BlockId
+			resp    chan struct {
+				data []byte
+				ok   bool
+			}
+		}, 1),
+		ctx: ctx,
 	}
 	go p.consumeChannels()
 	return p
@@ -64,7 +71,14 @@ type Disk struct {
 	OutListIds chan set.Set[model.BlockId]
 	InDelete   chan model.BlockId
 	InExists   chan ExistsReq
-	ctx        context.Context
+	inGet      chan struct {
+		blockId model.BlockId
+		resp    chan struct {
+			data []byte
+			ok   bool
+		}
+	}
+	ctx context.Context
 }
 
 type ExistsReq struct {
@@ -74,11 +88,45 @@ type ExistsReq struct {
 
 func (d *Disk) Id() model.DiskId { return d.diskId }
 
+func (d *Disk) Get(blockId model.BlockId) ([]byte, bool) {
+	resp := make(chan struct {
+		data []byte
+		ok   bool
+	})
+	d.inGet <- struct {
+		blockId model.BlockId
+		resp    chan struct {
+			data []byte
+			ok   bool
+		}
+	}{
+		blockId: blockId,
+		resp:    resp,
+	}
+	result := <-resp
+	return result.data, result.ok
+}
+
 func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case <-d.ctx.Done():
 			return
+		case get := <-d.inGet:
+			data, err := d.path.Read(model.DiskPointer{
+				NodeId:   d.id,
+				Disk:     d.diskId,
+				FileName: string(get.blockId),
+			})
+			ok := err == nil
+			get.resp <- struct {
+				data []byte
+				ok   bool
+			}{
+				data: data.Data,
+				ok:   ok,
+			}
+
 		case s := <-d.InWrites:
 			err := d.path.Save(s.Data)
 			if err == nil {
