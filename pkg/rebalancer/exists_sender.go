@@ -24,8 +24,8 @@ import (
 type MsgSender struct {
 	InExistsReq   <-chan ExistsReq
 	InExistsResp  <-chan ExistsResp
-	InStoreItReq  <-chan StoreItCmd
-	InStoreItCmd  <-chan StoreItReq
+	InStoreItCmd  <-chan StoreItCmd
+	InStoreItReq  <-chan StoreItReq
 	InStoreItResp <-chan StoreItResp
 
 	OutLocalExistsReq  chan<- ExistsReq
@@ -81,7 +81,7 @@ func (e *MsgSender) sendExistsResp(resp ExistsResp) {
 	}
 }
 
-func (e *MsgSender) sendStoreItReq(req StoreItCmd) {
+func (e *MsgSender) sendStoreItCmd(req StoreItCmd) {
 	if req.DestNodeId == e.NodeId {
 		e.OutStoreItReq <- req
 	} else if conn, ok := e.NodeConnMap.ConnForNode(req.DestNodeId); ok {
@@ -94,7 +94,7 @@ func (e *MsgSender) sendStoreItReq(req StoreItCmd) {
 	}
 }
 
-func (e *MsgSender) sendStoreItCmd(cmd StoreItReq) {
+func (e *MsgSender) sendStoreItReq(cmd StoreItReq) {
 	if cmd.NodeId == e.NodeId {
 		e.OutStoreItCmd <- cmd
 	} else if conn, ok := e.NodeConnMap.ConnForNode(cmd.NodeId); ok {

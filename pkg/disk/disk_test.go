@@ -123,13 +123,27 @@ func TestGet(t *testing.T) {
 	diskId := model.DiskId(uuid.New().String())
 	d := disk.New(path, id, diskId, ctx)
 
-	data, ok := d.Get("blockId")
+	_, ok := d.Get("blockId")
 	if ok {
 		t.Error("should be no block")
 	}
 
-	if data != nil {
-		t.Error("should be no data")
+	path.Save(model.RawData{
+		Ptr:  model.DiskPointer{
+			NodeId:   id,
+			Disk:     diskId,
+			FileName: "blockId",
+		},
+		Data: []byte{1,2,3},
+	})
+
+	data, ok := d.Get("blockId")
+	if !ok {
+		t.Error("should be a block")
+	}
+
+	if !bytes.Equal(data, []byte{1,2,3}) {
+		t.Error("wrong data")
 	}
 }
 

@@ -113,7 +113,7 @@ func (d *Disk) consumeChannels() {
 		case <-d.ctx.Done():
 			return
 		case get := <-d.inGet:
-			data, err := d.path.Read(model.DiskPointer{
+			data, err := d.path.ReadDirect(model.DiskPointer{
 				NodeId:   d.id,
 				Disk:     d.diskId,
 				FileName: string(get.blockId),
@@ -141,7 +141,7 @@ func (d *Disk) consumeChannels() {
 				rr := model.NewReadResultErr("no pointers in read request", r.Caller, r.ReqId, r.BlockId)
 				chanutil.Send(d.ctx, d.OutReads, rr, "disk: no pointers in read request")
 			} else {
-				data, err := d.path.Read(r.Ptrs[0])
+				data, err := d.path.ReadOrEmpty(r.Ptrs[0])
 				if err == nil {
 					rr := model.NewReadResultOk(r.Caller, r.Ptrs[1:], data, r.ReqId, r.BlockId)
 					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read success")
@@ -177,12 +177,17 @@ func (p *Path) Save(rawData model.RawData) error {
 	return p.ops.WriteFile(filePath, rawData.Data)
 }
 
-func (p *Path) Read(ptr model.DiskPointer) (model.RawData, error) {
-	filePath := filepath.Join(p.raw, ptr.FileName)
-	result, err := p.ops.ReadFile(filePath)
+func (p *Path) ReadOrEmpty(ptr model.DiskPointer) (model.RawData, error) {
+	data, err := p.ReadDirect(ptr)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
 		return model.RawData{Ptr: ptr, Data: []byte{}}, nil
 	}
+	return data, err
+}
+
+func (p *Path) ReadDirect(ptr model.DiskPointer) (model.RawData, error) {
+	filePath := filepath.Join(p.raw, ptr.FileName)
+	result, err := p.ops.ReadFile(filePath)
 	return model.RawData{Ptr: ptr, Data: result}, err
 }
 
