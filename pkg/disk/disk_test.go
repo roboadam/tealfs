@@ -123,9 +123,13 @@ func TestGet(t *testing.T) {
 	diskId := model.DiskId(uuid.New().String())
 	d := disk.New(path, id, diskId, ctx)
 
-	_, ok := d.Get("blockId")
+	data, ok := d.Get("blockId")
 	if ok {
 		t.Error("should be no block")
+	}
+
+	if data != nil {
+		t.Error("should be no data")
 	}
 }
 

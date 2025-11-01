@@ -49,11 +49,6 @@ func (s *StoreItCmdHandler) handleStoreItResp(resp StoreItResp) {
 	if resp.Ok {
 		for _, d := range s.LocalDisks.GetValues() {
 			if d.Id() == resp.Req.DestDiskId {
-				d.InWrites <- model.WriteRequest{
-					Caller: "",
-					Data:   model.RawData{},
-					ReqId:  ",
-				}
 			}
 		}
 	} else {

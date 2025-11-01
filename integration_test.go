@@ -182,7 +182,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 	if fetchedContent != fileContents1 {
-		t.Error("unexpected contents", fetchedContent)
+		t.Errorf("unexpected contents: [%s], expected [%s]", fetchedContent, fileContents1)
 		return
 	}
 
