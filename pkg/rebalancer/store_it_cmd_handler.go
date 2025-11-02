@@ -19,6 +19,8 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type StoreItCmdHandler struct {
@@ -50,11 +52,15 @@ func (s *StoreItCmdHandler) Start(ctx context.Context) {
 func (s *StoreItCmdHandler) handleStoreItResp(resp StoreItResp) {
 	if resp.Ok {
 		for _, d := range s.LocalDisks.GetValues() {
-			if d.Id() == resp.Req.DestDiskId {.
-				// Save it here
-				s.OutExistsResp <- ExistsResp{
-					Req: resp.Req.ExistsReq,
-					Ok:  true,
+			if d.Id() == resp.Req.DestDiskId {
+				ok := d.Save(resp.Block.Data.Data, resp.Block.Data.Ptr.BlockId)
+				if ok {
+					s.OutExistsResp <- ExistsResp{
+						Req: resp.Req.ExistsReq,
+						Ok:  true,
+					}
+				} else {
+					log.Warn("Failed to save block")
 				}
 			}
 		}
