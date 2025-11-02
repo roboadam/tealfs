@@ -46,12 +46,12 @@ func (e *Rebalancer) Start(ctx context.Context) {
 		case req := <-e.InStart:
 			e.sendAllExistsReq(req)
 		case resp := <-e.InResp:
-			e.handleResp(resp)
+			e.handleExistsResp(resp)
 		}
 	}
 }
 
-func (e *Rebalancer) handleResp(resp ExistsResp) {
+func (e *Rebalancer) handleExistsResp(resp ExistsResp) {
 	if resp.Ok {
 		e.rebalancerMessageMgr.removeExistsReq(resp.Req)
 		if e.rebalancerMessageMgr.exists(resp.Req.BalanceReqId, resp.Req.DestBlockId) {
@@ -68,6 +68,7 @@ func (e *Rebalancer) handleResp(resp ExistsResp) {
 			DestNodeId:   resp.Req.DestNodeId,
 			DestDiskId:   resp.Req.DestDiskId,
 			DestBlockId:  resp.Req.DestBlockId,
+			ExistsReq:    resp.Req,
 		}
 		e.OutStoreItCmd <- s
 	}

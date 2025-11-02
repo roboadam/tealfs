@@ -147,6 +147,10 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestSave(t *testing.T) {
+	
+}
+
 func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
 	f := disk.MockFileOps{}
 	path := disk.NewPath("/some/fake/path", &f)

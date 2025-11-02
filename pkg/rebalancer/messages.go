@@ -57,6 +57,7 @@ type StoreItCmd struct {
 	DestNodeId   model.NodeId
 	DestDiskId   model.DiskId
 	DestBlockId  model.BlockId
+	ExistsReq    ExistsReq
 }
 
 func (s *StoreItCmd) Type() model.PayloadType {

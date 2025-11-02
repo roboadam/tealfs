@@ -53,6 +53,11 @@ func New(
 				ok   bool
 			}
 		}, 1),
+		inSave: make(chan struct {
+			data    []byte
+			blockId model.BlockId
+			resp    chan bool
+		}),
 		ctx: ctx,
 	}
 	go p.consumeChannels()
@@ -77,6 +82,11 @@ type Disk struct {
 			data []byte
 			ok   bool
 		}
+	}
+	inSave chan struct {
+		data    []byte
+		blockId model.BlockId
+		resp    chan bool
 	}
 	ctx context.Context
 }
@@ -107,6 +117,20 @@ func (d *Disk) Get(blockId model.BlockId) ([]byte, bool) {
 	return result.data, result.ok
 }
 
+func (d *Disk) Save(data []byte, blockId model.BlockId) bool {
+	resp := make(chan bool)
+	d.inSave <- struct {
+		data    []byte
+		blockId model.BlockId
+		resp    chan bool
+	}{
+		data:    data,
+		blockId: blockId,
+		resp:    resp,
+	}
+	return <-resp
+}
+
 func (d *Disk) consumeChannels() {
 	for {
 		select {
@@ -126,7 +150,16 @@ func (d *Disk) consumeChannels() {
 				data: data.Data,
 				ok:   ok,
 			}
-
+		case save := <-d.inSave:
+			err := d.path.Save(model.RawData{
+				Ptr: model.DiskPointer{
+					NodeId:   d.id,
+					Disk:     d.diskId,
+					FileName: string(save.blockId),
+				},
+				Data: save.data,
+			})
+			save.resp <- err == nil
 		case s := <-d.InWrites:
 			err := d.path.Save(s.Data)
 			if err == nil {

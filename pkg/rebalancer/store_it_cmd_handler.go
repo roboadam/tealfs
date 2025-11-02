@@ -24,7 +24,9 @@ import (
 type StoreItCmdHandler struct {
 	InStoreItCmd  <-chan StoreItCmd
 	InStoreItResp <-chan StoreItResp
+
 	OutStoreItReq chan<- StoreItReq
+	OutExistsResp chan<- ExistsResp
 
 	AllDiskIds  *set.Set[model.AddDiskReq]
 	LocalDisks  *set.Set[disk.Disk]
@@ -48,7 +50,12 @@ func (s *StoreItCmdHandler) Start(ctx context.Context) {
 func (s *StoreItCmdHandler) handleStoreItResp(resp StoreItResp) {
 	if resp.Ok {
 		for _, d := range s.LocalDisks.GetValues() {
-			if d.Id() == resp.Req.DestDiskId {
+			if d.Id() == resp.Req.DestDiskId {.
+				// Save it here
+				s.OutExistsResp <- ExistsResp{
+					Req: resp.Req.ExistsReq,
+					Ok:  true,
+				}
 			}
 		}
 	} else {
