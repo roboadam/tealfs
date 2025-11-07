@@ -27,13 +27,22 @@ func TestStoreItCmd(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inStoreItCmd := make(chan rebalancer.StoreItCmd, 1)
-	inStoreItResp := make(chan rebalancer.StoreItResp, 1)
-	outStoreItReq := make(chan rebalancer.StoreItReq, 1)
-	outExistsResp := make(chan rebalancer.ExistsResp, 1)
+	inStoreItCmd := make(chan rebalancer.StoreItCmd)
+	inStoreItResp := make(chan rebalancer.StoreItResp)
+	outStoreItReq := make(chan rebalancer.StoreItReq)
+	outExistsResp := make(chan rebalancer.ExistsResp)
+
+	localDisks := set.NewSet[disk.Disk]()
+	fileOps := disk.MockFileOps{}
+	path := disk.NewPath("", &fileOps)
+	localDisks.Add(disk.New(path, "localNode", "localDisk1", ctx))
+	localDisks.Add(disk.New(path, "localNode", "localDisk2", ctx))
 
 	allDiskIds := set.NewSet[model.AddDiskReq]()
-	localDisks := set.NewSet[disk.Disk]()
+	allDiskIds.Add(model.AddDiskReq{DiskId: "localDisk1", Path: "", NodeId: "localNode"})
+	allDiskIds.Add(model.AddDiskReq{DiskId: "localDisk2", Path: "", NodeId: "localNode"})
+	allDiskIds.Add(model.AddDiskReq{DiskId: "remoteDisk1", Path: "", NodeId: "remoteNode"})
+	allDiskIds.Add(model.AddDiskReq{DiskId: "remoteDisk1", Path: "", NodeId: "remoteNode"})
 
 	handler := rebalancer.StoreItCmdHandler{
 		InStoreItCmd:  inStoreItCmd,
@@ -47,12 +56,21 @@ func TestStoreItCmd(t *testing.T) {
 	go handler.Start(ctx)
 
 	inStoreItCmd <- rebalancer.StoreItCmd{
-		Caller:       "callerNodeId",
+		Caller:       "mainNodeId",
 		BalanceReqId: "balanceReqId",
 		StoreItId:    "storeItId",
-		DestNodeId:   ",
-		DestDiskId:   "",
-		DestBlockId:  "",
-		ExistsReq:    rebalancer.ExistsReq{},
+		DestNodeId:   "localNode",
+		DestDiskId:   "localDisk1",
+		DestBlockId:  "blockId",
+		ExistsReq: rebalancer.ExistsReq{
+			Caller:       "mainNodeId",
+			BalanceReqId: "balanceReqId",
+			ExistsId:     "existsId",
+			DestNodeId:   "localNode",
+			DestDiskId:   "localDisk1",
+			DestBlockId:  "blockId",
+		},
 	}
+
+	<-outStoreItReq
 }
