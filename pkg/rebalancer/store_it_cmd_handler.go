@@ -53,7 +53,7 @@ func (s *StoreItCmdHandler) handleStoreItResp(resp StoreItResp) {
 	if resp.Ok {
 		for _, d := range s.LocalDisks.GetValues() {
 			if d.Id() == resp.Req.DestDiskId {
-				ok := d.Save(resp.Block.Data.Data, resp.Block.Data.Ptr.BlockId)
+				ok := d.Save(resp.Block.Data, resp.Block.Id)
 				if ok {
 					s.OutExistsResp <- ExistsResp{
 						Req: resp.Req.ExistsReq,
@@ -77,9 +77,9 @@ func (s *StoreItCmdHandler) handleStoreItCmd(cmd StoreItCmd) {
 }
 
 func (s *StoreItCmdHandler) sendNextStoreItReq(cmd StoreItCmd) {
-	dests := s.bookKeeping[cmd.BalanceReqId][cmd.DestBlockId]
+	remainder := s.bookKeeping[cmd.BalanceReqId][cmd.DestBlockId]
 	for {
-		next, remainder, ok := dests.Pop()
+		next, remainder, ok := remainder.Pop()
 		s.bookKeeping[cmd.BalanceReqId][cmd.DestBlockId] = remainder
 
 		if !ok {
