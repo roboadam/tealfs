@@ -42,7 +42,9 @@ func TestStoreItCmd(t *testing.T) {
 	allDiskIds.Add(model.AddDiskReq{DiskId: "localDisk1", Path: "", NodeId: "localNode"})
 	allDiskIds.Add(model.AddDiskReq{DiskId: "localDisk2", Path: "", NodeId: "localNode"})
 	allDiskIds.Add(model.AddDiskReq{DiskId: "remoteDisk1", Path: "", NodeId: "remoteNode"})
-	allDiskIds.Add(model.AddDiskReq{DiskId: "remoteDisk1", Path: "", NodeId: "remoteNode"})
+	allDiskIds.Add(model.AddDiskReq{DiskId: "remoteDisk2", Path: "", NodeId: "remoteNode"})
+
+	expectedDisksToTry := set.NewSetFromSlice([]model.DiskId{"localDisk2", "remoteDisk1", "remoteDisk2"})
 
 	handler := rebalancer.StoreItCmdHandler{
 		InStoreItCmd:  inStoreItCmd,
@@ -55,7 +57,7 @@ func TestStoreItCmd(t *testing.T) {
 
 	go handler.Start(ctx)
 
-	inStoreItCmd <- rebalancer.StoreItCmd{
+	cmd := rebalancer.StoreItCmd{
 		Caller:       "mainNodeId",
 		BalanceReqId: "balanceReqId",
 		StoreItId:    "storeItId",
@@ -72,5 +74,29 @@ func TestStoreItCmd(t *testing.T) {
 		},
 	}
 
-	<-outStoreItReq
+	inStoreItCmd <- cmd
+
+	disksTried := set.NewSet[model.DiskId]()
+	req := <-outStoreItReq
+	disksTried.Add(req.DiskId)
+
+	inStoreItResp <- rebalancer.StoreItResp{Req: req, Ok: false, Msg: "failed"}
+
+	req = <-outStoreItReq
+	disksTried.Add(req.DiskId)
+
+	inStoreItResp <- rebalancer.StoreItResp{Req: req, Ok: false, Msg: "failed"}
+	req = <-outStoreItReq
+	disksTried.Add(req.DiskId)
+
+	inStoreItResp <- rebalancer.StoreItResp{Req: req, Ok: false, Msg: "failed"}
+	select {
+	case <-outStoreItReq:
+		t.Error("unexpected message on outStoreItReq")
+	default:
+	}
+
+	if !expectedDisksToTry.Equal(&disksTried) {
+		t.Error("unexpected disks tried")
+	}
 }

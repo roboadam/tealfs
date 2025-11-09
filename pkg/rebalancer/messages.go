@@ -65,7 +65,7 @@ func (s *StoreItCmd) Type() model.PayloadType {
 }
 
 type StoreItReq struct {
-	Req    StoreItCmd
+	Cmd    StoreItCmd
 	NodeId model.NodeId
 	DiskId model.DiskId
 }
@@ -75,7 +75,7 @@ func (s *StoreItReq) Type() model.PayloadType {
 }
 
 type StoreItResp struct {
-	Req   StoreItCmd
+	Req   StoreItReq
 	Block model.Block
 	Ok    bool
 	Msg   string

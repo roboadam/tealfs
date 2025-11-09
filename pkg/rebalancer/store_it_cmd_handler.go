@@ -52,11 +52,11 @@ func (s *StoreItCmdHandler) Start(ctx context.Context) {
 func (s *StoreItCmdHandler) handleStoreItResp(resp StoreItResp) {
 	if resp.Ok {
 		for _, d := range s.LocalDisks.GetValues() {
-			if d.Id() == resp.Req.DestDiskId {
+			if d.Id() == resp.Req.DiskId {
 				ok := d.Save(resp.Block.Data, resp.Block.Id)
 				if ok {
 					s.OutExistsResp <- ExistsResp{
-						Req: resp.Req.ExistsReq,
+						Req: resp.Req.Cmd.ExistsReq,
 						Ok:  true,
 					}
 				} else {
@@ -65,7 +65,7 @@ func (s *StoreItCmdHandler) handleStoreItResp(resp StoreItResp) {
 			}
 		}
 	} else {
-		s.sendNextStoreItReq(resp.Req)
+		s.sendNextStoreItReq(resp.Req.Cmd)
 	}
 
 }
@@ -82,15 +82,18 @@ func (s *StoreItCmdHandler) sendNextStoreItReq(cmd StoreItCmd) {
 		next, remainder, ok := remainder.Pop()
 		s.bookKeeping[cmd.BalanceReqId][cmd.DestBlockId] = remainder
 
+		// If there are no more possible locations the block could be so give up
 		if !ok {
 			break
 		}
-		if next.NodeId == cmd.Caller {
+
+		// You don't need to bother checking the intended destination for the data
+		if next.DiskId == cmd.DestDiskId {
 			continue
 		}
 
 		s.OutStoreItReq <- StoreItReq{
-			Req:    cmd,
+			Cmd:    cmd,
 			NodeId: next.NodeId,
 			DiskId: next.DiskId,
 		}
