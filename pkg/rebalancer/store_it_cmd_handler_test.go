@@ -166,4 +166,13 @@ func TestStoreItCmdSuccess(t *testing.T) {
 	if existsResp.Req.ExistsId != "existsId" {
 		t.Error("invalid exists id")
 	}
+
+	data, err := fileOps.ReadFile("blockId")
+	if err != nil {
+		t.Error("error verifying data")
+	}
+
+	if string(data) != "blockData" {
+		t.Error("invalid data")
+	}
 }
