@@ -13,3 +13,48 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 package rebalancer
+
+import (
+	"context"
+	"tealfs/pkg/disk"
+	"tealfs/pkg/model"
+	"tealfs/pkg/set"
+)
+
+type StoreItReqHandler struct {
+	InStoreItReq   <-chan StoreItReq
+	OutStoreItResp chan<- StoreItResp
+
+	LocalDisks *set.Set[disk.Disk]
+}
+
+func (s *StoreItReqHandler) Start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case req := <-s.InStoreItReq:
+			s.handleStoreItReq(req)
+		}
+	}
+}
+
+func (s *StoreItReqHandler) handleStoreItReq(req StoreItReq) {
+	for _, d := range s.LocalDisks.GetValues() {
+		if d.Id() == req.DiskId {
+			data, ok := d.Get(req.Cmd.DestBlockId)
+			s.sendStoreItResp(req, data, ok)
+		}
+	}
+}
+
+func (s *StoreItReqHandler) sendStoreItResp(req StoreItReq, data []byte, ok bool) {
+	s.OutStoreItResp <- StoreItResp{
+		Req: req,
+		Block: model.Block{
+			Id:   req.Cmd.DestBlockId,
+			Data: data,
+		},
+		Ok: ok,
+	}
+}
