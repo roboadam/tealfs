@@ -15,6 +15,7 @@
 package rebalancer_test
 
 import (
+	"bytes"
 	"context"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/rebalancer"
@@ -45,14 +46,34 @@ func TestStoreItReqHandler(t *testing.T) {
 		Caller:       "mainNodeId",
 		BalanceReqId: "balanceReqId",
 		StoreItId:    "storeItId",
-		DestNodeId:   "nodeId",
-		DestDiskId:   "diskId",
+		DestNodeId:   "destNodeId",
+		DestDiskId:   "destDiskId",
 		DestBlockId:  "blockId",
 	}
-	inStoreItReq <- rebalancer.StoreItReq{
+
+	req := rebalancer.StoreItReq{
 		Cmd:    cmd,
 		NodeId: "nodeId",
-		DiskId: "",
+		DiskId: "diskId",
+	}
+	inStoreItReq <- req
+	resp := <-outStoreItResp
+
+	if resp.Ok {
+		t.Error("invalid response")
+	}
+
+	fileOps.WriteFile("blockId", []byte{1, 2, 3, 4, 5})
+
+	inStoreItReq <- req
+	resp = <-outStoreItResp
+
+	if !resp.Ok {
+		t.Error("invalid response")
+	}
+
+	if !bytes.Equal(resp.Block.Data, []byte{1, 2, 3, 4, 5}) {
+		t.Error("unexpected data")
 	}
 
 }
