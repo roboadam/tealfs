@@ -36,13 +36,13 @@ func TestExistsSender(t *testing.T) {
 	nodeConnMap.SetAll(0, "someAddress:123", remoteNodeId)
 
 	existsSender := rebalancer.MsgSender{
-		InExistsReq:        inExistsReq,
-		InExistsResp:       inExistsResp,
-		OutLocalExistsReq:  outLocalExistsReq,
-		OutLocalExistsResp: outLocalExistsResp,
-		OutRemote:          outRemote,
-		NodeId:             nodeId,
-		NodeConnMap:        nodeConnMap,
+		InExistsReq:   inExistsReq,
+		InExistsResp:  inExistsResp,
+		OutExistsReq:  outLocalExistsReq,
+		OutExistsResp: outLocalExistsResp,
+		OutRemote:     outRemote,
+		NodeId:        nodeId,
+		NodeConnMap:   nodeConnMap,
 	}
 	go existsSender.Start(ctx)
 
@@ -161,5 +161,40 @@ func TestExistsSender(t *testing.T) {
 	case <-outRemote:
 		t.Error("unexpected message on outRemoteExistsReq")
 	default:
+	}
+}
+
+func TestStoreItReq(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	inStoreItReq := make(chan rebalancer.StoreItReq)
+	outStoreItReq := make(chan rebalancer.StoreItReq)
+	outRemote := make(chan model.MgrConnsSend)
+
+	sender := rebalancer.MsgSender{
+		InStoreItReq:  inStoreItReq,
+		OutStoreItReq: outStoreItReq,
+		OutRemote:     outRemote,
+		NodeId:        "localNodeId",
+		NodeConnMap:   model.NewNodeConnectionMapper(),
+	}
+	go sender.Start(ctx)
+
+	sender.NodeConnMap.SetAll(0, "someAddress1:123", "remoteNodeId1")
+	sender.NodeConnMap.SetAll(1, "someAddress2:123", "remoteNodeId2")
+
+	localReq := rebalancer.StoreItReq{
+		NodeId: "localNodeId",
+		DiskId: "localDiskId",
+		Cmd:    rebalancer.StoreItCmd{
+			Caller:       "remoteNodeId1",
+			BalanceReqId: "balanceReqId",
+			StoreItId:    "storeItId",
+			DestNodeId:   "remoteNodeId2",
+			DestDiskId:   "localDiskId",
+			DestBlockId:  "",
+			ExistsReq:    rebalancer.ExistsReq{},
+		},
 	}
 }
