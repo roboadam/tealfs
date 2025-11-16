@@ -185,23 +185,6 @@ func TestStoreItReq(t *testing.T) {
 
 	localReq := rebalancer.StoreItReq{
 		NodeId: "localNodeId",
-		DiskId: "localDiskId",
-		Cmd: rebalancer.StoreItCmd{
-			Caller:       "caller",
-			BalanceReqId: "balanceReqId",
-			StoreItId:    "storeItId",
-			DestNodeId:   "destNodeId",
-			DestDiskId:   "localDiskId",
-			DestBlockId:  "destBlockId",
-			ExistsReq: rebalancer.ExistsReq{
-				Caller:       "caller2",
-				BalanceReqId: "balanceRequestId",
-				ExistsId:     "existsId",
-				DestNodeId:   "destNodeId2",
-				DestDiskId:   "destDiskId2",
-				DestBlockId:  "destBlockId2",
-			},
-		},
 	}
 
 	inStoreItReq <- localReq
@@ -209,23 +192,6 @@ func TestStoreItReq(t *testing.T) {
 
 	remoteReq := rebalancer.StoreItReq{
 		NodeId: "remoteNodeId",
-		DiskId: "localDiskId",
-		Cmd: rebalancer.StoreItCmd{
-			Caller:       "caller",
-			BalanceReqId: "balanceReqId",
-			StoreItId:    "storeItId",
-			DestNodeId:   "destNodeId",
-			DestDiskId:   "localDiskId",
-			DestBlockId:  "destBlockId",
-			ExistsReq: rebalancer.ExistsReq{
-				Caller:       "caller2",
-				BalanceReqId: "balanceRequestId",
-				ExistsId:     "existsId",
-				DestNodeId:   "destNodeId2",
-				DestDiskId:   "destDiskId2",
-				DestBlockId:  "destBlockId2",
-			},
-		},
 	}
 
 	inStoreItReq <- remoteReq
@@ -236,6 +202,48 @@ func TestStoreItReq(t *testing.T) {
 	}
 
 	if mcs.Payload.(*rebalancer.StoreItReq).NodeId != "remoteNodeId" {
+		t.Error("invalid node id")
+	}
+}
+
+func TestStoreItCmdSend(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	inStoreItCmd := make(chan rebalancer.StoreItCmd)
+	outStoreItCmd := make(chan rebalancer.StoreItCmd)
+	outRemote := make(chan model.MgrConnsSend)
+
+	sender := rebalancer.MsgSender{
+		InStoreItCmd:  inStoreItCmd,
+		OutStoreItCmd: outStoreItCmd,
+		OutRemote:     outRemote,
+		NodeId:        "localNodeId",
+		NodeConnMap:   model.NewNodeConnectionMapper(),
+	}
+	go sender.Start(ctx)
+
+	sender.NodeConnMap.SetAll(0, "someAddress1:123", "remoteNodeId")
+
+	localCmd := rebalancer.StoreItCmd{
+		DestNodeId: "localNodeId",
+	}
+
+	inStoreItCmd <- localCmd
+	<-outStoreItCmd
+
+	remoteCmd := rebalancer.StoreItCmd{
+		DestNodeId: "remoteNodeId",
+	}
+
+	inStoreItCmd <- remoteCmd
+	mcs := <-outRemote
+
+	if mcs.Payload.Type() != model.StoreItCmdType {
+		t.Error("invalid payload type")
+	}
+
+	if mcs.Payload.(*rebalancer.StoreItCmd).DestNodeId != "remoteNodeId" {
 		t.Error("invalid node id")
 	}
 }
