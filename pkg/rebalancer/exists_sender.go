@@ -60,9 +60,9 @@ func (e *MsgSender) Start(ctx context.Context) {
 }
 
 func (e *MsgSender) sendStoreItResp(resp StoreItResp) {
-	if resp.Req.NodeId == e.NodeId {
+	if resp.Req.Cmd.DestNodeId == e.NodeId {
 		e.OutStoreItResp <- resp
-	} else if conn, ok := e.NodeConnMap.ConnForNode(resp.Req.NodeId); ok {
+	} else if conn, ok := e.NodeConnMap.ConnForNode(resp.Req.Cmd.DestNodeId); ok {
 		e.OutRemote <- model.MgrConnsSend{
 			ConnId:  conn,
 			Payload: &resp,

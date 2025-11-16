@@ -247,3 +247,53 @@ func TestStoreItCmdSend(t *testing.T) {
 		t.Error("invalid node id")
 	}
 }
+
+func TestStoreItRespSend(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	inStoreItResp := make(chan rebalancer.StoreItResp)
+	outStoreItResp := make(chan rebalancer.StoreItResp)
+	outRemote := make(chan model.MgrConnsSend)
+
+	sender := rebalancer.MsgSender{
+		InStoreItResp:  inStoreItResp,
+		OutStoreItResp: outStoreItResp,
+		OutRemote:      outRemote,
+		NodeId:         "localNodeId",
+		NodeConnMap:    model.NewNodeConnectionMapper(),
+	}
+	go sender.Start(ctx)
+
+	sender.NodeConnMap.SetAll(0, "someAddress1:123", "remoteNodeId")
+
+	localResp := rebalancer.StoreItResp{
+		Req: rebalancer.StoreItReq{
+			Cmd: rebalancer.StoreItCmd{
+				DestNodeId: "localNodeId",
+			},
+		},
+	}
+
+	inStoreItResp <- localResp
+	<-outStoreItResp
+
+	remoteResp := rebalancer.StoreItResp{
+		Req: rebalancer.StoreItReq{
+			Cmd: rebalancer.StoreItCmd{
+				DestNodeId: "remoteNodeId",
+			},
+		},
+	}
+
+	inStoreItResp <- remoteResp
+	mcs := <-outRemote
+
+	if mcs.Payload.Type() != model.StoreItRespType {
+		t.Error("invalid payload type")
+	}
+
+	if mcs.Payload.(*rebalancer.StoreItResp).Req.Cmd.DestNodeId != "remoteNodeId" {
+		t.Error("invalid node id")
+	}
+}
