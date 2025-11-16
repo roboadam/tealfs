@@ -181,20 +181,61 @@ func TestStoreItReq(t *testing.T) {
 	}
 	go sender.Start(ctx)
 
-	sender.NodeConnMap.SetAll(0, "someAddress1:123", "remoteNodeId1")
-	sender.NodeConnMap.SetAll(1, "someAddress2:123", "remoteNodeId2")
+	sender.NodeConnMap.SetAll(0, "someAddress1:123", "remoteNodeId")
 
 	localReq := rebalancer.StoreItReq{
 		NodeId: "localNodeId",
 		DiskId: "localDiskId",
-		Cmd:    rebalancer.StoreItCmd{
-			Caller:       "remoteNodeId1",
+		Cmd: rebalancer.StoreItCmd{
+			Caller:       "caller",
 			BalanceReqId: "balanceReqId",
 			StoreItId:    "storeItId",
-			DestNodeId:   "remoteNodeId2",
+			DestNodeId:   "destNodeId",
 			DestDiskId:   "localDiskId",
-			DestBlockId:  "",
-			ExistsReq:    rebalancer.ExistsReq{},
+			DestBlockId:  "destBlockId",
+			ExistsReq: rebalancer.ExistsReq{
+				Caller:       "caller2",
+				BalanceReqId: "balanceRequestId",
+				ExistsId:     "existsId",
+				DestNodeId:   "destNodeId2",
+				DestDiskId:   "destDiskId2",
+				DestBlockId:  "destBlockId2",
+			},
 		},
+	}
+
+	inStoreItReq <- localReq
+	<-outStoreItReq
+
+	remoteReq := rebalancer.StoreItReq{
+		NodeId: "remoteNodeId",
+		DiskId: "localDiskId",
+		Cmd: rebalancer.StoreItCmd{
+			Caller:       "caller",
+			BalanceReqId: "balanceReqId",
+			StoreItId:    "storeItId",
+			DestNodeId:   "destNodeId",
+			DestDiskId:   "localDiskId",
+			DestBlockId:  "destBlockId",
+			ExistsReq: rebalancer.ExistsReq{
+				Caller:       "caller2",
+				BalanceReqId: "balanceRequestId",
+				ExistsId:     "existsId",
+				DestNodeId:   "destNodeId2",
+				DestDiskId:   "destDiskId2",
+				DestBlockId:  "destBlockId2",
+			},
+		},
+	}
+
+	inStoreItReq <- remoteReq
+	mcs := <-outRemote
+
+	if mcs.Payload.Type() != model.StoreItReqType {
+		t.Error("invalid payload type")
+	}
+
+	if mcs.Payload.(*rebalancer.StoreItReq).NodeId != "remoteNodeId" {
+		t.Error("invalid node id")
 	}
 }

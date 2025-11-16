@@ -61,7 +61,7 @@ type StoreItCmd struct {
 }
 
 func (s *StoreItCmd) Type() model.PayloadType {
-	return model.StoreItReqType
+	return model.StoreItCmdType
 }
 
 type StoreItReq struct {
@@ -71,7 +71,7 @@ type StoreItReq struct {
 }
 
 func (s *StoreItReq) Type() model.PayloadType {
-	return model.StoreItCmdType
+	return model.StoreItReqType
 }
 
 type StoreItResp struct {
