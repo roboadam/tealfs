@@ -58,7 +58,7 @@ func New(
 			blockId model.BlockId
 			resp    chan bool
 		}),
-		ctx: ctx,
+		ctx:        ctx,
 	}
 	go p.consumeChannels()
 	return p

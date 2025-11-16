@@ -72,6 +72,8 @@ func TestLocalBlockIdListerWithDisks(t *testing.T) {
 	ops := disk.MockFileOps{}
 	path := disk.NewPath("", &ops)
 	disk := disk.New(path, "node1", "disk1", ctx)
+	disk.InListIds = make(chan struct{}, 1)
+	disk.OutListIds = make(chan set.Set[model.BlockId], 1)
 	disk.Save([]byte{1, 2, 3, 4}, "blockId")
 	disks.Add(disk)
 	mapper := model.NewNodeConnectionMapper()
