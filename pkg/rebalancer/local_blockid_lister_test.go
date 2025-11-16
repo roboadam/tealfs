@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-func TestLocalBlockIdLister(t *testing.T) {
+func TestLocalBlockIdListerNoDisks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -30,6 +30,50 @@ func TestLocalBlockIdLister(t *testing.T) {
 	outIdLocalResults := make(chan OnDiskBlockIdList)
 	outIdRemoteResults := make(chan model.MgrConnsSend)
 	disks := set.NewSet[disk.Disk]()
+	mapper := model.NewNodeConnectionMapper()
+
+	lister := LocalBlockIdLister{
+		InFetchIds:       inFetchIds,
+		OutLocalResults:  outIdLocalResults,
+		OutRemoteResults: outIdRemoteResults,
+		Disks:            &disks,
+		NodeId:           "node1",
+		Mapper:           mapper,
+	}
+	go lister.Start(ctx)
+
+	inFetchIds <- ListOnDiskBlockIdsCmd{
+		Caller:       "node1",
+		BalanceReqId: "id1",
+	}
+
+	outLocal := <-outIdLocalResults
+	if outLocal.Caller != "node1" {
+		t.Errorf("unexpected caller in local response: got %s, want %s", outLocal.Caller, "node1")
+	}
+	if outLocal.BalanceReqId != "id1" {
+		t.Errorf("unexpected ID in local response: got %s, want %s", outLocal.BalanceReqId, "id1")
+	}
+	if outLocal.BlockIds.Len() != 0 {
+		t.Errorf("unexpected number of block IDs in local response: got %d, want %d", outLocal.BlockIds.Len(), 0)
+	}
+
+}
+
+func TestLocalBlockIdListerWithDisks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	inFetchIds := make(chan ListOnDiskBlockIdsCmd)
+	outIdLocalResults := make(chan OnDiskBlockIdList)
+	outIdRemoteResults := make(chan model.MgrConnsSend)
+	disks := set.NewSet[disk.Disk]()
+
+	ops := disk.MockFileOps{}
+	path := disk.NewPath("", &ops)
+	disk := disk.New(path, "node1", "disk1", ctx)
+	disk.Save([]byte{1, 2, 3, 4}, "blockId")
+	disks.Add(disk)
 	mapper := model.NewNodeConnectionMapper()
 
 	lister := LocalBlockIdLister{
