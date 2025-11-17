@@ -79,14 +79,3 @@ func (r *RebalancerMessageMgr) addToDelete(balanceReqId BalanceReqId, blockId mo
 	s.Add(d)
 	r.toDelete[balanceReqId][blockId] = s
 }
-
-func (r *RebalancerMessageMgr) removeToDelete(balanceReqId BalanceReqId, blockId model.BlockId, nodeId model.NodeId, diskId model.DiskId) {
-	r.initBlockId(balanceReqId, blockId)
-	d := Dest{
-		NodeId: nodeId,
-		DiskId: diskId,
-	}
-	s := r.toDelete[balanceReqId][blockId]
-	s.Remove(d)
-	r.toDelete[balanceReqId][blockId] = s
-}

@@ -38,14 +38,16 @@ func New(
 	ctx context.Context,
 ) Disk {
 	p := Disk{
-		path:      path,
-		id:        id,
-		diskId:    diskId,
-		InWrites:  make(chan model.WriteRequest, 1),
-		InReads:   make(chan model.ReadRequest, 1),
-		InExists:  make(chan ExistsReq, 1),
-		OutReads:  make(chan model.ReadResult, 1),
-		OutWrites: make(chan model.WriteResult, 1),
+		path:       path,
+		id:         id,
+		diskId:     diskId,
+		InWrites:   make(chan model.WriteRequest, 1),
+		InReads:    make(chan model.ReadRequest, 1),
+		InExists:   make(chan ExistsReq, 1),
+		OutReads:   make(chan model.ReadResult, 1),
+		OutWrites:  make(chan model.WriteResult, 1),
+		InListIds:  make(chan struct{}, 1),
+		OutListIds: make(chan set.Set[model.BlockId], 1),
 		inGet: make(chan struct {
 			blockId model.BlockId
 			resp    chan struct {
@@ -58,7 +60,7 @@ func New(
 			blockId model.BlockId
 			resp    chan bool
 		}),
-		ctx:        ctx,
+		ctx: ctx,
 	}
 	go p.consumeChannels()
 	return p

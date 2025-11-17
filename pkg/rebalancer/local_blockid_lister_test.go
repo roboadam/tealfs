@@ -72,11 +72,10 @@ func TestLocalBlockIdListerWithDisks(t *testing.T) {
 	ops := disk.MockFileOps{}
 	path := disk.NewPath("", &ops)
 	disk := disk.New(path, "node1", "disk1", ctx)
-	disk.InListIds = make(chan struct{}, 1)
-	disk.OutListIds = make(chan set.Set[model.BlockId], 1)
 	disk.Save([]byte{1, 2, 3, 4}, "blockId")
 	disks.Add(disk)
 	mapper := model.NewNodeConnectionMapper()
+	mapper.SetAll(0, "remote:123", "remoteNode")
 
 	lister := LocalBlockIdLister{
 		InFetchIds:       inFetchIds,
@@ -100,8 +99,13 @@ func TestLocalBlockIdListerWithDisks(t *testing.T) {
 	if outLocal.BalanceReqId != "id1" {
 		t.Errorf("unexpected ID in local response: got %s, want %s", outLocal.BalanceReqId, "id1")
 	}
-	if outLocal.BlockIds.Len() != 0 {
+	if outLocal.BlockIds.Len() != 1 {
 		t.Errorf("unexpected number of block IDs in local response: got %d, want %d", outLocal.BlockIds.Len(), 0)
 	}
 
+	inFetchIds <- ListOnDiskBlockIdsCmd{
+		Caller:       "remoteNode",
+		BalanceReqId: "id1",
+	}
+	<-outIdRemoteResults
 }
