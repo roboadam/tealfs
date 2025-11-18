@@ -16,14 +16,15 @@ package rebalancer
 
 import (
 	"context"
-	"tealfs/pkg/webdav"
+	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type ActiveBlockIdLister struct {
 	InFetchIds      <-chan ListOnDiskBlockIdsCmd
 	OutLocalResults chan<- FilesystemBlockIdList
 
-	FileSystem *webdav.FileSystem
+	FileSystem ListerOfBlockIds
 }
 
 func (l *ActiveBlockIdLister) Start(ctx context.Context) {
@@ -35,6 +36,10 @@ func (l *ActiveBlockIdLister) Start(ctx context.Context) {
 			l.collectResults(req)
 		}
 	}
+}
+
+type ListerOfBlockIds interface {
+	ListBlockIds() *set.Set[model.BlockId]
 }
 
 func (l *ActiveBlockIdLister) collectResults(req ListOnDiskBlockIdsCmd) {

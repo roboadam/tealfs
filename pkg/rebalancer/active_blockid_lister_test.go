@@ -16,10 +16,9 @@ package rebalancer_test
 
 import (
 	"context"
-	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/rebalancer"
-	"tealfs/pkg/webdav"
+	"tealfs/pkg/set"
 	"testing"
 )
 
@@ -30,12 +29,7 @@ func TestActiveBlockIdLister(t *testing.T) {
 	inFetchIds := make(chan rebalancer.ListOnDiskBlockIdsCmd)
 	outLocalResults := make(chan rebalancer.FilesystemBlockIdList)
 
-	inBroadcast := make(chan webdav.FileBroadcast)
-	fileOps := disk.MockFileOps{}
-	outSends := make(chan model.MgrConnsSend, 1)
-	mapper := *model.NewNodeConnectionMapper()
-
-	fileSystem := webdav.NewFileSystem("nodeId", inBroadcast, &fileOps, "indexPath", 1, outSends, &mapper, ctx)
+	fileSystem := MockFilesystem{}
 
 	lister := rebalancer.ActiveBlockIdLister{
 		InFetchIds:      inFetchIds,
@@ -48,5 +42,16 @@ func TestActiveBlockIdLister(t *testing.T) {
 		Caller:       "caller",
 		BalanceReqId: "balanceReqId",
 	}
-	<-outLocalResults
+	result :=<-outLocalResults
+	expected := set.NewSetFromSlice([]model.BlockId{"blockId1", "blockId2"})
+	if !result.BlockIds.Equal(&expected) {
+		t.Error("invalid result")
+	}
+}
+
+type MockFilesystem struct{}
+
+func (m *MockFilesystem) ListBlockIds() *set.Set[model.BlockId] {
+	result := set.NewSetFromSlice([]model.BlockId{"blockId1", "blockId2"})
+	return &result
 }
