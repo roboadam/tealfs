@@ -92,3 +92,57 @@ func TestMirror(t *testing.T) {
 		return
 	}
 }
+
+func TestWritePointers(t *testing.T) {
+	d := dist.NewMirrorDistributer(model.NewNodeId())
+
+	ptrs := d.WritePointersForId("blockId")
+	if len(ptrs) != 0 {
+		t.Error("should have zero pointers")
+	}
+
+	d.SetWeight("nodeId", "diskId1", 1)
+	ptrs = d.WritePointersForId("blockId")
+	if len(ptrs) != 1 {
+		t.Errorf("should have one pointers, found %d", len(ptrs))
+	}
+
+	d.SetWeight("nodeId", "diskId2", 1)
+	ptrs = d.WritePointersForId("blockId")
+	if len(ptrs) != 2 {
+		t.Errorf("should have 2 pointers, found %d", len(ptrs))
+	}
+
+	d.SetWeight("nodeId", "diskId3", 1)
+	ptrs = d.WritePointersForId("blockId")
+	if len(ptrs) != 2 {
+		t.Errorf("should have 2 pointers, found %d", len(ptrs))
+	}
+}
+
+func TestWriteAndEmptyPointers(t *testing.T) {
+	d := dist.NewMirrorDistributer(model.NewNodeId())
+
+	ptrs := d.WriteAndEmptyPtrs("blockId")
+	if len(ptrs.Write) != 0 || len(ptrs.Empty) != 0 {
+		t.Error("should have zero pointers")
+	}
+
+	d.SetWeight("nodeId", "diskId1", 1)
+	ptrs = d.WriteAndEmptyPtrs("blockId")
+	if len(ptrs.Write) != 1 || len(ptrs.Empty) != 0 {
+		t.Error("should have one write pointer")
+	}
+
+	d.SetWeight("nodeId", "diskId2", 1)
+	ptrs = d.WriteAndEmptyPtrs("blockId")
+	if len(ptrs.Write) != 2 || len(ptrs.Empty) != 0 {
+		t.Error("should have two write pointers")
+	}
+
+	d.SetWeight("nodeId", "diskId3", 1)
+	ptrs = d.WriteAndEmptyPtrs("blockId")
+	if len(ptrs.Write) != 2 || len(ptrs.Empty) != 1 {
+		t.Error("should have two write pointers and one empty pointer")
+	}
+}
