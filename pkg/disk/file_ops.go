@@ -67,6 +67,7 @@ type MockFileOps struct {
 	WriteCount  int
 	mockFS      map[string][]byte
 	mux         sync.Mutex
+	DataRemoved chan struct{}
 	DataWritten chan struct{}
 }
 
@@ -119,6 +120,9 @@ func (m *MockFileOps) Remove(name string) error {
 	m.mux.Lock()
 	defer m.mux.Unlock()
 	delete(m.mockFS, name)
+	if m.DataRemoved != nil {
+		m.DataRemoved <- struct{}{}
+	}
 	return nil
 }
 

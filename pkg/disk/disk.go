@@ -44,6 +44,7 @@ func New(
 		InWrites:   make(chan model.WriteRequest, 1),
 		InReads:    make(chan model.ReadRequest, 1),
 		InExists:   make(chan ExistsReq, 1),
+		InDelete:   make(chan model.BlockId, 1),
 		OutReads:   make(chan model.ReadResult, 1),
 		OutWrites:  make(chan model.WriteResult, 1),
 		InListIds:  make(chan struct{}, 1),
