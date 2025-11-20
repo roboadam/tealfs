@@ -18,6 +18,7 @@ import (
 	"context"
 	"reflect"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 
 	"github.com/google/uuid"
@@ -106,6 +107,35 @@ func TestExists(t *testing.T) {
 	exists = <-resp
 
 	if !exists {
+		t.Error("invalid response")
+	}
+}
+
+func TestListIds(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	fileOps := MockFileOps{}
+	path := NewPath("", &fileOps)
+	disk := New(path, "nodeId", "diskId", ctx)
+
+	req := ListIds{
+		Resp: make(chan set.Set[model.BlockId], 1),
+	}
+
+	disk.InListIds <- req
+	list := <-req.Resp
+
+	if list.Len() != 0 {
+		t.Error("invalid response")
+	}
+
+	fileOps.WriteFile("blockId", []byte{1, 2, 3, 4, 5})
+
+	disk.InListIds <- req
+	list = <-req.Resp
+
+	if list.Len() != 1 {
 		t.Error("invalid response")
 	}
 }

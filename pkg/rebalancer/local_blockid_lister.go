@@ -78,7 +78,11 @@ func (l *LocalBlockIdLister) sendResults(resp *OnDiskBlockIdList) {
 
 func (l *LocalBlockIdLister) readListFromDisk(d *disk.Disk, allIds *set.Set[model.BlockId], wg *sync.WaitGroup) {
 	defer wg.Done()
-	d.InListIds <- struct{}{}
-	ids := <-d.OutListIds
+	req := disk.ListIds{
+		Resp: make(chan set.Set[model.BlockId], 1),
+	}
+
+	d.InListIds <- req
+	ids := <-req.Resp
 	allIds.AddAll(&ids)
 }

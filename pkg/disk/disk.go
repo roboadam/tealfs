@@ -38,17 +38,16 @@ func New(
 	ctx context.Context,
 ) Disk {
 	p := Disk{
-		path:       path,
-		id:         id,
-		diskId:     diskId,
-		InWrites:   make(chan model.WriteRequest, 1),
-		InReads:    make(chan model.ReadRequest, 1),
-		InExists:   make(chan ExistsReq, 1),
-		InDelete:   make(chan model.BlockId, 1),
-		OutReads:   make(chan model.ReadResult, 1),
-		OutWrites:  make(chan model.WriteResult, 1),
-		InListIds:  make(chan struct{}, 1),
-		OutListIds: make(chan set.Set[model.BlockId], 1),
+		path:      path,
+		id:        id,
+		diskId:    diskId,
+		InWrites:  make(chan model.WriteRequest, 1),
+		InReads:   make(chan model.ReadRequest, 1),
+		InExists:  make(chan ExistsReq, 1),
+		InDelete:  make(chan model.BlockId, 1),
+		OutReads:  make(chan model.ReadResult, 1),
+		OutWrites: make(chan model.WriteResult, 1),
+		InListIds: make(chan ListIds, 1),
 		inGet: make(chan struct {
 			blockId model.BlockId
 			resp    chan struct {
@@ -68,18 +67,17 @@ func New(
 }
 
 type Disk struct {
-	path       Path
-	id         model.NodeId
-	diskId     model.DiskId
-	OutReads   chan model.ReadResult
-	OutWrites  chan model.WriteResult
-	InWrites   chan model.WriteRequest
-	InReads    chan model.ReadRequest
-	InListIds  chan struct{}
-	OutListIds chan set.Set[model.BlockId]
-	InDelete   chan model.BlockId
-	InExists   chan ExistsReq
-	inGet      chan struct {
+	path      Path
+	id        model.NodeId
+	diskId    model.DiskId
+	OutReads  chan model.ReadResult
+	OutWrites chan model.WriteResult
+	InWrites  chan model.WriteRequest
+	InReads   chan model.ReadRequest
+	InListIds chan ListIds
+	InDelete  chan model.BlockId
+	InExists  chan ExistsReq
+	inGet     chan struct {
 		blockId model.BlockId
 		resp    chan struct {
 			data []byte
@@ -92,6 +90,10 @@ type Disk struct {
 		resp    chan bool
 	}
 	ctx context.Context
+}
+
+type ListIds struct {
+	Resp chan set.Set[model.BlockId]
 }
 
 type ExistsReq struct {
@@ -186,7 +188,7 @@ func (d *Disk) consumeChannels() {
 					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read failure")
 				}
 			}
-		case <-d.InListIds:
+		case req := <-d.InListIds:
 			allIds := set.NewSet[model.BlockId]()
 			files, err := d.path.ops.ListFiles(d.path.raw)
 			if err == nil {
@@ -194,7 +196,7 @@ func (d *Disk) consumeChannels() {
 					allIds.Add(model.BlockId(f))
 				}
 			}
-			d.OutListIds <- allIds
+			req.Resp <- allIds
 		case idToDelete := <-d.InDelete:
 			filePath := filepath.Join(d.path.raw, string(idToDelete))
 			err := d.path.ops.Remove(filePath)
