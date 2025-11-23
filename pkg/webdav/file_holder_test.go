@@ -131,4 +131,9 @@ func TestAllBlockIds(t *testing.T) {
 	fh.Add(&file2)
 	fh.Add(&file3)
 
+	allBlockIds := fh.AllBlockIds()
+	if allBlockIds.Len() != 3 {
+		t.Error("wrong number of block ids")
+		return
+	}
 }
