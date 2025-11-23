@@ -110,3 +110,25 @@ func FileEquality(f1 *webdav.File, f2 *webdav.File) bool {
 	}
 	return true
 }
+
+func TestAllBlockIds(t *testing.T) {
+	fh := webdav.NewFileHolder()
+	blockId1 := model.NewBlockId()
+	blockId2 := model.NewBlockId()
+	blockId3 := model.NewBlockId()
+
+	file1 := webdav.File{
+		Block: []model.Block{{Id: blockId1}},
+	}
+	file2 := webdav.File{
+		Block: []model.Block{{Id: blockId2}},
+	}
+	file3 := webdav.File{
+		Block: []model.Block{{Id: blockId3}},
+	}
+
+	fh.Add(&file1)
+	fh.Add(&file2)
+	fh.Add(&file3)
+
+}
