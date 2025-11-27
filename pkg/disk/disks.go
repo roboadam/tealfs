@@ -23,7 +23,7 @@ import (
 
 type Disks struct {
 	Distributer dist.MirrorDistributer
-	AllDiskIds  set.Set[model.AddDiskReq]
+	AllDiskIds  AllDisks
 	Disks       set.Set[Disk]
 	NodeId      model.NodeId
 
@@ -32,9 +32,10 @@ type Disks struct {
 	OutLocalAddDiskReq  chan<- model.AddDiskReq
 }
 
-func NewDisks(nodeId model.NodeId) *Disks {
+func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *Disks {
 	distributer := dist.NewMirrorDistributer(nodeId)
-	allDiskIds := set.NewSet[model.AddDiskReq]()
+	allDiskIds := AllDisks{}
+	allDiskIds.Init(configPath, fileOps)
 	disks := set.NewSet[Disk]()
 	return &Disks{
 		Distributer: distributer,
@@ -50,9 +51,7 @@ func (d *Disks) Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case add := <-d.InAddDiskReq:
-			if !d.AllDiskIds.Contains(add) {
-				d.addDisk(add)
-			}
+			d.AllDiskIds.Add(add)
 		}
 	}
 }

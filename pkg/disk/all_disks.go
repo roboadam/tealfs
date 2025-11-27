@@ -21,34 +21,44 @@ import (
 	"path/filepath"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type AllDisks struct {
-	data   set.Set[model.AddDiskReq]
-	loaded bool
+	data       set.Set[model.AddDiskReq]
+	configPath string
+	fileOps    FileOps
 
-	ConfigPath   string
-	FileOps      FileOps
 	OutDiskAdded chan<- model.AddDiskReq
 }
 
 func (a *AllDisks) Add(disk model.AddDiskReq) {
-	a.load()
-	a.data.Add(disk)
+	added := a.data.Add(disk)
+	if added {
+		data, err := json.Marshal(a.data.GetValues())
+		if err != nil {
+			log.Panicf("Error saving disk ids %v", err)
+		}
+
+		err = a.fileOps.WriteFile(filepath.Join(a.configPath, "disks.json"), data)
+		if err != nil {
+			log.Panicf("Error saving disk ids %v", err)
+		}
+
+		a.OutDiskAdded <- disk
+	}
 }
 
 func (a *AllDisks) Get() set.Set[model.AddDiskReq] {
-	a.load()
 	return a.data.Clone()
 }
 
-func (a *AllDisks) load() {
-	if a.loaded {
-		return
-	}
-	a.loaded = true
+func (a *AllDisks) Init(configPath string, fileOps FileOps) {
+	a.configPath = configPath
+	a.fileOps = fileOps
 
-	data, err := a.FileOps.ReadFile(filepath.Join(a.ConfigPath, "disks.json"))
+	data, err := fileOps.ReadFile(filepath.Join(configPath, "disks.json"))
 
 	if errors.Is(err, fs.ErrNotExist) {
 		a.data = set.NewSet[model.AddDiskReq]()

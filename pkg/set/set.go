@@ -54,11 +54,15 @@ func (s *Set[K]) initMux() {
 	}
 }
 
-func (s *Set[K]) Add(item K) {
+func (s *Set[K]) Add(item K) bool {
 	s.initMux()
 	s.mux.Lock()
 	defer s.mux.Unlock()
+	if _, ok := s.Data[item]; ok {
+		return false
+	}
 	s.Data[item] = true
+	return true
 }
 
 func (s *Set[K]) AddAll(other *Set[K]) {
