@@ -19,6 +19,7 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
+	"sync"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 
@@ -29,11 +30,14 @@ type AllDisks struct {
 	data       set.Set[model.AddDiskReq]
 	configPath string
 	fileOps    FileOps
+	saveMux    sync.Mutex
 
 	OutDiskAdded chan<- model.AddDiskReq
 }
 
 func (a *AllDisks) Add(disk model.AddDiskReq) {
+	a.saveMux.Lock()
+	defer a.saveMux.Unlock()
 	added := a.data.Add(disk)
 	if added {
 		data, err := json.Marshal(a.data.GetValues())
@@ -55,6 +59,7 @@ func (a *AllDisks) Get() set.Set[model.AddDiskReq] {
 }
 
 func (a *AllDisks) Init(configPath string, fileOps FileOps) {
+	a.saveMux = sync.Mutex{}
 	a.configPath = configPath
 	a.fileOps = fileOps
 
