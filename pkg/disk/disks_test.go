@@ -54,6 +54,7 @@ func TestDisks(t *testing.T) {
 	inAddDiskReq <- localDisk
 	localResp := <-outLocalAddDiskReq
 	disks.AllDiskIds.Add(localResp)
+	<-disks.AllDiskIds.OutDiskAdded
 	inAddDiskReq <- remoteDisk
 	remoteResp := <-outRemoteAddDiskReq
 	disks.AllDiskIds.Add(remoteResp)
