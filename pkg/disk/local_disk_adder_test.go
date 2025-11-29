@@ -37,13 +37,13 @@ func TestLocalDiskAdder(t *testing.T) {
 	fileOps := MockFileOps{}
 	disks := set.NewSet[Disk]()
 	distributer := dist.NewMirrorDistributer(nodeId)
-	allDiskIds := set.NewSet[model.AddDiskReq]()
+	allDiskIds := AllDisks{}
+	allDiskIds.Init("", &fileOps)
 
 	adder := LocalDiskAdder{
 		InAddDiskReq:     inAddDiskReq,
 		OutAddLocalDisk:  outAddLocalDisk,
 		OutIamDiskUpdate: outIamDiskUpdate,
-		OutSave:          outSave,
 
 		FileOps:     &fileOps,
 		Disks:       &disks,

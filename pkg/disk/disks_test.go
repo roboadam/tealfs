@@ -34,7 +34,7 @@ func TestDisks(t *testing.T) {
 	localNodeId := model.NewNodeId()
 	remoteNodeId := model.NewNodeId()
 
-	disks := NewDisks(localNodeId)
+	disks := NewDisks(localNodeId, "", &MockFileOps{})
 	disks.InAddDiskReq = inAddDiskReq
 	disks.OutRemoteAddDiskReq = outRemoteAddDiskReq
 	disks.OutLocalAddDiskReq = outLocalAddDiskReq

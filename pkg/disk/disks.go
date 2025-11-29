@@ -23,7 +23,7 @@ import (
 
 type Disks struct {
 	Distributer dist.MirrorDistributer
-	AllDiskIds  AllDisks
+	AllDiskIds  *AllDisks
 	Disks       set.Set[Disk]
 	NodeId      model.NodeId
 
@@ -39,7 +39,7 @@ func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *Disks {
 	disks := set.NewSet[Disk]()
 	return &Disks{
 		Distributer: distributer,
-		AllDiskIds:  allDiskIds,
+		AllDiskIds:  &allDiskIds,
 		Disks:       disks,
 		NodeId:      nodeId,
 	}
@@ -51,7 +51,9 @@ func (d *Disks) Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case add := <-d.InAddDiskReq:
-			d.AllDiskIds.Add(add)
+			if !d.AllDiskIds.Contains(add) {
+				d.addDisk(add)
+			}
 		}
 	}
 }

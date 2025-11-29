@@ -58,6 +58,14 @@ func (a *AllDisks) Get() set.Set[model.AddDiskReq] {
 	return a.data.Clone()
 }
 
+func (a *AllDisks) Contains(req model.AddDiskReq) bool {
+	return a.data.Contains(req)
+}
+
+func (a *AllDisks) Len() int {
+	return a.data.Len()
+}
+
 func (a *AllDisks) Init(configPath string, fileOps FileOps) {
 	a.saveMux = sync.Mutex{}
 	a.configPath = configPath

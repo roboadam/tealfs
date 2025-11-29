@@ -25,12 +25,11 @@ type LocalDiskAdder struct {
 	InAddDiskReq     <-chan model.AddDiskReq
 	OutAddLocalDisk  []chan<- *Disk
 	OutIamDiskUpdate chan<- []model.AddDiskReq
-	OutSave          chan<- struct{}
 
 	FileOps     FileOps
 	Disks       *set.Set[Disk]
 	Distributer *dist.MirrorDistributer
-	AllDiskIds  *set.Set[model.AddDiskReq]
+	AllDiskIds  *AllDisks
 }
 
 func (l *LocalDiskAdder) Start(ctx context.Context) {
@@ -45,13 +44,13 @@ func (l *LocalDiskAdder) Start(ctx context.Context) {
 			l.Disks.Add(disk)
 			l.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
 			l.AllDiskIds.Add(add)
-			l.OutSave <- struct{}{}
 
 			for _, diskChan := range l.OutAddLocalDisk {
 				diskChan <- &disk
 			}
 
-			l.OutIamDiskUpdate <- l.AllDiskIds.GetValues()
+			all := l.AllDiskIds.Get()
+			l.OutIamDiskUpdate <- all.GetValues()
 		}
 	}
 }

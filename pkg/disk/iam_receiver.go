@@ -18,14 +18,12 @@ import (
 	"context"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 )
 
 type IamReceiver struct {
 	InIam       <-chan model.IAm
-	OutSave     chan<- struct{}
 	Distributer *dist.MirrorDistributer
-	AllDiskIds  *set.Set[model.AddDiskReq]
+	AllDiskIds  *AllDisks
 }
 
 func (i *IamReceiver) Start(ctx context.Context) {
@@ -38,7 +36,6 @@ func (i *IamReceiver) Start(ctx context.Context) {
 				i.Distributer.SetWeight(d.NodeId, d.DiskId, 1)
 				i.AllDiskIds.Add(d)
 			}
-			i.OutSave <- struct{}{}
 		}
 	}
 }

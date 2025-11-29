@@ -18,7 +18,6 @@ import (
 	"context"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 	"testing"
 
 	"github.com/google/uuid"
@@ -32,11 +31,11 @@ func TestIamReceiver(t *testing.T) {
 	outSave := make(chan struct{})
 
 	distributer := dist.NewMirrorDistributer("localNodeId")
-	allDiskIds := set.NewSet[model.AddDiskReq]()
+	allDiskIds := AllDisks{}
+	allDiskIds.Init("", &MockFileOps{})
 
 	receiver := IamReceiver{
-		InIam:   inIam,
-		OutSave: outSave,
+		InIam: inIam,
 
 		Distributer: &distributer,
 		AllDiskIds:  &allDiskIds,
