@@ -146,6 +146,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsMain.OutAddDiskReq = newAddDiskReqs
 	disks := disk.NewDisks(nodeId, globalPath, &disk.DiskFileOps{})
 	disks.InAddDiskReq = newAddDiskReqs
+	disks.AllDiskIds.OutDiskAdded = newAddDiskReqs
 	disks.OutLocalAddDiskReq = localAddDiskReqs
 	disks.OutRemoteAddDiskReq = remoteAddDiskReqs
 	go disks.Start(ctx)
