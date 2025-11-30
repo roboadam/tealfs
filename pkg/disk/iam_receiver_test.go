@@ -28,10 +28,11 @@ func TestIamReceiver(t *testing.T) {
 	defer cancel()
 
 	inIam := make(chan model.IAm)
-	outSave := make(chan struct{})
 
 	distributer := dist.NewMirrorDistributer("localNodeId")
 	allDiskIds := AllDisks{}
+	diskAdded := make(chan model.AddDiskReq, 1)
+	allDiskIds.OutDiskAdded = diskAdded
 	allDiskIds.Init("", &MockFileOps{})
 
 	receiver := IamReceiver{
@@ -57,7 +58,8 @@ func TestIamReceiver(t *testing.T) {
 	}
 	address := "someAddress"
 	inIam <- model.NewIam(nodeId, disks, address)
-	<-outSave
+	<-diskAdded
+	<-diskAdded
 
 	if len(distributer.ReadPointersForId(model.NewBlockId())) != 2 {
 		t.Error("Didn't add enough disks to the distributer")

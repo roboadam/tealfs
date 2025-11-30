@@ -38,6 +38,8 @@ func TestDisks(t *testing.T) {
 	disks.InAddDiskReq = inAddDiskReq
 	disks.OutRemoteAddDiskReq = outRemoteAddDiskReq
 	disks.OutLocalAddDiskReq = outLocalAddDiskReq
+	diskAdded := make(chan model.AddDiskReq, 1)
+	disks.AllDiskIds.OutDiskAdded = diskAdded
 	go disks.Start(ctx)
 
 	localDisk := model.AddDiskReq{
@@ -54,7 +56,7 @@ func TestDisks(t *testing.T) {
 	inAddDiskReq <- localDisk
 	localResp := <-outLocalAddDiskReq
 	disks.AllDiskIds.Add(localResp)
-	<-disks.AllDiskIds.OutDiskAdded
+	<-diskAdded
 	inAddDiskReq <- remoteDisk
 	remoteResp := <-outRemoteAddDiskReq
 	disks.AllDiskIds.Add(remoteResp)
