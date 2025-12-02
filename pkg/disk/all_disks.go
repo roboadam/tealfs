@@ -83,7 +83,7 @@ func (a *AllDisks) Init(configPath string, fileOps FileOps) {
 		err = json.Unmarshal(data, &diskInfo)
 		if err == nil {
 			a.data = set.NewSetFromSlice(diskInfo)
-			a.sendAllDiskAdded()
+			// a.sendAllDiskAdded()
 		}
 	}
 }
