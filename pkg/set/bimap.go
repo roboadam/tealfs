@@ -64,14 +64,22 @@ func (b *Bimap[K, J]) Clear() {
 	b.dataKj = make(map[K]J)
 }
 
-func (b *Bimap[K, J]) Add(item1 K, item2 J) {
+func (b *Bimap[K, J]) Add(k1 K, j1 J) {
 	b.mux.Lock()
 	defer b.mux.Unlock()
 
-	delete(b.dataKj, item1)
-	delete(b.dataJk, item2)
-	b.dataKj[item1] = item2
-	b.dataJk[item2] = item1
+	if j2, ok := b.dataKj[k1]; ok {
+		delete(b.dataJk, j2)
+	}
+
+	if k2, ok := b.dataJk[j1]; ok {
+		delete(b.dataKj, k2)
+	}
+
+	delete(b.dataKj, k1)
+	delete(b.dataJk, j1)
+	b.dataKj[k1] = j1
+	b.dataJk[j1] = k1
 }
 
 func (b *Bimap[K, J]) Remove1(item K) {
