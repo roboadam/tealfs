@@ -38,7 +38,7 @@ func (l *LocalBlockReader) Start(ctx context.Context) {
 			if disk, err := l.diskForId(req.Dest.DiskId); err == nil {
 				disk.InReads <- *convertReadReq(&req)
 			} else {
-				log.Errorf("no disk for id %s, %v", req.Dest.DiskId, err)
+				log.Panicf("no disk for id %s, %v", req.Dest.DiskId, err)
 			}
 		}
 	}
