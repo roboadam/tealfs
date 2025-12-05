@@ -28,19 +28,19 @@ type Ui struct {
 	NodeConnMap *model.NodeConnectionMapper
 
 	connToReq   chan model.ConnectToNodeReq
-	addDiskReq  chan model.AddDiskReq
+	addDiskMsg  chan model.AddDiskMsg
 	addDiskResp chan model.UiDiskStatus
 
 	diskStatuses map[model.DiskId]model.UiDiskStatus
-	sMux   sync.Mutex
-	ops    HtmlOps
-	nodeId model.NodeId
-	ctx    context.Context
+	sMux         sync.Mutex
+	ops          HtmlOps
+	nodeId       model.NodeId
+	ctx          context.Context
 }
 
 func NewUi(
 	connToReq chan model.ConnectToNodeReq,
-	addDiskReq chan model.AddDiskReq,
+	addDiskReq chan model.AddDiskMsg,
 	addDiskResp chan model.UiDiskStatus,
 	ops HtmlOps,
 	nodeId model.NodeId,
@@ -50,12 +50,12 @@ func NewUi(
 	diskStatuses := make(map[model.DiskId]model.UiDiskStatus)
 	ui := Ui{
 		connToReq:    connToReq,
-		addDiskReq:   addDiskReq,
+		addDiskMsg:   addDiskReq,
 		addDiskResp:  addDiskResp,
 		diskStatuses: diskStatuses,
-		ops:    ops,
-		nodeId: nodeId,
-		ctx:    ctx,
+		ops:          ops,
+		nodeId:       nodeId,
+		ctx:          ctx,
 	}
 	ui.handleRoot()
 	ui.start(bindAddr)
@@ -118,12 +118,12 @@ func (ui *Ui) handleRoot() {
 			if node == "" {
 				node = string(ui.nodeId)
 			}
-			req := model.AddDiskReq{
+			req := model.AddDiskMsg{
 				DiskId: model.DiskId(uuid.NewString()),
 				Path:   diskPath,
 				NodeId: model.NodeId(node),
 			}
-			chanutil.Send(ui.ctx, ui.addDiskReq, req, "ui: add disk req")
+			chanutil.Send(ui.ctx, ui.addDiskMsg, req, "ui: add disk req")
 			ui.connectionStatus(w, tmpl)
 		default:
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)

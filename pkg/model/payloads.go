@@ -42,6 +42,7 @@ const (
 	FilesystemBlockIdListType PayloadType = 22
 	ExistsReqType             PayloadType = 23
 	ExistsRespType            PayloadType = 24
+	AddDiskMsgType            PayloadType = 25
 )
 
 type Payload interface {

@@ -67,6 +67,7 @@ func NewNodeId() NodeId {
 
 type DiskId string
 
+// DELETE THIS STRUCT TODO
 type AddDiskReq struct {
 	DiskId DiskId
 	Path   string
@@ -75,4 +76,14 @@ type AddDiskReq struct {
 
 func (a *AddDiskReq) Type() PayloadType {
 	return AddDiskRequestType
+}
+
+type AddDiskMsg struct {
+	DiskId DiskId
+	Path   string
+	NodeId NodeId
+}
+
+func (a *AddDiskMsg) Type() PayloadType {
+	return AddDiskMsgType
 }
