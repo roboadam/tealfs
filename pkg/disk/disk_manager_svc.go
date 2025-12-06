@@ -30,6 +30,9 @@ type DiskManagerSvc struct {
 
 	InAddDiskMsg    <-chan model.AddDiskMsg
 	OutDiskAddedMsg chan<- model.DiskAddedMsg
+
+	configPath string
+	fileOps    FileOps
 }
 
 type DiskInfo struct {
@@ -40,14 +43,16 @@ type DiskInfo struct {
 
 func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *DiskManagerSvc {
 	distributer := dist.NewMirrorDistributer(nodeId)
-	allDiskIds := AllDisks{}
-	allDiskIds.Init(configPath, fileOps)
-	disks := set.NewSet[Disk]()
+	localDisks := set.NewSet[Disk]()
+	diskInfoList := set.NewSet[DiskInfo]()
 	return &DiskManagerSvc{
-		Distributer: distributer,
-		AllDiskIds:  &allDiskIds,
-		Disks:       disks,
-		NodeId:      nodeId,
+		Distributer:      distributer,
+		DiskInfoList:     diskInfoList,
+		LocalDiskSvcList: localDisks,
+		NodeId:           nodeId,
+
+		configPath: configPath,
+		fileOps:    fileOps,
 	}
 }
 
@@ -56,18 +61,21 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case add := <-d.InAddDiskReq:
-			if !d.AllDiskIds.Contains(add) {
-				d.addDisk(add)
+		case add := <-d.InAddDiskMsg:
+			if !d.localDiskExists(add) {
+				path := NewPath()
+				disk := New(pa)
+				// d.LocalDiskSvcList.Add()
 			}
 		}
 	}
 }
 
-func (d *DiskManagerSvc) addDisk(add model.AddDiskReq) {
-	if add.NodeId == d.NodeId {
-		d.OutLocalAddDiskReq <- add
-	} else {
-		d.OutRemoteAddDiskReq <- add
+func (d *DiskManagerSvc) localDiskExists(add model.AddDiskMsg) bool {
+	for _, disk := range d.LocalDiskSvcList.GetValues() {
+		if disk.diskId == add.DiskId {
+			return true
+		}
 	}
+	return false
 }
