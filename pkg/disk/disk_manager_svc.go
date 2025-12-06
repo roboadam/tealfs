@@ -16,9 +16,15 @@ package disk
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"io/fs"
+	"path/filepath"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type DiskManagerSvc struct {
@@ -57,17 +63,62 @@ func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *DiskMana
 }
 
 func (d *DiskManagerSvc) Start(ctx context.Context) {
+	d.loadDiskInfoList()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case add := <-d.InAddDiskMsg:
 			if !d.localDiskExists(add) {
-				path := NewPath()
-				disk := New(pa)
-				// d.LocalDiskSvcList.Add()
+				path := NewPath(d.configPath, d.fileOps)
+				disk := New(path, d.NodeId, add.DiskId, ctx)
+				added := d.LocalDiskSvcList.Add(disk)
+				if added {
+					d.OutDiskAddedMsg <- model.DiskAddedMsg(add)
+				}
+			}
+			added := d.DiskInfoList.Add(DiskInfo{
+				NodeId: add.NodeId,
+				DiskId: add.DiskId,
+				Path:   add.Path,
+			})
+			if added {
+				d.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
+				d.saveDiskInfoList()
 			}
 		}
+	}
+}
+
+func (d *DiskManagerSvc) loadDiskInfoList() {
+	data, err := d.fileOps.ReadFile(filepath.Join(d.configPath, "disks.json"))
+
+	if errors.Is(err, fs.ErrNotExist) {
+		d.DiskInfoList = set.NewSet[DiskInfo]()
+		return
+	}
+
+	diskInfo := []DiskInfo{}
+	if err == nil {
+		err = json.Unmarshal(data, &diskInfo)
+		if err == nil {
+			d.DiskInfoList = set.NewSetFromSlice(diskInfo)
+			for dInfo := range diskInfo {
+				//Add local disk service
+			}
+		}
+	}
+}
+
+func (d *DiskManagerSvc) saveDiskInfoList() {
+	data, err := json.Marshal(d.DiskInfoList.GetValues())
+	if err != nil {
+		log.Panicf("Error saving disk ids %v", err)
+	}
+
+	err = d.fileOps.WriteFile(filepath.Join(d.configPath, "disks.json"), data)
+	if err != nil {
+		log.Panicf("Error saving disk ids %v", err)
 	}
 }
 
