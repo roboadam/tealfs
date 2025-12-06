@@ -21,23 +21,29 @@ import (
 	"tealfs/pkg/set"
 )
 
-type Disks struct {
+type DiskManagerSvc struct {
 	Distributer dist.MirrorDistributer
-	AllDiskIds  *AllDisks
-	Disks       set.Set[Disk]
-	NodeId      model.NodeId
+	// AllDiskIds       *AllDisks
+	DiskInfoList     set.Set[DiskInfo]
+	LocalDiskSvcList set.Set[Disk]
+	NodeId           model.NodeId
 
-	InAddDiskReq        <-chan model.AddDiskReq
-	OutRemoteAddDiskReq chan<- model.AddDiskReq
-	OutLocalAddDiskReq  chan<- model.AddDiskReq
+	InAddDiskMsg    <-chan model.AddDiskMsg
+	OutDiskAddedMsg chan<- model.DiskAddedMsg
 }
 
-func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *Disks {
+type DiskInfo struct {
+	NodeId model.NodeId
+	DiskId model.DiskId
+	Path   string
+}
+
+func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *DiskManagerSvc {
 	distributer := dist.NewMirrorDistributer(nodeId)
 	allDiskIds := AllDisks{}
 	allDiskIds.Init(configPath, fileOps)
 	disks := set.NewSet[Disk]()
-	return &Disks{
+	return &DiskManagerSvc{
 		Distributer: distributer,
 		AllDiskIds:  &allDiskIds,
 		Disks:       disks,
@@ -45,7 +51,7 @@ func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *Disks {
 	}
 }
 
-func (d *Disks) Start(ctx context.Context) {
+func (d *DiskManagerSvc) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -58,7 +64,7 @@ func (d *Disks) Start(ctx context.Context) {
 	}
 }
 
-func (d *Disks) addDisk(add model.AddDiskReq) {
+func (d *DiskManagerSvc) addDisk(add model.AddDiskReq) {
 	if add.NodeId == d.NodeId {
 		d.OutLocalAddDiskReq <- add
 	} else {

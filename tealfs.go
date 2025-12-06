@@ -125,10 +125,10 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	}
 	go reconnector.Start(ctx)
 
-	newAddDiskReqs := make(chan model.AddDiskReq)
+	newAddDiskMsgs := make(chan model.AddDiskMsg)
 	u := ui.NewUi(
 		connReqs,
-		newAddDiskReqs,
+		newAddDiskMsgs,
 		make(chan model.UiDiskStatus),
 		&ui.HttpHtmlOps{},
 		nodeId,
@@ -136,6 +136,16 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		ctx,
 	)
 	u.NodeConnMap = nodeConnMapper
+
+	localAddDiskMsgs := make(chan model.AddDiskMsg, 1)
+	diskMsgSender := disk.MsgSenderSvc{
+		InAddDiskMsg:  newAddDiskMsgs,
+		OutAddDiskMsg: localAddDiskMsgs,
+		OutRemote:     netSends,
+		NodeId:        nodeId,
+		NodeConnMap:   nodeConnMapper,
+	}
+	go diskMsgSender.Start(ctx)
 
 	addedDisksSaver := make(chan *disk.Disk)
 	addedDisksReader := make(chan *disk.Disk)
@@ -150,7 +160,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	disks.OutLocalAddDiskReq = localAddDiskReqs
 	disks.OutRemoteAddDiskReq = remoteAddDiskReqs
 	go disks.Start(ctx)
-
 
 	iamDiskUpdates := make(chan []model.AddDiskReq, 1)
 
