@@ -63,7 +63,7 @@ func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *DiskMana
 }
 
 func (d *DiskManagerSvc) Start(ctx context.Context) {
-	d.loadDiskInfoList()
+	d.loadDiskInfoList(ctx)
 	for {
 		select {
 		case <-ctx.Done():
@@ -90,7 +90,7 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 	}
 }
 
-func (d *DiskManagerSvc) loadDiskInfoList() {
+func (d *DiskManagerSvc) loadDiskInfoList(ctx context.Context) {
 	data, err := d.fileOps.ReadFile(filepath.Join(d.configPath, "disks.json"))
 
 	if errors.Is(err, fs.ErrNotExist) {
@@ -103,8 +103,12 @@ func (d *DiskManagerSvc) loadDiskInfoList() {
 		err = json.Unmarshal(data, &diskInfo)
 		if err == nil {
 			d.DiskInfoList = set.NewSetFromSlice(diskInfo)
-			for dInfo := range diskInfo {
-				//Add local disk service
+			for _, dInfo := range diskInfo {
+				if dInfo.NodeId == d.NodeId {
+					path := NewPath(d.configPath, d.fileOps)
+					disk := New(path, d.NodeId, dInfo.DiskId, ctx)
+					d.LocalDiskSvcList.Add(disk)
+				}
 			}
 		}
 	}
