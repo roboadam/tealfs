@@ -28,34 +28,29 @@ func TestDisks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inAddDiskReq := make(chan model.AddDiskReq)
-	outRemoteAddDiskReq := make(chan model.AddDiskReq)
-	outLocalAddDiskReq := make(chan model.AddDiskReq)
+	inAddDiskMsg := make(chan model.AddDiskMsg)
+	outDiskAddedMsg := make(chan model.DiskAddedMsg)
 	localNodeId := model.NewNodeId()
 	remoteNodeId := model.NewNodeId()
 
 	disks := NewDisks(localNodeId, "", &MockFileOps{})
-	disks.InAddDiskReq = inAddDiskReq
-	disks.OutRemoteAddDiskReq = outRemoteAddDiskReq
-	disks.OutLocalAddDiskReq = outLocalAddDiskReq
+	disks.InAddDiskMsg = inAddDiskMsg
+	disks.OutDiskAddedMsg = outDiskAddedMsg
 	diskAdded := make(chan model.AddDiskReq, 1)
-	disks.AllDiskIds.OutDiskAdded = diskAdded
 	go disks.Start(ctx)
 
-	localDisk := model.AddDiskReq{
+	localDisk := model.AddDiskMsg{
 		DiskId: model.DiskId(uuid.NewString()),
 		Path:   "localPath",
 		NodeId: localNodeId,
 	}
-	remoteDisk := model.AddDiskReq{
+	remoteDisk := model.AddDiskMsg{
 		DiskId: model.DiskId(uuid.NewString()),
 		Path:   "remotePath",
 		NodeId: remoteNodeId,
 	}
 
-	inAddDiskReq <- localDisk
-	localResp := <-outLocalAddDiskReq
-	disks.AllDiskIds.Add(localResp)
+	inAddDiskMsg <- localDisk
 	<-diskAdded
 	inAddDiskReq <- remoteDisk
 	remoteResp := <-outRemoteAddDiskReq
