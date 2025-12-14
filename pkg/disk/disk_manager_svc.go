@@ -68,7 +68,7 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case added:= <- d.InDiskAddedMsg:
+		case added := <-d.InDiskAddedMsg:
 			d.addToDiskInfoList(model.AddDiskMsg(added))
 		case add := <-d.InAddDiskMsg:
 			if !d.localDiskExists(add) {

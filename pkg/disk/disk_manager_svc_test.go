@@ -16,10 +16,10 @@ package disk
 
 import (
 	"context"
-	"reflect"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -29,52 +29,45 @@ func TestDisks(t *testing.T) {
 	defer cancel()
 
 	inAddDiskMsg := make(chan model.AddDiskMsg)
+	inDiskAddedMsg := make(chan model.DiskAddedMsg)
 	outDiskAddedMsg := make(chan model.DiskAddedMsg)
 	localNodeId := model.NewNodeId()
-	remoteNodeId := model.NewNodeId()
 
-	disks := NewDisks(localNodeId, "", &MockFileOps{})
-	disks.InAddDiskMsg = inAddDiskMsg
-	disks.OutDiskAddedMsg = outDiskAddedMsg
-	diskAdded := make(chan model.AddDiskReq, 1)
-	go disks.Start(ctx)
+	diskMgrSvc := NewDisks(localNodeId, "", &MockFileOps{})
+	diskMgrSvc.InAddDiskMsg = inAddDiskMsg
+	diskMgrSvc.InDiskAddedMsg = inDiskAddedMsg
+	diskMgrSvc.OutDiskAddedMsg = outDiskAddedMsg
+	go diskMgrSvc.Start(ctx)
 
 	localDisk := model.AddDiskMsg{
 		DiskId: model.DiskId(uuid.NewString()),
 		Path:   "localPath",
 		NodeId: localNodeId,
 	}
-	remoteDisk := model.AddDiskMsg{
-		DiskId: model.DiskId(uuid.NewString()),
-		Path:   "remotePath",
-		NodeId: remoteNodeId,
-	}
 
 	inAddDiskMsg <- localDisk
-	<-diskAdded
-	inAddDiskReq <- remoteDisk
-	remoteResp := <-outRemoteAddDiskReq
-	disks.AllDiskIds.Add(remoteResp)
+	<-outDiskAddedMsg
 
-	inAddDiskReq <- localDisk
-	inAddDiskReq <- remoteDisk
-
-	select {
-	case <-outLocalAddDiskReq:
-		t.Error("we already got this message")
-		return
-	case <-outRemoteAddDiskReq:
-		t.Error("we already got this message")
-		return
-	default:
+	for diskMgrSvc.DiskInfoList.Len() != 1 {
+		time.Sleep(time.Millisecond)
 	}
 
-	if !reflect.DeepEqual(localDisk, localResp) {
-		t.Error("local not equal")
+	for diskMgrSvc.LocalDiskSvcList.Len() != 1 {
+		time.Sleep(time.Millisecond)
 	}
 
-	if !reflect.DeepEqual(remoteDisk, remoteResp) {
-		t.Error("remote not equal")
+	inDiskAddedMsg <- model.DiskAddedMsg{
+		DiskId: "disk1",
+		Path:   "path1",
+		NodeId: localNodeId,
+	}
+
+	for diskMgrSvc.DiskInfoList.Len() != 2 {
+		time.Sleep(time.Millisecond)
+	}
+
+	for diskMgrSvc.LocalDiskSvcList.Len() != 1 {
+		time.Sleep(time.Millisecond)
 	}
 }
 
