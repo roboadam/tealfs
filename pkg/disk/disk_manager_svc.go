@@ -110,6 +110,7 @@ func (d *DiskManagerSvc) loadDiskInfoList(ctx context.Context) {
 		if err == nil {
 			d.DiskInfoList = set.NewSetFromSlice(diskInfo)
 			for _, dInfo := range diskInfo {
+				d.Distributer.SetWeight(d.NodeId, dInfo.DiskId, 1)
 				if dInfo.NodeId == d.NodeId {
 					path := NewPath(d.configPath, d.fileOps)
 					disk := New(path, d.NodeId, dInfo.DiskId, ctx)

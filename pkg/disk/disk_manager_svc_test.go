@@ -20,8 +20,6 @@ import (
 	"tealfs/pkg/set"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func TestDisks(t *testing.T) {
@@ -31,19 +29,18 @@ func TestDisks(t *testing.T) {
 	inAddDiskMsg := make(chan model.AddDiskMsg)
 	inDiskAddedMsg := make(chan model.DiskAddedMsg)
 	outDiskAddedMsg := make(chan model.DiskAddedMsg)
-	localNodeId := model.NewNodeId()
 	fileOps := MockFileOps{}
 
-	diskMgrSvc := NewDisks(localNodeId, "", &fileOps)
+	diskMgrSvc := NewDisks("localNodeId", "", &fileOps)
 	diskMgrSvc.InAddDiskMsg = inAddDiskMsg
 	diskMgrSvc.InDiskAddedMsg = inDiskAddedMsg
 	diskMgrSvc.OutDiskAddedMsg = outDiskAddedMsg
 	go diskMgrSvc.Start(ctx)
 
 	localDisk := model.AddDiskMsg{
-		DiskId: model.DiskId(uuid.NewString()),
+		DiskId: "localDisk1",
 		Path:   "localPath",
-		NodeId: localNodeId,
+		NodeId: "localNodeId",
 	}
 
 	inAddDiskMsg <- localDisk
@@ -60,7 +57,7 @@ func TestDisks(t *testing.T) {
 	inDiskAddedMsg <- model.DiskAddedMsg{
 		DiskId: "disk1",
 		Path:   "path1",
-		NodeId: localNodeId,
+		NodeId: "remoteNodeId",
 	}
 
 	for diskMgrSvc.DiskInfoList.Len() != 2 {
@@ -73,7 +70,7 @@ func TestDisks(t *testing.T) {
 
 	cancel()
 
-	diskMgrSvc = NewDisks(localNodeId, "", &fileOps)
+	diskMgrSvc = NewDisks("localNodeId", "", &fileOps)
 	diskMgrSvc.InAddDiskMsg = inAddDiskMsg
 	diskMgrSvc.InDiskAddedMsg = inDiskAddedMsg
 	diskMgrSvc.OutDiskAddedMsg = outDiskAddedMsg
