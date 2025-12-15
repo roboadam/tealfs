@@ -39,7 +39,8 @@ type Conns struct {
 	OutSaveToDiskResp  chan<- blocksaver.SaveToDiskResp
 	OutGetFromDiskReq  chan<- blockreader.GetFromDiskReq
 	OutGetFromDiskResp chan<- blockreader.GetFromDiskResp
-	OutAddDiskReq      chan<- model.AddDiskReq
+	OutAddDiskMsg      chan<- model.AddDiskMsg
+	OutDiskAddedMsg    chan<- model.DiskAddedMsg
 	OutIam             chan<- model.IAm
 	OutIamConnId       chan<- IamConnId
 	OutSyncNodes       chan<- model.SyncNodes
@@ -186,8 +187,10 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.OutGetFromDiskReq <- *p
 			case *blockreader.GetFromDiskResp:
 				c.OutGetFromDiskResp <- *p
-			case *model.AddDiskReq:
-				c.OutAddDiskReq <- *p
+			case *model.AddDiskMsg:
+				c.OutAddDiskMsg <- *p
+			case *model.DiskAddedMsg:
+				c.OutDiskAddedMsg <- *p
 			case *model.IAm:
 				c.OutIam <- *p
 				c.OutIamConnId <- IamConnId{Iam: *p, ConnId: conn}

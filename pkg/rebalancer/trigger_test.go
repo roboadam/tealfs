@@ -28,7 +28,7 @@ func newTriggerTest(ctx context.Context) (*Trigger, chan struct{}, chan model.Mg
 	outLocalReq := make(chan ListOnDiskBlockIdsCmd)
 	nodeId := model.NodeId("node1")
 	mapper := model.NewNodeConnectionMapper()
-	disks := set.NewSet[model.AddDiskReq]()
+	disks := set.NewSet[model.DiskInfo]()
 
 	trigger := &Trigger{
 		InTrigger:   inTrigger,
@@ -52,7 +52,7 @@ func TestTrigger(t *testing.T) {
 		trigger, inTrigger, outSends, outLocalReq := newTriggerTest(ctx)
 
 		// Add a disk for another node with a "greater" NodeId, so we are not primary.
-		trigger.Disks.Add(model.AddDiskReq{NodeId: "node2", DiskId: "disk2", Path: "/d2"})
+		trigger.Disks.Add(model.DiskInfo{NodeId: "node2", DiskId: "disk2", Path: "/d2"})
 		trigger.Mapper.SetAll(model.ConnId(1), "addr2", "node2")
 
 		inTrigger <- struct{}{}
@@ -73,7 +73,7 @@ func TestTrigger(t *testing.T) {
 		trigger, inTrigger, outSends, outLocalReq := newTriggerTest(ctx)
 
 		// We are node1. Add a disk for node0, so we are primary.
-		trigger.Disks.Add(model.AddDiskReq{NodeId: "node0", DiskId: "disk0", Path: "/d0"})
+		trigger.Disks.Add(model.DiskInfo{NodeId: "node0", DiskId: "disk0", Path: "/d0"})
 		// But we don't have a connection to node0 in the mapper yet, so AreAllConnected will be false.
 		trigger.Mapper.SetNodeAddress("node0", "addr0") // This sets the address but not the connection.
 
@@ -95,8 +95,8 @@ func TestTrigger(t *testing.T) {
 		trigger, inTrigger, outSends, outLocalReq := newTriggerTest(ctx)
 
 		// We are node1. Add a disk for ourselves and another node. We are primary.
-		trigger.Disks.Add(model.AddDiskReq{NodeId: "node1", DiskId: "disk1", Path: "/d1"})
-		trigger.Disks.Add(model.AddDiskReq{NodeId: "node0", DiskId: "disk0", Path: "/d0"})
+		trigger.Disks.Add(model.DiskInfo{NodeId: "node1", DiskId: "disk1", Path: "/d1"})
+		trigger.Disks.Add(model.DiskInfo{NodeId: "node0", DiskId: "disk0", Path: "/d0"})
 
 		// Set up connections to other nodes.
 		trigger.Mapper.SetAll(model.ConnId(1), "addr0", "node0")
@@ -146,7 +146,7 @@ func TestTrigger(t *testing.T) {
 		trigger, inTrigger, outSends, outLocalReq := newTriggerTest(ctx)
 
 		// We are node1. Add a disk for ourselves. We are primary.
-		trigger.Disks.Add(model.AddDiskReq{NodeId: "node1", DiskId: "disk1", Path: "/d1"})
+		trigger.Disks.Add(model.DiskInfo{NodeId: "node1", DiskId: "disk1", Path: "/d1"})
 
 		// No other nodes, so AreAllConnected should be true.
 		inTrigger <- struct{}{}

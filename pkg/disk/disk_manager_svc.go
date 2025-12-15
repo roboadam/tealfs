@@ -29,7 +29,7 @@ import (
 
 type DiskManagerSvc struct {
 	Distributer      dist.MirrorDistributer
-	DiskInfoList     set.Set[DiskInfo]
+	DiskInfoList     set.Set[model.DiskInfo]
 	LocalDiskSvcList set.Set[Disk]
 	NodeId           model.NodeId
 
@@ -41,16 +41,10 @@ type DiskManagerSvc struct {
 	fileOps    FileOps
 }
 
-type DiskInfo struct {
-	NodeId model.NodeId
-	DiskId model.DiskId
-	Path   string
-}
-
 func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *DiskManagerSvc {
 	distributer := dist.NewMirrorDistributer(nodeId)
 	localDisks := set.NewSet[Disk]()
-	diskInfoList := set.NewSet[DiskInfo]()
+	diskInfoList := set.NewSet[model.DiskInfo]()
 	return &DiskManagerSvc{
 		Distributer:      distributer,
 		DiskInfoList:     diskInfoList,
@@ -85,7 +79,7 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 }
 
 func (d *DiskManagerSvc) addToDiskInfoList(add model.AddDiskMsg) {
-	added := d.DiskInfoList.Add(DiskInfo{
+	added := d.DiskInfoList.Add(model.DiskInfo{
 		NodeId: add.NodeId,
 		DiskId: add.DiskId,
 		Path:   add.Path,
@@ -100,11 +94,11 @@ func (d *DiskManagerSvc) loadDiskInfoList(ctx context.Context) {
 	data, err := d.fileOps.ReadFile(filepath.Join(d.configPath, "disks.json"))
 
 	if errors.Is(err, fs.ErrNotExist) {
-		d.DiskInfoList = set.NewSet[DiskInfo]()
+		d.DiskInfoList = set.NewSet[model.DiskInfo]()
 		return
 	}
 
-	diskInfo := []DiskInfo{}
+	diskInfo := []model.DiskInfo{}
 	if err == nil {
 		err = json.Unmarshal(data, &diskInfo)
 		if err == nil {

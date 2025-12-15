@@ -29,7 +29,7 @@ type Trigger struct {
 
 	NodeId model.NodeId
 	Mapper *model.NodeConnectionMapper
-	Disks  *set.Set[model.AddDiskReq]
+	Disks  *set.Set[model.DiskInfo]
 }
 
 func (s *Trigger) Start(ctx context.Context) {

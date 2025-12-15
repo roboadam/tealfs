@@ -30,13 +30,13 @@ type StoreItCmdHandler struct {
 	OutStoreItReq chan<- StoreItReq
 	OutExistsResp chan<- ExistsResp
 
-	AllDiskIds  *set.Set[model.AddDiskReq]
+	AllDiskIds  *set.Set[model.DiskInfo]
 	LocalDisks  *set.Set[disk.Disk]
-	bookKeeping map[BalanceReqId]map[model.BlockId]*set.Set[model.AddDiskReq]
+	bookKeeping map[BalanceReqId]map[model.BlockId]*set.Set[model.DiskInfo]
 }
 
 func (s *StoreItCmdHandler) Start(ctx context.Context) {
-	s.bookKeeping = make(map[BalanceReqId]map[model.BlockId]*set.Set[model.AddDiskReq])
+	s.bookKeeping = make(map[BalanceReqId]map[model.BlockId]*set.Set[model.DiskInfo])
 	for {
 		select {
 		case <-ctx.Done():
@@ -104,6 +104,6 @@ func (s *StoreItCmdHandler) sendNextStoreItReq(cmd StoreItCmd) {
 func (s *StoreItCmdHandler) initBookKeeping(cmd StoreItCmd) {
 	_, ok := s.bookKeeping[cmd.BalanceReqId]
 	if !ok {
-		s.bookKeeping[cmd.BalanceReqId] = make(map[model.BlockId]*set.Set[model.AddDiskReq])
+		s.bookKeeping[cmd.BalanceReqId] = make(map[model.BlockId]*set.Set[model.DiskInfo])
 	}
 }

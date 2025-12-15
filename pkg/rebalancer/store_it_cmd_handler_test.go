@@ -38,11 +38,11 @@ func TestStoreItCmd(t *testing.T) {
 	localDisks.Add(disk.New(path, "localNode", "localDisk1", ctx))
 	localDisks.Add(disk.New(path, "localNode", "localDisk2", ctx))
 
-	allDiskIds := set.NewSet[model.AddDiskReq]()
-	allDiskIds.Add(model.AddDiskReq{DiskId: "localDisk1", Path: "", NodeId: "localNode"})
-	allDiskIds.Add(model.AddDiskReq{DiskId: "localDisk2", Path: "", NodeId: "localNode"})
-	allDiskIds.Add(model.AddDiskReq{DiskId: "remoteDisk1", Path: "", NodeId: "remoteNode"})
-	allDiskIds.Add(model.AddDiskReq{DiskId: "remoteDisk2", Path: "", NodeId: "remoteNode"})
+	allDiskIds := set.NewSet[model.DiskInfo]()
+	allDiskIds.Add(model.DiskInfo{DiskId: "localDisk1", Path: "", NodeId: "localNode"})
+	allDiskIds.Add(model.DiskInfo{DiskId: "localDisk2", Path: "", NodeId: "localNode"})
+	allDiskIds.Add(model.DiskInfo{DiskId: "remoteDisk1", Path: "", NodeId: "remoteNode"})
+	allDiskIds.Add(model.DiskInfo{DiskId: "remoteDisk2", Path: "", NodeId: "remoteNode"})
 
 	expectedDisksToTry := set.NewSetFromSlice([]model.DiskId{"localDisk2", "remoteDisk1", "remoteDisk2"})
 
@@ -116,11 +116,11 @@ func TestStoreItCmdSuccess(t *testing.T) {
 	localDisks.Add(disk.New(path, "localNode", "localDisk1", ctx))
 	localDisks.Add(disk.New(path, "localNode", "localDisk2", ctx))
 
-	allDiskIds := set.NewSet[model.AddDiskReq]()
-	allDiskIds.Add(model.AddDiskReq{DiskId: "localDisk1", Path: "", NodeId: "localNode"})
-	allDiskIds.Add(model.AddDiskReq{DiskId: "localDisk2", Path: "", NodeId: "localNode"})
-	allDiskIds.Add(model.AddDiskReq{DiskId: "remoteDisk1", Path: "", NodeId: "remoteNode"})
-	allDiskIds.Add(model.AddDiskReq{DiskId: "remoteDisk2", Path: "", NodeId: "remoteNode"})
+	allDiskIds := set.NewSet[model.DiskInfo]()
+	allDiskIds.Add(model.DiskInfo{DiskId: "localDisk1", Path: "", NodeId: "localNode"})
+	allDiskIds.Add(model.DiskInfo{DiskId: "localDisk2", Path: "", NodeId: "localNode"})
+	allDiskIds.Add(model.DiskInfo{DiskId: "remoteDisk1", Path: "", NodeId: "remoteNode"})
+	allDiskIds.Add(model.DiskInfo{DiskId: "remoteDisk2", Path: "", NodeId: "remoteNode"})
 
 	handler := rebalancer.StoreItCmdHandler{
 		InStoreItCmd:  inStoreItCmd,

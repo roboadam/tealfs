@@ -19,7 +19,7 @@ import (
 	"tealfs/pkg/set"
 )
 
-func PrimaryNode(disks *set.Set[model.AddDiskReq]) model.NodeId {
+func PrimaryNode(disks *set.Set[model.DiskInfo]) model.NodeId {
 	if disks.Len() == 0 {
 		return ""
 	}
