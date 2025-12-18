@@ -17,40 +17,29 @@ package disk
 import (
 	"context"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestIamSender(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inIamDiskUpdate := make(chan []model.AddDiskReq)
+	inIamDiskUpdate := make(chan struct{})
 	outSends := make(chan model.MgrConnsSend)
 	iamSender := IamSender{
-		InIamDiskUpdate: inIamDiskUpdate,
-		OutSends:        outSends,
-		Mapper:          model.NewNodeConnectionMapper(),
-		NodeId:          "localNodeId",
-		Address:         "localAddress",
+		InIamDiskUpdate:  inIamDiskUpdate,
+		OutSends:         outSends,
+		Mapper:           model.NewNodeConnectionMapper(),
+		NodeId:           "localNodeId",
+		Address:          "localAddress",
+		LocalDiskSvcList: &set.Set[Disk]{},
 	}
 	iamSender.Mapper.SetAll(0, "remoteAddress1", "remoteNodeId1")
 	iamSender.Mapper.SetAll(1, "remoteAddress2", "remoteNodeId2")
 	go iamSender.Start(ctx)
 
-	disks := []model.AddDiskReq{
-		{
-			DiskId: model.DiskId(uuid.NewString()),
-			Path:   "path1",
-			NodeId: model.NewNodeId(),
-		}, {
-			DiskId: model.DiskId(uuid.NewString()),
-			Path:   "path2",
-			NodeId: model.NewNodeId(),
-		},
-	}
-	inIamDiskUpdate <- disks
+	inIamDiskUpdate <- struct{}{}
 	output1 := <-outSends
 	output2 := <-outSends
 

@@ -17,14 +17,16 @@ package disk
 import (
 	"context"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type IamSender struct {
-	InIamDiskUpdate <-chan []model.AddDiskReq
-	OutSends        chan<- model.MgrConnsSend
-	Mapper          *model.NodeConnectionMapper
-	NodeId          model.NodeId
-	Address         string
+	InIamDiskUpdate  <-chan struct{}
+	OutSends         chan<- model.MgrConnsSend
+	Mapper           *model.NodeConnectionMapper
+	LocalDiskSvcList *set.Set[Disk]
+	NodeId           model.NodeId
+	Address          string
 }
 
 func (i *IamSender) Start(ctx context.Context) {
@@ -32,10 +34,10 @@ func (i *IamSender) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case disks := <-i.InIamDiskUpdate:
+		case <-i.InIamDiskUpdate:
 			iam := model.IAm{
 				NodeId:  i.NodeId,
-				Disks:   disks,
+				Disks:   i.diskInfo(),
 				Address: i.Address,
 			}
 			conns := i.Mapper.Connections()
@@ -48,4 +50,16 @@ func (i *IamSender) Start(ctx context.Context) {
 
 		}
 	}
+}
+
+func (i *IamSender) diskInfo() []model.DiskInfo {
+	result := []model.DiskInfo{}
+	for _, d := range i.LocalDiskSvcList.GetValues() {
+		result = append(result, model.DiskInfo{
+			DiskId: d.diskId,
+			Path:   d.path.String(),
+			NodeId: i.NodeId,
+		})
+	}
+	return result
 }

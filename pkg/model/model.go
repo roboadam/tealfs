@@ -88,8 +88,7 @@ func (d *DiskAddedMsg) Type() PayloadType {
 }
 
 type DiskInfo struct {
-	NodeId NodeId
 	DiskId DiskId
 	Path   string
+	NodeId NodeId
 }
-

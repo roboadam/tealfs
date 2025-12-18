@@ -16,14 +16,12 @@ package disk
 
 import (
 	"context"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 )
 
 type IamReceiver struct {
-	InIam       <-chan model.IAm
-	Distributer *dist.MirrorDistributer
-	AllDiskIds  *AllDisks
+	InIam           <-chan model.IAm
+	OutDiskAddedMsg chan<- model.DiskAddedMsg
 }
 
 func (i *IamReceiver) Start(ctx context.Context) {
@@ -33,8 +31,7 @@ func (i *IamReceiver) Start(ctx context.Context) {
 			return
 		case iam := <-i.InIam:
 			for _, d := range iam.Disks {
-				i.Distributer.SetWeight(d.NodeId, d.DiskId, 1)
-				i.AllDiskIds.Add(d)
+				i.OutDiskAddedMsg <- model.DiskAddedMsg(d)
 			}
 		}
 	}

@@ -16,7 +16,6 @@ package disk
 
 import (
 	"context"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"testing"
 
@@ -29,22 +28,16 @@ func TestIamReceiver(t *testing.T) {
 
 	inIam := make(chan model.IAm)
 
-	distributer := dist.NewMirrorDistributer("localNodeId")
-	allDiskIds := AllDisks{}
-	diskAdded := make(chan model.AddDiskReq, 1)
-	allDiskIds.OutDiskAdded = diskAdded
-	allDiskIds.Init("", &MockFileOps{})
+	diskAddedMsg := make(chan model.DiskAddedMsg, 1)
 
 	receiver := IamReceiver{
-		InIam: inIam,
-
-		Distributer: &distributer,
-		AllDiskIds:  &allDiskIds,
+		InIam:           inIam,
+		OutDiskAddedMsg: diskAddedMsg,
 	}
 	go receiver.Start(ctx)
 
 	nodeId := model.NewNodeId()
-	disks := []model.AddDiskReq{
+	disks := []model.DiskInfo{
 		{
 			DiskId: model.DiskId(uuid.NewString()),
 			Path:   "path1",
@@ -58,14 +51,6 @@ func TestIamReceiver(t *testing.T) {
 	}
 	address := "someAddress"
 	inIam <- model.NewIam(nodeId, disks, address)
-	<-diskAdded
-	<-diskAdded
-
-	if len(distributer.ReadPointersForId(model.NewBlockId())) != 2 {
-		t.Error("Didn't add enough disks to the distributer")
-	}
-
-	if allDiskIds.Len() != 2 {
-		t.Error("Didn't add enough disks to allDiskIds")
-	}
+	<-diskAddedMsg
+	<-diskAddedMsg
 }
