@@ -27,13 +27,21 @@ func TestIamSender(t *testing.T) {
 
 	inIamDiskUpdate := make(chan struct{})
 	outSends := make(chan model.MgrConnsSend)
+	localDiskSvcList := set.NewSet[Disk]()
+	fileOps := MockFileOps{}
+	path1 := NewPath("path1", &fileOps)
+	path2 := NewPath("path2", &fileOps)
+	d1 := New(path1, "nodeId1", "diskId1", ctx)
+	d2 := New(path2, "nodeId1", "diskId1", ctx)
+	localDiskSvcList.Add(d1)
+	localDiskSvcList.Add(d2)
 	iamSender := IamSender{
 		InIamDiskUpdate:  inIamDiskUpdate,
 		OutSends:         outSends,
 		Mapper:           model.NewNodeConnectionMapper(),
 		NodeId:           "localNodeId",
 		Address:          "localAddress",
-		LocalDiskSvcList: &set.Set[Disk]{},
+		LocalDiskSvcList: &localDiskSvcList,
 	}
 	iamSender.Mapper.SetAll(0, "remoteAddress1", "remoteNodeId1")
 	iamSender.Mapper.SetAll(1, "remoteAddress2", "remoteNodeId2")

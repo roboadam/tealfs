@@ -79,11 +79,7 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 }
 
 func (d *DiskManagerSvc) addToDiskInfoList(add model.AddDiskMsg) {
-	added := d.DiskInfoList.Add(model.DiskInfo{
-		NodeId: add.NodeId,
-		DiskId: add.DiskId,
-		Path:   add.Path,
-	})
+	added := d.DiskInfoList.Add(model.DiskInfo(add))
 	if added {
 		d.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
 		d.saveDiskInfoList()
