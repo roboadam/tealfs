@@ -16,8 +16,8 @@ package conns
 
 import (
 	"context"
-	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type IamSender struct {
@@ -26,7 +26,7 @@ type IamSender struct {
 
 	NodeId  model.NodeId
 	Address string
-	Disks   *disk.AllDisks
+	Disks   *set.Set[model.DiskInfo]
 }
 
 func (i *IamSender) Start(ctx context.Context) {
@@ -41,11 +41,11 @@ func (i *IamSender) Start(ctx context.Context) {
 }
 
 func (i *IamSender) sendIam(connId model.ConnId) {
-	disks := i.Disks.Get()
+	disks := i.Disks.GetValues()
 	iam := model.IAm{
 		NodeId:  i.NodeId,
 		Address: i.Address,
-		Disks:   disks.GetValues(),
+		Disks:   disks,
 	}
 	i.OutIam <- model.MgrConnsSend{
 		ConnId:  connId,
