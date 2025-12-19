@@ -34,7 +34,7 @@ type MsgSender struct {
 	OutStoreItReq  chan<- StoreItReq
 	OutStoreItResp chan<- StoreItResp
 
-	OutRemote chan<- model.MgrConnsSend
+	OutRemote chan<- model.SendPayloadMsg
 
 	NodeId      model.NodeId
 	NodeConnMap *model.NodeConnectionMapper
@@ -63,7 +63,7 @@ func (e *MsgSender) sendStoreItResp(resp StoreItResp) {
 	if resp.Req.Cmd.DestNodeId == e.NodeId {
 		e.OutStoreItResp <- resp
 	} else if conn, ok := e.NodeConnMap.ConnForNode(resp.Req.Cmd.DestNodeId); ok {
-		e.OutRemote <- model.MgrConnsSend{
+		e.OutRemote <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: &resp,
 		}
@@ -76,7 +76,7 @@ func (e *MsgSender) sendExistsReq(req ExistsReq) {
 	if req.DestNodeId == e.NodeId {
 		e.OutExistsReq <- req
 	} else if conn, ok := e.NodeConnMap.ConnForNode(req.DestNodeId); ok {
-		e.OutRemote <- model.MgrConnsSend{
+		e.OutRemote <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: &req,
 		}
@@ -89,7 +89,7 @@ func (e *MsgSender) sendExistsResp(resp ExistsResp) {
 	if resp.Req.Caller == e.NodeId {
 		e.OutExistsResp <- resp
 	} else if conn, ok := e.NodeConnMap.ConnForNode(resp.Req.Caller); ok {
-		e.OutRemote <- model.MgrConnsSend{
+		e.OutRemote <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: &resp,
 		}
@@ -102,7 +102,7 @@ func (e *MsgSender) sendStoreItCmd(cmd StoreItCmd) {
 	if cmd.DestNodeId == e.NodeId {
 		e.OutStoreItCmd <- cmd
 	} else if conn, ok := e.NodeConnMap.ConnForNode(cmd.DestNodeId); ok {
-		e.OutRemote <- model.MgrConnsSend{
+		e.OutRemote <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: &cmd,
 		}
@@ -115,7 +115,7 @@ func (e *MsgSender) sendStoreItReq(req StoreItReq) {
 	if req.NodeId == e.NodeId {
 		e.OutStoreItReq <- req
 	} else if conn, ok := e.NodeConnMap.ConnForNode(req.NodeId); ok {
-		e.OutRemote <- model.MgrConnsSend{
+		e.OutRemote <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: &req,
 		}

@@ -28,7 +28,7 @@ func TestMkdir(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.MgrConnsSend)
+	outBroadcast := make(chan model.SendPayloadMsg)
 	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outBroadcast, model.NewNodeConnectionMapper(), ctx)
 
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
@@ -59,7 +59,7 @@ func TestRemoveAll(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.MgrConnsSend)
+	outBroadcast := make(chan model.SendPayloadMsg)
 	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outBroadcast, model.NewNodeConnectionMapper(), ctx)
 
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
@@ -88,7 +88,7 @@ func TestRename(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.MgrConnsSend)
+	outBroadcast := make(chan model.SendPayloadMsg)
 	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outBroadcast, model.NewNodeConnectionMapper(), ctx)
 
 	mockPushesAndPulls(ctx, &fs, outBroadcast)
@@ -131,7 +131,7 @@ func TestWriteAndRead(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.MgrConnsSend)
+	outBroadcast := make(chan model.SendPayloadMsg)
 	expectedData := []byte{1, 2, 3, 4, 5}
 	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outBroadcast, model.NewNodeConnectionMapper(), ctx)
 

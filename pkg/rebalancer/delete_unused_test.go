@@ -27,7 +27,7 @@ func TestDeleteUnused(t *testing.T) {
 	defer cancel()
 
 	inRunCleanup := make(chan BalanceReqId, 1)
-	outRemoteDelete := make(chan model.MgrConnsSend, 10)
+	outRemoteDelete := make(chan model.SendPayloadMsg, 10)
 	outLocalDelete := make(chan disk.DeleteBlockId, 10)
 
 	onDiskIds := set.NewMap[BalanceReqId, OnDiskBlockIdList]()

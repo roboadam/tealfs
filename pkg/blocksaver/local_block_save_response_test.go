@@ -34,7 +34,7 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	disk2 := mockDisk(nodeId, ctx)
 
 	resp := make(chan SaveToDiskResp)
-	sends := make(chan model.MgrConnsSend)
+	sends := make(chan model.SendPayloadMsg)
 	addedDisks := make(chan *disk.Disk)
 
 	lbsr := LocalBlockSaveResponses{

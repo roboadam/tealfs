@@ -26,7 +26,7 @@ import (
 type LocalBlockReadResponses struct {
 	InDisks            <-chan *disk.Disk
 	LocalReadResponses chan<- GetFromDiskResp
-	Sends              chan<- model.MgrConnsSend
+	Sends              chan<- model.SendPayloadMsg
 	NodeConnMap        *model.NodeConnectionMapper
 	NodeId             model.NodeId
 }
@@ -61,7 +61,7 @@ func (l *LocalBlockReadResponses) readFromChan(ctx context.Context, c <-chan mod
 func (l *LocalBlockReadResponses) sendToRemote(resp *GetFromDiskResp) {
 	conn, ok := l.NodeConnMap.ConnForNode(resp.Caller)
 	if ok {
-		l.Sends <- model.MgrConnsSend{
+		l.Sends <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: resp,
 		}

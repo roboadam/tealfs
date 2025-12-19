@@ -22,7 +22,7 @@ import (
 
 type IamSender struct {
 	InSendIam <-chan model.ConnId
-	OutIam    chan<- model.MgrConnsSend
+	OutIam    chan<- model.SendPayloadMsg
 
 	NodeId  model.NodeId
 	Address string
@@ -47,7 +47,7 @@ func (i *IamSender) sendIam(connId model.ConnId) {
 		Address: i.Address,
 		Disks:   disks,
 	}
-	i.OutIam <- model.MgrConnsSend{
+	i.OutIam <- model.SendPayloadMsg{
 		ConnId:  connId,
 		Payload: &iam,
 	}

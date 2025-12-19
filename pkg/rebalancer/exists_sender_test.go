@@ -29,7 +29,7 @@ func TestExistsSender(t *testing.T) {
 	inExistsResp := make(chan rebalancer.ExistsResp)
 	outLocalExistsReq := make(chan rebalancer.ExistsReq)
 	outLocalExistsResp := make(chan rebalancer.ExistsResp)
-	outRemote := make(chan model.MgrConnsSend)
+	outRemote := make(chan model.SendPayloadMsg)
 	nodeId := model.NewNodeId()
 	remoteNodeId := model.NewNodeId()
 	nodeConnMap := model.NewNodeConnectionMapper()
@@ -170,7 +170,7 @@ func TestStoreItReq(t *testing.T) {
 
 	inStoreItReq := make(chan rebalancer.StoreItReq)
 	outStoreItReq := make(chan rebalancer.StoreItReq)
-	outRemote := make(chan model.MgrConnsSend)
+	outRemote := make(chan model.SendPayloadMsg)
 
 	sender := rebalancer.MsgSender{
 		InStoreItReq:  inStoreItReq,
@@ -212,7 +212,7 @@ func TestStoreItCmdSend(t *testing.T) {
 
 	inStoreItCmd := make(chan rebalancer.StoreItCmd)
 	outStoreItCmd := make(chan rebalancer.StoreItCmd)
-	outRemote := make(chan model.MgrConnsSend)
+	outRemote := make(chan model.SendPayloadMsg)
 
 	sender := rebalancer.MsgSender{
 		InStoreItCmd:  inStoreItCmd,
@@ -254,7 +254,7 @@ func TestStoreItRespSend(t *testing.T) {
 
 	inStoreItResp := make(chan rebalancer.StoreItResp)
 	outStoreItResp := make(chan rebalancer.StoreItResp)
-	outRemote := make(chan model.MgrConnsSend)
+	outRemote := make(chan model.SendPayloadMsg)
 
 	sender := rebalancer.MsgSender{
 		InStoreItResp:  inStoreItResp,

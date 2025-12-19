@@ -28,7 +28,7 @@ func TestLocalBlockIdListerNoDisks(t *testing.T) {
 
 	inFetchIds := make(chan ListOnDiskBlockIdsCmd)
 	outIdLocalResults := make(chan OnDiskBlockIdList)
-	outIdRemoteResults := make(chan model.MgrConnsSend)
+	outIdRemoteResults := make(chan model.SendPayloadMsg)
 	disks := set.NewSet[disk.Disk]()
 	mapper := model.NewNodeConnectionMapper()
 
@@ -66,7 +66,7 @@ func TestLocalBlockIdListerWithDisks(t *testing.T) {
 
 	inFetchIds := make(chan ListOnDiskBlockIdsCmd)
 	outIdLocalResults := make(chan OnDiskBlockIdList)
-	outIdRemoteResults := make(chan model.MgrConnsSend)
+	outIdRemoteResults := make(chan model.SendPayloadMsg)
 	disks := set.NewSet[disk.Disk]()
 
 	ops := disk.MockFileOps{}

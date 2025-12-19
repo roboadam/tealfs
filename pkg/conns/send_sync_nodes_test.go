@@ -25,7 +25,7 @@ func TestSendSyncNodes(t *testing.T) {
 	defer cancel()
 
 	inSendSyncNodes := make(chan struct{})
-	outSendPayloads := make(chan model.MgrConnsSend)
+	outSendPayloads := make(chan model.SendPayloadMsg)
 	mapper := model.NewNodeConnectionMapper()
 
 	sendSyncNodes := SendSyncNodes{

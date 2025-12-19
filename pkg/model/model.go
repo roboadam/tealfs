@@ -48,7 +48,7 @@ type ConnectToNodeReq struct {
 	Address string
 }
 
-type MgrConnsSend struct {
+type SendPayloadMsg struct {
 	ConnId  ConnId
 	Payload Payload
 }

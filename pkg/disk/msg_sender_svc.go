@@ -22,11 +22,12 @@ import (
 )
 
 type MsgSenderSvc struct {
-	InAddDiskMsg <-chan model.AddDiskMsg
+	InAddDiskMsg   <-chan model.AddDiskMsg
+	InDiskAddedMsg <-chan model.DiskAddedMsg
 
 	OutAddDiskMsg chan<- model.AddDiskMsg
 
-	OutRemote chan<- model.MgrConnsSend
+	OutRemote chan<- model.SendPayloadMsg
 
 	NodeId      model.NodeId
 	NodeConnMap *model.NodeConnectionMapper
@@ -39,6 +40,18 @@ func (m *MsgSenderSvc) Start(ctx context.Context) {
 			return
 		case req := <-m.InAddDiskMsg:
 			m.sendAddDiskMsg(req)
+		case req := <-m.InDiskAddedMsg:
+			m.sendDiskAddedMsg(req)
+		}
+	}
+}
+
+func (m *MsgSenderSvc) sendDiskAddedMsg(msg model.DiskAddedMsg) {
+	connections := m.NodeConnMap.Connections()
+	for _, conn := range connections.GetValues() {
+		m.OutRemote <- model.SendPayloadMsg{
+			ConnId:  conn,
+			Payload: &msg,
 		}
 	}
 }
@@ -47,7 +60,7 @@ func (m *MsgSenderSvc) sendAddDiskMsg(msg model.AddDiskMsg) {
 	if msg.NodeId == m.NodeId {
 		m.OutAddDiskMsg <- msg
 	} else if conn, ok := m.NodeConnMap.ConnForNode(msg.NodeId); ok {
-		m.OutRemote <- model.MgrConnsSend{
+		m.OutRemote <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: &msg,
 		}

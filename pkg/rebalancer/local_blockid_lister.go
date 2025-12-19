@@ -27,7 +27,7 @@ import (
 type LocalBlockIdLister struct {
 	InFetchIds       <-chan ListOnDiskBlockIdsCmd
 	OutLocalResults  chan<- OnDiskBlockIdList
-	OutRemoteResults chan<- model.MgrConnsSend
+	OutRemoteResults chan<- model.SendPayloadMsg
 
 	Disks  *set.Set[disk.Disk]
 	NodeId model.NodeId
@@ -66,7 +66,7 @@ func (l *LocalBlockIdLister) sendResults(resp *OnDiskBlockIdList) {
 	} else {
 		connId, ok := l.Mapper.ConnForNode(resp.Caller)
 		if ok {
-			l.OutRemoteResults <- model.MgrConnsSend{
+			l.OutRemoteResults <- model.SendPayloadMsg{
 				Payload: resp,
 				ConnId:  connId,
 			}

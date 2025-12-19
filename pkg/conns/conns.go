@@ -47,7 +47,7 @@ type Conns struct {
 	OutSendIam         chan<- model.ConnId
 	OutFileBroadcasts  chan<- webdav.FileBroadcast
 	inConnectTo        <-chan model.ConnectToNodeReq
-	inSends            <-chan model.MgrConnsSend
+	inSends            <-chan model.SendPayloadMsg
 	Address            string
 	provider           ConnectionProvider
 	nodeId             model.NodeId
@@ -59,7 +59,7 @@ type Conns struct {
 func NewConns(
 	// outReceives chan model.ConnsMgrReceive,
 	inConnectTo <-chan model.ConnectToNodeReq,
-	inSends <-chan model.MgrConnsSend,
+	inSends <-chan model.SendPayloadMsg,
 	provider ConnectionProvider,
 	address string,
 	nodeId model.NodeId,

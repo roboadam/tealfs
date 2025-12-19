@@ -51,7 +51,7 @@ type FileSystem struct {
 	ReadReqResp     chan ReadReqResp
 	WriteReqResp    chan WriteReqResp
 	inBroadcast     chan FileBroadcast
-	OutSends        chan model.MgrConnsSend
+	OutSends        chan model.SendPayloadMsg
 
 	Mapper    *model.NodeConnectionMapper
 	nodeId    model.NodeId
@@ -66,7 +66,7 @@ func NewFileSystem(
 	fileOps disk.FileOps,
 	indexPath string,
 	chansize int,
-	outSends chan model.MgrConnsSend,
+	outSends chan model.SendPayloadMsg,
 	mapper *model.NodeConnectionMapper,
 	ctx context.Context,
 ) FileSystem {
@@ -235,7 +235,7 @@ func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType FileBro
 	msg := FileBroadcast{UpdateType: updateType, FileBytes: file.ToBytes()}
 	conns := f.Mapper.Connections()
 	for _, connId := range conns.GetValues() {
-		f.OutSends <- model.MgrConnsSend{ConnId: connId, Payload: &msg}
+		f.OutSends <- model.SendPayloadMsg{ConnId: connId, Payload: &msg}
 	}
 	return nil
 }

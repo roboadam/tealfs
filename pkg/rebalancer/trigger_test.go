@@ -22,9 +22,9 @@ import (
 	"time"
 )
 
-func newTriggerTest(ctx context.Context) (*Trigger, chan struct{}, chan model.MgrConnsSend, chan ListOnDiskBlockIdsCmd) {
+func newTriggerTest(ctx context.Context) (*Trigger, chan struct{}, chan model.SendPayloadMsg, chan ListOnDiskBlockIdsCmd) {
 	inTrigger := make(chan struct{})
-	outSends := make(chan model.MgrConnsSend)
+	outSends := make(chan model.SendPayloadMsg)
 	outLocalReq := make(chan ListOnDiskBlockIdsCmd)
 	nodeId := model.NodeId("node1")
 	mapper := model.NewNodeConnectionMapper()

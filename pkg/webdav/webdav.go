@@ -49,7 +49,7 @@ func New(
 	webdavMgrPuts chan model.PutBlockReq,
 	mgrWebdavGets chan model.GetBlockResp,
 	mgrWebdavPuts chan model.PutBlockResp,
-	outSends chan model.MgrConnsSend,
+	outSends chan model.SendPayloadMsg,
 
 	mgrWebdavBroadcast chan FileBroadcast,
 	bindAddress string,

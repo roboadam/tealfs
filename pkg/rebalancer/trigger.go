@@ -24,7 +24,7 @@ import (
 
 type Trigger struct {
 	InTrigger   <-chan struct{}
-	OutSends    chan<- model.MgrConnsSend
+	OutSends    chan<- model.SendPayloadMsg
 	OutLocalReq chan<- ListOnDiskBlockIdsCmd
 
 	NodeId model.NodeId
@@ -46,7 +46,7 @@ func (s *Trigger) Start(ctx context.Context) {
 				conns := s.Mapper.Connections()
 				s.OutLocalReq <- req
 				for _, conn := range conns.GetValues() {
-					s.OutSends <- model.MgrConnsSend{
+					s.OutSends <- model.SendPayloadMsg{
 						Payload: &req,
 						ConnId:  conn,
 					}

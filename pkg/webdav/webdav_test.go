@@ -32,7 +32,7 @@ func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
 	webdavMgrGets := make(chan model.GetBlockReq)
 	webdavMgrPuts := make(chan model.PutBlockReq)
-	webdavMgrBroadcast := make(chan model.MgrConnsSend)
+	webdavMgrBroadcast := make(chan model.SendPayloadMsg)
 	mgrWebdavGets := make(chan model.GetBlockResp)
 	mgrWebdavPuts := make(chan model.PutBlockResp)
 	mgrWebdavBroadcast := make(chan webdav.FileBroadcast)

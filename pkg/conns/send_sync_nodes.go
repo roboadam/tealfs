@@ -21,7 +21,7 @@ import (
 
 type SendSyncNodes struct {
 	InSendSyncNodes <-chan struct{}
-	OutSendPayloads chan<- model.MgrConnsSend
+	OutSendPayloads chan<- model.SendPayloadMsg
 
 	NodeConnMapper *model.NodeConnectionMapper
 }
@@ -40,7 +40,7 @@ func (s *SendSyncNodes) Start(ctx context.Context) {
 func (s *SendSyncNodes) send(syncNodes *model.SyncNodes) {
 	connections := s.NodeConnMapper.Connections()
 	for _, connId := range connections.GetValues() {
-		s.OutSendPayloads <- model.MgrConnsSend{
+		s.OutSendPayloads <- model.SendPayloadMsg{
 			ConnId:  connId,
 			Payload: syncNodes,
 		}

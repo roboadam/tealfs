@@ -23,7 +23,7 @@ import (
 
 type DeleteUnused struct {
 	InRunCleanup    <-chan BalanceReqId
-	OutRemoteDelete chan<- model.MgrConnsSend
+	OutRemoteDelete chan<- model.SendPayloadMsg
 	OutLocalDelete  chan<- disk.DeleteBlockId
 
 	OnDiskIds       *set.Map[BalanceReqId, OnDiskBlockIdList]
@@ -47,7 +47,7 @@ func (d *DeleteUnused) Start(ctx context.Context) {
 
 				connections := d.Mapper.Connections()
 				for _, connId := range connections.GetValues() {
-					d.OutRemoteDelete <- model.MgrConnsSend{
+					d.OutRemoteDelete <- model.SendPayloadMsg{
 						Payload: &deleteMsg,
 						ConnId:  connId,
 					}

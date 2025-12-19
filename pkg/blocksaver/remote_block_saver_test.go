@@ -27,7 +27,7 @@ func TestRemoteBlockSaver(t *testing.T) {
 	defer cancel()
 
 	req := make(chan SaveToDiskReq)
-	sends := make(chan model.MgrConnsSend)
+	sends := make(chan model.SendPayloadMsg)
 	noConnResp := make(chan SaveToDiskResp)
 	nodeConnMap := model.NewNodeConnectionMapper()
 
@@ -64,7 +64,7 @@ func TestRemoteBlockSaver(t *testing.T) {
 		}),
 	}
 
-	mcs := <- sends
+	mcs := <-sends
 
 	if mcs.ConnId != connId || mcs.Payload.Type() != model.SaveToDiskReq {
 		t.Error("Invalid send")
@@ -83,7 +83,7 @@ func TestRemoteBlockSaver(t *testing.T) {
 		}),
 	}
 
-	noConn := <- noConnResp
+	noConn := <-noConnResp
 
 	if noConn.Resp.Err == nil {
 		t.Error("Expected an error")

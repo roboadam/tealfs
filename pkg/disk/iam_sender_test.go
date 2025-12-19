@@ -26,7 +26,7 @@ func TestIamSender(t *testing.T) {
 	defer cancel()
 
 	inIamDiskUpdate := make(chan struct{})
-	outSends := make(chan model.MgrConnsSend)
+	outSends := make(chan model.SendPayloadMsg)
 	localDiskSvcList := set.NewSet[Disk]()
 	fileOps := MockFileOps{}
 	path1 := NewPath("path1", &fileOps)

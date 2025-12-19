@@ -22,7 +22,7 @@ import (
 
 type IamSender struct {
 	InIamDiskUpdate  <-chan struct{}
-	OutSends         chan<- model.MgrConnsSend
+	OutSends         chan<- model.SendPayloadMsg
 	Mapper           *model.NodeConnectionMapper
 	LocalDiskSvcList *set.Set[Disk]
 	NodeId           model.NodeId
@@ -42,7 +42,7 @@ func (i *IamSender) Start(ctx context.Context) {
 			}
 			conns := i.Mapper.Connections()
 			for _, conn := range conns.GetValues() {
-				i.OutSends <- model.MgrConnsSend{
+				i.OutSends <- model.SendPayloadMsg{
 					ConnId:  conn,
 					Payload: &iam,
 				}

@@ -29,7 +29,7 @@ func TestLocalBlockReadResponse(t *testing.T) {
 
 	inDisks := make(chan *disk.Disk)
 	localReadResponses := make(chan GetFromDiskResp)
-	sends := make(chan model.MgrConnsSend)
+	sends := make(chan model.SendPayloadMsg)
 	nodeConnMap := model.NewNodeConnectionMapper()
 	localNodeId := model.NewNodeId()
 	remoteNodeId := model.NewNodeId()

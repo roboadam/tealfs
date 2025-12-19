@@ -27,7 +27,7 @@ func TestExistsSender(t *testing.T) {
 
 	inAddDiskMsg := make(chan model.AddDiskMsg)
 	outAddDiskMsg := make(chan model.AddDiskMsg)
-	outRemote := make(chan model.MgrConnsSend)
+	outRemote := make(chan model.SendPayloadMsg)
 
 	sender := disk.MsgSenderSvc{
 		OutRemote:     outRemote,

@@ -35,7 +35,7 @@ func TestCreateEmptyFile(t *testing.T) {
 	defer cancel()
 	nodeId := model.NewNodeId()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.MgrConnsSend)
+	outBroadcast := make(chan model.SendPayloadMsg)
 	fs := webdav.NewFileSystem(
 		nodeId,
 		inBroadcast,
@@ -88,7 +88,7 @@ func TestCreateEmptyFile(t *testing.T) {
 
 func TestFileNotFound(t *testing.T) {
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.MgrConnsSend)
+	outBroadcast := make(chan model.SendPayloadMsg)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	fs := webdav.NewFileSystem(
@@ -115,7 +115,7 @@ func TestOpenRoot(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.MgrConnsSend)
+	outBroadcast := make(chan model.SendPayloadMsg)
 	filesystem := webdav.NewFileSystem(
 		model.NewNodeId(),
 		inBroadcast,
@@ -157,7 +157,7 @@ func TestCreateBigFile(t *testing.T) {
 	defer cancel()
 	nodeId := model.NewNodeId()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.MgrConnsSend)
+	outBroadcast := make(chan model.SendPayloadMsg)
 	fs := webdav.NewFileSystem(
 		nodeId,
 		inBroadcast,
@@ -294,7 +294,7 @@ func handlePushBlockReq(ctx context.Context, reqs chan webdav.WriteReqResp, mux 
 	}
 }
 
-func handleOutBroadcast(ctx context.Context, out chan model.MgrConnsSend) {
+func handleOutBroadcast(ctx context.Context, out chan model.SendPayloadMsg) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -307,7 +307,7 @@ func handleOutBroadcast(ctx context.Context, out chan model.MgrConnsSend) {
 func mockPushesAndPulls(
 	ctx context.Context,
 	fs *webdav.FileSystem,
-	outSends chan model.MgrConnsSend,
+	outSends chan model.SendPayloadMsg,
 ) {
 	mux := sync.Mutex{}
 	mockStorage := make(map[model.BlockId][]byte)
