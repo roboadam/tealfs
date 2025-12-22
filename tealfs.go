@@ -25,9 +25,7 @@ import (
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/disk"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
 
@@ -77,23 +75,16 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	/******* Disk Services ******/
 
-	diskManagerSvc := disk.DiskManagerSvc{
-		Distributer:      dist.NewMirrorDistributer(nodeId),
-		DiskInfoList:     set.NewSet[model.DiskInfo](),
-		LocalDiskSvcList: set.NewSet[disk.Disk](),
-		NodeId:           nodeId,
+	diskManagerSvc := disk.NewDisks(nodeId, globalPath, &disk.DiskFileOps{})
+	diskManagerSvc.InAddDiskMsg = diskManagerSvcAddDiskMsg
+	diskManagerSvc.InDiskAddedMsg = diskManagerSvcDiskAddedMsg
+	diskManagerSvc.OutDiskAddedMsg = diskMsgSenderSvcDiskAddedMsg
 
-		InAddDiskMsg:   diskManagerSvcAddDiskMsg,
-		InDiskAddedMsg: diskManagerSvcDiskAddedMsg,
-
-		OutDiskAddedMsg: diskMsgSenderSvcDiskAddedMsg,
-	}
 	diskMsgSenderSvc := disk.MsgSenderSvc{
 		InAddDiskMsg:   diskMsgSenderSvcAddDiskMsg,
 		InDiskAddedMsg: diskMsgSenderSvcDiskAddedMsg,
 
-		OutAddDiskMsg: make(chan<- model.AddDiskMsg),
-		OutRemote:     make(chan<- model.SendPayloadMsg),
+		OutRemote: connsSvcSendPayloadMsg,
 
 		NodeId:      nodeId,
 		NodeConnMap: nodeConnMapper,
@@ -109,11 +100,12 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		nodeId,
 		ctx,
 	)
-	connsSvc.OutDiskAddedMsg = incomingDiskAddedMsg
+	connsSvc.OutDiskAddedMsg = diskManagerSvcDiskAddedMsg
 
 	/****** Startup ******/
 
 	go diskManagerSvc.Start(ctx)
+	go diskMsgSenderSvc.Start(ctx)
 
 	/*********************/
 
@@ -181,62 +173,11 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	)
 	u.NodeConnMap = nodeConnMapper
 
-	localAddDiskMsgs := make(chan model.AddDiskMsg, 1)
-	diskMsgSender := disk.MsgSenderSvc{
-		InAddDiskMsg:  newAddDiskMsgs,
-		OutAddDiskMsg: localAddDiskMsgs,
-		OutRemote:     connsSvcSendPayloadMsg,
-		NodeId:        nodeId,
-		NodeConnMap:   nodeConnMapper,
-	}
-	go diskMsgSender.Start(ctx)
-
 	addedDisksSaver := make(chan *disk.Disk)
 	addedDisksReader := make(chan *disk.Disk)
 
-	connsSvc.OutDiskAddedMsg = incomingDiskAddedMsg
-	// connsMain.OutAddDiskMsg =
-
-	disks := disk.NewDisks(nodeId, globalPath, &disk.DiskFileOps{})
-	disks.InAddDiskReq = newAddDiskReqs
-	disks.AllDiskIds.OutDiskAdded = newAddDiskReqs
-	disks.OutLocalAddDiskReq = localAddDiskReqs
-	disks.OutRemoteAddDiskReq = remoteAddDiskReqs
-	go disks.Start(ctx)
-
-	iamDiskUpdates := make(chan []model.AddDiskReq, 1)
-
-	localDiskAdder := disk.LocalDiskAdder{
-		InAddDiskReq: localAddDiskReqs,
-		OutAddLocalDisk: []chan<- *disk.Disk{
-			addedDisksSaver,
-			addedDisksReader,
-		},
-		OutIamDiskUpdate: iamDiskUpdates,
-		FileOps:          &disk.DiskFileOps{},
-		Disks:            &disks.Disks,
-		Distributer:      &disks.Distributer,
-		AllDiskIds:       disks.AllDiskIds,
-	}
-	go localDiskAdder.Start(ctx)
-
-	iamSender := disk.IamSender{
-		InIamDiskUpdate: iamDiskUpdates,
-		OutSends:        connsSvcSendPayloadMsg,
-		Mapper:          nodeConnMapper,
-		NodeId:          nodeId,
-		Address:         webdavAddress,
-	}
-	go iamSender.Start(ctx)
-
 	iams := make(chan model.IAm)
 	connsSvc.OutIam = iams
-	iamReceiver := disk.IamReceiver{
-		InIam:       iams,
-		Distributer: &disks.Distributer,
-		AllDiskIds:  disks.AllDiskIds,
-	}
-	go iamReceiver.Start(ctx)
 
 	sendIam := make(chan model.ConnId, 1)
 	connsSvc.OutSendIam = sendIam

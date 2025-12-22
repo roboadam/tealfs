@@ -25,8 +25,6 @@ type MsgSenderSvc struct {
 	InAddDiskMsg   <-chan model.AddDiskMsg
 	InDiskAddedMsg <-chan model.DiskAddedMsg
 
-	OutAddDiskMsg chan<- model.AddDiskMsg
-
 	OutRemote chan<- model.SendPayloadMsg
 
 	NodeId      model.NodeId
@@ -57,9 +55,7 @@ func (m *MsgSenderSvc) sendDiskAddedMsg(msg model.DiskAddedMsg) {
 }
 
 func (m *MsgSenderSvc) sendAddDiskMsg(msg model.AddDiskMsg) {
-	if msg.NodeId == m.NodeId {
-		m.OutAddDiskMsg <- msg
-	} else if conn, ok := m.NodeConnMap.ConnForNode(msg.NodeId); ok {
+	if conn, ok := m.NodeConnMap.ConnForNode(msg.NodeId); ok {
 		m.OutRemote <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: &msg,
