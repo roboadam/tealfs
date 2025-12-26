@@ -70,8 +70,11 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	diskMsgSenderSvcDiskAddedMsg := make(chan model.DiskAddedMsg, 1)
 	diskMsgSenderSvcAddDiskMsg := make(chan model.AddDiskMsg, 1)
 
+	diskDeleteBlocksDeleteBlockIid := make(chan disk.DeleteBlockId, 1)
+
 	connsSvcConnectToNodeReq := make(chan model.ConnectToNodeReq, 1)
 	connsSvcSendPayloadMsg := make(chan model.SendPayloadMsg, 1)
+	connsIamReceiverIamConnId := make(chan conns.IamConnId, 1)
 
 	/******* Disk Services ******/
 
@@ -90,6 +93,11 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		NodeConnMap: nodeConnMapper,
 	}
 
+	diskDeleteBlocks := disk.DeleteBlocks{
+		InDelete: diskDeleteBlocksDeleteBlockIid,
+		Disks:    &diskManagerSvc.LocalDiskSvcList,
+	}
+
 	/******* Connection Services ******/
 
 	connsSvc := conns.NewConns(
@@ -102,28 +110,28 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	)
 	connsSvc.OutDiskAddedMsg = diskManagerSvcDiskAddedMsg
 
+	connsIamReceiver := conns.IamReceiver{
+		InIam:            connsIamReceiverIamConnId,
+		OutSendSyncNodes: sendSyncNodes,
+		OutSaveCluster:   saveCluster,
+		Mapper:           nodeConnMapper,
+	}
+
 	/****** Startup ******/
 
 	go diskManagerSvc.Start(ctx)
 	go diskMsgSenderSvc.Start(ctx)
+	go diskDeleteBlocks.Start(ctx)
+	go connsIamReceiver.Start(ctx)
 
 	/*********************/
 
-	iamConnIds := make(chan conns.IamConnId, 1)
 	incomingSyncNodes := make(chan model.SyncNodes, 1)
 	sendSyncNodes := make(chan struct{}, 1)
 	saveCluster := make(chan struct{}, 1)
 
 	connsSvc.OutIamConnId = iamConnIds
 	connsSvc.OutSyncNodes = incomingSyncNodes
-
-	connsIamReceiver := conns.IamReceiver{
-		InIam:            iamConnIds,
-		OutSendSyncNodes: sendSyncNodes,
-		OutSaveCluster:   saveCluster,
-		Mapper:           nodeConnMapper,
-	}
-	go connsIamReceiver.Start(ctx)
 
 	clusterSaver := conns.ClusterSaver{
 		Save:           saveCluster,
