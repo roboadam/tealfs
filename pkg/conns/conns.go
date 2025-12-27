@@ -57,7 +57,6 @@ type Conns struct {
 }
 
 func NewConns(
-	// outReceives chan model.ConnsMgrReceive,
 	inConnectTo <-chan model.ConnectToNodeReq,
 	inSends <-chan model.SendPayloadMsg,
 	provider ConnectionProvider,
