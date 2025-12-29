@@ -69,7 +69,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	diskMsgSenderSvcDiskAddedMsg := make(chan model.DiskAddedMsg, 1)
 	diskMsgSenderSvcAddDiskMsg := make(chan model.AddDiskMsg, 1)
-
+	diskIamReceiverChan := make(chan model.IAm, 1)
 	diskDeleteBlocksDeleteBlockIid := make(chan disk.DeleteBlockId, 1)
 
 	connsSvcConnectToNodeReq := make(chan model.ConnectToNodeReq, 1)
@@ -78,7 +78,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSendSyncNodes := make(chan struct{}, 1)
 	connsClusterSaver := make(chan struct{}, 1)
 	connsReceiveSyncNodes := make(chan model.SyncNodes, 1)
-	diskIamReceiverChan := make(chan model.IAm, 1)
+	connsIamSenderConnId := make(chan model.ConnId, 1)
 
 	/******* Disk Services ******/
 
@@ -121,6 +121,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.OutIamConnId = connsIamReceiverIamConnId
 	connsSvc.OutSyncNodes = connsReceiveSyncNodes
 	connsSvc.OutIam = diskIamReceiverChan
+	connsSvc.OutSendIam = connsIamSenderConnId
 
 	connsIamReceiver := conns.IamReceiver{
 		InIam:            connsIamReceiverIamConnId,
@@ -161,6 +162,14 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		Mapper:       nodeConnMapper,
 	}
 
+	connsIamSender := conns.IamSender{
+		InSendIam: connsIamSenderConnId,
+		OutIam:    connsSvcSendPayloadMsg,
+		NodeId:    nodeId,
+		Address:   nodeAddress,
+		Disks:     &diskManagerSvc.DiskInfoList,
+	}
+
 	/****** Ui ******/
 
 	u := ui.NewUi(
@@ -187,19 +196,9 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go receiveSyncNodes.Start(ctx)
 	go clusterLoader.Load(ctx)
 	go reconnector.Start(ctx)
+	go connsIamSender.Start(ctx)
 
 	/*********************/
-
-	sendIam := make(chan model.ConnId, 1)
-	connsSvc.OutSendIam = sendIam
-	connsIamSender := conns.IamSender{
-		InSendIam: sendIam,
-		OutIam:    connsSvcSendPayloadMsg,
-		NodeId:    nodeId,
-		Address:   nodeAddress,
-		Disks:     disks.AllDiskIds,
-	}
-	go connsIamSender.Start(ctx)
 
 	webdavPutReq := make(chan model.PutBlockReq)
 	webdavPutResp := make(chan model.PutBlockResp)
