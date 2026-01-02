@@ -216,14 +216,14 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		LocalDest:   localSave,
 		InResp:      saveResp,
 		Resp:        webdavPutResp,
-		Distributer: &disks.Distributer,
+		Distributer: &diskManagerSvc.Distributer,
 		NodeId:      nodeId,
 	}
 	go bs.Start(ctx)
 
 	lbs := blocksaver.LocalBlockSaver{
 		Req:   localSave,
-		Disks: &disks.Disks,
+		Disks: &diskManagerSvc.LocalDiskSvcList,
 	}
 	go lbs.Start(ctx)
 
