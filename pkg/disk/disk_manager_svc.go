@@ -33,9 +33,11 @@ type DiskManagerSvc struct {
 	LocalDiskSvcList set.Set[Disk]
 	NodeId           model.NodeId
 
-	InAddDiskMsg    <-chan model.AddDiskMsg
-	InDiskAddedMsg  <-chan model.DiskAddedMsg
-	OutDiskAddedMsg chan<- model.DiskAddedMsg
+	InAddDiskMsg         <-chan model.AddDiskMsg
+	InDiskAddedMsg       <-chan model.DiskAddedMsg
+	OutDiskAddedMsg      chan<- model.DiskAddedMsg
+	OutAddedWriteResults chan<- <-chan model.WriteResult
+	OutAddedReadResults  chan<- <-chan model.ReadResult
 
 	configPath string
 	fileOps    FileOps
@@ -71,6 +73,8 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 				added := d.LocalDiskSvcList.Add(disk)
 				if added {
 					d.OutDiskAddedMsg <- model.DiskAddedMsg(add)
+					d.OutAddedReadResults <- disk.OutReads
+					d.OutAddedWriteResults <- disk.OutWrites
 				}
 			}
 			d.addToDiskInfoList(add)

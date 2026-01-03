@@ -29,12 +29,16 @@ func TestDisks(t *testing.T) {
 	inAddDiskMsg := make(chan model.AddDiskMsg)
 	inDiskAddedMsg := make(chan model.DiskAddedMsg)
 	outDiskAddedMsg := make(chan model.DiskAddedMsg)
+	outReadResult := make(chan (<-chan model.ReadResult))
+	outWriteResult := make(chan (<-chan model.WriteResult))
 	fileOps := MockFileOps{}
 
 	diskMgrSvc := NewDisks("localNodeId", "", &fileOps)
 	diskMgrSvc.InAddDiskMsg = inAddDiskMsg
 	diskMgrSvc.InDiskAddedMsg = inDiskAddedMsg
 	diskMgrSvc.OutDiskAddedMsg = outDiskAddedMsg
+	diskMgrSvc.OutAddedReadResults = outReadResult
+	diskMgrSvc.OutAddedWriteResults = outWriteResult
 	go diskMgrSvc.Start(ctx)
 
 	localDisk := model.AddDiskMsg{
@@ -45,6 +49,8 @@ func TestDisks(t *testing.T) {
 
 	inAddDiskMsg <- localDisk
 	<-outDiskAddedMsg
+	<-outReadResult
+	<-outWriteResult
 
 	for diskMgrSvc.DiskInfoList.Len() != 1 {
 		time.Sleep(time.Millisecond)

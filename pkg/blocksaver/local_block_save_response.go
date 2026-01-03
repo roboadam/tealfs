@@ -17,14 +17,13 @@ package blocksaver
 import (
 	"context"
 	"errors"
-	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type LocalBlockSaveResponses struct {
-	InDisks             <-chan *disk.Disk
+	InWriteResults      <-chan <-chan model.WriteResult
 	LocalWriteResponses chan<- SaveToDiskResp
 	Sends               chan<- model.SendPayloadMsg
 	NodeConnMap         *model.NodeConnectionMapper
@@ -36,8 +35,8 @@ func (l *LocalBlockSaveResponses) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case d := <-l.InDisks:
-			go l.readFromChan(ctx, d.OutWrites)
+		case c := <-l.InWriteResults:
+			go l.readFromChan(ctx, c)
 		}
 	}
 }

@@ -27,7 +27,7 @@ func TestLocalBlockReadResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inDisks := make(chan *disk.Disk)
+	inReadResults := make(chan (<-chan model.ReadResult))
 	localReadResponses := make(chan GetFromDiskResp)
 	sends := make(chan model.SendPayloadMsg)
 	nodeConnMap := model.NewNodeConnectionMapper()
@@ -38,7 +38,7 @@ func TestLocalBlockReadResponse(t *testing.T) {
 	reqId1 := model.GetBlockId(uuid.NewString())
 	reqId2 := model.GetBlockId(uuid.NewString())
 	lbrr := LocalBlockReadResponses{
-		InDisks:            inDisks,
+		InReadResults:      inReadResults,
 		LocalReadResponses: localReadResponses,
 		Sends:              sends,
 		NodeConnMap:        nodeConnMap,
@@ -46,8 +46,8 @@ func TestLocalBlockReadResponse(t *testing.T) {
 	}
 	go lbrr.Start(ctx)
 
-	disk1 := disk.New(disk.NewPath("p1", &disk.MockFileOps{}), localNodeId, model.DiskId(uuid.NewString()), ctx)
-	disk2 := disk.New(disk.NewPath("p2", &disk.MockFileOps{}), localNodeId, model.DiskId(uuid.NewString()), ctx)
+	// disk1 := disk.New(disk.NewPath("p1", &disk.MockFileOps{}), localNodeId, model.DiskId(uuid.NewString()), ctx)
+	// disk2 := disk.New(disk.NewPath("p2", &disk.MockFileOps{}), localNodeId, model.DiskId(uuid.NewString()), ctx)
 	inDisks <- &disk1
 	inDisks <- &disk2
 
