@@ -50,16 +50,6 @@ func TestLocalBlockReadResponse(t *testing.T) {
 	inReadResults <- readResults1
 	inReadResults <- readResults2
 
-	// disk1.InReads <- model.ReadRequest{
-	// 	Caller: localNodeId,
-	// 	Ptrs: []model.DiskPointer{{
-	// 		NodeId:   localNodeId,
-	// 		Disk:     disk1.Id(),
-	// 		FileName: string(blockId1),
-	// 	}},
-	// 	BlockId: blockId1,
-	// 	ReqId:   reqId1,
-	// }
 	ptr1 := model.DiskPointer{
 		NodeId:   localNodeId,
 		Disk:     "disk1Id",
@@ -84,8 +74,7 @@ func TestLocalBlockReadResponse(t *testing.T) {
 	}
 	ptrs2 := []model.DiskPointer{ptr2}
 	data2 := model.RawData{Ptr: ptr2}
-	readResults2 <- model.NewReadResultOk(localNodeId, ptrs2, data2, reqId2, blockId2)
-
+	readResults2 <- model.NewReadResultOk(remoteNodeId, ptrs2, data2, reqId2, blockId2)
 
 	resp2 := <-sends
 	payload := resp2.Payload

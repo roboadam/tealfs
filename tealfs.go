@@ -79,6 +79,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsClusterSaver := make(chan struct{}, 1)
 	connsReceiveSyncNodes := make(chan model.SyncNodes, 1)
 	connsIamSenderConnId := make(chan model.ConnId, 1)
+	localBlockSaveResponsesWriteResults := make(chan (<-chan model.WriteResult), 1)
+	localBlockReadResponsesReadResults := make(chan (<-chan model.ReadResult), 1)
 
 	/******* Disk Services ******/
 
@@ -86,6 +88,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	diskManagerSvc.InAddDiskMsg = diskManagerSvcAddDiskMsg
 	diskManagerSvc.InDiskAddedMsg = diskManagerSvcDiskAddedMsg
 	diskManagerSvc.OutDiskAddedMsg = diskMsgSenderSvcDiskAddedMsg
+	diskManagerSvc.OutAddedWriteResults = localBlockSaveResponsesWriteResults
+	diskManagerSvc.OutAddedReadResults = localBlockReadResponsesReadResults
 
 	diskMsgSenderSvc := disk.MsgSenderSvc{
 		InAddDiskMsg:   diskMsgSenderSvcAddDiskMsg,
@@ -236,7 +240,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go rbs.Start(ctx)
 
 	lbsr := blocksaver.LocalBlockSaveResponses{
-		InDisks:             addedDisksSaver,
+		InWriteResults:      localBlockSaveResponsesWriteResults,
 		LocalWriteResponses: saveResp,
 		Sends:               connsSvcSendPayloadMsg,
 		NodeConnMap:         nodeConnMapper,
@@ -259,14 +263,14 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		LocalDest:   localReadDest,
 		InResp:      readResp,
 		Resp:        webdavGetResp,
-		Distributer: &disks.Distributer,
+		Distributer: &diskManagerSvc.Distributer,
 		NodeId:      nodeId,
 	}
 	go br.Start(ctx)
 
 	lbr := blockreader.LocalBlockReader{
 		Req:   localReadDest,
-		Disks: &disks.Disks,
+		Disks: &diskManagerSvc.LocalDiskSvcList,
 	}
 	go lbr.Start(ctx)
 
@@ -279,7 +283,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go rbr.Start(ctx)
 
 	lbrr := blockreader.LocalBlockReadResponses{
-		InDisks:            addedDisksReader,
+		InReadResults:      localBlockReadResponsesReadResults,
 		LocalReadResponses: readResp,
 		Sends:              connsSvcSendPayloadMsg,
 		NodeConnMap:        nodeConnMapper,

@@ -16,7 +16,6 @@ package blocksaver
 
 import (
 	"context"
-	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
 
@@ -30,15 +29,12 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	nodeId := model.NewNodeId()
 	remoteNodeId := model.NewNodeId()
 
-	disk1 := mockDisk(nodeId, ctx)
-	disk2 := mockDisk(nodeId, ctx)
-
 	resp := make(chan SaveToDiskResp)
 	sends := make(chan model.SendPayloadMsg)
-	addedDisks := make(chan *disk.Disk)
+	inWriteResults := make(chan (<-chan model.WriteResult))
 
 	lbsr := LocalBlockSaveResponses{
-		InDisks:             addedDisks,
+		InWriteResults:      inWriteResults,
 		LocalWriteResponses: resp,
 		Sends:               sends,
 		NodeConnMap:         model.NewNodeConnectionMapper(),
@@ -47,20 +43,21 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 
 	go lbsr.Start(ctx)
 
-	addedDisks <- disk1
-	addedDisks <- disk2
+	writeResults1 := make(chan model.WriteResult)
+	writeResults2 := make(chan model.WriteResult)
+	inWriteResults <- writeResults1
+	inWriteResults <- writeResults2
+
 	lbsr.NodeConnMap.SetAll(1, "some-address:123", remoteNodeId)
 
 	putBlockId := model.PutBlockId(uuid.NewString())
-	disk1.OutWrites <- model.NewWriteResultOk(
-		model.DiskPointer{
-			NodeId:   nodeId,
-			Disk:     disk1.Id(),
-			FileName: uuid.NewString(),
-		},
-		nodeId,
-		putBlockId,
-	)
+
+	ptr := model.DiskPointer{
+		NodeId:   nodeId,
+		Disk:     "diskId1",
+		FileName: uuid.NewString(),
+	}
+	writeResults1 <- model.NewWriteResultOk(ptr, nodeId, putBlockId)
 
 	wr := <-resp
 	if wr.Resp.Id != putBlockId {
@@ -69,7 +66,7 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	}
 
 	putBlockId2 := model.PutBlockId(uuid.NewString())
-	disk2.OutWrites <- model.NewWriteResultErr(
+	writeResults2 <- model.NewWriteResultErr(
 		"some error happened",
 		nodeId,
 		putBlockId2,
@@ -82,10 +79,10 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	}
 
 	putBlockId3 := model.PutBlockId(uuid.NewString())
-	disk1.OutWrites <- model.NewWriteResultOk(
+	writeResults1 <- model.NewWriteResultOk(
 		model.DiskPointer{
 			NodeId:   nodeId,
-			Disk:     disk1.Id(),
+			Disk:     "diskId1",
 			FileName: uuid.NewString(),
 		},
 		remoteNodeId,
