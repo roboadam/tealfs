@@ -109,6 +109,9 @@ func (d *DiskManagerSvc) loadDiskInfoList(ctx context.Context) {
 					path := NewPath(d.configPath, d.fileOps)
 					disk := New(path, d.NodeId, dInfo.DiskId, ctx)
 					d.LocalDiskSvcList.Add(disk)
+					d.OutDiskAddedMsg <- model.DiskAddedMsg(dInfo)
+					d.OutAddedReadResults <- disk.OutReads
+					d.OutAddedWriteResults <- disk.OutWrites
 				}
 			}
 		}
