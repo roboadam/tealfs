@@ -101,7 +101,8 @@ type ExistsReq struct {
 	Resp    chan bool
 }
 
-func (d *Disk) Id() model.DiskId { return d.diskId }
+func (d *Disk) DiskId() model.DiskId { return d.diskId }
+func (d *Disk) NodeId() model.NodeId { return d.id }
 
 func (d *Disk) Get(blockId model.BlockId) ([]byte, bool) {
 	resp := make(chan struct {

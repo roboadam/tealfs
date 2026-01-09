@@ -50,7 +50,7 @@ func TestLocalBlockReader(t *testing.T) {
 		Caller: model.NewNodeId(),
 		Dest: Dest{
 			NodeId: nodeId,
-			DiskId: disk1.Id(),
+			DiskId: disk1.DiskId(),
 		},
 		Req: blockReq,
 	}
@@ -80,7 +80,7 @@ func mockDisk(nodeId model.NodeId, ctx context.Context) (*disk.Disk, model.Block
 		Data: model.RawData{
 			Ptr: model.DiskPointer{
 				NodeId:   nodeId,
-				Disk:     d.Id(),
+				Disk:     d.DiskId(),
 				FileName: string(blockId),
 			},
 			Data: []byte{1, 2, 3, 4, 5},

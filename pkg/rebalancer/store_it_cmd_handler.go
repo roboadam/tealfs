@@ -52,7 +52,7 @@ func (s *StoreItCmdHandler) Start(ctx context.Context) {
 func (s *StoreItCmdHandler) handleStoreItResp(resp StoreItResp) {
 	if resp.Ok {
 		for _, d := range s.LocalDisks.GetValues() {
-			if d.Id() == resp.Req.Cmd.DestDiskId {
+			if d.DiskId() == resp.Req.Cmd.DestDiskId {
 				ok := d.Save(resp.Block.Data, resp.Block.Id)
 				if ok {
 					s.OutExistsResp <- ExistsResp{

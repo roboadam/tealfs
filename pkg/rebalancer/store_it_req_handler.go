@@ -41,7 +41,7 @@ func (s *StoreItReqHandler) Start(ctx context.Context) {
 
 func (s *StoreItReqHandler) handleStoreItReq(req StoreItReq) {
 	for _, d := range s.LocalDisks.GetValues() {
-		if d.Id() == req.DiskId {
+		if d.DiskId() == req.DiskId {
 			data, ok := d.Get(req.Cmd.DestBlockId)
 			s.sendStoreItResp(req, data, ok)
 		}
