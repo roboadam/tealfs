@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -73,8 +74,13 @@ func TestOneNodeCluster(t *testing.T) {
 func TestTwoNodeCluster(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
 	webdavAddress2 := "localhost:9080"
-	path1 := "/test1.txt"
-	path2 := "/test2.txt"
+	numFiles := 10
+	path := []string{}
+	fileContents := []string{}
+	for i := range numFiles {
+		path = append(path, fmt.Sprintf("/test%d.txt", i+1))
+		fileContents = append(fileContents, fmt.Sprintf("test two node cluster %d", i+1))
+	}
 	uiAddress1 := "localhost:8081"
 	uiAddress2 := "localhost:9081"
 	nodeAddress1 := "localhost:8082"
@@ -86,8 +92,6 @@ func TestTwoNodeCluster(t *testing.T) {
 	connectToUrl := "http://" + uiAddress1 + "/connect-to"
 	addDiskToUrl1 := "http://" + uiAddress1 + "/add-disk"
 	addDiskToUrl2 := "http://" + uiAddress2 + "/add-disk"
-	fileContents1 := "test two node cluster 1"
-	fileContents2 := "test two node cluster 2"
 	connectToContents := "hostAndPort=" + url.QueryEscape(nodeAddress2)
 	diskPathContents1 := "diskPath=" + url.QueryEscape(configPath1)
 	diskPathContents2 := "diskPath=" + url.QueryEscape(configPath2)
@@ -123,48 +127,38 @@ func TestTwoNodeCluster(t *testing.T) {
 		return
 	}
 
-	resp, ok = putFile(ctx1, urlFor(webdavAddress1, path1), "text/plain", fileContents1, t)
-	if !ok {
-		t.Error("error response", resp.Status)
-		return
-	}
-	resp.Body.Close()
+	for i := range numFiles {
+		webdavAddress := webdavAddress1
+		if i%2 > 0 {
+			webdavAddress = webdavAddress2
+		}
+		resp, ok = putFile(ctx1, urlFor(webdavAddress, path[i]), "text/plain", fileContents[i], t)
+		if !ok {
+			t.Error("error response", resp.Status)
+			return
+		}
+		resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		t.Error("error response", resp.Status)
-		return
-	}
-
-	resp, ok = putFile(ctx2, urlFor(webdavAddress2, path2), "text/plain", fileContents2, t)
-	if !ok {
-		t.Error("error putting file")
-		return
-	}
-	resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		t.Error("error response", resp.Status)
-		return
+		if resp.StatusCode >= 400 {
+			t.Error("error response", resp.Status)
+			return
+		}
 	}
 
-	fetchedContent, ok := getFile(ctx2, urlFor(webdavAddress2, path1), t)
-	if !ok {
-		t.Error("error getting file")
-		return
-	}
-	if fetchedContent != fileContents1 {
-		t.Error("unexpected contents", fetchedContent)
-		return
-	}
-
-	fetchedContent, ok = getFile(ctx1, urlFor(webdavAddress1, path2), t)
-	if !ok {
-		t.Error("error getting file")
-		return
-	}
-	if fetchedContent != fileContents2 {
-		t.Error("unexpected contents", fetchedContent)
-		return
+	for i := range numFiles {
+		webdavAddress := webdavAddress2
+		if i%2 > 0 {
+			webdavAddress = webdavAddress1
+		}
+		fetchedContent, ok := getFile(ctx2, urlFor(webdavAddress, path[i]), t)
+		if !ok {
+			t.Error("error getting file")
+			return
+		}
+		if fetchedContent != fileContents[i] {
+			t.Error("unexpected contents", fetchedContent)
+			return
+		}
 	}
 
 	cancel1()
@@ -176,24 +170,20 @@ func TestTwoNodeCluster(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	fetchedContent, ok = getFile(ctx1, urlFor(webdavAddress1, path1), t)
-	if !ok {
-		t.Error("error getting file")
-		return
-	}
-	if fetchedContent != fileContents1 {
-		t.Errorf("unexpected contents: [%s], expected [%s]", fetchedContent, fileContents1)
-		return
-	}
-
-	fetchedContent, ok = getFile(ctx2, urlFor(webdavAddress2, path2), t)
-	if !ok {
-		t.Error("error getting file")
-		return
-	}
-	if fetchedContent != fileContents2 {
-		t.Error("unexpected contents", fetchedContent)
-		return
+	for i := range numFiles {
+		webdavAddress := webdavAddress1
+		if i%2 > 0 {
+			webdavAddress = webdavAddress2
+		}
+		fetchedContent, ok := getFile(ctx1, urlFor(webdavAddress, path[i]), t)
+		if !ok {
+			t.Error("error getting file")
+			return
+		}
+		if fetchedContent != fileContents[i] {
+			t.Errorf("unexpected contents: [%s], expected [%s]", fetchedContent, fileContents[i])
+			return
+		}
 	}
 
 	uiContents1, ok := getFile(ctx1, urlFor(uiAddress1, "/connection-status"), t)
