@@ -66,7 +66,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	diskManagerSvcDiskAddedMsg := make(chan model.DiskAddedMsg, 1)
 	diskManagerSvcAddDiskMsg := make(chan model.AddDiskMsg, 1)
-
 	diskMsgSenderSvcDiskAddedMsg := make(chan model.DiskAddedMsg, 1)
 	diskMsgSenderSvcAddDiskMsg := make(chan model.AddDiskMsg, 1)
 	diskIamReceiverChan := make(chan model.IAm, 1)
@@ -84,8 +83,9 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	blockSaverPutBlockReq := make(chan model.PutBlockReq)
 
-	///////////
 	webdavPutResp := make(chan model.PutBlockResp)
+
+	///////////
 	localSave := make(chan blocksaver.SaveToDiskReq)
 	remoteSave := make(chan blocksaver.SaveToDiskReq)
 	saveResp := make(chan blocksaver.SaveToDiskResp)
