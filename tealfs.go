@@ -25,7 +25,10 @@ import (
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/disk"
+	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
+	"tealfs/pkg/rebalancer"
+	"tealfs/pkg/set"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
 
@@ -91,6 +94,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	remoteBlockReaderGetFromDiskReq := make(chan blockreader.GetFromDiskReq)
 	blockReaderGetFromDiskResp := make(chan blockreader.GetFromDiskResp)
 	webdavFileBroadcast := make(chan webdav.FileBroadcast, 1)
+	rebalancerBalanceReqId := make(chan rebalancer.BalanceReqId, 1)
+	rebalancerExistsResp := make(<-chan rebalancer.ExistsResp)
 
 	/******* Disk Services ******/
 
@@ -268,6 +273,19 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		nodeConnMapper,
 	)
 
+	/****** Rebalancer ******/
+
+	rebalancerSvc := rebalancer.Rebalancer{
+		InStart:         rebalancerBalanceReqId,
+		InResp:          rebalancerExistsResp,
+		OutExistsReq:    make(chan<- rebalancer.ExistsReq),
+		OutSafeDelete:   make(chan<- rebalancer.SafeDelete),
+		OutStoreItCmd:   make(chan<- rebalancer.StoreItCmd),
+		OnFilesystemIds: &set.Map[rebalancer.BalanceReqId, rebalancer.FilesystemBlockIdList]{},
+		NodeId:          nodeId,
+		Distributer:     &dist.MirrorDistributer{},
+	}
+
 	/****** Startup ******/
 
 	go diskManagerSvc.Start(ctx)
@@ -289,6 +307,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go lbr.Start(ctx)
 	go rbr.Start(ctx)
 	go lbrr.Start(ctx)
+	go rebalancerSvc.Start(ctx)
 
 	<-ctx.Done()
 	return nil
