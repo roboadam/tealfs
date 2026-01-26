@@ -54,11 +54,24 @@ func (s *Set[K]) initMux() {
 	}
 }
 
-func (s *Set[K]) Add(item K) {
+func (s *Set[K]) Add(item K) bool {
 	s.initMux()
 	s.mux.Lock()
 	defer s.mux.Unlock()
+	if _, ok := s.Data[item]; ok {
+		return false
+	}
 	s.Data[item] = true
+	return true
+}
+
+func (s *Set[K]) AddAll(other *Set[K]) {
+	s.initMux()
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	for _, item := range other.GetValues() {
+		s.Data[item] = true
+	}
 }
 
 func (s *Set[K]) Remove(item K) {
@@ -121,6 +134,18 @@ func (s *Set[K]) Minus(o *Set[K]) *Set[K] {
 		}
 	}
 	return &result
+}
+
+func (s *Set[K]) Pop() (K, *Set[K], bool) {
+	clone := s.Clone()
+	if clone.Len() == 0 {
+		return *new(K), &clone, false
+	}
+
+	raw := clone.GetValues()
+	k := raw[0]
+	remainder := NewSetFromSlice(raw[1:])
+	return k, &remainder, true
 }
 
 func (s *Set[K]) Len() int {

@@ -16,46 +16,24 @@ package disk
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"io/fs"
-	"path/filepath"
-	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
-type DiskLoader struct {
-	FileOps  FileOps
-	SavePath string
+type DeleteBlocks struct {
+	InDelete <-chan DeleteBlockId
 
-	OutAddDisk chan<- model.AddDiskReq
+	Disks *set.Set[Disk]
 }
 
-func (d *DiskLoader) LoadDisks(ctx context.Context) {
-	diskInfo := []model.AddDiskReq{}
-
+func (d *DeleteBlocks) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
-			data, err := d.FileOps.ReadFile(filepath.Join(d.SavePath, "disks.json"))
-
-			if errors.Is(err, fs.ErrNotExist) {
-				return
-			}
-
-			if err == nil {
-				err = json.Unmarshal(data, &diskInfo)
-				if err == nil {
-					d.sendToDiskAdder(&diskInfo)
-				}
+		case idToDelete := <-d.InDelete:
+			for _, disk := range d.Disks.GetValues() {
+				disk.InDelete <- idToDelete.BlockId
 			}
 		}
-	}
-}
-
-func (d *DiskLoader) sendToDiskAdder(disks *[]model.AddDiskReq) {
-	for _, dip := range *disks {
-		d.OutAddDisk <- dip
 	}
 }

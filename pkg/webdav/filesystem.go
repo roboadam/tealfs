@@ -23,38 +23,41 @@ import (
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type FileSystem struct {
-	fileHolder   FileHolder
-	mkdirReq     chan mkdirReq
-	openFileReq  chan openFileReq
-	removeAllReq chan removeAllReq
-	renameReq    chan renameReq
-	writeReq     chan writeReq
-	readReq      chan readReq
-	seekReq      chan seekReq
-	closeReq     chan closeReq
-	readdirReq   chan readdirReq
-	statReq      chan statReq
-	nameReq      chan nameReq
-	sizeReq      chan sizeReq
-	modeReq      chan modeReq
-	modtimeReq   chan modtimeReq
-	isdirReq     chan isdirReq
-	sysReq       chan sysReq
-	ReadReqResp  chan ReadReqResp
-	WriteReqResp chan WriteReqResp
-	inBroadcast  chan FileBroadcast
-	OutSends     chan model.MgrConnsSend
-	Mapper       *model.NodeConnectionMapper
-	nodeId       model.NodeId
-	fileOps      disk.FileOps
-	indexPath    string
-	Ctx          context.Context
+	fileHolder      FileHolder
+	mkdirReq        chan mkdirReq
+	openFileReq     chan openFileReq
+	removeAllReq    chan removeAllReq
+	renameReq       chan renameReq
+	writeReq        chan writeReq
+	readReq         chan readReq
+	seekReq         chan seekReq
+	closeReq        chan closeReq
+	readdirReq      chan readdirReq
+	statReq         chan statReq
+	nameReq         chan nameReq
+	sizeReq         chan sizeReq
+	modeReq         chan modeReq
+	modtimeReq      chan modtimeReq
+	isdirReq        chan isdirReq
+	sysReq          chan sysReq
+	listBlockIdsReq chan listBlockIdsReq
+	ReadReqResp     chan ReadReqResp
+	WriteReqResp    chan WriteReqResp
+	inBroadcast     chan FileBroadcast
+	OutSends        chan model.SendPayloadMsg
+
+	Mapper    *model.NodeConnectionMapper
+	nodeId    model.NodeId
+	fileOps   disk.FileOps
+	indexPath string
+	Ctx       context.Context
 }
 
 func NewFileSystem(
@@ -63,37 +66,38 @@ func NewFileSystem(
 	fileOps disk.FileOps,
 	indexPath string,
 	chansize int,
-	outSends chan model.MgrConnsSend,
+	outSends chan model.SendPayloadMsg,
 	mapper *model.NodeConnectionMapper,
 	ctx context.Context,
 ) FileSystem {
 	filesystem := FileSystem{
-		fileHolder:   NewFileHolder(),
-		mkdirReq:     make(chan mkdirReq, chansize),
-		openFileReq:  make(chan openFileReq, chansize),
-		removeAllReq: make(chan removeAllReq, chansize),
-		renameReq:    make(chan renameReq, chansize),
-		writeReq:     make(chan writeReq, chansize),
-		readReq:      make(chan readReq, chansize),
-		seekReq:      make(chan seekReq, chansize),
-		closeReq:     make(chan closeReq, chansize),
-		readdirReq:   make(chan readdirReq, chansize),
-		statReq:      make(chan statReq, chansize),
-		nameReq:      make(chan nameReq, chansize),
-		sizeReq:      make(chan sizeReq, chansize),
-		modeReq:      make(chan modeReq, chansize),
-		modtimeReq:   make(chan modtimeReq, chansize),
-		isdirReq:     make(chan isdirReq, chansize),
-		sysReq:       make(chan sysReq, chansize),
-		ReadReqResp:  make(chan ReadReqResp, chansize),
-		WriteReqResp: make(chan WriteReqResp, chansize),
-		inBroadcast:  inBroadcast,
-		nodeId:       nodeId,
-		fileOps:      fileOps,
-		indexPath:    indexPath,
-		OutSends:     outSends,
-		Mapper:       mapper,
-		Ctx:          ctx,
+		fileHolder:      NewFileHolder(),
+		mkdirReq:        make(chan mkdirReq, chansize),
+		openFileReq:     make(chan openFileReq, chansize),
+		removeAllReq:    make(chan removeAllReq, chansize),
+		renameReq:       make(chan renameReq, chansize),
+		writeReq:        make(chan writeReq, chansize),
+		readReq:         make(chan readReq, chansize),
+		seekReq:         make(chan seekReq, chansize),
+		closeReq:        make(chan closeReq, chansize),
+		readdirReq:      make(chan readdirReq, chansize),
+		statReq:         make(chan statReq, chansize),
+		nameReq:         make(chan nameReq, chansize),
+		sizeReq:         make(chan sizeReq, chansize),
+		modeReq:         make(chan modeReq, chansize),
+		modtimeReq:      make(chan modtimeReq, chansize),
+		isdirReq:        make(chan isdirReq, chansize),
+		sysReq:          make(chan sysReq, chansize),
+		listBlockIdsReq: make(chan listBlockIdsReq, chansize),
+		ReadReqResp:     make(chan ReadReqResp, chansize),
+		WriteReqResp:    make(chan WriteReqResp, chansize),
+		inBroadcast:     inBroadcast,
+		nodeId:          nodeId,
+		fileOps:         fileOps,
+		indexPath:       indexPath,
+		OutSends:        outSends,
+		Mapper:          mapper,
+		Ctx:             ctx,
 	}
 	block := model.Block{Id: model.NewBlockId(), Data: []byte{}}
 	root := File{
@@ -185,6 +189,8 @@ func (f *FileSystem) run() {
 			chanutil.Send(f.Ctx, req.resp, isdir(req), "filesystem: isdir")
 		case req := <-f.sysReq:
 			chanutil.Send(f.Ctx, req.resp, sys(req), "filesystem: sys")
+		case req := <-f.listBlockIdsReq:
+			f.listBlockIds(&req)
 		case msg := <-f.inBroadcast:
 			file, _, err := FileFromBytes(msg.FileBytes, f)
 			if err != nil {
@@ -229,7 +235,7 @@ func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType FileBro
 	msg := FileBroadcast{UpdateType: updateType, FileBytes: file.ToBytes()}
 	conns := f.Mapper.Connections()
 	for _, connId := range conns.GetValues() {
-		f.OutSends <- model.MgrConnsSend{ConnId: connId, Payload: &msg}
+		f.OutSends <- model.SendPayloadMsg{ConnId: connId, Payload: &msg}
 	}
 	return nil
 }
@@ -292,6 +298,25 @@ func (f *FileSystem) mkdir(req *mkdirReq) error {
 	}
 
 	return nil
+}
+
+type listBlockIdsReq struct {
+	respChan chan set.Set[model.BlockId]
+}
+
+func (f *FileSystem) ListBlockIds() *set.Set[model.BlockId] {
+	req := listBlockIdsReq{respChan: make(chan set.Set[model.BlockId], 1)}
+	f.listBlockIdsReq <- req
+	resp := <-req.respChan
+	return &resp
+}
+
+func (f *FileSystem) listBlockIds(req *listBlockIdsReq) {
+	result := set.NewSet[model.BlockId]()
+	for blockId := range f.fileHolder.byBlockId {
+		result.Add(blockId)
+	}
+	req.respChan <- result
 }
 
 type removeAllReq struct {

@@ -55,6 +55,25 @@ func (d *MirrorDistributer) ReadPointersForId(id model.BlockId) []model.DiskPoin
 	return data
 }
 
+type WriteAndEmptyPtrs struct {
+	Write []model.DiskPointer
+	Empty []model.DiskPointer
+}
+
+func (d *MirrorDistributer) WriteAndEmptyPtrs(id model.BlockId) WriteAndEmptyPtrs {
+	ptrs := d.ReadPointersForId(id)
+	if len(ptrs) < 2 {
+		return WriteAndEmptyPtrs{
+			Write: ptrs,
+			Empty: []model.DiskPointer{},
+		}
+	}
+	return WriteAndEmptyPtrs{
+		Write: ptrs[:2],
+		Empty: ptrs[2:],
+	}
+}
+
 type nodeAndDisk struct {
 	n model.NodeId
 	d model.DiskId

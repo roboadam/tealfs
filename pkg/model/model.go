@@ -48,7 +48,7 @@ type ConnectToNodeReq struct {
 	Address string
 }
 
-type MgrConnsSend struct {
+type SendPayloadMsg struct {
 	ConnId  ConnId
 	Payload Payload
 }
@@ -67,12 +67,28 @@ func NewNodeId() NodeId {
 
 type DiskId string
 
-type AddDiskReq struct {
+type AddDiskMsg struct {
 	DiskId DiskId
 	Path   string
 	NodeId NodeId
 }
 
-func (a *AddDiskReq) Type() PayloadType {
-	return AddDiskRequestType
+func (a *AddDiskMsg) Type() PayloadType {
+	return AddDiskMsgType
+}
+
+type DiskAddedMsg struct {
+	DiskId DiskId
+	Path   string
+	NodeId NodeId
+}
+
+func (d *DiskAddedMsg) Type() PayloadType {
+	return DiskAddedMsgType
+}
+
+type DiskInfo struct {
+	DiskId DiskId
+	Path   string
+	NodeId NodeId
 }

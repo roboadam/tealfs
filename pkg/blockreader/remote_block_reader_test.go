@@ -27,7 +27,7 @@ func TestRemoteBlockReader(t *testing.T) {
 	defer cancel()
 
 	req := make(chan GetFromDiskReq)
-	sends := make(chan model.MgrConnsSend)
+	sends := make(chan model.SendPayloadMsg)
 	noConnResp := make(chan GetFromDiskResp)
 	nodeId := model.NewNodeId()
 	diskId := model.DiskId(uuid.NewString())

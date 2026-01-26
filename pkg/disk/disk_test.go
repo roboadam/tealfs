@@ -113,6 +113,66 @@ func TestReadNewFile(t *testing.T) {
 	}
 }
 
+func TestGet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	f := disk.MockFileOps{}
+	path := disk.NewPath("/some/fake/path", &f)
+	id := model.NewNodeId()
+	diskId := model.DiskId(uuid.New().String())
+	d := disk.New(path, id, diskId, ctx)
+
+	_, ok := d.Get("blockId")
+	if ok {
+		t.Error("should be no block")
+	}
+
+	path.Save(model.RawData{
+		Ptr: model.DiskPointer{
+			NodeId:   id,
+			Disk:     diskId,
+			FileName: "blockId",
+		},
+		Data: []byte{1, 2, 3},
+	})
+
+	data, ok := d.Get("blockId")
+	if !ok {
+		t.Error("should be a block")
+	}
+
+	if !bytes.Equal(data, []byte{1, 2, 3}) {
+		t.Error("wrong data")
+	}
+}
+
+func TestSave(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	f := disk.MockFileOps{}
+	path := disk.NewPath("/some/fake/path", &f)
+	id := model.NewNodeId()
+	diskId := model.DiskId(uuid.New().String())
+	d := disk.New(path, id, diskId, ctx)
+
+	ok := d.Save([]byte{1, 2, 3}, "blockId")
+	if !ok {
+		t.Error("should be able to save")
+	}
+
+	data, err := path.ReadDirect(model.DiskPointer{
+		NodeId:   id,
+		Disk:     diskId,
+		FileName: "blockId",
+	})
+
+	if err != nil || !bytes.Equal(data.Data, []byte{1, 2, 3}) {
+		t.Error("Couldn't read the result")
+	}
+}
+
 func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
 	f := disk.MockFileOps{}
 	path := disk.NewPath("/some/fake/path", &f)

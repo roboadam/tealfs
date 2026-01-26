@@ -12,36 +12,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package disk
+package set
 
 import (
-	"context"
-	"tealfs/pkg/model"
-
-	log "github.com/sirupsen/logrus"
+	"testing"
 )
 
-type RemoteDiskAdder struct {
-	InAddDiskReq <-chan model.AddDiskReq
-	OutSends     chan<- model.MgrConnsSend
-	NodeConnMap  *model.NodeConnectionMapper
-}
+func TestBimap(t *testing.T) {
+	subject := NewBimap[string, int]()
+	subject.Add("a", 1)
+	subject.Add("b", 1)
+	subject.Add("c", 2)
+	subject.Add("c", 3)
 
-func (r *RemoteDiskAdder) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case add := <-r.InAddDiskReq:
-			connId, ok := r.NodeConnMap.ConnForNode(add.NodeId)
-			if ok {
-				r.OutSends <- model.MgrConnsSend{
-					ConnId:  connId,
-					Payload: &add,
-				}
-			} else {
-				log.Warn("No connection")
-			}
-		}
+	if len(subject.dataKj) != 2 {
+		t.Errorf("invalid amount of internal data, %v, %v", subject.dataJk, subject.dataKj)
 	}
 }

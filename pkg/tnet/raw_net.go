@@ -73,8 +73,12 @@ func (r *RawNet) ReadPayload() (model.Payload, error) {
 		var payload webdav.FileBroadcast
 		err = r.decoder.Decode(&payload)
 		return &payload, err
-	case model.AddDiskRequestType:
-		var payload model.AddDiskReq
+	case model.AddDiskMsgType:
+		var payload model.AddDiskMsg
+		err = r.decoder.Decode(&payload)
+		return &payload, err
+	case model.DiskAddedMsgType:
+		var payload model.DiskAddedMsg
 		err = r.decoder.Decode(&payload)
 		return &payload, err
 	case model.SyncType:

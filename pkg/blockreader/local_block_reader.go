@@ -38,7 +38,10 @@ func (l *LocalBlockReader) Start(ctx context.Context) {
 			if disk, err := l.diskForId(req.Dest.DiskId); err == nil {
 				disk.InReads <- *convertReadReq(&req)
 			} else {
-				log.Errorf("no disk for id %s, %v", req.Dest.DiskId, err)
+				for _, d := range l.Disks.GetValues() {
+					log.Errorf("disk id: %s:%s looking for %s:%s",d.NodeId(), d.DiskId(), req.Dest.NodeId, req.Dest.DiskId)
+				}
+				log.Panicf("reader: no disk for id %s, %v", req.Dest.DiskId, err)
 			}
 		}
 	}
@@ -59,7 +62,7 @@ func convertReadReq(req *GetFromDiskReq) *model.ReadRequest {
 
 func (l *LocalBlockReader) diskForId(diskId model.DiskId) (*disk.Disk, error) {
 	for _, disk := range l.Disks.GetValues() {
-		if disk.Id() == diskId {
+		if disk.DiskId() == diskId {
 			return &disk, nil
 		}
 	}

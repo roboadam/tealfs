@@ -27,7 +27,7 @@ func TestSerializeFileHolder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast, 1)
-	outSends := make(chan model.MgrConnsSend, 1)
+	outSends := make(chan model.SendPayloadMsg, 1)
 	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outSends, model.NewNodeConnectionMapper(), ctx)
 
 	mockPushesAndPulls(ctx, &fs, outSends)
@@ -109,4 +109,31 @@ func FileEquality(f1 *webdav.File, f2 *webdav.File) bool {
 		return false
 	}
 	return true
+}
+
+func TestAllBlockIds(t *testing.T) {
+	fh := webdav.NewFileHolder()
+	blockId1 := model.NewBlockId()
+	blockId2 := model.NewBlockId()
+	blockId3 := model.NewBlockId()
+
+	file1 := webdav.File{
+		Block: []model.Block{{Id: blockId1}},
+	}
+	file2 := webdav.File{
+		Block: []model.Block{{Id: blockId2}},
+	}
+	file3 := webdav.File{
+		Block: []model.Block{{Id: blockId3}},
+	}
+
+	fh.Add(&file1)
+	fh.Add(&file2)
+	fh.Add(&file3)
+
+	allBlockIds := fh.AllBlockIds()
+	if allBlockIds.Len() != 3 {
+		t.Error("wrong number of block ids")
+		return
+	}
 }

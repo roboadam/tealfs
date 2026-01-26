@@ -49,7 +49,7 @@ func TestLocalBlockSaver(t *testing.T) {
 		Caller: model.NewNodeId(),
 		Dest: Dest{
 			NodeId: nodeId,
-			DiskId: disk1.Id(),
+			DiskId: disk1.DiskId(),
 		},
 		Req: model.NewPutBlockReq(model.Block{
 			Id:   model.NewBlockId(),
@@ -63,7 +63,7 @@ func TestLocalBlockSaver(t *testing.T) {
 		return
 	}
 
-	if result.Ptr.NodeId != nodeId || result.Ptr.Disk != disk1.Id() {
+	if result.Ptr.NodeId != nodeId || result.Ptr.Disk != disk1.DiskId() {
 		t.Errorf("Expected DiskPointer to match, got %v", result.Ptr)
 		return
 	}
@@ -72,7 +72,7 @@ func TestLocalBlockSaver(t *testing.T) {
 		Caller: model.NewNodeId(),
 		Dest: Dest{
 			NodeId: nodeId,
-			DiskId: disk2.Id(),
+			DiskId: disk2.DiskId(),
 		},
 		Req: model.NewPutBlockReq(model.Block{
 			Id:   model.NewBlockId(),
@@ -84,7 +84,7 @@ func TestLocalBlockSaver(t *testing.T) {
 		t.Errorf("Expected write to succeed, got error: %s", result.Message)
 		return
 	}
-	if result.Ptr.NodeId != nodeId || result.Ptr.Disk != disk2.Id() {
+	if result.Ptr.NodeId != nodeId || result.Ptr.Disk != disk2.DiskId() {
 		t.Errorf("Expected DiskPointer to match, got %v", result.Ptr)
 		return
 	}

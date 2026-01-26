@@ -40,7 +40,7 @@ func TestIamReceiver(t *testing.T) {
 	inIam <- IamConnId{
 		Iam: model.IAm{
 			NodeId: "remoteNodeId1",
-			Disks: []model.AddDiskReq{{
+			Disks: []model.DiskInfo{{
 				DiskId: "remoteDisk1",
 				Path:   "remotePath1",
 				NodeId: "remoteNodeId1",
@@ -64,8 +64,8 @@ func TestIamReceiver(t *testing.T) {
 
 	inIam <- IamConnId{
 		Iam: model.IAm{
-			NodeId: "remoteNodeId2",
-			Disks: []model.AddDiskReq{},
+			NodeId:  "remoteNodeId2",
+			Disks:   []model.DiskInfo{},
 			Address: "remoteAddress2",
 		},
 		ConnId: 1,

@@ -17,16 +17,15 @@ package blockreader
 import (
 	"context"
 	"errors"
-	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type LocalBlockReadResponses struct {
-	InDisks            <-chan *disk.Disk
+	InReadResults      <-chan <-chan model.ReadResult
 	LocalReadResponses chan<- GetFromDiskResp
-	Sends              chan<- model.MgrConnsSend
+	Sends              chan<- model.SendPayloadMsg
 	NodeConnMap        *model.NodeConnectionMapper
 	NodeId             model.NodeId
 }
@@ -36,8 +35,8 @@ func (l *LocalBlockReadResponses) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case d := <-l.InDisks:
-			go l.readFromChan(ctx, d.OutReads)
+		case c := <-l.InReadResults:
+			go l.readFromChan(ctx, c)
 		}
 	}
 }
@@ -61,7 +60,7 @@ func (l *LocalBlockReadResponses) readFromChan(ctx context.Context, c <-chan mod
 func (l *LocalBlockReadResponses) sendToRemote(resp *GetFromDiskResp) {
 	conn, ok := l.NodeConnMap.ConnForNode(resp.Caller)
 	if ok {
-		l.Sends <- model.MgrConnsSend{
+		l.Sends <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: resp,
 		}

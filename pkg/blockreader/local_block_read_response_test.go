@@ -16,7 +16,6 @@ package blockreader
 
 import (
 	"context"
-	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"testing"
 
@@ -27,9 +26,9 @@ func TestLocalBlockReadResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inDisks := make(chan *disk.Disk)
+	inReadResults := make(chan (<-chan model.ReadResult))
 	localReadResponses := make(chan GetFromDiskResp)
-	sends := make(chan model.MgrConnsSend)
+	sends := make(chan model.SendPayloadMsg)
 	nodeConnMap := model.NewNodeConnectionMapper()
 	localNodeId := model.NewNodeId()
 	remoteNodeId := model.NewNodeId()
@@ -38,7 +37,7 @@ func TestLocalBlockReadResponse(t *testing.T) {
 	reqId1 := model.GetBlockId(uuid.NewString())
 	reqId2 := model.GetBlockId(uuid.NewString())
 	lbrr := LocalBlockReadResponses{
-		InDisks:            inDisks,
+		InReadResults:      inReadResults,
 		LocalReadResponses: localReadResponses,
 		Sends:              sends,
 		NodeConnMap:        nodeConnMap,
@@ -46,40 +45,36 @@ func TestLocalBlockReadResponse(t *testing.T) {
 	}
 	go lbrr.Start(ctx)
 
-	disk1 := disk.New(disk.NewPath("p1", &disk.MockFileOps{}), localNodeId, model.DiskId(uuid.NewString()), ctx)
-	disk2 := disk.New(disk.NewPath("p2", &disk.MockFileOps{}), localNodeId, model.DiskId(uuid.NewString()), ctx)
-	inDisks <- &disk1
-	inDisks <- &disk2
+	readResults1 := make(chan model.ReadResult)
+	readResults2 := make(chan model.ReadResult)
+	inReadResults <- readResults1
+	inReadResults <- readResults2
 
-	disk1.InReads <- model.ReadRequest{
-		Caller: localNodeId,
-		Ptrs: []model.DiskPointer{{
-			NodeId:   localNodeId,
-			Disk:     disk1.Id(),
-			FileName: string(blockId1),
-		}},
-		BlockId: blockId1,
-		ReqId:   reqId1,
+	ptr1 := model.DiskPointer{
+		NodeId:   localNodeId,
+		Disk:     "disk1Id",
+		FileName: string(blockId1),
 	}
+	ptrs1 := []model.DiskPointer{ptr1}
+	data1 := model.RawData{Ptr: ptr1}
+	readResults1 <- model.NewReadResultOk(localNodeId, ptrs1, data1, reqId1, blockId1)
 
-	resp := <-localReadResponses
-	if resp.Resp.Id != reqId1 {
+	resp1 := <-localReadResponses
+	if resp1.Resp.Id != reqId1 {
 		t.Error("invalid request id")
 		return
 	}
 
-	disk2.InReads <- model.ReadRequest{
-		Caller: remoteNodeId,
-		Ptrs: []model.DiskPointer{{
-			NodeId:   localNodeId,
-			Disk:     disk2.Id(),
-			FileName: string(blockId2),
-		}},
-		BlockId: blockId2,
-		ReqId:   reqId2,
-	}
-
 	nodeConnMap.SetAll(model.ConnId(1), "someAddress:123", remoteNodeId)
+
+	ptr2 := model.DiskPointer{
+		NodeId:   localNodeId,
+		Disk:     "disk1Id",
+		FileName: string(blockId1),
+	}
+	ptrs2 := []model.DiskPointer{ptr2}
+	data2 := model.RawData{Ptr: ptr2}
+	readResults2 <- model.NewReadResultOk(remoteNodeId, ptrs2, data2, reqId2, blockId2)
 
 	resp2 := <-sends
 	payload := resp2.Payload

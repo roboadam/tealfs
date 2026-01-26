@@ -22,7 +22,7 @@ import (
 
 type RemoteBlockSaver struct {
 	Req         <-chan SaveToDiskReq
-	Sends       chan<- model.MgrConnsSend
+	Sends       chan<- model.SendPayloadMsg
 	NoConnResp  chan<- SaveToDiskResp
 	NodeConnMap *model.NodeConnectionMapper
 }
@@ -36,7 +36,7 @@ func (rbs *RemoteBlockSaver) Start(ctx context.Context) {
 			// Send the payload to the remote node if it has a connection, otherwise send back an error response
 			conn, ok := rbs.NodeConnMap.ConnForNode(req.Dest.NodeId)
 			if ok {
-				rbs.Sends <- model.MgrConnsSend{
+				rbs.Sends <- model.SendPayloadMsg{
 					ConnId:  conn,
 					Payload: &req,
 				}

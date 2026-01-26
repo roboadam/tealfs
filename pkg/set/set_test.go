@@ -12,43 +12,41 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package conns
+package set_test
 
 import (
-	"context"
-	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+	"testing"
 )
 
-type IamSender struct {
-	InSendIam <-chan model.ConnId
-	OutIam    chan<- model.SendPayloadMsg
+func TestSetPop(t *testing.T) {
+	s := set.NewSet[int]()
+	_, _, ok := s.Pop()
 
-	NodeId  model.NodeId
-	Address string
-	Disks   *set.Set[model.DiskInfo]
-}
-
-func (i *IamSender) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case connId := <-i.InSendIam:
-			i.sendIam(connId)
-		}
+	if ok {
+		t.Error("should be nothing to pop")
 	}
-}
 
-func (i *IamSender) sendIam(connId model.ConnId) {
-	disks := i.Disks.GetValues()
-	iam := model.IAm{
-		NodeId:  i.NodeId,
-		Address: i.Address,
-		Disks:   disks,
+	s.Add(1)
+	s.Add(2)
+	s.Add(3)
+	s.Add(4)
+
+	k, remainder, ok := s.Pop()
+
+	if !ok {
+		t.Error("should be something to pop")
 	}
-	i.OutIam <- model.SendPayloadMsg{
-		ConnId:  connId,
-		Payload: &iam,
+
+	if !s.Contains(k) {
+		t.Error("pop value not in original set")
+	}
+
+	if remainder.Contains(k) {
+		t.Error("pop value in remainder set")
+	}
+
+	if remainder.Len() != 3 {
+		t.Error("should only be 3 left")
 	}
 }

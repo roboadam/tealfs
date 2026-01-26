@@ -15,38 +15,13 @@
 package disk
 
 import (
-	"context"
-	"encoding/json"
-	"path/filepath"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
-
-	"github.com/sirupsen/logrus"
 )
 
-type DiskSaver struct {
-	FileOps    FileOps
-	LoadPath   string
-	AllDiskIds *set.Set[model.AddDiskReq]
-
-	Save <-chan struct{}
+type DeleteBlockId struct {
+	BlockId model.BlockId
 }
 
-func (d *DiskSaver) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-d.Save:
-			data, err := json.Marshal(d.AllDiskIds.GetValues())
-			if err != nil {
-				logrus.Errorf("Error saving disk ids %v", err)
-			}
-
-			err = d.FileOps.WriteFile(filepath.Join(d.LoadPath, "disks.json"), data)
-			if err != nil {
-				logrus.Errorf("Error saving disk ids %v", err)
-			}
-		}
-	}
+func (d *DeleteBlockId) Type() model.PayloadType {
+	return model.DeleteBlockId
 }

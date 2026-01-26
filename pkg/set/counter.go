@@ -12,40 +12,42 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package disk
+package set
 
 import (
-	"context"
-	"tealfs/pkg/model"
+	"sync"
 )
 
-type IamSender struct {
-	InIamDiskUpdate <-chan []model.AddDiskReq
-	OutSends        chan<- model.MgrConnsSend
-	Mapper          *model.NodeConnectionMapper
-	NodeId          model.NodeId
-	Address         string
+type Counter[K comparable] struct {
+	Data map[K]int
+	mux  *sync.RWMutex
 }
 
-func (i *IamSender) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case disks := <-i.InIamDiskUpdate:
-			iam := model.IAm{
-				NodeId:  i.NodeId,
-				Disks:   disks,
-				Address: i.Address,
-			}
-			conns := i.Mapper.Connections()
-			for _, conn := range conns.GetValues() {
-				i.OutSends <- model.MgrConnsSend{
-					ConnId:  conn,
-					Payload: &iam,
-				}
-			}
-
-		}
+func (c *Counter[K]) init() {
+	if c.Data == nil {
+		c.Data = make(map[K]int)
 	}
+	if c.mux == nil {
+		c.mux = &sync.RWMutex{}
+	}
+}
+
+func (c *Counter[K]) Tick(key K) {
+	c.init()
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	if _, ok := c.Data[key]; !ok {
+		c.Data[key] = 0
+	}
+	c.Data[key]++
+}
+
+func (c *Counter[K]) Count(key K) int {
+	c.init()
+	c.mux.RLock()
+	defer c.mux.RUnlock()
+	if _, ok := c.Data[key]; !ok {
+		return 0
+	}
+	return c.Data[key]
 }

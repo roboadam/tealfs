@@ -18,7 +18,6 @@ import (
 	"context"
 	"net/http"
 	"sync"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 
 	"github.com/google/uuid"
@@ -27,20 +26,22 @@ import (
 type Ui struct {
 	NodeConnMap *model.NodeConnectionMapper
 
-	connToReq   chan model.ConnectToNodeReq
-	addDiskReq  chan model.AddDiskReq
-	addDiskResp chan model.UiDiskStatus
+	connToReq        chan model.ConnectToNodeReq
+	addLocalDiskMsg  chan model.AddDiskMsg
+	addRemoteDiskMsg chan model.AddDiskMsg
+	addDiskResp      chan model.UiDiskStatus
 
 	diskStatuses map[model.DiskId]model.UiDiskStatus
-	sMux   sync.Mutex
-	ops    HtmlOps
-	nodeId model.NodeId
-	ctx    context.Context
+	sMux         sync.Mutex
+	ops          HtmlOps
+	nodeId       model.NodeId
+	ctx          context.Context
 }
 
 func NewUi(
 	connToReq chan model.ConnectToNodeReq,
-	addDiskReq chan model.AddDiskReq,
+	addLocalDiskReq chan model.AddDiskMsg,
+	addRemoteDiskReq chan model.AddDiskMsg,
 	addDiskResp chan model.UiDiskStatus,
 	ops HtmlOps,
 	nodeId model.NodeId,
@@ -49,13 +50,13 @@ func NewUi(
 ) *Ui {
 	diskStatuses := make(map[model.DiskId]model.UiDiskStatus)
 	ui := Ui{
-		connToReq:    connToReq,
-		addDiskReq:   addDiskReq,
-		addDiskResp:  addDiskResp,
-		diskStatuses: diskStatuses,
-		ops:    ops,
-		nodeId: nodeId,
-		ctx:    ctx,
+		connToReq:        connToReq,
+		addLocalDiskMsg:  addLocalDiskReq,
+		addRemoteDiskMsg: addRemoteDiskReq,
+		diskStatuses:     diskStatuses,
+		ops:              ops,
+		nodeId:           nodeId,
+		ctx:              ctx,
 	}
 	ui.handleRoot()
 	ui.start(bindAddr)
@@ -118,12 +119,16 @@ func (ui *Ui) handleRoot() {
 			if node == "" {
 				node = string(ui.nodeId)
 			}
-			req := model.AddDiskReq{
+			req := model.AddDiskMsg{
 				DiskId: model.DiskId(uuid.NewString()),
 				Path:   diskPath,
 				NodeId: model.NodeId(node),
 			}
-			chanutil.Send(ui.ctx, ui.addDiskReq, req, "ui: add disk req")
+			if req.NodeId == ui.nodeId {
+				ui.addLocalDiskMsg <- req
+			} else {
+				ui.addRemoteDiskMsg <- req
+			}
 			ui.connectionStatus(w, tmpl)
 		default:
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)

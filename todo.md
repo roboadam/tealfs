@@ -3,8 +3,12 @@
 - [x] UI setup
 - [x] Break up big blocks
 - [ ] Rebalance on disk changes
-    - [ ] Elect a primary node
+    - [x] Calculate primary node
     - [ ] Collect all on-disk block ids from other nodes on primary
+        - [x] On primary node send AllBlockIdReq to other nodes
+        - [x] On primary node send AllBlockIdReq to yourself
+        - [ ] All nodes respond to AllBlockIdReq with AllBlockIdResp
+        - [ ] Once all nodes have responded kick off next step
     - [ ] Emit all block Id pointers from filesystem on primary node
     - [ ] Delete all block Ids that don't have a pointer
     - [ ] Find real disk location of each block id pointer

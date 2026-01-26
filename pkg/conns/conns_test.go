@@ -64,7 +64,7 @@ func TestSendData(t *testing.T) {
 	<-provider.DialedAddress
 	connId := <-sendIam
 
-	inSend <- model.MgrConnsSend{
+	inSend <- model.SendPayloadMsg{
 		ConnId:  connId,
 		Payload: expected,
 	}
@@ -90,13 +90,13 @@ func TestSendData(t *testing.T) {
 func newConnsTest(ctx context.Context) (
 	*Conns,
 	chan model.ConnectToNodeReq,
-	chan model.MgrConnsSend,
+	chan model.SendPayloadMsg,
 	chan model.IAm,
 	chan model.ConnId,
 	*MockConnectionProvider,
 ) {
 	inConnectTo := make(chan model.ConnectToNodeReq, 1)
-	inSends := make(chan model.MgrConnsSend, 1)
+	inSends := make(chan model.SendPayloadMsg, 1)
 	outIam := make(chan model.IAm, 1)
 	outSendIam := make(chan model.ConnId, 1)
 	provider := NewMockConnectionProvider()

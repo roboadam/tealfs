@@ -21,6 +21,9 @@ import (
 	"path/filepath"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Path struct {
@@ -40,9 +43,24 @@ func New(
 		diskId:    diskId,
 		InWrites:  make(chan model.WriteRequest, 1),
 		InReads:   make(chan model.ReadRequest, 1),
+		InExists:  make(chan ExistsReq, 1),
+		InDelete:  make(chan model.BlockId, 1),
 		OutReads:  make(chan model.ReadResult, 1),
 		OutWrites: make(chan model.WriteResult, 1),
-		ctx:       ctx,
+		InListIds: make(chan ListIds, 1),
+		inGet: make(chan struct {
+			blockId model.BlockId
+			resp    chan struct {
+				data []byte
+				ok   bool
+			}
+		}, 1),
+		inSave: make(chan struct {
+			data    []byte
+			blockId model.BlockId
+			resp    chan bool
+		}),
+		ctx: ctx,
 	}
 	go p.consumeChannels()
 	return p
@@ -56,16 +74,98 @@ type Disk struct {
 	OutWrites chan model.WriteResult
 	InWrites  chan model.WriteRequest
 	InReads   chan model.ReadRequest
-	ctx       context.Context
+	InListIds chan ListIds
+	InDelete  chan model.BlockId
+	InExists  chan ExistsReq
+	inGet     chan struct {
+		blockId model.BlockId
+		resp    chan struct {
+			data []byte
+			ok   bool
+		}
+	}
+	inSave chan struct {
+		data    []byte
+		blockId model.BlockId
+		resp    chan bool
+	}
+	ctx context.Context
 }
 
-func (d *Disk) Id() model.DiskId { return d.diskId }
+type ListIds struct {
+	Resp chan set.Set[model.BlockId]
+}
+
+type ExistsReq struct {
+	BlockId model.BlockId
+	Resp    chan bool
+}
+
+func (d *Disk) DiskId() model.DiskId { return d.diskId }
+func (d *Disk) NodeId() model.NodeId { return d.id }
+
+func (d *Disk) Get(blockId model.BlockId) ([]byte, bool) {
+	resp := make(chan struct {
+		data []byte
+		ok   bool
+	})
+	d.inGet <- struct {
+		blockId model.BlockId
+		resp    chan struct {
+			data []byte
+			ok   bool
+		}
+	}{
+		blockId: blockId,
+		resp:    resp,
+	}
+	result := <-resp
+	return result.data, result.ok
+}
+
+func (d *Disk) Save(data []byte, blockId model.BlockId) bool {
+	resp := make(chan bool)
+	d.inSave <- struct {
+		data    []byte
+		blockId model.BlockId
+		resp    chan bool
+	}{
+		data:    data,
+		blockId: blockId,
+		resp:    resp,
+	}
+	return <-resp
+}
 
 func (d *Disk) consumeChannels() {
 	for {
 		select {
 		case <-d.ctx.Done():
 			return
+		case get := <-d.inGet:
+			data, err := d.path.ReadDirect(model.DiskPointer{
+				NodeId:   d.id,
+				Disk:     d.diskId,
+				FileName: string(get.blockId),
+			})
+			ok := err == nil
+			get.resp <- struct {
+				data []byte
+				ok   bool
+			}{
+				data: data.Data,
+				ok:   ok,
+			}
+		case save := <-d.inSave:
+			err := d.path.Save(model.RawData{
+				Ptr: model.DiskPointer{
+					NodeId:   d.id,
+					Disk:     d.diskId,
+					FileName: string(save.blockId),
+				},
+				Data: save.data,
+			})
+			save.resp <- err == nil
 		case s := <-d.InWrites:
 			err := d.path.Save(s.Data)
 			if err == nil {
@@ -80,7 +180,7 @@ func (d *Disk) consumeChannels() {
 				rr := model.NewReadResultErr("no pointers in read request", r.Caller, r.ReqId, r.BlockId)
 				chanutil.Send(d.ctx, d.OutReads, rr, "disk: no pointers in read request")
 			} else {
-				data, err := d.path.Read(r.Ptrs[0])
+				data, err := d.path.ReadOrEmpty(r.Ptrs[0])
 				if err == nil {
 					rr := model.NewReadResultOk(r.Caller, r.Ptrs[1:], data, r.ReqId, r.BlockId)
 					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read success")
@@ -89,6 +189,24 @@ func (d *Disk) consumeChannels() {
 					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read failure")
 				}
 			}
+		case req := <-d.InListIds:
+			allIds := set.NewSet[model.BlockId]()
+			files, err := d.path.ops.ListFiles(d.path.raw)
+			if err == nil {
+				for _, f := range files {
+					allIds.Add(model.BlockId(f))
+				}
+			}
+			req.Resp <- allIds
+		case idToDelete := <-d.InDelete:
+			filePath := filepath.Join(d.path.raw, string(idToDelete))
+			err := d.path.ops.Remove(filePath)
+			if err != nil {
+				log.Warn("Error deleting file")
+			}
+		case req := <-d.InExists:
+			filePath := filepath.Join(d.path.raw, string(req.BlockId))
+			req.Resp <- d.path.ops.Exists(filePath)
 		}
 	}
 }
@@ -98,12 +216,17 @@ func (p *Path) Save(rawData model.RawData) error {
 	return p.ops.WriteFile(filePath, rawData.Data)
 }
 
-func (p *Path) Read(ptr model.DiskPointer) (model.RawData, error) {
-	filePath := filepath.Join(p.raw, ptr.FileName)
-	result, err := p.ops.ReadFile(filePath)
+func (p *Path) ReadOrEmpty(ptr model.DiskPointer) (model.RawData, error) {
+	data, err := p.ReadDirect(ptr)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
 		return model.RawData{Ptr: ptr, Data: []byte{}}, nil
 	}
+	return data, err
+}
+
+func (p *Path) ReadDirect(ptr model.DiskPointer) (model.RawData, error) {
+	filePath := filepath.Join(p.raw, ptr.FileName)
+	result, err := p.ops.ReadFile(filePath)
 	return model.RawData{Ptr: ptr, Data: result}, err
 }
 

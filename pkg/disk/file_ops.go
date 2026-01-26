@@ -22,6 +22,9 @@ import (
 type FileOps interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte) error
+	ListFiles(path string) ([]string, error)
+	Remove(name string) error
+	Exists(name string) bool
 }
 
 type DiskFileOps struct{}
@@ -32,14 +35,40 @@ func (d *DiskFileOps) ReadFile(name string) ([]byte, error) {
 
 func (d *DiskFileOps) WriteFile(name string, data []byte) error {
 	return os.WriteFile(name, data, 0644)
+
+}
+
+func (d *DiskFileOps) Remove(name string) error {
+	return os.Remove(name)
+}
+
+func (d *DiskFileOps) ListFiles(path string) ([]string, error) {
+	result := []string{}
+	files, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if !file.IsDir() {
+			result = append(result, file.Name())
+		}
+	}
+	return result, nil
+}
+
+func (d *DiskFileOps) Exists(name string) bool {
+	_, err := os.Stat(name)
+	return err == nil
 }
 
 type MockFileOps struct {
-	ReadError  error
-	WriteError error
-	WriteCount int
-	mockFS     map[string][]byte
-	mux        sync.Mutex
+	ReadError   error
+	WriteError  error
+	WriteCount  int
+	mockFS      map[string][]byte
+	mux         sync.Mutex
+	DataRemoved chan struct{}
+	DataWritten chan struct{}
 }
 
 func (m *MockFileOps) ReadFile(name string) ([]byte, error) {
@@ -68,5 +97,41 @@ func (m *MockFileOps) WriteFile(name string, data []byte) error {
 	}
 	m.mockFS[name] = data
 	m.WriteCount++
+	if m.DataWritten != nil {
+		m.DataWritten <- struct{}{}
+	}
 	return nil
+}
+
+func (m *MockFileOps) ListFiles(path string) ([]string, error) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	if m.mockFS == nil {
+		m.mockFS = make(map[string][]byte)
+	}
+	result := []string{}
+	for name := range m.mockFS {
+		result = append(result, name)
+	}
+	return result, nil
+}
+
+func (m *MockFileOps) Remove(name string) error {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	delete(m.mockFS, name)
+	if m.DataRemoved != nil {
+		m.DataRemoved <- struct{}{}
+	}
+	return nil
+}
+
+func (m *MockFileOps) Exists(name string) bool {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	if m.mockFS == nil {
+		m.mockFS = make(map[string][]byte)
+	}
+	_, ok := m.mockFS[name]
+	return ok
 }

@@ -38,7 +38,7 @@ func (l *LocalBlockSaver) Start(ctx context.Context) {
 			if disk, err := l.diskForId(req.Dest.DiskId); err == nil {
 				disk.InWrites <- *convertSaveReq(&req)
 			} else {
-				log.Errorf("no disk for id %s, %v", req.Dest.DiskId, err)
+				log.Panicf("saver: no disk for id %s, %v", req.Dest.DiskId, err)
 			}
 		}
 	}
@@ -61,7 +61,7 @@ func convertSaveReq(req *SaveToDiskReq) *model.WriteRequest {
 
 func (l *LocalBlockSaver) diskForId(diskId model.DiskId) (*disk.Disk, error) {
 	for _, disk := range l.Disks.GetValues() {
-		if disk.Id() == diskId {
+		if disk.DiskId() == diskId {
 			return &disk, nil
 		}
 	}

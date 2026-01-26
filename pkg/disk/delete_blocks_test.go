@@ -12,47 +12,41 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package disk
+package disk_test
 
 import (
 	"context"
-	"tealfs/pkg/model"
+	"tealfs/pkg/disk"
+	"tealfs/pkg/set"
 	"testing"
 )
 
-func TestRemoteDiskAdder(t *testing.T) {
+func TestDeleteBlocks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inAddDiskReq := make(chan model.AddDiskReq)
-	outSends := make(chan model.MgrConnsSend)
-	nodeConnMap := model.NewNodeConnectionMapper()
-	adder := RemoteDiskAdder{
-		InAddDiskReq: inAddDiskReq,
-		OutSends:     outSends,
-		NodeConnMap:  nodeConnMap,
+	inDelete := make(chan disk.DeleteBlockId)
+	disks := set.NewSet[disk.Disk]()
+
+	deleteBlocks := disk.DeleteBlocks{
+		InDelete: inDelete,
+		Disks:    &disks,
 	}
-	go adder.Start(ctx)
+	go deleteBlocks.Start(ctx)
 
-	req := model.AddDiskReq{
-		DiskId: "diskId1",
-		Path:   "path1",
-		NodeId: "remoteNodeId",
-	}
+	ops := disk.MockFileOps{DataRemoved: make(chan struct{})}
+	p := disk.NewPath("", &ops)
+	d := disk.New(p, "nodeId", "diskId", ctx)
+	ops.WriteFile("blockId1", []byte{1, 2, 3, 4, 5})
+	disks.Add(d)
 
-	inAddDiskReq <- req
-
-	select{
-	case <-outSends:
-		t.Error("should not send if no conns")
-	default:
+	inDelete <- disk.DeleteBlockId{
+		BlockId: "blockId1",
 	}
 
-	nodeConnMap.SetAll(0, "address1", "remoteNodeId")
-	inAddDiskReq <- req
+	<-ops.DataRemoved
 
-	sent := <- outSends
-	if _, ok := sent.Payload.(*model.AddDiskReq); !ok {
-		t.Error("wrong payload type")
+	if ops.Exists("blockId1") {
+		t.Error("That block should have been deleted")
 	}
 }
