@@ -12,22 +12,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package webdav
+package datalayer
 
-import "tealfs/pkg/model"
-
-type FileBroadcastType uint32
-
-const (
-	UpsertFile = iota
-	DeleteFile
-)
-
-type FileBroadcast struct {
-	UpdateType FileBroadcastType
-	FileBytes  []byte
-}
-
-func (f *FileBroadcast) Type() model.PayloadType {
-	return model.FileBroadcastType
+type State struct {
 }

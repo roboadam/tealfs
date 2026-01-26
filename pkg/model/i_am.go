@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -15,9 +15,9 @@
 package model
 
 type IAm struct {
-	NodeId    NodeId
-	Disks     []DiskInfo
-	Address   string
+	NodeId  NodeId
+	Disks   []DiskInfo
+	Address string
 }
 
 func (i *IAm) Type() PayloadType {
@@ -26,8 +26,8 @@ func (i *IAm) Type() PayloadType {
 
 func NewIam(nodeId NodeId, disks []DiskInfo, address string) IAm {
 	return IAm{
-		NodeId:    nodeId,
-		Disks:     disks,
-		Address:   address,
+		NodeId:  nodeId,
+		Disks:   disks,
+		Address: address,
 	}
 }

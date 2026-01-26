@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -39,7 +39,7 @@ func (l *LocalBlockReader) Start(ctx context.Context) {
 				disk.InReads <- *convertReadReq(&req)
 			} else {
 				for _, d := range l.Disks.GetValues() {
-					log.Errorf("disk id: %s:%s looking for %s:%s",d.NodeId(), d.DiskId(), req.Dest.NodeId, req.Dest.DiskId)
+					log.Errorf("disk id: %s:%s looking for %s:%s", d.NodeId(), d.DiskId(), req.Dest.NodeId, req.Dest.DiskId)
 				}
 				log.Panicf("reader: no disk for id %s, %v", req.Dest.DiskId, err)
 			}
