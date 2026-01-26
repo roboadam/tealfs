@@ -25,10 +25,7 @@ import (
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/disk"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
-	"tealfs/pkg/rebalancer"
-	"tealfs/pkg/set"
 	"tealfs/pkg/ui"
 	"tealfs/pkg/webdav"
 
@@ -94,9 +91,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	remoteBlockReaderGetFromDiskReq := make(chan blockreader.GetFromDiskReq)
 	blockReaderGetFromDiskResp := make(chan blockreader.GetFromDiskResp)
 	webdavFileBroadcast := make(chan webdav.FileBroadcast, 1)
-	rebalancerBalanceReqId := make(chan rebalancer.BalanceReqId, 1)
-	rebalancerExistsResp := make(<-chan rebalancer.ExistsResp, 1)
-	rebalancerMsgSenderExistsReq := make(chan rebalancer.ExistsReq, 1)
 
 	/******* Disk Services ******/
 
@@ -274,34 +268,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		nodeConnMapper,
 	)
 
-	/****** Rebalancer ******/
-
-	rebalancerSvc := rebalancer.Rebalancer{
-		InStart:         rebalancerBalanceReqId,
-		InResp:          rebalancerExistsResp,
-		OutExistsReq:    rebalancerMsgSenderExistsReq,
-		OutSafeDelete:   make(chan<- rebalancer.SafeDelete),
-		OutStoreItCmd:   make(chan<- rebalancer.StoreItCmd),
-		OnFilesystemIds: &set.Map[rebalancer.BalanceReqId, rebalancer.FilesystemBlockIdList]{},
-		NodeId:          nodeId,
-		Distributer:     &dist.MirrorDistributer{},
-	}
-	msgSender := rebalancer.MsgSender{
-		InExistsReq:    rebalancerMsgSenderExistsReq,
-		InExistsResp:   make(<-chan rebalancer.ExistsResp),
-		InStoreItCmd:   make(<-chan rebalancer.StoreItCmd),
-		InStoreItReq:   make(<-chan rebalancer.StoreItReq),
-		InStoreItResp:  make(<-chan rebalancer.StoreItResp),
-		OutExistsReq:   make(chan<- rebalancer.ExistsReq),
-		OutExistsResp:  make(chan<- rebalancer.ExistsResp),
-		OutStoreItCmd:  make(chan<- rebalancer.StoreItCmd),
-		OutStoreItReq:  make(chan<- rebalancer.StoreItReq),
-		OutStoreItResp: make(chan<- rebalancer.StoreItResp),
-		OutRemote:      make(chan<- model.SendPayloadMsg),
-		NodeId:         nodeId,
-		NodeConnMap:    nodeConnMapper,
-	}
-
 	/****** Startup ******/
 
 	go diskManagerSvc.Start(ctx)
@@ -323,8 +289,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go lbr.Start(ctx)
 	go rbr.Start(ctx)
 	go lbrr.Start(ctx)
-	go rebalancerSvc.Start(ctx)
-	go msgSender.Start(ctx)
 
 	<-ctx.Done()
 	return nil
