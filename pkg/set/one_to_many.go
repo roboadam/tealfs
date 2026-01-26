@@ -12,13 +12,35 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package datalayer
+package set
 
-import (
-	"tealfs/pkg/model"
-	"tealfs/pkg/set"
-)
+import "sync"
 
-type State struct {
-	blockMap set.OtM[model.DiskId, model.BlockId]
+type OtM[K comparable, J comparable] struct {
+	mux       *sync.RWMutex
+	oneToMany map[K]Set[J]
+	manyToOne map[J]K
+}
+
+func NewOtM[K comparable, J comparable]() OtM[K, J] {
+	return OtM[K, J]{
+		mux:       &sync.RWMutex{},
+		oneToMany: make(map[K]Set[J]),
+		manyToOne: make(map[J]K),
+	}
+}
+
+func (b *OtM[K, J]) Add(k1 K, j1 J) {
+	b.mux.Lock()
+	defer b.mux.Unlock()
+
+	if _, ok := b.oneToMany[k1]; !ok {
+		b.oneToMany[k1] = NewSet[J]()
+	}
+
+	s := b.oneToMany[k1]
+	s.Add(j1)
+	b.oneToMany[k1] = s
+
+	b.manyToOne[j1] = k1
 }
