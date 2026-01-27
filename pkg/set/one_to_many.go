@@ -17,30 +17,40 @@ package set
 import "sync"
 
 type OtM[K comparable, J comparable] struct {
-	mux       *sync.RWMutex
+	mux       sync.Mutex
 	oneToMany map[K]Set[J]
 	manyToOne map[J]K
 }
 
-func NewOtM[K comparable, J comparable]() OtM[K, J] {
-	return OtM[K, J]{
-		mux:       &sync.RWMutex{},
-		oneToMany: make(map[K]Set[J]),
-		manyToOne: make(map[J]K),
+func (o *OtM[K, J]) initOtM() {
+	if o.oneToMany == nil {
+		o.oneToMany = make(map[K]Set[J])
+	}
+	if o.manyToOne == nil {
+		o.manyToOne = make(map[J]K)
 	}
 }
 
-func (b *OtM[K, J]) Add(k1 K, j1 J) {
-	b.mux.Lock()
-	defer b.mux.Unlock()
+func (o *OtM[K, J]) GetKey(j J) (K, bool) {
+	o.mux.Lock()
+	defer o.mux.Unlock()
 
-	if _, ok := b.oneToMany[k1]; !ok {
-		b.oneToMany[k1] = NewSet[J]()
+	k, ok := o.manyToOne[j]
+	return k, ok
+}
+
+func (o *OtM[K, J]) Add(k1 K, j1 J) {
+	o.mux.Lock()
+	defer o.mux.Unlock()
+	o.initOtM()
+
+	if _, ok := o.oneToMany[k1]; !ok {
+		o.oneToMany[k1] = NewSet[J]()
 	}
 
-	s := b.oneToMany[k1]
+	s := o.oneToMany[k1]
 	s.Add(j1)
-	b.oneToMany[k1] = s
+	o.oneToMany[k1] = s
 
-	b.manyToOne[j1] = k1
+	o.manyToOne[j1] = k1
 }
