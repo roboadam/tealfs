@@ -19,13 +19,13 @@ import (
 	"slices"
 	"sync"
 	"tealfs/pkg/model"
-	"tealfs/pkg/set"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type State struct {
-	blockMap      set.OtM[model.DiskId, model.BlockId]
+	diskBlockMap  map[model.DiskId][]model.BlockId
+	blockDiskMap  map[model.BlockId][]model.DiskId
 	diskFreeSpace []diskFreeSpace
 	mux           sync.RWMutex
 }
@@ -48,16 +48,29 @@ func (s *State) SetDiskFreeSpace(diskId model.DiskId, freeSpace int) {
 	}
 
 	s.diskFreeSpace = append(s.diskFreeSpace, diskFreeSpace{diskId: diskId, freeSpace: freeSpace})
+	if _, exists := s.diskBlockMap[diskId]; !exists {
+		s.diskBlockMap[diskId] = make([]model.BlockId, 0)
+	}
 }
 
 func sortDesc(a diskFreeSpace, b diskFreeSpace) int {
 	return cmp.Compare(b.freeSpace, a.freeSpace)
 }
 
-func (s *State) AddBlock(blockId model.BlockId) model.DiskId {
-	if diskId, ok := s.blockMap.GetKey(blockId); ok {
+func (s *State) AddBlock(blockId model.BlockId) []model.DiskId {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	if diskId, ok := s.blockDiskMap[blockId]; ok {
 		return diskId
 	}
+
+	disks := s.emptiestDisks(2)
+	s.blockDiskMap[blockId] = disks
+	for _, disk := range disks {
+		s.diskBlockMap[disk] = append(s.diskBlockMap[disk], blockId)
+	}
+	return disks
 }
 
 func (s *State) emptiestDisks(count int) []model.DiskId {
@@ -68,5 +81,9 @@ func (s *State) emptiestDisks(count int) []model.DiskId {
 		log.Panic("No disks")
 	}
 
-
+	result := make([]model.DiskId, 0, count)
+	for _, dfs := range s.diskFreeSpace[:count] {
+		result = append(result, dfs.diskId)
+	}
+	return result
 }
