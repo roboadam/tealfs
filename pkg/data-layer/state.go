@@ -15,75 +15,90 @@
 package datalayer
 
 import (
-	"cmp"
-	"slices"
 	"sync"
 	"tealfs/pkg/model"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type State struct {
-	diskBlockMap  map[model.DiskId][]model.BlockId
-	blockDiskMap  map[model.BlockId][]model.DiskId
-	diskFreeSpace []diskFreeSpace
-	mux           sync.RWMutex
+	diskBlockMapFuture  map[model.DiskId]map[model.BlockId]struct{}
+	blockDiskMapFuture  map[model.BlockId]map[model.DiskId]struct{}
+	diskBlockMapCurrent map[model.DiskId]map[model.BlockId]struct{}
+	blockDiskMapCurrent map[model.BlockId]map[model.DiskId]struct{}
+
+	OutSaveRequest   saveRequest
+	OutDeleteRequest deleteRequest
+
+	diskSpace []diskSpace
+	mux       sync.RWMutex
 }
 
-type diskFreeSpace struct {
-	diskId    model.DiskId
-	freeSpace int
+type saveRequest struct {
+	to      model.DiskId
+	from    []model.DiskId
+	blockId model.BlockId
 }
 
-func (s *State) SetDiskFreeSpace(diskId model.DiskId, freeSpace int) {
+func (s *saveRequest) Type() model.PayloadType {
+	return model.StateSaveRequest
+}
+
+type deleteRequest struct {
+	diskId  model.DiskId
+	blockId model.BlockId
+}
+
+func (s *deleteRequest) Type() model.PayloadType {
+	return model.StateDeleteRequest
+}
+
+type diskSpace struct {
+	diskId model.DiskId
+	space  int
+}
+
+func (s *State) SetDiskSpace(diskId model.DiskId, space int) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	defer slices.SortFunc(s.diskFreeSpace, sortDesc)
 
-	for i := range s.diskFreeSpace {
-		if s.diskFreeSpace[i].diskId == diskId {
-			s.diskFreeSpace[i].freeSpace = freeSpace
+	for i := range s.diskSpace {
+		if s.diskSpace[i].diskId == diskId {
+			s.diskSpace[i].space = space
 			return
 		}
 	}
 
-	s.diskFreeSpace = append(s.diskFreeSpace, diskFreeSpace{diskId: diskId, freeSpace: freeSpace})
-	if _, exists := s.diskBlockMap[diskId]; !exists {
-		s.diskBlockMap[diskId] = make([]model.BlockId, 0)
+	s.diskSpace = append(s.diskSpace, diskSpace{diskId: diskId, space: space})
+
+	if _, exists := s.diskBlockMapFuture[diskId]; !exists {
+		s.diskBlockMapFuture[diskId] = make(map[model.BlockId]struct{})
+	}
+	if _, exists := s.diskBlockMapFuture[diskId]; !exists {
+		s.diskBlockMapFuture[diskId] = make(map[model.BlockId]struct{})
 	}
 }
 
-func sortDesc(a diskFreeSpace, b diskFreeSpace) int {
-	return cmp.Compare(b.freeSpace, a.freeSpace)
-}
-
-func (s *State) AddBlock(blockId model.BlockId) []model.DiskId {
+func (s *State) Saved(blockId model.BlockId, diskId model.DiskId) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if diskId, ok := s.blockDiskMap[blockId]; ok {
-		return diskId
-	}
-
-	disks := s.emptiestDisks(2)
-	s.blockDiskMap[blockId] = disks
-	for _, disk := range disks {
-		s.diskBlockMap[disk] = append(s.diskBlockMap[disk], blockId)
-	}
-	return disks
+	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, diskId)
 }
 
-func (s *State) emptiestDisks(count int) []model.DiskId {
-	s.mux.RLock()
-	defer s.mux.Unlock()
-
-	if len(s.diskFreeSpace) == 0 {
-		log.Panic("No disks")
+func addBlockAndDisk(
+	diskBlockMap map[model.DiskId]map[model.BlockId]struct{},
+	blockDiskMap map[model.BlockId]map[model.DiskId]struct{},
+	blockId model.BlockId,
+	diskId model.DiskId,
+) {
+	if _, ok := blockDiskMap[blockId]; !ok {
+		blockDiskMap[blockId] = make(map[model.DiskId]struct{})
 	}
+	blockDiskMap[blockId][diskId] = struct{}{}
 
-	result := make([]model.DiskId, 0, count)
-	for _, dfs := range s.diskFreeSpace[:count] {
-		result = append(result, dfs.diskId)
+	if _, ok := diskBlockMap[diskId]; !ok {
+		diskBlockMap[diskId] = make(map[model.BlockId]struct{})
 	}
-	return result
+	diskBlockMap[diskId][blockId] = struct{}{}
 }
+
+func (s *State) Deleted(blockId model.BlockId, diskId model.DiskId) {}

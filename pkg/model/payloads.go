@@ -43,6 +43,8 @@ const (
 	ExistsRespType            PayloadType = 24
 	AddDiskMsgType            PayloadType = 25
 	DiskAddedMsgType          PayloadType = 26
+	StateSaveRequest          PayloadType = 27
+	StateDeleteRequest        PayloadType = 28
 )
 
 type Payload interface {
