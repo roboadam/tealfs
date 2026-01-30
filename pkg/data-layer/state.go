@@ -32,6 +32,26 @@ type State struct {
 	mux       sync.RWMutex
 }
 
+func (s *State) emptiestDisks() []model.DiskId {
+	var disk1 model.DiskId
+	var disk2 model.DiskId
+
+	var ratio1 float32 = 0
+	var ratio2 float32 = 0
+
+	for _, ds := range s.diskSpace {
+		ratio := float32(ds.space) / float32(len(s.diskBlockMapFuture[ds.diskId]))
+		if ratio > ratio1 {
+			disk2 = disk1
+			ratio2 = ratio1
+			disk1 = ds.diskId
+			ratio1 = ratio
+		}
+
+	}
+
+}
+
 type saveRequest struct {
 	to      model.DiskId
 	from    []model.DiskId
