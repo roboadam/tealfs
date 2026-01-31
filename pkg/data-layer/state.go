@@ -110,6 +110,9 @@ func (s *State) Saved(blockId model.BlockId, diskId model.DiskId) {
 	defer s.mux.Unlock()
 
 	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, diskId)
+	if futureDisks, ok := s.blockDiskMapFuture[blockId]; ok {
+		
+	}
 	for _, emptyDisk := range s.emptiestDisks() {
 		addBlockAndDisk(s.diskBlockMapFuture, s.blockDiskMapFuture, blockId, emptyDisk)
 		if emptyDisk != diskId {
