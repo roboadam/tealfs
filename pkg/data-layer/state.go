@@ -20,10 +20,10 @@ import (
 )
 
 type State struct {
-	diskBlockMapFuture  map[model.DiskId]map[model.BlockId]struct{}
-	blockDiskMapFuture  map[model.BlockId]map[model.DiskId]struct{}
-	diskBlockMapCurrent map[model.DiskId]map[model.BlockId]struct{}
-	blockDiskMapCurrent map[model.BlockId]map[model.DiskId]struct{}
+	diskBlockMapFuture  map[dest]map[model.BlockId]struct{}
+	blockDiskMapFuture  map[model.BlockId]map[dest]struct{}
+	diskBlockMapCurrent map[dest]map[model.BlockId]struct{}
+	blockDiskMapCurrent map[model.BlockId]map[dest]struct{}
 
 	OutSaveRequest   chan<- saveRequest
 	OutDeleteRequest chan<- deleteRequest
@@ -32,37 +32,37 @@ type State struct {
 	mux       sync.RWMutex
 }
 
-func (s *State) emptiestDisks() []model.DiskId {
-	var disk1 model.DiskId
-	var disk2 model.DiskId
+func (s *State) emptiestDisks() []dest {
+	var dest1 *dest
+	var dest2 *dest
 
 	var ratio1 float32 = 0
 	var ratio2 float32 = 0
 
 	for _, ds := range s.diskSpace {
-		ratio := float32(ds.space) / (float32(len(s.diskBlockMapFuture[ds.diskId]) + 1))
+		ratio := float32(ds.space) / (float32(len(s.diskBlockMapFuture[ds.dest]) + 1))
 		if ratio > ratio1 {
-			disk2 = disk1
+			dest2 = dest1
 			ratio2 = ratio1
-			disk1 = ds.diskId
+			dest1 = &ds.dest
 			ratio1 = ratio
 		} else if ratio > ratio2 {
-			disk2 = ds.diskId
+			dest2 = &ds.dest
 			ratio2 = ratio
 		}
 	}
-	if disk1 == "" {
-		return []model.DiskId{}
+	if dest1 == nil {
+		return []dest{}
 	}
-	if disk2 == "" {
-		return []model.DiskId{disk1}
+	if dest2 == nil {
+		return []dest{*dest1}
 	}
-	return []model.DiskId{disk1, disk2}
+	return []dest{*dest1, *dest2}
 }
 
 type saveRequest struct {
-	to      model.DiskId
-	from    []model.DiskId
+	to      dest
+	from    []dest
 	blockId model.BlockId
 }
 
@@ -71,7 +71,7 @@ func (s *saveRequest) Type() model.PayloadType {
 }
 
 type deleteRequest struct {
-	diskId  model.DiskId
+	dest    dest
 	blockId model.BlockId
 }
 
@@ -80,36 +80,41 @@ func (s *deleteRequest) Type() model.PayloadType {
 }
 
 type diskSpace struct {
-	diskId model.DiskId
-	space  int
+	dest  dest
+	space int
 }
 
-func (s *State) SetDiskSpace(diskId model.DiskId, space int) {
+type dest struct {
+	diskId model.DiskId
+	nodeId model.NodeId
+}
+
+func (s *State) SetDiskSpace(d dest, space int) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
 	for i := range s.diskSpace {
-		if s.diskSpace[i].diskId == diskId {
+		if s.diskSpace[i].dest == d {
 			s.diskSpace[i].space = space
 			return
 		}
 	}
 
-	s.diskSpace = append(s.diskSpace, diskSpace{diskId: diskId, space: space})
+	s.diskSpace = append(s.diskSpace, diskSpace{dest: d, space: space})
 
-	if _, exists := s.diskBlockMapFuture[diskId]; !exists {
-		s.diskBlockMapFuture[diskId] = make(map[model.BlockId]struct{})
+	if _, exists := s.diskBlockMapFuture[d]; !exists {
+		s.diskBlockMapFuture[d] = make(map[model.BlockId]struct{})
 	}
-	if _, exists := s.diskBlockMapFuture[diskId]; !exists {
-		s.diskBlockMapFuture[diskId] = make(map[model.BlockId]struct{})
+	if _, exists := s.diskBlockMapFuture[d]; !exists {
+		s.diskBlockMapFuture[d] = make(map[model.BlockId]struct{})
 	}
 }
 
-func (s *State) Saved(blockId model.BlockId, diskId model.DiskId) {
+func (s *State) Saved(blockId model.BlockId, d dest) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, diskId)
+	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
 	if futureDisks, ok := s.blockDiskMapFuture[blockId]; ok {
 		if currentDisks, ok := s.blockDiskMapCurrent[blockId]; ok {
 			if setEqual(futureDisks, currentDisks) {
@@ -128,7 +133,7 @@ func (s *State) Saved(blockId model.BlockId, diskId model.DiskId) {
 				needToDelete := minus(currentDisks, futureDisks)
 				for toDeleteFrom := range needToDelete {
 					s.OutDeleteRequest <- deleteRequest{
-						diskId:  toDeleteFrom,
+						dest:    toDeleteFrom,
 						blockId: blockId,
 					}
 				}
@@ -137,10 +142,10 @@ func (s *State) Saved(blockId model.BlockId, diskId model.DiskId) {
 	}
 	for _, emptyDisk := range s.emptiestDisks() {
 		addBlockAndDisk(s.diskBlockMapFuture, s.blockDiskMapFuture, blockId, emptyDisk)
-		if emptyDisk != diskId {
+		if emptyDisk != d {
 			s.OutSaveRequest <- saveRequest{
 				to:      emptyDisk,
-				from:    []model.DiskId{diskId},
+				from:    []dest{d},
 				blockId: blockId,
 			}
 		}
@@ -180,20 +185,20 @@ func toSlice[K comparable](set map[K]struct{}) []K {
 }
 
 func addBlockAndDisk(
-	diskBlockMap map[model.DiskId]map[model.BlockId]struct{},
-	blockDiskMap map[model.BlockId]map[model.DiskId]struct{},
-	blockId model.BlockId,
-	diskId model.DiskId,
+	diskBlockMap map[dest]map[model.BlockId]struct{},
+	blockDiskMap map[model.BlockId]map[dest]struct{},
+	b model.BlockId,
+	d dest,
 ) {
-	if _, ok := blockDiskMap[blockId]; !ok {
-		blockDiskMap[blockId] = make(map[model.DiskId]struct{})
+	if _, ok := blockDiskMap[b]; !ok {
+		blockDiskMap[b] = make(map[dest]struct{})
 	}
-	blockDiskMap[blockId][diskId] = struct{}{}
+	blockDiskMap[b][d] = struct{}{}
 
-	if _, ok := diskBlockMap[diskId]; !ok {
-		diskBlockMap[diskId] = make(map[model.BlockId]struct{})
+	if _, ok := diskBlockMap[d]; !ok {
+		diskBlockMap[d] = make(map[model.BlockId]struct{})
 	}
-	diskBlockMap[diskId][blockId] = struct{}{}
+	diskBlockMap[d][b] = struct{}{}
 }
 
-func (s *State) Deleted(blockId model.BlockId, diskId model.DiskId) {}
+func (s *State) Deleted(b model.BlockId, d dest) {}
