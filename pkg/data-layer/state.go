@@ -111,7 +111,29 @@ func (s *State) Saved(blockId model.BlockId, diskId model.DiskId) {
 
 	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, diskId)
 	if futureDisks, ok := s.blockDiskMapFuture[blockId]; ok {
-		
+		if currentDisks, ok := s.blockDiskMapCurrent[blockId]; ok {
+			if setEqual(futureDisks, currentDisks) {
+				return
+			}
+			needToSave := minus(futureDisks, currentDisks)
+			if len(needToSave) > 0 {
+				for toSaveTo := range needToSave {
+					s.OutSaveRequest <- saveRequest{
+						to:      toSaveTo,
+						from:    toSlice(currentDisks),
+						blockId: blockId,
+					}
+				}
+			} else {
+				needToDelete := minus(currentDisks, futureDisks)
+				for toDeleteFrom := range needToDelete {
+					s.OutDeleteRequest <- deleteRequest{
+						diskId:  toDeleteFrom,
+						blockId: blockId,
+					}
+				}
+			}
+		}
 	}
 	for _, emptyDisk := range s.emptiestDisks() {
 		addBlockAndDisk(s.diskBlockMapFuture, s.blockDiskMapFuture, blockId, emptyDisk)
@@ -123,6 +145,38 @@ func (s *State) Saved(blockId model.BlockId, diskId model.DiskId) {
 			}
 		}
 	}
+}
+
+func minus[K comparable](first, second map[K]struct{}) map[K]struct{} {
+	result := make(map[K]struct{})
+	for k := range first {
+		if _, ok := second[k]; !ok {
+			result[k] = struct{}{}
+		}
+	}
+	return result
+}
+
+func setEqual[K comparable](map1, map2 map[K]struct{}) bool {
+	if len(map1) != len(map2) {
+		return false
+	}
+
+	for key := range map1 {
+		if _, exists := map2[key]; !exists {
+			return false
+		}
+	}
+
+	return true
+}
+
+func toSlice[K comparable](set map[K]struct{}) []K {
+	result := make([]K, 0, len(set))
+	for k := range set {
+		result = append(result, k)
+	}
+	return result
 }
 
 func addBlockAndDisk(
