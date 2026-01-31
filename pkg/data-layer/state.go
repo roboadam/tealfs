@@ -25,8 +25,8 @@ type State struct {
 	diskBlockMapCurrent map[model.DiskId]map[model.BlockId]struct{}
 	blockDiskMapCurrent map[model.BlockId]map[model.DiskId]struct{}
 
-	OutSaveRequest   saveRequest
-	OutDeleteRequest deleteRequest
+	OutSaveRequest   chan<- saveRequest
+	OutDeleteRequest chan<- deleteRequest
 
 	diskSpace []diskSpace
 	mux       sync.RWMutex
@@ -40,16 +40,24 @@ func (s *State) emptiestDisks() []model.DiskId {
 	var ratio2 float32 = 0
 
 	for _, ds := range s.diskSpace {
-		ratio := float32(ds.space) / float32(len(s.diskBlockMapFuture[ds.diskId]))
+		ratio := float32(ds.space) / (float32(len(s.diskBlockMapFuture[ds.diskId]) + 1))
 		if ratio > ratio1 {
 			disk2 = disk1
 			ratio2 = ratio1
 			disk1 = ds.diskId
 			ratio1 = ratio
+		} else if ratio > ratio2 {
+			disk2 = ds.diskId
+			ratio2 = ratio
 		}
-
 	}
-
+	if disk1 == "" {
+		return []model.DiskId{}
+	}
+	if disk2 == "" {
+		return []model.DiskId{disk1}
+	}
+	return []model.DiskId{disk1, disk2}
 }
 
 type saveRequest struct {
@@ -102,6 +110,16 @@ func (s *State) Saved(blockId model.BlockId, diskId model.DiskId) {
 	defer s.mux.Unlock()
 
 	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, diskId)
+	for _, emptyDisk := range s.emptiestDisks() {
+		addBlockAndDisk(s.diskBlockMapFuture, s.blockDiskMapFuture, blockId, emptyDisk)
+		if emptyDisk != diskId {
+			s.OutSaveRequest <- saveRequest{
+				to:      emptyDisk,
+				from:    []model.DiskId{diskId},
+				blockId: blockId,
+			}
+		}
+	}
 }
 
 func addBlockAndDisk(
