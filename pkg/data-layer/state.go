@@ -25,8 +25,8 @@ type State struct {
 	diskBlockMapCurrent map[dest]map[model.BlockId]struct{}
 	blockDiskMapCurrent map[model.BlockId]map[dest]struct{}
 
-	OutSaveRequest   chan<- saveRequest
-	OutDeleteRequest chan<- deleteRequest
+	outSaveRequest   chan<- saveRequest
+	outDeleteRequest chan<- deleteRequest
 
 	diskSpace []diskSpace
 	mux       sync.RWMutex
@@ -132,7 +132,7 @@ func (s *State) Saved(blockId model.BlockId, d dest) {
 	for _, emptyDisk := range s.emptiestDisks() {
 		s.addBlockToFuture(blockId, emptyDisk)
 		if emptyDisk != d {
-			s.OutSaveRequest <- saveRequest{
+			s.outSaveRequest <- saveRequest{
 				to:      emptyDisk,
 				from:    []dest{d},
 				blockId: blockId,
@@ -148,7 +148,7 @@ func (s *State) Deleted(b model.BlockId, d dest) {
 	delete(s.diskBlockMapCurrent, d)
 	if _, ok := s.blockDiskMapFuture[b][d]; ok {
 		sources := toSlice(s.blockDiskMapCurrent[b])
-		s.OutSaveRequest <- saveRequest{
+		s.outSaveRequest <- saveRequest{
 			to:      d,
 			from:    sources,
 			blockId: b,
@@ -162,7 +162,7 @@ func (s *State) addBlockToFuture(blockId model.BlockId, emptyDisk dest) {
 
 func (s *State) sendDeleteMsgs(needToDelete map[dest]struct{}, blockId model.BlockId) {
 	for toDeleteFrom := range needToDelete {
-		s.OutDeleteRequest <- deleteRequest{
+		s.outDeleteRequest <- deleteRequest{
 			dest:    toDeleteFrom,
 			blockId: blockId,
 		}
@@ -171,7 +171,7 @@ func (s *State) sendDeleteMsgs(needToDelete map[dest]struct{}, blockId model.Blo
 
 func (s *State) sendSaveMsgs(needToSave map[dest]struct{}, currentDisks map[dest]struct{}, blockId model.BlockId) {
 	for toSaveTo := range needToSave {
-		s.OutSaveRequest <- saveRequest{
+		s.outSaveRequest <- saveRequest{
 			to:      toSaveTo,
 			from:    toSlice(currentDisks),
 			blockId: blockId,
