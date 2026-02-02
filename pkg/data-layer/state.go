@@ -114,7 +114,7 @@ func (s *State) Saved(blockId model.BlockId, d dest) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
+	s.addBlockToCurrent(blockId, d)
 	if futureDisks, ok := s.blockDiskMapFuture[blockId]; ok {
 		if currentDisks, ok := s.blockDiskMapCurrent[blockId]; ok {
 			if setEqual(futureDisks, currentDisks) {
@@ -122,26 +122,15 @@ func (s *State) Saved(blockId model.BlockId, d dest) {
 			}
 			needToSave := minus(futureDisks, currentDisks)
 			if len(needToSave) > 0 {
-				for toSaveTo := range needToSave {
-					s.OutSaveRequest <- saveRequest{
-						to:      toSaveTo,
-						from:    toSlice(currentDisks),
-						blockId: blockId,
-					}
-				}
+				s.sendSaveMsgs(needToSave, currentDisks, blockId)
 			} else {
 				needToDelete := minus(currentDisks, futureDisks)
-				for toDeleteFrom := range needToDelete {
-					s.OutDeleteRequest <- deleteRequest{
-						dest:    toDeleteFrom,
-						blockId: blockId,
-					}
-				}
+				s.sendDeleteMsgs(needToDelete, blockId)
 			}
 		}
 	}
 	for _, emptyDisk := range s.emptiestDisks() {
-		addBlockAndDisk(s.diskBlockMapFuture, s.blockDiskMapFuture, blockId, emptyDisk)
+		s.addBlockToFuture(blockId, emptyDisk)
 		if emptyDisk != d {
 			s.OutSaveRequest <- saveRequest{
 				to:      emptyDisk,
@@ -150,6 +139,48 @@ func (s *State) Saved(blockId model.BlockId, d dest) {
 			}
 		}
 	}
+}
+
+func (s *State) Deleted(b model.BlockId, d dest) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	delete(s.blockDiskMapCurrent, b)
+	delete(s.diskBlockMapCurrent, d)
+	if _, ok := s.blockDiskMapFuture[b][d]; ok {
+		sources := toSlice(s.blockDiskMapCurrent[b])
+		s.OutSaveRequest <- saveRequest{
+			to:      d,
+			from:    sources,
+			blockId: b,
+		}
+	}
+}
+
+func (s *State) addBlockToFuture(blockId model.BlockId, emptyDisk dest) {
+	addBlockAndDisk(s.diskBlockMapFuture, s.blockDiskMapFuture, blockId, emptyDisk)
+}
+
+func (s *State) sendDeleteMsgs(needToDelete map[dest]struct{}, blockId model.BlockId) {
+	for toDeleteFrom := range needToDelete {
+		s.OutDeleteRequest <- deleteRequest{
+			dest:    toDeleteFrom,
+			blockId: blockId,
+		}
+	}
+}
+
+func (s *State) sendSaveMsgs(needToSave map[dest]struct{}, currentDisks map[dest]struct{}, blockId model.BlockId) {
+	for toSaveTo := range needToSave {
+		s.OutSaveRequest <- saveRequest{
+			to:      toSaveTo,
+			from:    toSlice(currentDisks),
+			blockId: blockId,
+		}
+	}
+}
+
+func (s *State) addBlockToCurrent(blockId model.BlockId, d dest) {
+	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
 }
 
 func minus[K comparable](first, second map[K]struct{}) map[K]struct{} {
@@ -200,5 +231,3 @@ func addBlockAndDisk(
 	}
 	diskBlockMap[d][b] = struct{}{}
 }
-
-func (s *State) Deleted(b model.BlockId, d dest) {}
