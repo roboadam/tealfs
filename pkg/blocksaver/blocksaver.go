@@ -16,7 +16,6 @@ package blocksaver
 
 import (
 	"context"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
@@ -37,7 +36,6 @@ type BlockSaver struct {
 	InResp <-chan SaveToDiskResp
 	Resp   chan<- model.PutBlockResp
 
-	Distributer *dist.MirrorDistributer
 	NodeId      model.NodeId
 }
 

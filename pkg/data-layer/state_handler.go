@@ -12,6 +12,30 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-type MessageHandler struct{
-	inSaveMe
+package datalayer
+
+import (
+	"sync"
+	"tealfs/pkg/model"
+)
+
+type StateHandler struct {
+	outSaveRequest   chan<- saveRequest
+	outDeleteRequest chan<- deleteRequest
+
+	state    State
+	mainNode model.NodeId
+	mux      sync.RWMutex
+}
+
+func (s *StateHandler) SetDiskSpace(d dest, space int) {
+
+}
+
+func (s *StateHandler) Saved(blockId model.BlockId, d dest) {
+
+}
+
+func (s *StateHandler) Deleted(b model.BlockId, d dest) {
+
 }
