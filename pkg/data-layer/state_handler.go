@@ -15,7 +15,6 @@
 package datalayer
 
 import (
-	"sync"
 	"tealfs/pkg/model"
 )
 
@@ -23,9 +22,11 @@ type StateHandler struct {
 	outSaveRequest   chan<- saveRequest
 	outDeleteRequest chan<- deleteRequest
 
-	state    State
-	mainNode model.NodeId
-	mux      sync.RWMutex
+	state      State
+
+	MainNodeId model.NodeId
+	MyNodeId   model.NodeId
+	NodeConnMap *model.NodeConnectionMapper
 }
 
 func (s *StateHandler) SetDiskSpace(d dest, space int) {
