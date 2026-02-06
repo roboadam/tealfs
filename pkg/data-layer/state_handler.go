@@ -22,15 +22,26 @@ type StateHandler struct {
 	outSaveRequest   chan<- saveRequest
 	outDeleteRequest chan<- deleteRequest
 
-	state      State
+	state State
 
-	MainNodeId model.NodeId
-	MyNodeId   model.NodeId
+	MainNodeId  model.NodeId
+	MyNodeId    model.NodeId
 	NodeConnMap *model.NodeConnectionMapper
+	Sends       chan<- model.SendPayloadMsg
 }
 
+type SetDiskSpaceParams struct {
+	d dest
+	space int
+}
 func (s *StateHandler) SetDiskSpace(d dest, space int) {
-
+	if s.MainNodeId == s.MyNodeId {
+		s.state.SetDiskSpace(d, space)
+	} else {
+		// if conn, ok := s.NodeConnMap.ConnForNode(s.MainNodeId); ok {
+			// s.Sends <- 
+		// }
+	}
 }
 
 func (s *StateHandler) Saved(blockId model.BlockId, d dest) {
