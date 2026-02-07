@@ -15,19 +15,15 @@
 package model
 
 type IAm struct {
-	NodeId    NodeId
-	Disks     []DiskInfo
-	Address   string
-}
-
-func (i *IAm) Type() PayloadType {
-	return IAmType
+	NodeId  NodeId
+	Disks   []DiskInfo
+	Address string
 }
 
 func NewIam(nodeId NodeId, disks []DiskInfo, address string) IAm {
 	return IAm{
-		NodeId:    nodeId,
-		Disks:     disks,
-		Address:   address,
+		NodeId:  nodeId,
+		Disks:   disks,
+		Address: address,
 	}
 }

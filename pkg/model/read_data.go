@@ -20,7 +20,3 @@ type ReadRequest struct {
 	BlockId BlockId
 	ReqId   GetBlockId
 }
-
-func (r *ReadRequest) Type() PayloadType {
-	return ReadRequestType
-}

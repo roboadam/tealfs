@@ -16,10 +16,16 @@ package blocksaver
 
 import (
 	"context"
+	"encoding/gob"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
+
+func init() {
+	gob.Register(&SaveToDiskReq{})
+	gob.Register(&SaveToDiskResp{})
+}
 
 // This process accepts put requests from the local filesystem process only
 // Then it figures which disk (remote or local) need to get the data, then it send
@@ -52,18 +58,10 @@ type SaveToDiskReq struct {
 	Req    model.PutBlockReq
 }
 
-func (s *SaveToDiskReq) Type() model.PayloadType {
-	return model.SaveToDiskReq
-}
-
 type SaveToDiskResp struct {
 	Caller model.NodeId
 	Dest   Dest
 	Resp   model.PutBlockResp
-}
-
-func (s *SaveToDiskResp) Type() model.PayloadType {
-	return model.SaveToDiskResp
 }
 
 func (bs *BlockSaver) Start(ctx context.Context) {
