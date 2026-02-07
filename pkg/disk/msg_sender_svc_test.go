@@ -43,7 +43,7 @@ func TestExistsSender(t *testing.T) {
 	inAddDiskMsg <- remoteMsg
 	mcs := <-outRemote
 
-	if mcs.Payload.Type() != model.AddDiskMsgType {
+	if _, ok := mcs.Payload.(*model.AddDiskMsg); !ok {
 		t.Error("invalid payload type")
 	}
 
@@ -74,7 +74,7 @@ func TestDiskAdded(t *testing.T) {
 	inDiskAddedMsg <- remoteMsg
 	mcs := <-outRemote
 
-	if mcs.Payload.Type() != model.DiskAddedMsgType {
+	if _, ok := mcs.Payload.(*model.DiskAddedMsg); !ok {
 		t.Error("invalid payload type")
 	}
 

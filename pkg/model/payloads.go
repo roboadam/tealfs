@@ -14,7 +14,18 @@
 
 package model
 
+import (
+	"encoding/gob"
+)
+
 type PayloadType uint16
+
+func init() {
+	gob.Register(&WriteRequest{})
+	gob.Register(&IAm{})
+	gob.Register(&SyncNodes{})
+
+}
 
 const (
 	NoOpType                  PayloadType = 0
@@ -45,6 +56,4 @@ const (
 	DiskAddedMsgType          PayloadType = 26
 )
 
-type Payload interface {
-	Type() PayloadType
-}
+type Payload interface{}

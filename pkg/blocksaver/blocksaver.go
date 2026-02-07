@@ -16,10 +16,16 @@ package blocksaver
 
 import (
 	"context"
+	"encoding/gob"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
+
+func init() {
+	gob.Register(&SaveToDiskReq{})
+	gob.Register(&SaveToDiskResp{})
+}
 
 // This process accepts put requests from the local filesystem process only
 // Then it figures which disk (remote or local) need to get the data, then it send

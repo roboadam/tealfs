@@ -16,14 +16,8 @@ package tnet
 
 import (
 	"encoding/gob"
-	"fmt"
 	"io"
-	"tealfs/pkg/blockreader"
-	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/model"
-	"tealfs/pkg/webdav"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type RawNet struct {
@@ -45,77 +39,13 @@ func (r *RawNet) Close() error {
 }
 
 func (r *RawNet) ReadPayload() (model.Payload, error) {
-	var payloadType model.PayloadType
-	err := r.decoder.Decode(&payloadType)
-	if err != nil {
-		log.Error("failed to decode payload type: " + err.Error())
-		return nil, err
-	}
-
-	switch payloadType {
-	case model.IAmType:
-		var payload model.IAm
-		err = r.decoder.Decode(&payload)
-		return &payload, err
-	case model.WriteRequestType:
-		var payload model.WriteRequest
-		err = r.decoder.Decode(&payload)
-		return &payload, err
-	case model.ReadRequestType:
-		var payload model.ReadRequest
-		err = r.decoder.Decode(&payload)
-		return &payload, err
-	case model.ReadResultType:
-		var payload model.ReadResult
-		err = r.decoder.Decode(&payload)
-		return &payload, err
-	case model.FileBroadcastType:
-		var payload webdav.FileBroadcast
-		err = r.decoder.Decode(&payload)
-		return &payload, err
-	case model.AddDiskMsgType:
-		var payload model.AddDiskMsg
-		err = r.decoder.Decode(&payload)
-		return &payload, err
-	case model.DiskAddedMsgType:
-		var payload model.DiskAddedMsg
-		err = r.decoder.Decode(&payload)
-		return &payload, err
-	case model.SyncType:
-		var payload model.SyncNodes
-		err = r.decoder.Decode(&payload)
-		return &payload, err
-	case model.WriteResultType:
-		var payload model.WriteResult
-		err = r.decoder.Decode(&payload)
-		return &payload, err
-	case model.SaveToDiskReq:
-		var payload blocksaver.SaveToDiskReq
-		err := r.decoder.Decode(&payload)
-		return &payload, err
-	case model.SaveToDiskResp:
-		var payload blocksaver.SaveToDiskResp
-		err := r.decoder.Decode(&payload)
-		return &payload, err
-	case model.GetFromDiskReq:
-		var payload blockreader.GetFromDiskReq
-		err := r.decoder.Decode(&payload)
-		return &payload, err
-	case model.GetFromDiskResp:
-		var payload blockreader.GetFromDiskResp
-		err := r.decoder.Decode(&payload)
-		return &payload, err
-	}
-
-	panic("unknown payload type: " + fmt.Sprint(payloadType))
+	var payload model.Payload
+	err := r.decoder.Decode(&payload)
+	return payload, err
 }
 
-func (r *RawNet) SendPayload(payload model.Payload) error {
-	err := r.encoder.Encode(payload.Type())
-	if err != nil {
-		return err
-	}
-	err = r.encoder.Encode(payload)
+func (r *RawNet) SendPayload(payload *model.Payload) error {
+	err := r.encoder.Encode(payload)
 	if err != nil {
 		return err
 	}

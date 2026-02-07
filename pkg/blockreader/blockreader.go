@@ -16,12 +16,18 @@ package blockreader
 
 import (
 	"context"
+	"encoding/gob"
 	"errors"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 
 	log "github.com/sirupsen/logrus"
 )
+
+func init() {
+	gob.Register(&GetFromDiskReq{})
+	gob.Register(&GetFromDiskResp{})
+}
 
 type BlockReader struct {
 	// Request phase
