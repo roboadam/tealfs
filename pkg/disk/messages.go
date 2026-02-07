@@ -21,7 +21,3 @@ import (
 type DeleteBlockId struct {
 	BlockId model.BlockId
 }
-
-func (d *DeleteBlockId) Type() model.PayloadType {
-	return model.DeleteBlockId
-}

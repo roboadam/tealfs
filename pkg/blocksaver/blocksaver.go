@@ -58,18 +58,10 @@ type SaveToDiskReq struct {
 	Req    model.PutBlockReq
 }
 
-func (s *SaveToDiskReq) Type() model.PayloadType {
-	return model.SaveToDiskReq
-}
-
 type SaveToDiskResp struct {
 	Caller model.NodeId
 	Dest   Dest
 	Resp   model.PutBlockResp
-}
-
-func (s *SaveToDiskResp) Type() model.PayloadType {
-	return model.SaveToDiskResp
 }
 
 func (bs *BlockSaver) Start(ctx context.Context) {

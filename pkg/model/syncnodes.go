@@ -25,10 +25,6 @@ type SyncNodes struct {
 	}]
 }
 
-func (s *SyncNodes) Type() PayloadType {
-	return SyncType
-}
-
 func NewSyncNodes() SyncNodes {
 	return SyncNodes{
 		Nodes: set.NewSet[struct {

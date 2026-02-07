@@ -54,18 +54,10 @@ type GetFromDiskReq struct {
 	Req    model.GetBlockReq
 }
 
-func (s *GetFromDiskReq) Type() model.PayloadType {
-	return model.GetFromDiskReq
-}
-
 type GetFromDiskResp struct {
 	Caller model.NodeId
 	Dest   Dest
 	Resp   model.GetBlockResp
-}
-
-func (s *GetFromDiskResp) Type() model.PayloadType {
-	return model.GetFromDiskResp
 }
 
 func (bs *BlockReader) Start(ctx context.Context) {

@@ -73,18 +73,10 @@ type AddDiskMsg struct {
 	NodeId NodeId
 }
 
-func (a *AddDiskMsg) Type() PayloadType {
-	return AddDiskMsgType
-}
-
 type DiskAddedMsg struct {
 	DiskId DiskId
 	Path   string
 	NodeId NodeId
-}
-
-func (d *DiskAddedMsg) Type() PayloadType {
-	return DiskAddedMsgType
 }
 
 type DiskInfo struct {

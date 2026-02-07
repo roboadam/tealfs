@@ -27,33 +27,4 @@ func init() {
 
 }
 
-const (
-	NoOpType                  PayloadType = 0
-	IAmType                   PayloadType = 1
-	SyncType                  PayloadType = 2
-	WriteRequestType          PayloadType = 3
-	WriteResultType           PayloadType = 4
-	ReadRequestType           PayloadType = 5
-	ReadResultType            PayloadType = 6
-	FileBroadcastType         PayloadType = 7
-	SaveToDiskReq             PayloadType = 9
-	SaveToDiskResp            PayloadType = 10
-	GetFromDiskReq            PayloadType = 11
-	GetFromDiskResp           PayloadType = 12
-	Election                  PayloadType = 13
-	Alive                     PayloadType = 14
-	Victory                   PayloadType = 15
-	BalanceReqType            PayloadType = 16
-	OnDiskBlockIdListType     PayloadType = 17
-	DeleteBlockId             PayloadType = 18
-	StoreItReqType            PayloadType = 19
-	StoreItCmdType            PayloadType = 20
-	StoreItRespType           PayloadType = 21
-	FilesystemBlockIdListType PayloadType = 22
-	ExistsReqType             PayloadType = 23
-	ExistsRespType            PayloadType = 24
-	AddDiskMsgType            PayloadType = 25
-	DiskAddedMsgType          PayloadType = 26
-)
-
 type Payload interface{}
