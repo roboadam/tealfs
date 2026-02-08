@@ -16,6 +16,7 @@ package webdav
 
 import (
 	"context"
+	"encoding/gob"
 	"net/http"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
@@ -25,6 +26,10 @@ import (
 
 	"golang.org/x/net/webdav"
 )
+
+func init() {
+	gob.Register(&FileBroadcast{})
+}
 
 type Webdav struct {
 	webdavMgrGets chan model.GetBlockReq

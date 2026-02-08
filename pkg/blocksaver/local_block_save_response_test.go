@@ -90,7 +90,7 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	)
 
 	payload := <-sends
-	if payload.Payload.Type() != model.SaveToDiskResp {
+	if _, ok := payload.Payload.(*SaveToDiskResp); !ok {
 		t.Error("unknown send payload")
 		return
 	}

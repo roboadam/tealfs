@@ -66,7 +66,11 @@ func TestRemoteBlockSaver(t *testing.T) {
 
 	mcs := <-sends
 
-	if mcs.ConnId != connId || mcs.Payload.Type() != model.SaveToDiskReq {
+	if mcs.ConnId != connId {
+		t.Error("Invalid send")
+		return
+	}
+	if _, ok := mcs.Payload.(*SaveToDiskReq); !ok {
 		t.Error("Invalid send")
 		return
 	}

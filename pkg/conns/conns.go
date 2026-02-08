@@ -129,7 +129,7 @@ func (c *Conns) consumeChannels() {
 			} else {
 				//Todo maybe this should be async
 				rawNet := c.netConns[sendReq.ConnId]
-				err := rawNet.SendPayload(sendReq.Payload)
+				err := rawNet.SendPayload(&sendReq.Payload)
 				if err != nil {
 					c.handleSendFailure(err)
 				}

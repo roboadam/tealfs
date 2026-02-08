@@ -22,10 +22,6 @@ type WriteResult struct {
 	ReqId   PutBlockId
 }
 
-func (w *WriteResult) Type() PayloadType {
-	return WriteResultType
-}
-
 func NewWriteResultOk(
 	ptr DiskPointer,
 	caller NodeId,

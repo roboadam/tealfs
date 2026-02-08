@@ -14,8 +14,6 @@
 
 package webdav
 
-import "tealfs/pkg/model"
-
 type FileBroadcastType uint32
 
 const (
@@ -26,8 +24,4 @@ const (
 type FileBroadcast struct {
 	UpdateType FileBroadcastType
 	FileBytes  []byte
-}
-
-func (f *FileBroadcast) Type() model.PayloadType {
-	return model.FileBroadcastType
 }

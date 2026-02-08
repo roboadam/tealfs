@@ -19,7 +19,3 @@ type WriteRequest struct {
 	Data   RawData
 	ReqId  PutBlockId
 }
-
-func (w *WriteRequest) Type() PayloadType {
-	return WriteRequestType
-}

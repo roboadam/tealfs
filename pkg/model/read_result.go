@@ -24,10 +24,6 @@ type ReadResult struct {
 	ReqId   GetBlockId
 }
 
-func (r *ReadResult) Type() PayloadType {
-	return ReadResultType
-}
-
 func NewReadResultOk(
 	caller NodeId,
 	ptrs []DiskPointer,
