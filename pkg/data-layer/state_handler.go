@@ -15,6 +15,7 @@
 package datalayer
 
 import (
+	"context"
 	"sync"
 	"tealfs/pkg/model"
 )
@@ -32,12 +33,25 @@ type StateHandler struct {
 	NodeConnMap *model.NodeConnectionMapper
 }
 
+func (s *StateHandler) Start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+			
+		}
+	}
+}
+
 type SetDiskSpaceParams struct {
 	d     dest
 	space int
 }
 
 func (s *StateHandler) SetDiskSpace(d dest, space int) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
 	if s.MainNodeId == s.MyNodeId {
 		s.state.setDiskSpace(d, space)
 	} else {
@@ -57,6 +71,9 @@ type SavedParams struct {
 }
 
 func (s *StateHandler) Saved(blockId model.BlockId, d dest) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
 	if s.MainNodeId == s.MyNodeId {
 		s.state.saved(blockId, d)
 	} else {
@@ -76,6 +93,9 @@ type DeletedParams struct {
 }
 
 func (s *StateHandler) Deleted(b model.BlockId, d dest) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
 	if s.MainNodeId == s.MyNodeId {
 		s.state.deleted(b, d)
 	} else {
