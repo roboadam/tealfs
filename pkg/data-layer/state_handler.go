@@ -15,39 +15,76 @@
 package datalayer
 
 import (
+	"sync"
 	"tealfs/pkg/model"
 )
 
 type StateHandler struct {
-	outSaveRequest   chan<- saveRequest
-	outDeleteRequest chan<- deleteRequest
+	OutSaveRequest   chan<- SaveRequest
+	OutDeleteRequest chan<- DeleteRequest
+	OutSends         chan<- model.SendPayloadMsg
 
-	state State
+	state state
+	mux   sync.Mutex
 
 	MainNodeId  model.NodeId
 	MyNodeId    model.NodeId
 	NodeConnMap *model.NodeConnectionMapper
-	Sends       chan<- model.SendPayloadMsg
 }
 
 type SetDiskSpaceParams struct {
-	d dest
+	d     dest
 	space int
 }
+
 func (s *StateHandler) SetDiskSpace(d dest, space int) {
 	if s.MainNodeId == s.MyNodeId {
-		s.state.SetDiskSpace(d, space)
+		s.state.setDiskSpace(d, space)
 	} else {
-		// if conn, ok := s.NodeConnMap.ConnForNode(s.MainNodeId); ok {
-			// s.Sends <- 
-		// }
+		if conn, ok := s.NodeConnMap.ConnForNode(s.MainNodeId); ok {
+			params := SetDiskSpaceParams{d: d, space: space}
+			s.OutSends <- model.SendPayloadMsg{
+				ConnId:  conn,
+				Payload: params,
+			}
+		}
 	}
 }
 
-func (s *StateHandler) Saved(blockId model.BlockId, d dest) {
+type SavedParams struct {
+	blockId model.BlockId
+	d       dest
+}
 
+func (s *StateHandler) Saved(blockId model.BlockId, d dest) {
+	if s.MainNodeId == s.MyNodeId {
+		s.state.saved(blockId, d)
+	} else {
+		if conn, ok := s.NodeConnMap.ConnForNode(s.MainNodeId); ok {
+			params := SavedParams{blockId: blockId, d: d}
+			s.OutSends <- model.SendPayloadMsg{
+				ConnId:  conn,
+				Payload: params,
+			}
+		}
+	}
+}
+
+type DeletedParams struct {
+	b model.BlockId
+	d dest
 }
 
 func (s *StateHandler) Deleted(b model.BlockId, d dest) {
-
+	if s.MainNodeId == s.MyNodeId {
+		s.state.deleted(b, d)
+	} else {
+		if conn, ok := s.NodeConnMap.ConnForNode(s.MainNodeId); ok {
+			params := DeletedParams{b: b, d: d}
+			s.OutSends <- model.SendPayloadMsg{
+				ConnId:  conn,
+				Payload: params,
+			}
+		}
+	}
 }

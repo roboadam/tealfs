@@ -15,24 +15,22 @@
 package datalayer
 
 import (
-	"sync"
 	"tealfs/pkg/model"
 )
 
-type State struct {
+type state struct {
 	diskBlockMapFuture  map[dest]map[model.BlockId]struct{}
 	blockDiskMapFuture  map[model.BlockId]map[dest]struct{}
 	diskBlockMapCurrent map[dest]map[model.BlockId]struct{}
 	blockDiskMapCurrent map[model.BlockId]map[dest]struct{}
 
-	outSaveRequest   chan<- saveRequest
-	outDeleteRequest chan<- deleteRequest
+	outSaveRequest   chan<- SaveRequest
+	outDeleteRequest chan<- DeleteRequest
 
 	diskSpace []diskSpace
-	mux       sync.RWMutex
 }
 
-func (s *State) emptiestDisks() []dest {
+func (s *state) emptiestDisks() []dest {
 	var dest1 *dest
 	var dest2 *dest
 
@@ -60,23 +58,15 @@ func (s *State) emptiestDisks() []dest {
 	return []dest{*dest1, *dest2}
 }
 
-type saveRequest struct {
+type SaveRequest struct {
 	to      dest
 	from    []dest
 	blockId model.BlockId
 }
 
-func (s *saveRequest) Type() model.PayloadType {
-	return model.StateSaveRequest
-}
-
-type deleteRequest struct {
+type DeleteRequest struct {
 	dest    dest
 	blockId model.BlockId
-}
-
-func (s *deleteRequest) Type() model.PayloadType {
-	return model.StateDeleteRequest
 }
 
 type diskSpace struct {
@@ -89,10 +79,7 @@ type dest struct {
 	nodeId model.NodeId
 }
 
-func (s *State) SetDiskSpace(d dest, space int) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
+func (s *state) setDiskSpace(d dest, space int) {
 	for i := range s.diskSpace {
 		if s.diskSpace[i].dest == d {
 			s.diskSpace[i].space = space
@@ -110,10 +97,7 @@ func (s *State) SetDiskSpace(d dest, space int) {
 	}
 }
 
-func (s *State) Saved(blockId model.BlockId, d dest) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
+func (s *state) saved(blockId model.BlockId, d dest) {
 	s.addBlockToCurrent(blockId, d)
 	if futureDisks, ok := s.blockDiskMapFuture[blockId]; ok {
 		if currentDisks, ok := s.blockDiskMapCurrent[blockId]; ok {
@@ -132,7 +116,7 @@ func (s *State) Saved(blockId model.BlockId, d dest) {
 	for _, emptyDisk := range s.emptiestDisks() {
 		s.addBlockToFuture(blockId, emptyDisk)
 		if emptyDisk != d {
-			s.outSaveRequest <- saveRequest{
+			s.outSaveRequest <- SaveRequest{
 				to:      emptyDisk,
 				from:    []dest{d},
 				blockId: blockId,
@@ -141,14 +125,12 @@ func (s *State) Saved(blockId model.BlockId, d dest) {
 	}
 }
 
-func (s *State) Deleted(b model.BlockId, d dest) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
+func (s *state) deleted(b model.BlockId, d dest) {
 	delete(s.blockDiskMapCurrent, b)
 	delete(s.diskBlockMapCurrent, d)
 	if _, ok := s.blockDiskMapFuture[b][d]; ok {
 		sources := toSlice(s.blockDiskMapCurrent[b])
-		s.outSaveRequest <- saveRequest{
+		s.outSaveRequest <- SaveRequest{
 			to:      d,
 			from:    sources,
 			blockId: b,
@@ -156,22 +138,22 @@ func (s *State) Deleted(b model.BlockId, d dest) {
 	}
 }
 
-func (s *State) addBlockToFuture(blockId model.BlockId, emptyDisk dest) {
+func (s *state) addBlockToFuture(blockId model.BlockId, emptyDisk dest) {
 	addBlockAndDisk(s.diskBlockMapFuture, s.blockDiskMapFuture, blockId, emptyDisk)
 }
 
-func (s *State) sendDeleteMsgs(needToDelete map[dest]struct{}, blockId model.BlockId) {
+func (s *state) sendDeleteMsgs(needToDelete map[dest]struct{}, blockId model.BlockId) {
 	for toDeleteFrom := range needToDelete {
-		s.outDeleteRequest <- deleteRequest{
+		s.outDeleteRequest <- DeleteRequest{
 			dest:    toDeleteFrom,
 			blockId: blockId,
 		}
 	}
 }
 
-func (s *State) sendSaveMsgs(needToSave map[dest]struct{}, currentDisks map[dest]struct{}, blockId model.BlockId) {
+func (s *state) sendSaveMsgs(needToSave map[dest]struct{}, currentDisks map[dest]struct{}, blockId model.BlockId) {
 	for toSaveTo := range needToSave {
-		s.outSaveRequest <- saveRequest{
+		s.outSaveRequest <- SaveRequest{
 			to:      toSaveTo,
 			from:    toSlice(currentDisks),
 			blockId: blockId,
@@ -179,7 +161,7 @@ func (s *State) sendSaveMsgs(needToSave map[dest]struct{}, currentDisks map[dest
 	}
 }
 
-func (s *State) addBlockToCurrent(blockId model.BlockId, d dest) {
+func (s *state) addBlockToCurrent(blockId model.BlockId, d dest) {
 	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
 }
 
