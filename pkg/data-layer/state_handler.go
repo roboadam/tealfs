@@ -34,12 +34,30 @@ type StateHandler struct {
 }
 
 func (s *StateHandler) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-			
+	if s.MainNodeId == s.MyNodeId {
+
+	} else {
+		saveRequests := make(chan SaveRequest)
+		s.state.outSaveRequest = saveRequests
+		for {
+			select {
+			case <- ctx.Done():
+				return
+			case req := <-saveRequests:
+				var connId model.ConnId
+				for _, dest := range req.from {
+					if dest.nodeId == s.MyNodeId {
+						s.OutSaveRequest <- req
+						continue
+					}
+					if foundConn, ok := s.NodeConnMap.ConnForNode(dest.nodeId); ok {
+						connId = foundConn
+					}
+				}
+				if  
+			}
 		}
+		
 	}
 }
 
