@@ -18,6 +18,8 @@ import (
 	"context"
 	"sync"
 	"tealfs/pkg/model"
+
+	"github.com/sirupsen/logrus"
 )
 
 type StateHandler struct {
@@ -35,16 +37,16 @@ type StateHandler struct {
 
 func (s *StateHandler) Start(ctx context.Context) {
 	if s.MainNodeId == s.MyNodeId {
-
+		s.OutSaveRequest = s.state.outSaveRequest
 	} else {
 		saveRequests := make(chan SaveRequest)
 		s.state.outSaveRequest = saveRequests
 		for {
 			select {
-			case <- ctx.Done():
+			case <-ctx.Done():
 				return
 			case req := <-saveRequests:
-				var connId model.ConnId
+				var connId model.ConnId = -1
 				for _, dest := range req.from {
 					if dest.nodeId == s.MyNodeId {
 						s.OutSaveRequest <- req
@@ -54,10 +56,15 @@ func (s *StateHandler) Start(ctx context.Context) {
 						connId = foundConn
 					}
 				}
-				if  
+				if connId == -1 {
+					logrus.Panic("No connection found")
+				}
+				s.OutSends <- model.SendPayloadMsg{
+					ConnId:  connId,
+					Payload: req,
+				}
 			}
 		}
-		
 	}
 }
 
