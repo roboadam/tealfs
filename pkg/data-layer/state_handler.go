@@ -36,50 +36,49 @@ type StateHandler struct {
 }
 
 func (s *StateHandler) Start(ctx context.Context) {
-	if s.MainNodeId == s.MyNodeId {
-		s.state.outSaveRequest = s.OutSaveRequest
-		s.state.outDeleteRequest = s.OutDeleteRequest
-	} else {
-		saveRequests := make(chan SaveRequest, 1)
-		deleteRequests := make(chan DeleteRequest, 1)
-		s.state.outSaveRequest = saveRequests
-		s.state.outDeleteRequest = deleteRequests
+	if s.MainNodeId != s.MyNodeId {
+		return
+	}
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case req := <-saveRequests:
-				var connId model.ConnId = -1
-				for _, dest := range req.From {
-					if dest.NodeId == s.MyNodeId {
-						s.OutSaveRequest <- req
-						continue
-					}
-					if foundConn, ok := s.NodeConnMap.ConnForNode(dest.NodeId); ok {
-						connId = foundConn
-					}
-				}
-				if connId == -1 {
-					log.Panic("No connection found")
-				}
-				s.OutSends <- model.SendPayloadMsg{
-					ConnId:  connId,
-					Payload: req,
-				}
-			case req := <-deleteRequests:
-				if req.dest.NodeId == s.MyNodeId {
-					s.OutDeleteRequest <- req
+	saveRequests := make(chan SaveRequest, 1)
+	deleteRequests := make(chan DeleteRequest, 1)
+	s.state.outSaveRequest = saveRequests
+	s.state.outDeleteRequest = deleteRequests
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case req := <-saveRequests:
+			var connId model.ConnId = -1
+			for _, dest := range req.From {
+				if dest.NodeId == s.MyNodeId {
+					s.OutSaveRequest <- req
 					continue
 				}
-				if foundConn, ok := s.NodeConnMap.ConnForNode(req.dest.NodeId); ok {
-					s.OutSends <- model.SendPayloadMsg{
-						ConnId:  foundConn,
-						Payload: req,
-					}
-				} else {
-					log.Panic("No connection found")
+				if foundConn, ok := s.NodeConnMap.ConnForNode(dest.NodeId); ok {
+					connId = foundConn
 				}
+			}
+			if connId == -1 {
+				log.Panic("No connection found")
+			}
+			s.OutSends <- model.SendPayloadMsg{
+				ConnId:  connId,
+				Payload: req,
+			}
+		case req := <-deleteRequests:
+			if req.dest.NodeId == s.MyNodeId {
+				s.OutDeleteRequest <- req
+				continue
+			}
+			if foundConn, ok := s.NodeConnMap.ConnForNode(req.dest.NodeId); ok {
+				s.OutSends <- model.SendPayloadMsg{
+					ConnId:  foundConn,
+					Payload: req,
+				}
+			} else {
+				log.Panic("No connection found")
 			}
 		}
 	}

@@ -80,6 +80,7 @@ type Dest struct {
 }
 
 func (s *state) setDiskSpace(d Dest, space int) {
+	s.init()
 	for i := range s.diskSpace {
 		if s.diskSpace[i].dest == d {
 			s.diskSpace[i].space = space
@@ -97,7 +98,17 @@ func (s *state) setDiskSpace(d Dest, space int) {
 	}
 }
 
+func (s *state) init() {
+	if s.diskBlockMapCurrent == nil {
+		s.diskBlockMapCurrent = make(map[Dest]map[model.BlockId]struct{})
+		s.diskBlockMapFuture = make(map[Dest]map[model.BlockId]struct{})
+		s.blockDiskMapCurrent = make(map[model.BlockId]map[Dest]struct{})
+		s.blockDiskMapFuture = make(map[model.BlockId]map[Dest]struct{})
+	}
+}
+
 func (s *state) saved(blockId model.BlockId, d Dest) {
+	s.init()
 	s.addBlockToCurrent(blockId, d)
 	if futureDisks, ok := s.blockDiskMapFuture[blockId]; ok {
 		if currentDisks, ok := s.blockDiskMapCurrent[blockId]; ok {
@@ -126,6 +137,7 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 }
 
 func (s *state) deleted(b model.BlockId, d Dest) {
+	s.init()
 	delete(s.blockDiskMapCurrent, b)
 	delete(s.diskBlockMapCurrent, d)
 	if _, ok := s.blockDiskMapFuture[b][d]; ok {
