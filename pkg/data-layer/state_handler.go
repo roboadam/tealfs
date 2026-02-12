@@ -19,7 +19,7 @@ import (
 	"sync"
 	"tealfs/pkg/model"
 
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type StateHandler struct {
@@ -37,10 +37,16 @@ type StateHandler struct {
 
 func (s *StateHandler) Start(ctx context.Context) {
 	if s.MainNodeId == s.MyNodeId {
+		s.state.outSaveRequest = make(chan<- SaveRequest, 1)
+		s.state.outDeleteRequest = make(chan<- DeleteRequest, 1)
 		s.OutSaveRequest = s.state.outSaveRequest
+		s.OutDeleteRequest = s.state.outDeleteRequest
 	} else {
-		saveRequests := make(chan SaveRequest)
+		saveRequests := make(chan SaveRequest, 1)
+		deleteRequests := make(chan DeleteRequest, 1)
 		s.state.outSaveRequest = saveRequests
+		s.state.outDeleteRequest = deleteRequests
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -57,11 +63,24 @@ func (s *StateHandler) Start(ctx context.Context) {
 					}
 				}
 				if connId == -1 {
-					logrus.Panic("No connection found")
+					log.Panic("No connection found")
 				}
 				s.OutSends <- model.SendPayloadMsg{
 					ConnId:  connId,
 					Payload: req,
+				}
+			case req := <-deleteRequests:
+				if req.dest.nodeId == s.MyNodeId {
+					s.OutDeleteRequest <- req
+					continue
+				}
+				if foundConn, ok := s.NodeConnMap.ConnForNode(req.dest.nodeId); ok {
+					s.OutSends <- model.SendPayloadMsg{
+						ConnId:  foundConn,
+						Payload: req,
+					}
+				} else {
+					log.Panic("No connection found")
 				}
 			}
 		}
