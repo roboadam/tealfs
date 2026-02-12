@@ -37,10 +37,8 @@ type StateHandler struct {
 
 func (s *StateHandler) Start(ctx context.Context) {
 	if s.MainNodeId == s.MyNodeId {
-		s.state.outSaveRequest = make(chan<- SaveRequest, 1)
-		s.state.outDeleteRequest = make(chan<- DeleteRequest, 1)
-		s.OutSaveRequest = s.state.outSaveRequest
-		s.OutDeleteRequest = s.state.outDeleteRequest
+		s.state.outSaveRequest = s.OutSaveRequest
+		s.state.outDeleteRequest = s.OutDeleteRequest
 	} else {
 		saveRequests := make(chan SaveRequest, 1)
 		deleteRequests := make(chan DeleteRequest, 1)
@@ -53,12 +51,12 @@ func (s *StateHandler) Start(ctx context.Context) {
 				return
 			case req := <-saveRequests:
 				var connId model.ConnId = -1
-				for _, dest := range req.from {
-					if dest.nodeId == s.MyNodeId {
+				for _, dest := range req.From {
+					if dest.NodeId == s.MyNodeId {
 						s.OutSaveRequest <- req
 						continue
 					}
-					if foundConn, ok := s.NodeConnMap.ConnForNode(dest.nodeId); ok {
+					if foundConn, ok := s.NodeConnMap.ConnForNode(dest.NodeId); ok {
 						connId = foundConn
 					}
 				}
@@ -70,11 +68,11 @@ func (s *StateHandler) Start(ctx context.Context) {
 					Payload: req,
 				}
 			case req := <-deleteRequests:
-				if req.dest.nodeId == s.MyNodeId {
+				if req.dest.NodeId == s.MyNodeId {
 					s.OutDeleteRequest <- req
 					continue
 				}
-				if foundConn, ok := s.NodeConnMap.ConnForNode(req.dest.nodeId); ok {
+				if foundConn, ok := s.NodeConnMap.ConnForNode(req.dest.NodeId); ok {
 					s.OutSends <- model.SendPayloadMsg{
 						ConnId:  foundConn,
 						Payload: req,
@@ -88,11 +86,11 @@ func (s *StateHandler) Start(ctx context.Context) {
 }
 
 type SetDiskSpaceParams struct {
-	d     dest
+	d     Dest
 	space int
 }
 
-func (s *StateHandler) SetDiskSpace(d dest, space int) {
+func (s *StateHandler) SetDiskSpace(d Dest, space int) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -111,10 +109,10 @@ func (s *StateHandler) SetDiskSpace(d dest, space int) {
 
 type SavedParams struct {
 	blockId model.BlockId
-	d       dest
+	d       Dest
 }
 
-func (s *StateHandler) Saved(blockId model.BlockId, d dest) {
+func (s *StateHandler) Saved(blockId model.BlockId, d Dest) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -133,10 +131,10 @@ func (s *StateHandler) Saved(blockId model.BlockId, d dest) {
 
 type DeletedParams struct {
 	b model.BlockId
-	d dest
+	d Dest
 }
 
-func (s *StateHandler) Deleted(b model.BlockId, d dest) {
+func (s *StateHandler) Deleted(b model.BlockId, d Dest) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
