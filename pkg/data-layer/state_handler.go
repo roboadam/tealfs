@@ -45,6 +45,10 @@ func (s *StateHandler) Start(ctx context.Context) {
 	s.state.outSaveRequest = saveRequests
 	s.state.outDeleteRequest = deleteRequests
 
+	go s.listen(ctx, saveRequests, deleteRequests)
+}
+
+func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest, deleteRequests chan DeleteRequest) {
 	for {
 		select {
 		case <-ctx.Done():

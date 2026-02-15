@@ -19,7 +19,6 @@ import (
 	datalayer "tealfs/pkg/data-layer"
 	"tealfs/pkg/model"
 	"testing"
-	"time"
 )
 
 func TestStateHandlerAsMain(t *testing.T) {
@@ -42,9 +41,7 @@ func TestStateHandlerAsMain(t *testing.T) {
 		MyNodeId:         "nodeId",
 		NodeConnMap:      mapper,
 	}
-	go stateHandler.Start(ctx)
-
-	time.Sleep(time.Second)
+	stateHandler.Start(ctx)
 
 	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"}, 2)
 	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: "remoteNode1Id"}, 1)
