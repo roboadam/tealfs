@@ -51,27 +51,19 @@ func TestStateHandlerAsMain(t *testing.T) {
 	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: "remoteNode2Id"}, 3)
 
 	stateHandler.Saved("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"})
-	netMsg := <- outSends
-	if netMsg.ConnId != 1 {
-		t.Error("Sent to wrong connection")
+	receivedSave := <-outSave
+	if receivedSave.BlockId != "block1Id" {
+		t.Error("Invalid BlockId")
 	}
-	if receivedSave, ok := netMsg.Payload.(datalayer.SaveRequest); ok {
-		if receivedSave.BlockId != "block1Id" {
-			t.Error("Invalid BlockId")
-		}
-		if len(receivedSave.From) != 1 {
-			t.Error("Block starts off saved in only one place")
-		}
-		from := receivedSave.From[0]
-		if from.NodeId != "nodeId" || from.DiskId != "disk1Id" {
-			t.Error("Should be already saved on the local nodes only disk")
-		}
-		to :=  receivedSave.To
-		if to.NodeId != "remoteNode2Id" || to.DiskId != "disk3Id" {
-			t.Error("Should be saved to the biggest disk")
-		}
-	} else {
-		t.Error("Expected SaveRequest")
+	if len(receivedSave.From) != 1 {
+		t.Error("Block starts off saved in only one place")
 	}
-
+	from := receivedSave.From[0]
+	if from.NodeId != "nodeId" || from.DiskId != "disk1Id" {
+		t.Error("Should be already saved on the local nodes only disk")
+	}
+	to := receivedSave.To
+	if to.NodeId != "remoteNode2Id" || to.DiskId != "disk3Id" {
+		t.Error("Should be saved to the biggest disk")
+	}
 }

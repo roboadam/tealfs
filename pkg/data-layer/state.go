@@ -93,9 +93,6 @@ func (s *state) setDiskSpace(d Dest, space int) {
 	if _, exists := s.diskBlockMapFuture[d]; !exists {
 		s.diskBlockMapFuture[d] = make(map[model.BlockId]struct{})
 	}
-	if _, exists := s.diskBlockMapFuture[d]; !exists {
-		s.diskBlockMapFuture[d] = make(map[model.BlockId]struct{})
-	}
 }
 
 func (s *state) init() {
