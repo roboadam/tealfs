@@ -54,22 +54,14 @@ func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest
 		case <-ctx.Done():
 			return
 		case req := <-saveRequests:
-			var connId model.ConnId = -1
-			for _, dest := range req.From {
-				if dest.NodeId == s.MyNodeId {
-					s.OutSaveRequest <- req
-					continue
+			local, connId := s.whereToSendSaveRequest(req)
+			if local {
+				s.OutSaveRequest <- req
+			} else {
+				s.OutSends <- model.SendPayloadMsg{
+					ConnId:  connId,
+					Payload: req,
 				}
-				if foundConn, ok := s.NodeConnMap.ConnForNode(dest.NodeId); ok {
-					connId = foundConn
-				}
-			}
-			if connId == -1 {
-				log.Panic("No connection found")
-			}
-			s.OutSends <- model.SendPayloadMsg{
-				ConnId:  connId,
-				Payload: req,
 			}
 		case req := <-deleteRequests:
 			if req.dest.NodeId == s.MyNodeId {
@@ -86,6 +78,25 @@ func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest
 			}
 		}
 	}
+}
+
+func (s *StateHandler) whereToSendSaveRequest(req SaveRequest) (local bool, connId model.ConnId) {
+	found := false
+	for _, dest := range req.From {
+		if dest.NodeId == s.MyNodeId {
+			local = true
+			return
+		}
+		if foundConn, ok := s.NodeConnMap.ConnForNode(dest.NodeId); ok {
+			connId = foundConn
+			found = true
+			local = false
+		}
+	}
+	if !found {
+		log.Panic("didn't find conn")
+	}
+	return
 }
 
 type SetDiskSpaceParams struct {
