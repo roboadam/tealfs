@@ -64,9 +64,26 @@ func TestStateHandlerAsMain(t *testing.T) {
 		t.Error("Should be saved to the biggest disk")
 	}
 
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"}, 2)
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: "remoteNode1Id"}, 1)
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: "remoteNode2Id"}, 3)
+	stateHandler.Saved("block2Id", datalayer.Dest{DiskId: "disk3Id", NodeId: "remoteNode2Id"})
+	receivedPayload := <-outSends
+	if receivedSave, ok := receivedPayload.Payload.(datalayer.SaveRequest); ok {
+		if receivedSave.BlockId != "block2Id" {
+			t.Error("Invalid BlockId")
+		}
+		if len(receivedSave.From) != 1 {
+			t.Error("Block starts off saved in only one place")
+		}
+		from := receivedSave.From[0]
+		if from.NodeId != "remoteNode2Id" || from.DiskId != "disk3Id" {
+			t.Error("Should be already saved on the local nodes only disk")
+		}
+		to := receivedSave.To
+		if to.NodeId != "nodeId" || to.DiskId != "disk1Id" {
+			t.Error("Should be saved to the biggest disk")
+		}
+	} else {
+		t.Error("wrong type")
+	}
 }
 
 func TestStateHandlerAsRemote(t *testing.T) {
