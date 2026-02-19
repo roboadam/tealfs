@@ -63,6 +63,10 @@ func TestStateHandlerAsMain(t *testing.T) {
 	if to.NodeId != "remoteNode2Id" || to.DiskId != "disk3Id" {
 		t.Error("Should be saved to the biggest disk")
 	}
+
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"}, 2)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: "remoteNode1Id"}, 1)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: "remoteNode2Id"}, 3)
 }
 
 func TestStateHandlerAsRemote(t *testing.T) {
@@ -100,7 +104,7 @@ func TestStateHandlerAsRemote(t *testing.T) {
 		if saveParams.BlockId != "block1Id" {
 			t.Error("Invalid BlockId")
 		}
-		if saveParams.D.DiskId != "disk3Id" || saveParams.D.NodeId != "remoteNode2Id" {
+		if saveParams.D.DiskId != "disk1Id" || saveParams.D.NodeId != "nodeId" {
 			t.Error("wrong dest")
 		}
 	} else {
