@@ -96,20 +96,12 @@ func TestStateHandlerAsRemote(t *testing.T) {
 
 	stateHandler.Saved("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"})
 	sendPayloadMsg := <-outSends
-	if receivedSave, ok := sendPayloadMsg.Payload.(datalayer.SavedParams); ok {
-		if receivedSave.BlockId != "block1Id" {
+	if saveParams, ok := sendPayloadMsg.Payload.(datalayer.SavedParams); ok {
+		if saveParams.BlockId != "block1Id" {
 			t.Error("Invalid BlockId")
 		}
-		if len(receivedSave.From) != 1 {
-			t.Error("Block starts off saved in only one place")
-		}
-		from := receivedSave.From[0]
-		if from.NodeId != "nodeId" || from.DiskId != "disk1Id" {
-			t.Error("Should be already saved on the local nodes only disk")
-		}
-		to := receivedSave.To
-		if to.NodeId != "remoteNode2Id" || to.DiskId != "disk3Id" {
-			t.Error("Should be saved to the biggest disk")
+		if saveParams.D.DiskId != "disk3Id" || saveParams.D.NodeId != "remoteNode2Id" {
+			t.Error("wrong dest")
 		}
 	} else {
 		t.Error("wrong type")

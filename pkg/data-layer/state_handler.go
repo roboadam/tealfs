@@ -122,8 +122,8 @@ func (s *StateHandler) SetDiskSpace(d Dest, space int) {
 }
 
 type SavedParams struct {
-	blockId model.BlockId
-	d       Dest
+	BlockId model.BlockId
+	D       Dest
 }
 
 func (s *StateHandler) Saved(blockId model.BlockId, d Dest) {
@@ -134,7 +134,7 @@ func (s *StateHandler) Saved(blockId model.BlockId, d Dest) {
 		s.state.saved(blockId, d)
 	} else {
 		if conn, ok := s.NodeConnMap.ConnForNode(s.MainNodeId); ok {
-			params := SavedParams{blockId: blockId, d: d}
+			params := SavedParams{BlockId: blockId, D: d}
 			s.OutSends <- model.SendPayloadMsg{
 				ConnId:  conn,
 				Payload: params,
