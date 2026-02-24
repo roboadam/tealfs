@@ -88,10 +88,10 @@ func TestStateHandlerAsMain(t *testing.T) {
 	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"}, 1)
 	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: "remoteNode1Id"}, 2)
 	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: "remoteNode2Id"}, 3)
-	stateHandler.Saved("block3id", datalayer.Dest{DiskId: "disk1", NodeId: "nodeId"})
+	stateHandler.Saved("block3id", datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"})
 	s1 := <-outSave
-	s2 := <-outSave
 	stateHandler.Saved(s1.BlockId, s1.To)
+	s2 := <-outSave
 	stateHandler.Saved(s2.BlockId, s2.To)
 	<-outDelete
 }
