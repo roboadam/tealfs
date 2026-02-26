@@ -16,6 +16,8 @@ package datalayer
 
 import (
 	"tealfs/pkg/model"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type state struct {
@@ -113,22 +115,29 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 	s.addBlockToCurrent(blockId, d)
 	s.removeBlockFromInFlight(blockId, d)
 	if futureDisks, ok := s.blockDiskMapFuture[blockId]; ok {
+		log.Infof("blockId: %s has future items", blockId)
 		if currentDisks, ok := s.blockDiskMapCurrent[blockId]; ok {
+			log.Infof("blockId: %s has current items items", blockId)
 			if setEqual(futureDisks, currentDisks) {
+				log.Infof("blockId: %s is done", blockId)
 				return
 			}
 			needToSave := minus(futureDisks, currentDisks)
 			if len(needToSave) > 0 {
+				log.Infof("blockId: %s need to save %d", blockId, len(needToSave))
 				s.sendSaveMsgs(needToSave, currentDisks, blockId)
 			} else {
 				needToDelete := minus(currentDisks, futureDisks)
+				log.Infof("blockId: %s need to delete %d", blockId, len(needToDelete))
 				s.sendDeleteMsgs(needToDelete, blockId)
 			}
 		}
 	}
 	for _, emptyDisk := range s.emptiestDisks() {
 		s.addBlockToFuture(blockId, emptyDisk)
-		if emptyDisk != d && !s.isBlockInFlight(blockId, emptyDisk) {
+		if emptyDisk != d && !s.saveAlreadySent(blockId, emptyDisk) {
+			s.addBlockToInFlight(blockId, emptyDisk)
+			log.Infof("Sending initial save for blockId %s", blockId)
 			s.outSaveRequest <- SaveRequest{
 				To:      emptyDisk,
 				From:    []Dest{d},
@@ -167,7 +176,7 @@ func (s *state) sendDeleteMsgs(needToDelete map[Dest]struct{}, blockId model.Blo
 
 func (s *state) sendSaveMsgs(needToSave map[Dest]struct{}, currentDisks map[Dest]struct{}, blockId model.BlockId) {
 	for toSaveTo := range needToSave {
-		if !s.isBlockInFlight(blockId, toSaveTo) {
+		if !s.saveAlreadySent(blockId, toSaveTo) {
 			s.addBlockToInFlight(blockId, toSaveTo)
 			s.outSaveRequest <- SaveRequest{
 				To:      toSaveTo,
@@ -182,10 +191,17 @@ func (s *state) addBlockToCurrent(blockId model.BlockId, d Dest) {
 	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
 }
 
-func (s *state) isBlockInFlight(blockId model.BlockId, d Dest) bool {
-	if dests, ok := s.blockDiskMapInFlight[blockId]; ok {
-		_, ok := dests[d]
+func (s *state) saveAlreadySent(blockId model.BlockId, d Dest) bool {
+	if inFlightDests, ok := s.blockDiskMapInFlight[blockId]; ok {
+		_, ok := inFlightDests[d]
+		if ok {
+			return true
+		}
+	}
+	if currentDests, ok := s.blockDiskMapCurrent[blockId]; ok {
+		_, ok := currentDests[d]
 		return ok
+
 	}
 	return false
 }
