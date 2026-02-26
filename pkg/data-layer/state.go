@@ -119,25 +119,17 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 		if currentDisks, ok := s.blockDiskMapCurrent[blockId]; ok {
 			log.Infof("blockId: %s has current items items", blockId)
 			if setEqual(futureDisks, currentDisks) {
-				log.Infof("blockId: %s is done", blockId)
 				return
 			}
-			needToSave := minus(futureDisks, currentDisks)
-			if len(needToSave) > 0 {
-				log.Infof("blockId: %s need to save %d", blockId, len(needToSave))
-				s.sendSaveMsgs(needToSave, currentDisks, blockId)
-			} else {
-				needToDelete := minus(currentDisks, futureDisks)
-				log.Infof("blockId: %s need to delete %d", blockId, len(needToDelete))
-				s.sendDeleteMsgs(needToDelete, blockId)
-			}
+
+			needToDelete := minus(currentDisks, futureDisks)
+			s.sendDeleteMsgs(needToDelete, blockId)
 		}
 	}
 	for _, emptyDisk := range s.emptiestDisks() {
 		s.addBlockToFuture(blockId, emptyDisk)
 		if emptyDisk != d && !s.saveAlreadySent(blockId, emptyDisk) {
 			s.addBlockToInFlight(blockId, emptyDisk)
-			log.Infof("Sending initial save for blockId %s", blockId)
 			s.outSaveRequest <- SaveRequest{
 				To:      emptyDisk,
 				From:    []Dest{d},
