@@ -25,9 +25,9 @@ func TestStateHandlerAsMain(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	outSave := make(chan datalayer.SaveRequest)
-	outDelete := make(chan datalayer.DeleteRequest)
-	outSends := make(chan model.SendPayloadMsg)
+	outSave := make(chan datalayer.SaveRequest, 1)
+	outDelete := make(chan datalayer.DeleteRequest, 1)
+	outSends := make(chan model.SendPayloadMsg, 1)
 
 	mapper := model.NewNodeConnectionMapper()
 	mapper.SetAll(0, "remoteNode1Address", "remoteNode1Id")
@@ -93,7 +93,14 @@ func TestStateHandlerAsMain(t *testing.T) {
 	stateHandler.Saved(s1.BlockId, s1.To)
 	s2 := <-outSave
 	stateHandler.Saved(s2.BlockId, s2.To)
-	<-outDelete
+	del := <-outDelete
+	stateHandler.Deleted(del.BlockId, del.Dest)
+
+	// stateHandler.Deleted(s1.BlockId, s1.To)
+	// s3 := <- outSave
+	// if s1.To.DiskId != s3.To.DiskId {
+	// 	t.Error("didn't refill random delete")
+	// }	
 }
 
 func TestStateHandlerAsRemote(t *testing.T) {

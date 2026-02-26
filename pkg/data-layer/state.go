@@ -69,8 +69,8 @@ type SaveRequest struct {
 }
 
 type DeleteRequest struct {
-	dest    Dest
-	blockId model.BlockId
+	Dest    Dest
+	BlockId model.BlockId
 }
 
 type diskSpace struct {
@@ -143,8 +143,10 @@ func (s *state) deleted(b model.BlockId, d Dest) {
 	s.init()
 	delete(s.blockDiskMapCurrent, b)
 	delete(s.diskBlockMapCurrent, d)
+	s.removeBlockFromCurrent(b, d)
 	if _, ok := s.blockDiskMapFuture[b][d]; ok {
 		sources := toSlice(s.blockDiskMapCurrent[b])
+		s.addBlockToInFlight(b, d)
 		s.outSaveRequest <- SaveRequest{
 			To:      d,
 			From:    sources,
@@ -160,8 +162,8 @@ func (s *state) addBlockToFuture(blockId model.BlockId, emptyDisk Dest) {
 func (s *state) sendDeleteMsgs(needToDelete map[Dest]struct{}, blockId model.BlockId) {
 	for toDeleteFrom := range needToDelete {
 		s.outDeleteRequest <- DeleteRequest{
-			dest:    toDeleteFrom,
-			blockId: blockId,
+			Dest:    toDeleteFrom,
+			BlockId: blockId,
 		}
 	}
 }
@@ -181,6 +183,9 @@ func (s *state) sendSaveMsgs(needToSave map[Dest]struct{}, currentDisks map[Dest
 
 func (s *state) addBlockToCurrent(blockId model.BlockId, d Dest) {
 	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
+}
+func (s *state) removeBlockFromCurrent(blockId model.BlockId, d Dest) {
+	removeBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
 }
 
 func (s *state) saveAlreadySent(blockId model.BlockId, d Dest) bool {

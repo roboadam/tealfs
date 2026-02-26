@@ -64,11 +64,11 @@ func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest
 				}
 			}
 		case req := <-deleteRequests:
-			if req.dest.NodeId == s.MyNodeId {
+			if req.Dest.NodeId == s.MyNodeId {
 				s.OutDeleteRequest <- req
 				continue
 			}
-			if foundConn, ok := s.NodeConnMap.ConnForNode(req.dest.NodeId); ok {
+			if foundConn, ok := s.NodeConnMap.ConnForNode(req.Dest.NodeId); ok {
 				s.OutSends <- model.SendPayloadMsg{
 					ConnId:  foundConn,
 					Payload: req,
