@@ -162,19 +162,6 @@ func (s *state) sendDeleteMsgs(needToDelete map[Dest]struct{}, blockId model.Blo
 	}
 }
 
-func (s *state) sendSaveMsgs(needToSave map[Dest]struct{}, currentDisks map[Dest]struct{}, blockId model.BlockId) {
-	for toSaveTo := range needToSave {
-		if !s.saveAlreadySent(blockId, toSaveTo) {
-			s.addBlockToInFlight(blockId, toSaveTo)
-			s.outSaveRequest <- SaveRequest{
-				To:      toSaveTo,
-				From:    toSlice(currentDisks),
-				BlockId: blockId,
-			}
-		}
-	}
-}
-
 func (s *state) addBlockToCurrent(blockId model.BlockId, d Dest) {
 	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
 }

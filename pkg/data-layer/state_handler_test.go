@@ -149,4 +149,7 @@ func TestStateHandlerAsRemote(t *testing.T) {
 	} else {
 		t.Error("wrong type")
 	}
+
+	stateHandler.Deleted("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"})
+	<-outSends
 }
