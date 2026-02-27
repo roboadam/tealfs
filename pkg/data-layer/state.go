@@ -16,8 +16,6 @@ package datalayer
 
 import (
 	"tealfs/pkg/model"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type state struct {
@@ -115,9 +113,7 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 	s.addBlockToCurrent(blockId, d)
 	s.removeBlockFromInFlight(blockId, d)
 	if futureDisks, ok := s.blockDiskMapFuture[blockId]; ok {
-		log.Infof("blockId: %s has future items", blockId)
 		if currentDisks, ok := s.blockDiskMapCurrent[blockId]; ok {
-			log.Infof("blockId: %s has current items items", blockId)
 			if setEqual(futureDisks, currentDisks) {
 				return
 			}
@@ -141,8 +137,6 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 
 func (s *state) deleted(b model.BlockId, d Dest) {
 	s.init()
-	delete(s.blockDiskMapCurrent, b)
-	delete(s.diskBlockMapCurrent, d)
 	s.removeBlockFromCurrent(b, d)
 	if _, ok := s.blockDiskMapFuture[b][d]; ok {
 		sources := toSlice(s.blockDiskMapCurrent[b])
@@ -266,6 +260,16 @@ func removeBlockAndDisk(
 	b model.BlockId,
 	d Dest,
 ) {
-	delete(diskBlockMap, d)
-	delete(blockDiskMap, b)
+	if _, ok := diskBlockMap[d]; ok {
+		delete(diskBlockMap[d], b)
+		if len(diskBlockMap[d]) == 0 {
+			delete(diskBlockMap, d)
+		}
+	}
+	if _, ok := blockDiskMap[b]; ok {
+		delete(blockDiskMap[b], d)
+		if len(blockDiskMap[b]) == 0 {
+			delete(blockDiskMap, b)
+		}
+	}
 }

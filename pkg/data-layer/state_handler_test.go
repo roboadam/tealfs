@@ -96,11 +96,16 @@ func TestStateHandlerAsMain(t *testing.T) {
 	del := <-outDelete
 	stateHandler.Deleted(del.BlockId, del.Dest)
 
-	// stateHandler.Deleted(s1.BlockId, s1.To)
-	// s3 := <- outSave
-	// if s1.To.DiskId != s3.To.DiskId {
-	// 	t.Error("didn't refill random delete")
-	// }	
+	stateHandler.Deleted(s1.BlockId, s1.To)
+	payload := <-outSends
+	if s3, ok := payload.Payload.(datalayer.SaveRequest); ok {
+		if s1.To.DiskId != s3.To.DiskId {
+			t.Error("didn't refill random delete")
+		}
+	} else {
+		t.Error("Wrong payload type")
+	}
+
 }
 
 func TestStateHandlerAsRemote(t *testing.T) {
