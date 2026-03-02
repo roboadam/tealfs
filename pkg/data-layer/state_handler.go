@@ -16,6 +16,7 @@ package datalayer
 
 import (
 	"context"
+	"hash/crc32"
 	"sync"
 	"tealfs/pkg/model"
 
@@ -33,6 +34,22 @@ type StateHandler struct {
 	MainNodeId  model.NodeId
 	MyNodeId    model.NodeId
 	NodeConnMap *model.NodeConnectionMapper
+}
+
+func MainNodeIdFor(nodeIds []model.NodeId) model.NodeId {
+	if len(nodeIds) == 0 {
+		log.Panic("No nodes")
+	}
+	mainIndex := 0
+	maxChecksum := uint32(0)
+	for i, nodeId := range nodeIds {
+		checksum := crc32.ChecksumIEEE([]byte(nodeId))
+		if maxChecksum < checksum {
+			mainIndex = i
+			maxChecksum = checksum
+		}
+	}
+	return nodeIds[mainIndex]
 }
 
 func (s *StateHandler) Start(ctx context.Context) {
