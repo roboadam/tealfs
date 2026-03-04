@@ -16,6 +16,8 @@ package model
 
 import (
 	"encoding/json"
+	"hash/crc32"
+	"log"
 	"sync"
 	"tealfs/pkg/set"
 )
@@ -184,6 +186,26 @@ func (n *NodeConnectionMapper) Marshal() ([]byte, error) {
 		AddressNodeMap: n.addressNodeMap.ToMap(),
 	}
 	return json.Marshal(exportable)
+}
+
+func (n *NodeConnectionMapper) MainNode() NodeId {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	if n.addressNodeMap.Len() == 0 {
+		log.Panic("No nodes")
+	}
+	mainIndex := 0
+	maxChecksum := uint32(0)
+	nodeValues := n.addressNodeMap.AllValues()
+	for i, nodeValue := range nodeValues {
+		var nodeId NodeId = nodeValue.J
+		checksum := crc32.ChecksumIEEE([]byte(nodeId))
+		if maxChecksum < checksum {
+			mainIndex = i
+			maxChecksum = checksum
+		}
+	}
+	return nodeValues[mainIndex].J
 }
 
 func NodeConnectionMapperUnmarshal(data []byte) (*NodeConnectionMapper, error) {
