@@ -27,6 +27,7 @@ type NodeConnectionMapper struct {
 	addressConnMap set.Bimap[string, ConnId]
 	connNodeMap    set.Bimap[ConnId, NodeId]
 	addressNodeMap set.Bimap[string, NodeId]
+	mainNodeId     *NodeId
 	mux            sync.RWMutex
 }
 
@@ -161,6 +162,7 @@ func (n *NodeConnectionMapper) Clear() {
 	defer n.mux.Unlock()
 	n.addressConnMap.Clear()
 	n.addressNodeMap.Clear()
+	n.mainNodeId = nil
 	n.connNodeMap.Clear()
 }
 
@@ -168,6 +170,7 @@ func (n *NodeConnectionMapper) SetNodeAddress(nodeId NodeId, address string) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 	n.addressNodeMap.Add(address, nodeId)
+	n.mainNodeId = nil
 	n.addresses.Add(address)
 }
 
@@ -191,6 +194,11 @@ func (n *NodeConnectionMapper) Marshal() ([]byte, error) {
 func (n *NodeConnectionMapper) MainNode() NodeId {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
+
+	if n.mainNodeId != nil {
+		return *n.mainNodeId
+	}
+
 	if n.addressNodeMap.Len() == 0 {
 		log.Panic("No nodes")
 	}
@@ -205,7 +213,8 @@ func (n *NodeConnectionMapper) MainNode() NodeId {
 			maxChecksum = checksum
 		}
 	}
-	return nodeValues[mainIndex].J
+	n.mainNodeId = &nodeValues[mainIndex].J
+	return *n.mainNodeId
 }
 
 func NodeConnectionMapperUnmarshal(data []byte) (*NodeConnectionMapper, error) {
@@ -232,6 +241,7 @@ func (n *NodeConnectionMapper) SetAll(conn ConnId, address string, node NodeId) 
 	n.addressConnMap.Add(address, conn)
 	n.connNodeMap.Add(conn, node)
 	n.addressNodeMap.Add(address, node)
+	n.mainNodeId = nil
 }
 
 func (n *NodeConnectionMapper) Nodes() set.Set[NodeId] {

@@ -37,7 +37,6 @@ func TestStateHandlerAsMain(t *testing.T) {
 		OutSaveRequest:   outSave,
 		OutDeleteRequest: outDelete,
 		OutSends:         outSends,
-		MainNodeId:       "nodeId",
 		MyNodeId:         "nodeId",
 		NodeConnMap:      mapper,
 	}
@@ -124,7 +123,6 @@ func TestStateHandlerAsRemote(t *testing.T) {
 		OutSaveRequest:   outSave,
 		OutDeleteRequest: outDelete,
 		OutSends:         outSends,
-		MainNodeId:       "remoteNode1Id",
 		MyNodeId:         "nodeId",
 		NodeConnMap:      mapper,
 	}
