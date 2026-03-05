@@ -18,6 +18,7 @@ import (
 	"context"
 	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
+	"tealfs/pkg/test"
 	"testing"
 )
 
@@ -29,24 +30,28 @@ func TestStateHandlerAsMain(t *testing.T) {
 	outDelete := make(chan datalayer.DeleteRequest, 1)
 	outSends := make(chan model.SendPayloadMsg, 1)
 
+	remoteNode1Id := test.NonMainNode1
+	remoteNode2Id := test.NonMainNode2
+	myNodeId := test.MainNodeId
+
 	mapper := model.NewNodeConnectionMapper()
-	mapper.SetAll(0, "remoteNode1Address", "remoteNode1Id")
-	mapper.SetAll(1, "remoteNode2Address", "remoteNode2Id")
+	mapper.SetAll(0, "remoteNode1Address", remoteNode1Id)
+	mapper.SetAll(1, "remoteNode2Address", remoteNode2Id)
 
 	stateHandler := datalayer.StateHandler{
 		OutSaveRequest:   outSave,
 		OutDeleteRequest: outDelete,
 		OutSends:         outSends,
-		MyNodeId:         "nodeId",
+		MyNodeId:         myNodeId,
 		NodeConnMap:      mapper,
 	}
 	stateHandler.Start(ctx)
 
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"}, 2)
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: "remoteNode1Id"}, 1)
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: "remoteNode2Id"}, 3)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: myNodeId}, 2)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: remoteNode1Id}, 1)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: remoteNode2Id}, 3)
 
-	stateHandler.Saved("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"})
+	stateHandler.Saved("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: myNodeId})
 	receivedSave := <-outSave
 	if receivedSave.BlockId != "block1Id" {
 		t.Error("Invalid BlockId")
@@ -55,15 +60,15 @@ func TestStateHandlerAsMain(t *testing.T) {
 		t.Error("Block starts off saved in only one place")
 	}
 	from := receivedSave.From[0]
-	if from.NodeId != "nodeId" || from.DiskId != "disk1Id" {
+	if from.NodeId != myNodeId || from.DiskId != "disk1Id" {
 		t.Error("Should be already saved on the local nodes only disk")
 	}
 	to := receivedSave.To
-	if to.NodeId != "remoteNode2Id" || to.DiskId != "disk3Id" {
+	if to.NodeId != remoteNode2Id || to.DiskId != "disk3Id" {
 		t.Error("Should be saved to the biggest disk")
 	}
 
-	stateHandler.Saved("block2Id", datalayer.Dest{DiskId: "disk3Id", NodeId: "remoteNode2Id"})
+	stateHandler.Saved("block2Id", datalayer.Dest{DiskId: "disk3Id", NodeId: remoteNode2Id})
 	receivedPayload := <-outSends
 	if receivedSave, ok := receivedPayload.Payload.(datalayer.SaveRequest); ok {
 		if receivedSave.BlockId != "block2Id" {
@@ -73,21 +78,21 @@ func TestStateHandlerAsMain(t *testing.T) {
 			t.Error("Block starts off saved in only one place")
 		}
 		from := receivedSave.From[0]
-		if from.NodeId != "remoteNode2Id" || from.DiskId != "disk3Id" {
+		if from.NodeId != remoteNode2Id || from.DiskId != "disk3Id" {
 			t.Error("Should be already saved on the local nodes only disk")
 		}
 		to := receivedSave.To
-		if to.NodeId != "nodeId" || to.DiskId != "disk1Id" {
+		if to.NodeId != myNodeId || to.DiskId != "disk1Id" {
 			t.Error("Should be saved to the biggest disk")
 		}
 	} else {
 		t.Error("wrong type")
 	}
 
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"}, 1)
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: "remoteNode1Id"}, 2)
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: "remoteNode2Id"}, 3)
-	stateHandler.Saved("block3id", datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"})
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: myNodeId}, 1)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: remoteNode1Id}, 2)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: remoteNode2Id}, 3)
+	stateHandler.Saved("block3id", datalayer.Dest{DiskId: "disk1Id", NodeId: myNodeId})
 	s1 := <-outSave
 	stateHandler.Saved(s1.BlockId, s1.To)
 	s2 := <-outSave
@@ -115,39 +120,43 @@ func TestStateHandlerAsRemote(t *testing.T) {
 	outDelete := make(chan datalayer.DeleteRequest, 1)
 	outSends := make(chan model.SendPayloadMsg, 1)
 
+	myNodeId := test.NonMainNode1
+	remoteNode1Id := test.MainNodeId
+	remoteNode2Id := test.NonMainNode2
+
 	mapper := model.NewNodeConnectionMapper()
-	mapper.SetAll(0, "remoteNode1Address", "remoteNode1Id")
-	mapper.SetAll(1, "remoteNode2Address", "remoteNode2Id")
+	mapper.SetAll(0, "remoteNode1Address", remoteNode1Id)
+	mapper.SetAll(1, "remoteNode2Address", remoteNode2Id)
 
 	stateHandler := datalayer.StateHandler{
 		OutSaveRequest:   outSave,
 		OutDeleteRequest: outDelete,
 		OutSends:         outSends,
-		MyNodeId:         "nodeId",
+		MyNodeId:         myNodeId,
 		NodeConnMap:      mapper,
 	}
 	stateHandler.Start(ctx)
 
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"}, 2)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk1Id", NodeId: myNodeId}, 2)
 	<-outSends
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: "remoteNode1Id"}, 1)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk2Id", NodeId: remoteNode1Id}, 1)
 	<-outSends
-	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: "remoteNode2Id"}, 3)
+	stateHandler.SetDiskSpace(datalayer.Dest{DiskId: "disk3Id", NodeId: remoteNode2Id}, 3)
 	<-outSends
 
-	stateHandler.Saved("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"})
+	stateHandler.Saved("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: myNodeId})
 	sendPayloadMsg := <-outSends
 	if saveParams, ok := sendPayloadMsg.Payload.(datalayer.SavedParams); ok {
 		if saveParams.BlockId != "block1Id" {
 			t.Error("Invalid BlockId")
 		}
-		if saveParams.D.DiskId != "disk1Id" || saveParams.D.NodeId != "nodeId" {
+		if saveParams.D.DiskId != "disk1Id" || saveParams.D.NodeId != myNodeId {
 			t.Error("wrong dest")
 		}
 	} else {
 		t.Error("wrong type")
 	}
 
-	stateHandler.Deleted("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: "nodeId"})
+	stateHandler.Deleted("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: myNodeId})
 	<-outSends
 }

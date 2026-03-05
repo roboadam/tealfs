@@ -12,21 +12,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package model_test
+package test
 
-import (
-	"tealfs/pkg/model"
-	"tealfs/pkg/test"
-	"testing"
-)
+import "tealfs/pkg/model"
 
-func TestMainNodeCalculation(t *testing.T) {
-	mapper := model.NewNodeConnectionMapper()
-	mapper.SetNodeAddress(test.NonMainNode1, "address2")
-	mapper.SetNodeAddress(test.NonMainNode2, "address3")
-
-	main := mapper.MainNode(test.MainNodeId)
-	if main != test.MainNodeId {
-		t.Error("Unexpected main node")
-	}
-}
+const MainNodeId model.NodeId = "main"
+const NonMainNode1 model.NodeId = "non-main1"
+const NonMainNode2 model.NodeId = "non-main2"

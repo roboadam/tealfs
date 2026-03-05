@@ -35,7 +35,7 @@ type StateHandler struct {
 }
 
 func (s *StateHandler) Start(ctx context.Context) {
-	if s.NodeConnMap.MainNode() != s.MyNodeId {
+	if s.NodeConnMap.MainNode(s.MyNodeId) != s.MyNodeId {
 		return
 	}
 
@@ -107,10 +107,10 @@ func (s *StateHandler) SetDiskSpace(d Dest, space int) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if s.NodeConnMap.MainNode() == s.MyNodeId {
+	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
 		s.state.setDiskSpace(d, space)
 	} else {
-		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode()); ok {
+		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
 			params := SetDiskSpaceParams{d: d, space: space}
 			s.OutSends <- model.SendPayloadMsg{
 				ConnId:  conn,
@@ -129,10 +129,10 @@ func (s *StateHandler) Saved(blockId model.BlockId, d Dest) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if s.NodeConnMap.MainNode() == s.MyNodeId {
+	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
 		s.state.saved(blockId, d)
 	} else {
-		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode()); ok {
+		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
 			params := SavedParams{BlockId: blockId, D: d}
 			s.OutSends <- model.SendPayloadMsg{
 				ConnId:  conn,
@@ -151,10 +151,10 @@ func (s *StateHandler) Deleted(b model.BlockId, d Dest) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if s.NodeConnMap.MainNode() == s.MyNodeId {
+	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
 		s.state.deleted(b, d)
 	} else {
-		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode()); ok {
+		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
 			params := DeletedParams{b: b, d: d}
 			s.OutSends <- model.SendPayloadMsg{
 				ConnId:  conn,

@@ -192,7 +192,7 @@ func (n *NodeConnectionMapper) Marshal() ([]byte, error) {
 	return json.Marshal(exportable)
 }
 
-func (n *NodeConnectionMapper) MainNode() NodeId {
+func (n *NodeConnectionMapper) MainNode(myNodeId NodeId) NodeId {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 
@@ -201,11 +201,15 @@ func (n *NodeConnectionMapper) MainNode() NodeId {
 	}
 
 	if n.addressNodeMap.Len() == 0 {
-		log.Panic("No nodes")
+		return myNodeId
 	}
 	mainIndex := 0
 	maxChecksum := uint32(0)
 	nodeValues := n.addressNodeMap.AllValues()
+	nodeValues = append(nodeValues, struct {
+		K string
+		J NodeId
+	}{J: myNodeId})
 	for i, nodeValue := range nodeValues {
 		var nodeId NodeId = nodeValue.J
 		checksum := crc32.ChecksumIEEE([]byte(nodeId))
