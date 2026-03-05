@@ -17,9 +17,10 @@ package model
 import (
 	"encoding/json"
 	"hash/crc32"
-	"log"
 	"sync"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type NodeConnectionMapper struct {
@@ -208,6 +209,7 @@ func (n *NodeConnectionMapper) MainNode() NodeId {
 	for i, nodeValue := range nodeValues {
 		var nodeId NodeId = nodeValue.J
 		checksum := crc32.ChecksumIEEE([]byte(nodeId))
+		log.Infof("nodeId: %s, crc: %d", nodeId, checksum)
 		if maxChecksum < checksum {
 			mainIndex = i
 			maxChecksum = checksum

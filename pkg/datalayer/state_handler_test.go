@@ -16,7 +16,7 @@ package datalayer_test
 
 import (
 	"context"
-	datalayer "tealfs/pkg/data-layer"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
 	"testing"
 )
