@@ -99,8 +99,8 @@ func (s *StateHandler) whereToSendSaveRequest(req SaveRequest) (local bool, conn
 }
 
 type SetDiskSpaceParams struct {
-	d     Dest
-	space int
+	D     Dest
+	Space int
 }
 
 func (s *StateHandler) SetDiskSpace(d Dest, space int) {
@@ -111,7 +111,7 @@ func (s *StateHandler) SetDiskSpace(d Dest, space int) {
 		s.state.setDiskSpace(d, space)
 	} else {
 		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
-			params := SetDiskSpaceParams{d: d, space: space}
+			params := SetDiskSpaceParams{D: d, Space: space}
 			s.OutSends <- model.SendPayloadMsg{
 				ConnId:  conn,
 				Payload: params,

@@ -203,6 +203,8 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.StateHandler.Deleted(p.B, p.D)
 			case *datalayer.SavedParams:
 				c.StateHandler.Saved(p.B, p.D)
+			case *datalayer.SetDiskSpaceParams:
+				c.StateHandler.SetDiskSpace(p.D, p.Space)
 			default:
 				panic("Unknown payload")
 			}
