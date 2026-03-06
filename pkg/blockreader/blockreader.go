@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/gob"
 	"errors"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 
 	log "github.com/sirupsen/logrus"
@@ -39,7 +38,6 @@ type BlockReader struct {
 	InResp <-chan GetFromDiskResp
 	Resp   chan<- model.GetBlockResp
 
-	Distributer *dist.MirrorDistributer
 	NodeId      model.NodeId
 }
 

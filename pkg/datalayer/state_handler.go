@@ -47,57 +47,6 @@ func (s *StateHandler) Start(ctx context.Context) {
 	go s.listen(ctx, saveRequests, deleteRequests)
 }
 
-func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest, deleteRequests chan DeleteRequest) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case req := <-saveRequests:
-			local, connId := s.whereToSendSaveRequest(req)
-			if local {
-				s.OutSaveRequest <- req
-			} else {
-				s.OutSends <- model.SendPayloadMsg{
-					ConnId:  connId,
-					Payload: req,
-				}
-			}
-		case req := <-deleteRequests:
-			if req.Dest.NodeId == s.MyNodeId {
-				s.OutDeleteRequest <- req
-				continue
-			}
-			if foundConn, ok := s.NodeConnMap.ConnForNode(req.Dest.NodeId); ok {
-				s.OutSends <- model.SendPayloadMsg{
-					ConnId:  foundConn,
-					Payload: req,
-				}
-			} else {
-				log.Panic("No connection found")
-			}
-		}
-	}
-}
-
-func (s *StateHandler) whereToSendSaveRequest(req SaveRequest) (local bool, connId model.ConnId) {
-	found := false
-	for _, dest := range req.From {
-		if dest.NodeId == s.MyNodeId {
-			local = true
-			return
-		}
-		if foundConn, ok := s.NodeConnMap.ConnForNode(dest.NodeId); ok {
-			connId = foundConn
-			found = true
-			local = false
-		}
-	}
-	if !found {
-		log.Panic("didn't find conn")
-	}
-	return
-}
-
 type SetDiskSpaceParams struct {
 	D     Dest
 	Space int
@@ -162,4 +111,55 @@ func (s *StateHandler) Deleted(b model.BlockId, d Dest) {
 			}
 		}
 	}
+}
+
+func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest, deleteRequests chan DeleteRequest) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case req := <-saveRequests:
+			local, connId := s.whereToSendSaveRequest(req)
+			if local {
+				s.OutSaveRequest <- req
+			} else {
+				s.OutSends <- model.SendPayloadMsg{
+					ConnId:  connId,
+					Payload: req,
+				}
+			}
+		case req := <-deleteRequests:
+			if req.Dest.NodeId == s.MyNodeId {
+				s.OutDeleteRequest <- req
+				continue
+			}
+			if foundConn, ok := s.NodeConnMap.ConnForNode(req.Dest.NodeId); ok {
+				s.OutSends <- model.SendPayloadMsg{
+					ConnId:  foundConn,
+					Payload: req,
+				}
+			} else {
+				log.Panic("No connection found")
+			}
+		}
+	}
+}
+
+func (s *StateHandler) whereToSendSaveRequest(req SaveRequest) (local bool, connId model.ConnId) {
+	found := false
+	for _, dest := range req.From {
+		if dest.NodeId == s.MyNodeId {
+			local = true
+			return
+		}
+		if foundConn, ok := s.NodeConnMap.ConnForNode(dest.NodeId); ok {
+			connId = foundConn
+			found = true
+			local = false
+		}
+	}
+	if !found {
+		log.Panic("didn't find conn")
+	}
+	return
 }
