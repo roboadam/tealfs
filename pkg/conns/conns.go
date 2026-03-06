@@ -22,6 +22,7 @@ import (
 	"tealfs/pkg/blockreader"
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/chanutil"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
 	"tealfs/pkg/webdav"
@@ -48,6 +49,7 @@ type Conns struct {
 	OutFileBroadcasts  chan<- webdav.FileBroadcast
 	inConnectTo        <-chan model.ConnectToNodeReq
 	inSends            <-chan model.SendPayloadMsg
+	StateHandler       *datalayer.StateHandler
 	Address            string
 	provider           ConnectionProvider
 	nodeId             model.NodeId
@@ -197,6 +199,10 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.OutSyncNodes <- *p
 			case *webdav.FileBroadcast:
 				c.OutFileBroadcasts <- *p
+			case *datalayer.DeletedParams:
+				c.StateHandler.Deleted(p.B, p.D)
+			case *datalayer.SavedParams:
+				c.StateHandler.Saved(p.B, p.D)
 			default:
 				panic("Unknown payload")
 			}

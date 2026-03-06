@@ -121,8 +121,8 @@ func (s *StateHandler) SetDiskSpace(d Dest, space int) {
 }
 
 type SavedParams struct {
-	BlockId model.BlockId
-	D       Dest
+	B model.BlockId
+	D Dest
 }
 
 func (s *StateHandler) Saved(blockId model.BlockId, d Dest) {
@@ -133,7 +133,7 @@ func (s *StateHandler) Saved(blockId model.BlockId, d Dest) {
 		s.state.saved(blockId, d)
 	} else {
 		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
-			params := SavedParams{BlockId: blockId, D: d}
+			params := SavedParams{B: blockId, D: d}
 			s.OutSends <- model.SendPayloadMsg{
 				ConnId:  conn,
 				Payload: params,
@@ -143,8 +143,8 @@ func (s *StateHandler) Saved(blockId model.BlockId, d Dest) {
 }
 
 type DeletedParams struct {
-	b model.BlockId
-	d Dest
+	B model.BlockId
+	D Dest
 }
 
 func (s *StateHandler) Deleted(b model.BlockId, d Dest) {
@@ -155,7 +155,7 @@ func (s *StateHandler) Deleted(b model.BlockId, d Dest) {
 		s.state.deleted(b, d)
 	} else {
 		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
-			params := DeletedParams{b: b, d: d}
+			params := DeletedParams{B: b, D: d}
 			s.OutSends <- model.SendPayloadMsg{
 				ConnId:  conn,
 				Payload: params,

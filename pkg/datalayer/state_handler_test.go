@@ -147,7 +147,7 @@ func TestStateHandlerAsRemote(t *testing.T) {
 	stateHandler.Saved("block1Id", datalayer.Dest{DiskId: "disk1Id", NodeId: myNodeId})
 	sendPayloadMsg := <-outSends
 	if saveParams, ok := sendPayloadMsg.Payload.(datalayer.SavedParams); ok {
-		if saveParams.BlockId != "block1Id" {
+		if saveParams.B != "block1Id" {
 			t.Error("Invalid BlockId")
 		}
 		if saveParams.D.DiskId != "disk1Id" || saveParams.D.NodeId != myNodeId {
