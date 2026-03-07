@@ -43,6 +43,7 @@ type BlockSaver struct {
 	Resp   chan<- model.PutBlockResp
 
 	NodeId model.NodeId
+	Disks  *set.Set[model.DiskInfo]
 }
 
 type Dest struct {
@@ -63,7 +64,7 @@ type SaveToDiskResp struct {
 }
 
 func (bs *BlockSaver) Start(ctx context.Context) {
-	requestState := make(map[model.PutBlockId]set.Set[model.DiskId])
+	requestState := make(map[model.PutBlockId]model.DiskId)
 	for {
 		select {
 		case req := <-bs.Req:
@@ -76,29 +77,38 @@ func (bs *BlockSaver) Start(ctx context.Context) {
 	}
 }
 
-func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model.PutBlockId]set.Set[model.DiskId]) {
-	// Find all disk destinations for the block
-	dests := bs.destsFor(req)
-	requestState[req.Id] = set.NewSet[model.DiskId]()
+func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model.PutBlockId]model.DiskId) {
+	// Save each request so we know when we've received all responses
+	dest := bs.dest()
+	requestState[req.Id] = dest.DiskId
 
-	// For each disk
-	for _, dest := range dests {
-		// Save each request so we know when we've received all responses
-		state := requestState[req.Id]
-		state.Add(dest.DiskId)
+	saveToDisk := SaveToDiskReq{Dest: dest, Req: req, Caller: bs.NodeId}
 
-		saveToDisk := SaveToDiskReq{Dest: dest, Req: req, Caller: bs.NodeId}
-
-		// If the destination is this node send to the local disk, otherwise send to remote node
-		if dest.NodeId == bs.NodeId {
-			bs.LocalDest <- saveToDisk
-		} else {
-			bs.RemoteDest <- saveToDisk
-		}
+	// If the destination is this node send to the local disk, otherwise send to remote node
+	if dest.NodeId == bs.NodeId {
+		bs.LocalDest <- saveToDisk
+	} else {
+		bs.RemoteDest <- saveToDisk
 	}
 }
 
-func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]set.Set[model.DiskId], resp SaveToDiskResp) {
+func (bs *BlockSaver) dest() Dest {
+	disks := bs.Disks.GetValues() 
+	for _, d := range disks {
+		if d.NodeId == bs.NodeId {
+			return Dest{
+				NodeId: d.NodeId,
+				DiskId: d.DiskId,
+			}
+		}
+	}
+	return Dest{
+		NodeId: disks[0].NodeId,
+		DiskId: disks[0].DiskId,
+	}
+}
+
+func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]model.DiskId, resp SaveToDiskResp) {
 	// If we get a save response that we don't have record of one of the other destinations must have already failed
 	// so we can safely ignore any other responses
 	if _, ok := requestState[resp.Resp.Id]; ok {
