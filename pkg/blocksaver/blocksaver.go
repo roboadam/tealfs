@@ -17,6 +17,7 @@ package blocksaver
 import (
 	"context"
 	"encoding/gob"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
@@ -42,8 +43,9 @@ type BlockSaver struct {
 	InResp <-chan SaveToDiskResp
 	Resp   chan<- model.PutBlockResp
 
-	NodeId model.NodeId
-	Disks  *set.Set[model.DiskInfo]
+	NodeId       model.NodeId
+	Disks        *set.Set[model.DiskInfo]
+	StateHandler *datalayer.StateHandler
 }
 
 type Dest struct {
@@ -93,7 +95,7 @@ func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model
 }
 
 func (bs *BlockSaver) dest() Dest {
-	disks := bs.Disks.GetValues() 
+	disks := bs.Disks.GetValues()
 	for _, d := range disks {
 		if d.NodeId == bs.NodeId {
 			return Dest{
@@ -109,29 +111,19 @@ func (bs *BlockSaver) dest() Dest {
 }
 
 func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]model.DiskId, resp SaveToDiskResp) {
-	// If we get a save response that we don't have record of one of the other destinations must have already failed
-	// so we can safely ignore any other responses
 	if _, ok := requestState[resp.Resp.Id]; ok {
-
+		delete(requestState, resp.Resp.Id)
 		if resp.Resp.Err != nil {
-			// If a response is an error then we don't have enough redundancy so ignore all following responses and send back
-			// an error
 			delete(requestState, resp.Resp.Id)
 			bs.Resp <- model.PutBlockResp{
 				Id:  resp.Resp.Id,
 				Err: resp.Resp.Err,
 			}
 		} else {
-			// If the response is a success remove the record. If all records are removed that means
-			// all save requests were successful so we can respond that the save was successful
-			state := requestState[resp.Resp.Id]
-			state.Remove(resp.Dest.DiskId)
-			if state.Len() == 0 {
-				delete(requestState, resp.Resp.Id)
-				bs.Resp <- model.PutBlockResp{
-					Id: resp.Resp.Id,
-				}
+			bs.Resp <- model.PutBlockResp{
+				Id: resp.Resp.Id,
 			}
+			bs.StateHandler.Saved(resp.Resp.)
 		}
 	}
 }
