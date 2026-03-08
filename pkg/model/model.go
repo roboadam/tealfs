@@ -84,3 +84,9 @@ type DiskInfo struct {
 	Path   string
 	NodeId NodeId
 }
+
+type NodeDiskBlock struct {
+	NodeId  NodeId
+	DiskId  DiskId
+	BlockId BlockId
+}

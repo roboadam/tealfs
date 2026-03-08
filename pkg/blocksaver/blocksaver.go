@@ -43,6 +43,8 @@ type BlockSaver struct {
 	InResp <-chan SaveToDiskResp
 	Resp   chan<- model.PutBlockResp
 
+	TargetedReq <-chan datalayer.SaveRequest
+
 	NodeId       model.NodeId
 	Disks        *set.Set[model.DiskInfo]
 	StateHandler *datalayer.StateHandler
@@ -66,7 +68,7 @@ type SaveToDiskResp struct {
 }
 
 func (bs *BlockSaver) Start(ctx context.Context) {
-	requestState := make(map[model.PutBlockId]model.DiskId)
+	requestState := make(map[model.PutBlockId]model.NodeDiskBlock)
 	for {
 		select {
 		case req := <-bs.Req:
@@ -79,10 +81,14 @@ func (bs *BlockSaver) Start(ctx context.Context) {
 	}
 }
 
-func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model.PutBlockId]model.DiskId) {
+func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model.PutBlockId]model.NodeDiskBlock) {
 	// Save each request so we know when we've received all responses
 	dest := bs.dest()
-	requestState[req.Id] = dest.DiskId
+	requestState[req.Id] = model.NodeDiskBlock{
+		NodeId:  dest.NodeId,
+		DiskId:  dest.DiskId,
+		BlockId: req.Block.Id,
+	}
 
 	saveToDisk := SaveToDiskReq{Dest: dest, Req: req, Caller: bs.NodeId}
 
@@ -110,8 +116,8 @@ func (bs *BlockSaver) dest() Dest {
 	}
 }
 
-func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]model.DiskId, resp SaveToDiskResp) {
-	if _, ok := requestState[resp.Resp.Id]; ok {
+func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]model.NodeDiskBlock, resp SaveToDiskResp) {
+	if nodeDiskBlock, ok := requestState[resp.Resp.Id]; ok {
 		delete(requestState, resp.Resp.Id)
 		if resp.Resp.Err != nil {
 			delete(requestState, resp.Resp.Id)
@@ -123,7 +129,10 @@ func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]model.Dis
 			bs.Resp <- model.PutBlockResp{
 				Id: resp.Resp.Id,
 			}
-			bs.StateHandler.Saved(resp.Resp.)
+			bs.StateHandler.Saved(nodeDiskBlock.BlockId, datalayer.Dest{
+				DiskId: nodeDiskBlock.DiskId,
+				NodeId: nodeDiskBlock.NodeId,
+			})
 		}
 	}
 }
