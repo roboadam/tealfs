@@ -119,13 +119,7 @@ func (bs *BlockSaver) dest() Dest {
 func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]model.NodeDiskBlock, resp SaveToDiskResp) {
 	if nodeDiskBlock, ok := requestState[resp.Resp.Id]; ok {
 		delete(requestState, resp.Resp.Id)
-		if resp.Resp.Err != nil {
-			delete(requestState, resp.Resp.Id)
-			bs.Resp <- model.PutBlockResp{
-				Id:  resp.Resp.Id,
-				Err: resp.Resp.Err,
-			}
-		} else {
+		if resp.Resp.Err == nil {
 			bs.Resp <- model.PutBlockResp{
 				Id: resp.Resp.Id,
 			}
@@ -133,6 +127,12 @@ func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]model.Nod
 				DiskId: nodeDiskBlock.DiskId,
 				NodeId: nodeDiskBlock.NodeId,
 			})
+		} else {
+			delete(requestState, resp.Resp.Id)
+			bs.Resp <- model.PutBlockResp{
+				Id:  resp.Resp.Id,
+				Err: resp.Resp.Err,
+			}
 		}
 	}
 }
