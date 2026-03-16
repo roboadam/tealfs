@@ -1,0 +1,50 @@
+// Copyright (C) 2026 Adam Hess
+//
+// This program is free software: you can redistribute it and/or modify it under
+// the terms of the GNU Affero General Public License as published by the Free
+// Software Foundation, version 3.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+// for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+package datalayer
+
+import (
+	"context"
+	// "tealfs/pkg/disk"
+	"tealfs/pkg/model"
+	"tealfs/pkg/set"
+)
+
+type SaveRequestHandler struct {
+	SaveRequests <-chan SaveRequest
+	Disks        *set.Set[disk.Disk]
+	NodeId model.NodeId
+}
+
+func (s *SaveRequestHandler) Start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case req := <-s.SaveRequests:
+			for _, dest := range req.From {
+				if ok, d := s.HasDisk(dest.NodeId, dest.DiskId); ok{
+
+				}
+			}
+		}
+	}
+}
+
+func (s *SaveRequestHandler) HasDisk(nodeId model.NodeId, diskId model.DiskId) (bool,disk.Disk)  {
+	if s.NodeId != nodeId {
+		return false, disk.Disk{}
+	}
+	for _, d := s.Disks.GetValues()
+}
