@@ -43,8 +43,6 @@ type BlockSaver struct {
 	InResp <-chan SaveToDiskResp
 	Resp   chan<- model.PutBlockResp
 
-	TargetedReq <-chan datalayer.SaveRequest
-
 	NodeId       model.NodeId
 	Disks        *set.Set[model.DiskInfo]
 	StateHandler *datalayer.StateHandler

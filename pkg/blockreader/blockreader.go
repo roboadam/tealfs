@@ -18,8 +18,10 @@ import (
 	"context"
 	"encoding/gob"
 	"errors"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -38,7 +40,9 @@ type BlockReader struct {
 	InResp <-chan GetFromDiskResp
 	Resp   chan<- model.GetBlockResp
 
-	NodeId      model.NodeId
+	ForwardBlock <-chan datalayer.SaveRequest
+
+	NodeId model.NodeId
 }
 
 type Dest struct {
@@ -60,16 +64,53 @@ type GetFromDiskResp struct {
 
 func (bs *BlockReader) Start(ctx context.Context) {
 	requestState := make(map[model.GetBlockId]state)
+	forwardState := make(map[model.GetBlockId]datalayer.SaveRequest)
 	for {
 		select {
 		case req := <-bs.Req:
 			bs.handleGetReq(req, requestState)
 		case resp := <-bs.InResp:
 			bs.handleGetResp(requestState, resp)
+		case fwd := <-bs.ForwardBlock:
+			bs.handleForward(fwd, forwardState)
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+func (bs *BlockReader) handleForward(fwd datalayer.SaveRequest, state map[model.GetBlockId]datalayer.SaveRequest) {
+	dests := fwd.From
+
+	// If there are no disks to write to then reply with an error
+	if len(dests) == 0 {
+		return
+	}
+
+	firstDest := dests[0]
+	dests = dests[1:]
+
+	id := model.GetBlockId(uuid.NewString())
+	// Request state hold a list of dests we haven't tried yet
+	state[id] = datalayer.SaveRequest{
+		To:      fwd.To,
+		From:    dests,
+		BlockId: fwd.BlockId,
+	}
+
+	getFromDisk := GetFromDiskReq{
+		Caller: bs.NodeId,
+		Dest: Dest{
+			NodeId: firstDest.NodeId,
+			DiskId: firstDest.DiskId,
+		},
+		Req: model.GetBlockReq{
+			Id:      id,
+			BlockId: fwd.BlockId,
+		},
+	}
+
+	bs.sendToLocalOrRemote(&getFromDisk)
 }
 
 type state struct {
