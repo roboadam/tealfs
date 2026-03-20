@@ -40,8 +40,6 @@ type BlockReader struct {
 	InResp <-chan GetFromDiskResp
 	Resp   chan<- model.GetBlockResp
 
-	ForwardBlock <-chan datalayer.SaveRequest
-
 	NodeId model.NodeId
 }
 
@@ -64,15 +62,12 @@ type GetFromDiskResp struct {
 
 func (bs *BlockReader) Start(ctx context.Context) {
 	requestState := make(map[model.GetBlockId]state)
-	forwardState := make(map[model.GetBlockId]datalayer.SaveRequest)
 	for {
 		select {
 		case req := <-bs.Req:
 			bs.handleGetReq(req, requestState)
 		case resp := <-bs.InResp:
 			bs.handleGetResp(requestState, resp)
-		case fwd := <-bs.ForwardBlock:
-			bs.handleForward(fwd, forwardState)
 		case <-ctx.Done():
 			return
 		}
@@ -160,11 +155,7 @@ func (bs *BlockReader) sendToLocalOrRemote(getFromDisk *GetFromDiskReq) {
 	}
 }
 
-func (bs *BlockReader) handleGetResp(
-	requestState map[model.GetBlockId]state,
-	saveReqState map[model.GetBlockId]datalayer.SaveRequest,
-	resp GetFromDiskResp,
-) {
+func (bs *BlockReader) handleGetResp(requestState map[model.GetBlockId]state, resp GetFromDiskResp) {
 	// If we get a response that we don't have record of there isn't much we can do
 	if s, ok := requestState[resp.Resp.Id]; ok {
 		if resp.Resp.Err == nil {
@@ -190,28 +181,7 @@ func (bs *BlockReader) handleGetResp(
 				Req:    s.req,
 			})
 		}
-	} else if s, ok := saveReqState[resp.Resp.Id]; ok {
-		if resp.Resp.Err == nil {
-			// We got the data so we can send it back to the filesystem
-			log.Infof("Now send this to %s", s.To.DiskId)
-		} else if len(s.dests) == 0 {
-			// If there are no more disks that may have the data we return an error
-			delete(requestState, resp.Resp.Id)
-			bs.Resp <- model.GetBlockResp{
-				Id:    resp.Resp.Id,
-				Block: resp.Resp.Block,
-				Err:   errors.New("cannot fetch block"),
-			}
-		} else {
-			// If a response is an error then we want to try the next potential dest
-			nextDest := s.dests[0]
-			s.dests = s.dests[1:]
-			requestState[resp.Resp.Id] = s
-			bs.sendToLocalOrRemote(&GetFromDiskReq{
-				Caller: bs.NodeId,
-				Dest:   nextDest,
-				Req:    s.req,
-			})
-		}
+	} else {
+		log.Warn("Don't have that one")
 	}
 }
