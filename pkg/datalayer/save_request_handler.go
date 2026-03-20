@@ -17,6 +17,7 @@ package datalayer
 import (
 	"context"
 	// "tealfs/pkg/disk"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
@@ -24,7 +25,7 @@ import (
 type SaveRequestHandler struct {
 	SaveRequests <-chan SaveRequest
 	Disks        *set.Set[disk.Disk]
-	NodeId model.NodeId
+	NodeId       model.NodeId
 }
 
 func (s *SaveRequestHandler) Start(ctx context.Context) {
@@ -34,7 +35,7 @@ func (s *SaveRequestHandler) Start(ctx context.Context) {
 			return
 		case req := <-s.SaveRequests:
 			for _, dest := range req.From {
-				if ok, d := s.HasDisk(dest.NodeId, dest.DiskId); ok{
+				if ok, _ := s.HasDisk(dest.NodeId, dest.DiskId); ok {
 
 				}
 			}
@@ -42,9 +43,10 @@ func (s *SaveRequestHandler) Start(ctx context.Context) {
 	}
 }
 
-func (s *SaveRequestHandler) HasDisk(nodeId model.NodeId, diskId model.DiskId) (bool,disk.Disk)  {
-	if s.NodeId != nodeId {
-		return false, disk.Disk{}
-	}
-	for _, d := s.Disks.GetValues()
+func (s *SaveRequestHandler) HasDisk(nodeId model.NodeId, diskId model.DiskId) (bool, disk.Disk) {
+	// if s.NodeId != nodeId {
+	// 	return false, disk.Disk{}
+	// }
+	// for _, d := s.Disks.GetValues()
+	return false, disk.Disk{}
 }

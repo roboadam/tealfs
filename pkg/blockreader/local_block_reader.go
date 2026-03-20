@@ -17,7 +17,6 @@ package blockreader
 import (
 	"context"
 	"errors"
-	"tealfs/pkg/datalayer"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -26,9 +25,8 @@ import (
 )
 
 type LocalBlockReader struct {
-	Req          <-chan GetFromDiskReq
-	ForwardBlock <-chan datalayer.SaveRequest
-	Disks        *set.Set[disk.Disk]
+	Req   <-chan GetFromDiskReq
+	Disks *set.Set[disk.Disk]
 }
 
 func (l *LocalBlockReader) Start(ctx context.Context) {
@@ -44,14 +42,6 @@ func (l *LocalBlockReader) Start(ctx context.Context) {
 					log.Errorf("disk id: %s:%s looking for %s:%s", d.NodeId(), d.DiskId(), req.Dest.NodeId, req.Dest.DiskId)
 				}
 				log.Panicf("reader: no disk for id %s, %v", req.Dest.DiskId, err)
-			}
-		case req := <-l.ForwardBlock:
-			for _, dest := range req.From {
-				for _, disk := range l.Disks.GetValues() {
-					if dest.DiskId == disk.DiskId() {
-						
-					}
-				}
 			}
 		}
 	}
