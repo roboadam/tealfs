@@ -20,12 +20,22 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type SaveRequestHandler struct {
-	SaveRequests <-chan SaveRequest
-	Disks        *set.Set[disk.Disk]
-	NodeId       model.NodeId
+	InSaveRequests        <-chan SaveRequest
+	Disks                 *set.Set[disk.Disk]
+	NodeId                model.NodeId
+	OutDataforSaveRequest chan<- DataForSaveRequest
+	OutSends              chan<- model.SendPayloadMsg
+	NodeConnMap           *model.NodeConnectionMapper
+}
+
+type DataForSaveRequest struct {
+	SaveRequest SaveRequest
+	Data        []byte
 }
 
 func (s *SaveRequestHandler) Start(ctx context.Context) {
@@ -33,20 +43,37 @@ func (s *SaveRequestHandler) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case req := <-s.SaveRequests:
+		case req := <-s.InSaveRequests:
 			for _, dest := range req.From {
-				if ok, _ := s.HasDisk(dest.NodeId, dest.DiskId); ok {
-
+				if d, ok := s.HasDisk(dest.NodeId, dest.DiskId); ok {
+					if data, ok := d.Get(req.BlockId); ok {
+						outReq := DataForSaveRequest{
+							SaveRequest: req,
+							Data:        data,
+						}
+						if req.To.NodeId == s.NodeId {
+							s.OutDataforSaveRequest <- outReq
+						} else if conn, ok := s.NodeConnMap.ConnForNode(req.To.NodeId); ok {
+							s.OutSends <- model.SendPayloadMsg{
+								ConnId:  conn,
+								Payload: outReq,
+							}
+						} else {
+							log.Panic("no connection")
+						}
+					}
 				}
 			}
 		}
 	}
 }
 
-func (s *SaveRequestHandler) HasDisk(nodeId model.NodeId, diskId model.DiskId) (bool, disk.Disk) {
-	// if s.NodeId != nodeId {
-	// 	return false, disk.Disk{}
-	// }
-	// for _, d := s.Disks.GetValues()
-	return false, disk.Disk{}
+func (s *SaveRequestHandler) HasDisk(nodeId model.NodeId, diskId model.DiskId) (disk.Disk, bool) {
+	if s.NodeId != nodeId {
+		return disk.Disk{}, false
+	}
+	for _, d := range s.Disks.GetValues() {
+		return d, true
+	}
+	return disk.Disk{}, false
 }
