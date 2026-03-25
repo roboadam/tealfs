@@ -16,7 +16,6 @@ package datalayer
 
 import (
 	"context"
-	// "tealfs/pkg/disk"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -56,7 +55,7 @@ func (s *SaveRequestHandler) handleSaveRequest(req SaveRequest) {
 }
 
 func (s *SaveRequestHandler) handleSaveRequestForDest(req SaveRequest, dest Dest) {
-	d, ok := s.HasDisk(dest.NodeId, dest.DiskId)
+	d, ok := s.hasDisk(dest.NodeId, dest.DiskId)
 	if !ok {
 		return
 	}
@@ -79,12 +78,14 @@ func (s *SaveRequestHandler) routeData(to Dest, outReq DataForSaveRequest) {
 	s.OutSends <- model.SendPayloadMsg{ConnId: conn, Payload: outReq}
 }
 
-func (s *SaveRequestHandler) HasDisk(nodeId model.NodeId, diskId model.DiskId) (disk.Disk, bool) {
+func (s *SaveRequestHandler) hasDisk(nodeId model.NodeId, diskId model.DiskId) (disk.Disk, bool) {
 	if s.NodeId != nodeId {
 		return disk.Disk{}, false
 	}
 	for _, d := range s.Disks.GetValues() {
-		return d, true
+		if d.DiskId() == diskId {
+			return d, true
+		}
 	}
 	return disk.Disk{}, false
 }
