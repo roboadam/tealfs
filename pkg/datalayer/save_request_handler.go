@@ -44,28 +44,39 @@ func (s *SaveRequestHandler) Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case req := <-s.InSaveRequests:
-			for _, dest := range req.From {
-				if d, ok := s.HasDisk(dest.NodeId, dest.DiskId); ok {
-					if data, ok := d.Get(req.BlockId); ok {
-						outReq := DataForSaveRequest{
-							SaveRequest: req,
-							Data:        data,
-						}
-						if req.To.NodeId == s.NodeId {
-							s.OutDataforSaveRequest <- outReq
-						} else if conn, ok := s.NodeConnMap.ConnForNode(req.To.NodeId); ok {
-							s.OutSends <- model.SendPayloadMsg{
-								ConnId:  conn,
-								Payload: outReq,
-							}
-						} else {
-							log.Panic("no connection")
-						}
-					}
-				}
-			}
+			s.handleSaveRequest(req)
 		}
 	}
+}
+
+func (s *SaveRequestHandler) handleSaveRequest(req SaveRequest) {
+	for _, dest := range req.From {
+		s.handleSaveRequestForDest(req, dest)
+	}
+}
+
+func (s *SaveRequestHandler) handleSaveRequestForDest(req SaveRequest, dest Dest) {
+	d, ok := s.HasDisk(dest.NodeId, dest.DiskId)
+	if !ok {
+		return
+	}
+	data, ok := d.Get(req.BlockId)
+	if !ok {
+		return
+	}
+	s.routeData(req.To, DataForSaveRequest{SaveRequest: req, Data: data})
+}
+
+func (s *SaveRequestHandler) routeData(to Dest, outReq DataForSaveRequest) {
+	if to.NodeId == s.NodeId {
+		s.OutDataforSaveRequest <- outReq
+		return
+	}
+	conn, ok := s.NodeConnMap.ConnForNode(to.NodeId)
+	if !ok {
+		log.Panic("no connection")
+	}
+	s.OutSends <- model.SendPayloadMsg{ConnId: conn, Payload: outReq}
 }
 
 func (s *SaveRequestHandler) HasDisk(nodeId model.NodeId, diskId model.DiskId) (disk.Disk, bool) {
