@@ -25,6 +25,7 @@ import (
 
 type SaveRequestHandler struct {
 	InSaveRequests        <-chan SaveRequest
+	InDataforSaveRequest  <-chan DataForSaveRequest
 	Disks                 *set.Set[disk.Disk]
 	NodeId                model.NodeId
 	OutDataforSaveRequest chan<- DataForSaveRequest
@@ -44,7 +45,24 @@ func (s *SaveRequestHandler) Start(ctx context.Context) {
 			return
 		case req := <-s.InSaveRequests:
 			s.handleSaveRequest(req)
+		case req := <-s.InDataforSaveRequest:
+			s.handleDataForSaveRequest(req)
 		}
+	}
+}
+
+func (s *SaveRequestHandler) handleDataForSaveRequest(req DataForSaveRequest) {
+	for _, disk := range s.Disks.GetValues() {
+		if req.SaveRequest.To.DiskId == disk.DiskId() {
+			s.saveDataToDisk(disk, req)
+			return
+		}
+	}
+}
+
+func (s *SaveRequestHandler) saveDataToDisk(disk disk.Disk, req DataForSaveRequest) {
+	if !disk.Save(req.Data, req.SaveRequest.BlockId) {
+		
 	}
 }
 
