@@ -31,6 +31,7 @@ type SaveRequestHandler struct {
 	OutDataforSaveRequest chan<- DataForSaveRequest
 	OutSends              chan<- model.SendPayloadMsg
 	NodeConnMap           *model.NodeConnectionMapper
+	StateHandler          *StateHandler
 }
 
 type DataForSaveRequest struct {
@@ -61,8 +62,8 @@ func (s *SaveRequestHandler) handleDataForSaveRequest(req DataForSaveRequest) {
 }
 
 func (s *SaveRequestHandler) saveDataToDisk(disk disk.Disk, req DataForSaveRequest) {
-	if !disk.Save(req.Data, req.SaveRequest.BlockId) {
-		
+	if disk.Save(req.Data, req.SaveRequest.BlockId) {
+		s.StateHandler.Saved(req.SaveRequest.BlockId, req.SaveRequest.To)
 	}
 }
 
