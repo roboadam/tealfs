@@ -42,7 +42,8 @@ func (d *DeleteRequestHandler) Start(ctx context.Context) {
 func (d *DeleteRequestHandler) handleDeleteRequest(req DeleteRequest) {
 	for _, disk := range d.Disks.GetValues() {
 		if req.Dest.DiskId == disk.DiskId() {
-			// disk.Delete
+			disk.Delete(req.BlockId)
+			return
 		}
 	}
 }

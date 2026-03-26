@@ -60,6 +60,10 @@ func New(
 			blockId model.BlockId
 			resp    chan bool
 		}),
+		inDelete: make(chan struct {
+			blockId model.BlockId
+			resp    chan bool
+		}),
 		ctx: ctx,
 	}
 	go p.consumeChannels()
@@ -86,6 +90,10 @@ type Disk struct {
 	}
 	inSave chan struct {
 		data    []byte
+		blockId model.BlockId
+		resp    chan bool
+	}
+	inDelete chan struct {
 		blockId model.BlockId
 		resp    chan bool
 	}
@@ -131,6 +139,18 @@ func (d *Disk) Save(data []byte, blockId model.BlockId) bool {
 		resp    chan bool
 	}{
 		data:    data,
+		blockId: blockId,
+		resp:    resp,
+	}
+	return <-resp
+}
+
+func (d *Disk) Delete(blockId model.BlockId) bool {
+	resp := make(chan bool)
+	d.inDelete <- struct {
+		blockId model.BlockId
+		resp    chan bool
+	}{
 		blockId: blockId,
 		resp:    resp,
 	}
@@ -204,6 +224,10 @@ func (d *Disk) consumeChannels() {
 			if err != nil {
 				log.Warn("Error deleting file")
 			}
+		case del := <-d.inDelete:
+			filePath := filepath.Join(d.path.raw, string(del.blockId))
+			err := d.path.ops.Remove(filePath)
+			del.resp <- err == nil
 		case req := <-d.InExists:
 			filePath := filepath.Join(d.path.raw, string(req.BlockId))
 			req.Resp <- d.path.ops.Exists(filePath)

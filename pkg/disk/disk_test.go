@@ -173,6 +173,33 @@ func TestSave(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	f := disk.MockFileOps{}
+	path := disk.NewPath("/some/fake/path", &f)
+	id := model.NewNodeId()
+	diskId := model.DiskId(uuid.New().String())
+	d := disk.New(path, id, diskId, ctx)
+
+	d.Save([]byte{1, 2, 3}, "blockId")
+
+	ok := d.Delete("blockId")
+	if !ok {
+		t.Error("should be able to delete")
+	}
+
+	_, err := path.ReadDirect(model.DiskPointer{
+		NodeId:   id,
+		Disk:     diskId,
+		FileName: "blockId",
+	})
+	if err == nil {
+		t.Error("file should not exist after delete")
+	}
+}
+
 func newDiskService(ctx context.Context) (*disk.MockFileOps, disk.Path, model.NodeId, chan model.WriteRequest, chan model.ReadRequest, chan model.WriteResult, chan model.ReadResult, disk.Disk) {
 	f := disk.MockFileOps{}
 	path := disk.NewPath("/some/fake/path", &f)
