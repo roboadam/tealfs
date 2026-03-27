@@ -31,7 +31,11 @@ type SaveRequestHandler struct {
 	OutDataforSaveRequest chan<- DataForSaveRequest
 	OutSends              chan<- model.SendPayloadMsg
 	NodeConnMap           *model.NodeConnectionMapper
-	StateHandler          *StateHandler
+	StateHandler          Saver
+}
+
+type Saver interface {
+	Saved(blockId model.BlockId, d Dest)
 }
 
 type DataForSaveRequest struct {
