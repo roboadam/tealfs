@@ -23,10 +23,10 @@ import (
 
 type SaveRequestHandler struct {
 	InSaveRequests        <-chan SaveRequest
-	InDataforSaveRequest  <-chan DataForSaveRequest
+	InDataForSaveRequest  <-chan DataForSaveRequest
 	Disks                 *set.Set[disk.Disk]
 	NodeId                model.NodeId
-	OutDataforSaveRequest chan<- DataForSaveRequest
+	OutDataForSaveRequest chan<- DataForSaveRequest
 	OutSends              chan<- model.SendPayloadMsg
 	NodeConnMap           *model.NodeConnectionMapper
 	StateHandler          Saver
@@ -48,7 +48,7 @@ func (s *SaveRequestHandler) Start(ctx context.Context) {
 			return
 		case req := <-s.InSaveRequests:
 			s.handleSaveRequest(req)
-		case req := <-s.InDataforSaveRequest:
+		case req := <-s.InDataForSaveRequest:
 			s.handleDataForSaveRequest(req)
 		}
 	}
@@ -89,7 +89,7 @@ func (s *SaveRequestHandler) handleSaveRequestForDest(req SaveRequest, dest Dest
 
 func (s *SaveRequestHandler) routeData(to Dest, outReq DataForSaveRequest) {
 	if to.NodeId == s.NodeId {
-		s.OutDataforSaveRequest <- outReq
+		s.OutDataForSaveRequest <- outReq
 		return
 	}
 	conn, ok := s.NodeConnMap.ConnForNode(to.NodeId)

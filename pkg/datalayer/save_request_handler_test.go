@@ -25,7 +25,7 @@ import (
 	"testing"
 )
 
-func TestSaveRequestHandler(t *testing.T) {
+func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -53,10 +53,10 @@ func TestSaveRequestHandler(t *testing.T) {
 
 	s := datalayer.SaveRequestHandler{
 		InSaveRequests:        inSaveRequests,
-		InDataforSaveRequest:  inDataforSaveRequest,
+		InDataForSaveRequest:  inDataforSaveRequest,
 		Disks:                 &disks,
 		NodeId:                nodeIdLocal,
-		OutDataforSaveRequest: outDataforSaveRequest,
+		OutDataForSaveRequest: outDataforSaveRequest,
 		OutSends:              outSends,
 		NodeConnMap:           nodeConnMap,
 		StateHandler:          &stateHandler,
@@ -97,14 +97,70 @@ func TestSaveRequestHandler(t *testing.T) {
 	}
 }
 
+func TestSaveRequestHandlerDataForSaveRequest(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	fileOps := disk.MockFileOps{}
+	inSaveRequests := make(chan datalayer.SaveRequest)
+	inDataForSaveRequest := make(chan datalayer.DataForSaveRequest)
+	disks := set.NewSet[disk.Disk]()
+	nodeIdLocal := model.NodeId("nodeId")
+	outDataForSaveRequest := make(chan datalayer.DataForSaveRequest)
+	outSends := make(chan model.SendPayloadMsg)
+	nodeConnMap := model.NewNodeConnectionMapper()
+	savedCh := make(chan struct{}, 1)
+	stateHandler := MockSaver{SavedCh: savedCh}
+	diskId := model.DiskId("disk1")
+	path := "somePath"
+	d := disk.New(disk.NewPath(path, &fileOps), nodeIdLocal, diskId, ctx)
+	disks.Add(d)
+	blockId := model.BlockId("blockId")
+	fileData := []byte{1, 2, 3, 4, 5}
+
+	s := datalayer.SaveRequestHandler{
+		InSaveRequests:        inSaveRequests,
+		InDataForSaveRequest:  inDataForSaveRequest,
+		Disks:                 &disks,
+		NodeId:                nodeIdLocal,
+		OutDataForSaveRequest: outDataForSaveRequest,
+		OutSends:              outSends,
+		NodeConnMap:           nodeConnMap,
+		StateHandler:          &stateHandler,
+	}
+
+	go s.Start(ctx)
+
+	inDataForSaveRequest <- datalayer.DataForSaveRequest{
+		SaveRequest: datalayer.SaveRequest{
+			To:      datalayer.Dest{DiskId: diskId, NodeId: nodeIdLocal},
+			BlockId: blockId,
+		},
+		Data: fileData,
+	}
+
+	<-savedCh
+
+	if stateHandler.BlockId != blockId {
+		t.Error("invalid block id")
+	}
+	if stateHandler.Dest != (datalayer.Dest{DiskId: diskId, NodeId: nodeIdLocal}) {
+		t.Error("invalid dest")
+	}
+}
+
 type MockSaver struct {
 	BlockId model.BlockId
 	Dest    datalayer.Dest
 	Count   int
+	SavedCh chan struct{}
 }
 
 func (m *MockSaver) Saved(blockId model.BlockId, d datalayer.Dest) {
 	m.Count++
 	m.BlockId = blockId
 	m.Dest = d
+	if m.SavedCh != nil {
+		m.SavedCh <- struct{}{}
+	}
 }
