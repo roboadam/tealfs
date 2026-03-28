@@ -33,7 +33,7 @@ func TestSaveRequestHandler(t *testing.T) {
 	inSaveRequests := make(chan datalayer.SaveRequest)
 	inDataforSaveRequest := make(chan datalayer.DataForSaveRequest)
 	disks := set.NewSet[disk.Disk]()
-	nodeId := model.NodeId("nodeId")
+	nodeIdLocal := model.NodeId("nodeId")
 	outDataforSaveRequest := make(chan datalayer.DataForSaveRequest)
 	outSends := make(chan model.SendPayloadMsg)
 	nodeConnMap := model.NewNodeConnectionMapper()
@@ -42,8 +42,8 @@ func TestSaveRequestHandler(t *testing.T) {
 	diskIdTo := model.DiskId("disk2")
 	pathFrom := "pathFrom"
 	pathTo := "pathTo"
-	diskFrom := disk.New(disk.NewPath(pathFrom, &fileOps), nodeId, diskIdFrom, ctx)
-	diskTo := disk.New(disk.NewPath(pathTo, &fileOps), nodeId, diskIdTo, ctx)
+	diskFrom := disk.New(disk.NewPath(pathFrom, &fileOps), nodeIdLocal, diskIdFrom, ctx)
+	diskTo := disk.New(disk.NewPath(pathTo, &fileOps), nodeIdLocal, diskIdTo, ctx)
 	disks.Add(diskFrom)
 	disks.Add(diskTo)
 	blockId := model.BlockId("blockId")
@@ -55,7 +55,7 @@ func TestSaveRequestHandler(t *testing.T) {
 		InSaveRequests:        inSaveRequests,
 		InDataforSaveRequest:  inDataforSaveRequest,
 		Disks:                 &disks,
-		NodeId:                nodeId,
+		NodeId:                nodeIdLocal,
 		OutDataforSaveRequest: outDataforSaveRequest,
 		OutSends:              outSends,
 		NodeConnMap:           nodeConnMap,
@@ -65,14 +65,35 @@ func TestSaveRequestHandler(t *testing.T) {
 	go s.Start(ctx)
 
 	inSaveRequests <- datalayer.SaveRequest{
-		To:      datalayer.Dest{DiskId: diskIdTo, NodeId: nodeId},
-		From:    []datalayer.Dest{{DiskId: diskIdFrom, NodeId: nodeId}},
+		To:      datalayer.Dest{DiskId: diskIdTo, NodeId: nodeIdLocal},
+		From:    []datalayer.Dest{{DiskId: diskIdFrom, NodeId: nodeIdLocal}},
 		BlockId: blockId,
 	}
 
 	data := <-outDataforSaveRequest
 	if !bytes.Equal(fileData, data.Data) {
 		t.Error("invalid data")
+	}
+
+	diskIdTo = model.DiskId("disk3")
+	nodeIdRemote := model.NodeId("nodeIdRemote")
+	diskTo = disk.New(disk.NewPath(pathTo, &fileOps), nodeIdRemote, diskIdTo, ctx)
+	disks.Add(diskTo)
+	nodeConnMap.SetAll(0, "address", nodeIdRemote)
+
+	inSaveRequests <- datalayer.SaveRequest{
+		To:      datalayer.Dest{DiskId: diskIdTo, NodeId: nodeIdRemote},
+		From:    []datalayer.Dest{{DiskId: diskIdFrom, NodeId: nodeIdLocal}},
+		BlockId: blockId,
+	}
+
+	payload := <-outSends
+	if req, ok := payload.Payload.(datalayer.DataForSaveRequest); ok {
+		if !bytes.Equal(fileData, req.Data) {
+			t.Error("invalid data")
+		}
+	} else {
+		t.Error("Invalid type")
 	}
 }
 
