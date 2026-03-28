@@ -19,8 +19,6 @@ import (
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type SaveRequestHandler struct {
@@ -95,10 +93,9 @@ func (s *SaveRequestHandler) routeData(to Dest, outReq DataForSaveRequest) {
 		return
 	}
 	conn, ok := s.NodeConnMap.ConnForNode(to.NodeId)
-	if !ok {
-		log.Panic("no connection")
+	if ok {
+		s.OutSends <- model.SendPayloadMsg{ConnId: conn, Payload: outReq}
 	}
-	s.OutSends <- model.SendPayloadMsg{ConnId: conn, Payload: outReq}
 }
 
 func (s *SaveRequestHandler) hasDisk(nodeId model.NodeId, diskId model.DiskId) (disk.Disk, bool) {

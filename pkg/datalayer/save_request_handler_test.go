@@ -15,7 +15,9 @@
 package datalayer_test
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"tealfs/pkg/datalayer"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -27,6 +29,7 @@ func TestSaveRequestHandler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	fileOps := disk.MockFileOps{}
 	inSaveRequests := make(chan datalayer.SaveRequest)
 	inDataforSaveRequest := make(chan datalayer.DataForSaveRequest)
 	disks := set.NewSet[disk.Disk]()
@@ -36,9 +39,17 @@ func TestSaveRequestHandler(t *testing.T) {
 	nodeConnMap := model.NewNodeConnectionMapper()
 	stateHandler := MockSaver{}
 	diskIdFrom := model.DiskId("disk1")
-	diskSvc := disk.New(disk.NewPath("foo", &disk.MockFileOps{}), nodeId, diskIdFrom, ctx)
-	disks.Add(diskSvc)
 	diskIdTo := model.DiskId("disk2")
+	pathFrom := "pathFrom"
+	pathTo := "pathTo"
+	diskFrom := disk.New(disk.NewPath(pathFrom, &fileOps), nodeId, diskIdFrom, ctx)
+	diskTo := disk.New(disk.NewPath(pathTo, &fileOps), nodeId, diskIdTo, ctx)
+	disks.Add(diskFrom)
+	disks.Add(diskTo)
+	blockId := model.BlockId("blockId")
+	fileData := []byte{1, 2, 3, 4, 5}
+
+	fileOps.WriteFile(fmt.Sprint(pathFrom, "/", blockId), fileData)
 
 	s := datalayer.SaveRequestHandler{
 		InSaveRequests:        inSaveRequests,
@@ -55,8 +66,13 @@ func TestSaveRequestHandler(t *testing.T) {
 
 	inSaveRequests <- datalayer.SaveRequest{
 		To:      datalayer.Dest{DiskId: diskIdTo, NodeId: nodeId},
-		From:    []datalayer.Dest{},
-		BlockId: "",
+		From:    []datalayer.Dest{{DiskId: diskIdFrom, NodeId: nodeId}},
+		BlockId: blockId,
+	}
+
+	data := <-outDataforSaveRequest
+	if !bytes.Equal(fileData, data.Data) {
+		t.Error("invalid data")
 	}
 }
 
