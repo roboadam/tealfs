@@ -35,27 +35,29 @@ type Conns struct {
 	netConnsMux   *sync.RWMutex
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
-	// outReceives        chan model.ConnsMgrReceive
-	OutSaveToDiskReq   chan<- blocksaver.SaveToDiskReq
-	OutSaveToDiskResp  chan<- blocksaver.SaveToDiskResp
-	OutGetFromDiskReq  chan<- blockreader.GetFromDiskReq
-	OutGetFromDiskResp chan<- blockreader.GetFromDiskResp
-	OutAddDiskMsg      chan<- model.AddDiskMsg
-	OutDiskAddedMsg    chan<- model.DiskAddedMsg
-	OutIam             chan<- model.IAm
-	OutIamConnId       chan<- IamConnId
-	OutSyncNodes       chan<- model.SyncNodes
-	OutSendIam         chan<- model.ConnId
-	OutFileBroadcasts  chan<- webdav.FileBroadcast
-	inConnectTo        <-chan model.ConnectToNodeReq
-	inSends            <-chan model.SendPayloadMsg
-	StateHandler       *datalayer.StateHandler
-	Address            string
-	provider           ConnectionProvider
-	nodeId             model.NodeId
-	listener           net.Listener
-	ctx                context.Context
-	nodeConnMapper     model.NodeConnectionMapper
+
+	OutSaveToDiskReq      chan<- blocksaver.SaveToDiskReq
+	OutSaveToDiskResp     chan<- blocksaver.SaveToDiskResp
+	OutGetFromDiskReq     chan<- blockreader.GetFromDiskReq
+	OutGetFromDiskResp    chan<- blockreader.GetFromDiskResp
+	OutAddDiskMsg         chan<- model.AddDiskMsg
+	OutDiskAddedMsg       chan<- model.DiskAddedMsg
+	OutIam                chan<- model.IAm
+	OutIamConnId          chan<- IamConnId
+	OutSyncNodes          chan<- model.SyncNodes
+	OutSendIam            chan<- model.ConnId
+	OutFileBroadcasts     chan<- webdav.FileBroadcast
+	OutDataForSaveRequest chan<- datalayer.DataForSaveRequest
+
+	inConnectTo    <-chan model.ConnectToNodeReq
+	inSends        <-chan model.SendPayloadMsg
+	StateHandler   *datalayer.StateHandler
+	Address        string
+	provider       ConnectionProvider
+	nodeId         model.NodeId
+	listener       net.Listener
+	ctx            context.Context
+	nodeConnMapper model.NodeConnectionMapper
 }
 
 func NewConns(
@@ -205,6 +207,8 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.StateHandler.Saved(p.B, p.D)
 			case *datalayer.SetDiskSpaceParams:
 				c.StateHandler.SetDiskSpace(p.D, p.Space)
+			case *datalayer.DataForSaveRequest:
+				c.OutDataForSaveRequest <- *p
 			default:
 				panic("Unknown payload")
 			}
