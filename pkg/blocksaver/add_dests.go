@@ -14,16 +14,18 @@
 
 package blocksaver
 
-import "tealfs/pkg/model"
-
-func (b *BlockSaver) destsFor(req model.PutBlockReq) []Dest {
-	dests := make([]Dest, 0, 2)
-	ptrs := b.Distributer.WritePointersForId(req.Block.Id)
-	for _, ptr := range ptrs {
-		dests = append(dests, Dest{
-			NodeId: ptr.NodeId,
-			DiskId: ptr.Disk,
-		})
+func (b *BlockSaver) dest() Dest {
+	for _, d := range b.DiskInfoList.GetValues() {
+		if d.NodeId == b.NodeId {
+			return Dest{
+				NodeId: d.NodeId,
+				DiskId: d.DiskId,
+			}
+		}
 	}
-	return dests
+	d := b.DiskInfoList.GetValues()[0]
+	return Dest{
+		NodeId: d.NodeId,
+		DiskId: d.DiskId,
+	}
 }

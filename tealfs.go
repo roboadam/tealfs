@@ -200,7 +200,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		LocalDest:   localBlockSaverSaveToDiskReq,
 		InResp:      blockSaverSaveToDiskResp,
 		Resp:        webdavPutResp,
-		Distributer: &diskManagerSvc.Distributer,
 		NodeId:      nodeId,
 	}
 	lbs := blocksaver.LocalBlockSaver{

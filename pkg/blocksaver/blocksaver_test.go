@@ -49,13 +49,12 @@ func TestBlockSaver(t *testing.T) {
 	})
 
 	bs := BlockSaver{
-		Req:         req,
-		RemoteDest:  remoteDest,
-		LocalDest:   localDest,
-		InResp:      inResp,
-		Resp:        resp,
-		Distributer: &distributer,
-		NodeId:      localNodeId,
+		Req:        req,
+		RemoteDest: remoteDest,
+		LocalDest:  localDest,
+		InResp:     inResp,
+		Resp:       resp,
+		NodeId:     localNodeId,
 	}
 
 	go bs.Start(ctx)

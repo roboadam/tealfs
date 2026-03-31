@@ -17,7 +17,6 @@ package blocksaver
 import (
 	"context"
 	"encoding/gob"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
@@ -43,8 +42,8 @@ type BlockSaver struct {
 	InResp <-chan SaveToDiskResp
 	Resp   chan<- model.PutBlockResp
 
-	Distributer *dist.MirrorDistributer
-	NodeId      model.NodeId
+	NodeId       model.NodeId
+	DiskInfoList *set.Set[model.DiskInfo]
 }
 
 type Dest struct {
@@ -80,23 +79,20 @@ func (bs *BlockSaver) Start(ctx context.Context) {
 
 func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model.PutBlockId]set.Set[model.DiskId]) {
 	// Find all disk destinations for the block
-	dests := bs.destsFor(req)
+	dest := bs.dest()
 	requestState[req.Id] = set.NewSet[model.DiskId]()
+.
+	// Save each request so we know when we've received all responses
+	state := requestState[req.Id]
+	state.Add(dest.DiskId)
 
-	// For each disk
-	for _, dest := range dests {
-		// Save each request so we know when we've received all responses
-		state := requestState[req.Id]
-		state.Add(dest.DiskId)
+	saveToDisk := SaveToDiskReq{Dest: dest, Req: req, Caller: bs.NodeId}
 
-		saveToDisk := SaveToDiskReq{Dest: dest, Req: req, Caller: bs.NodeId}
-
-		// If the destination is this node send to the local disk, otherwise send to remote node
-		if dest.NodeId == bs.NodeId {
-			bs.LocalDest <- saveToDisk
-		} else {
-			bs.RemoteDest <- saveToDisk
-		}
+	// If the destination is this node send to the local disk, otherwise send to remote node
+	if dest.NodeId == bs.NodeId {
+		bs.LocalDest <- saveToDisk
+	} else {
+		bs.RemoteDest <- saveToDisk
 	}
 }
 
