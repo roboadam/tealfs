@@ -16,6 +16,7 @@ package blocksaver
 
 import (
 	"context"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
 	"testing"
 
@@ -32,13 +33,25 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	resp := make(chan SaveToDiskResp)
 	sends := make(chan model.SendPayloadMsg)
 	inWriteResults := make(chan (<-chan model.WriteResult))
+	outSaveRequest := make(chan datalayer.SaveRequest)
+	outDeleteRequest := make(chan datalayer.DeleteRequest)
+	nodeConnMapper := model.NewNodeConnectionMapper()
+
+	stateHandler := datalayer.StateHandler{
+		OutSaveRequest:   outSaveRequest,
+		OutDeleteRequest: outDeleteRequest,
+		OutSends:         sends,
+		MyNodeId:         nodeId,
+		NodeConnMap:      nodeConnMapper,
+	}
 
 	lbsr := LocalBlockSaveResponses{
 		InWriteResults:      inWriteResults,
 		LocalWriteResponses: resp,
 		Sends:               sends,
-		NodeConnMap:         model.NewNodeConnectionMapper(),
+		NodeConnMap:         nodeConnMapper,
 		NodeId:              nodeId,
+		StateHandler:        &stateHandler,
 	}
 
 	go lbsr.Start(ctx)
@@ -58,6 +71,14 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 		FileName: uuid.NewString(),
 	}
 	writeResults1 <- model.NewWriteResultOk(ptr, nodeId, putBlockId)
+	// saveParamsPayload := <-sends
+	// if saveParams, ok := saveParamsPayload.Payload.(datalayer.SavedParams); ok {
+	// 	if saveParams.D.NodeId != remoteNodeId {
+	// 		t.Error("wrong dest")
+	// 	}
+	// } else {
+	// 	t.Error("wrong type")
+	// }
 
 	wr := <-resp
 	if wr.Resp.Id != putBlockId {

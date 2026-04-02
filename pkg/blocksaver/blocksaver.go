@@ -81,7 +81,7 @@ func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model
 	// Find all disk destinations for the block
 	dest := bs.dest()
 	requestState[req.Id] = set.NewSet[model.DiskId]()
-.
+
 	// Save each request so we know when we've received all responses
 	state := requestState[req.Id]
 	state.Add(dest.DiskId)

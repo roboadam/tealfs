@@ -19,6 +19,7 @@ import (
 	"errors"
 	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 
 	"github.com/google/uuid"
@@ -48,13 +49,26 @@ func TestBlockSaver(t *testing.T) {
 		Data: []byte{1, 2, 3, 4, 5},
 	})
 
+	diskInfoSet := set.NewSet[model.DiskInfo]()
+	diskInfoSet.Add(model.DiskInfo{
+		DiskId: localDiskId,
+		Path:   "localPath",
+		NodeId: localNodeId,
+	})
+	diskInfoSet.Add(model.DiskInfo{
+		DiskId: remoteDiskId,
+		Path:   "remotePath",
+		NodeId: remoteNodeId,
+	})
+
 	bs := BlockSaver{
-		Req:        req,
-		RemoteDest: remoteDest,
-		LocalDest:  localDest,
-		InResp:     inResp,
-		Resp:       resp,
-		NodeId:     localNodeId,
+		Req:          req,
+		RemoteDest:   remoteDest,
+		LocalDest:    localDest,
+		InResp:       inResp,
+		Resp:         resp,
+		NodeId:       localNodeId,
+		DiskInfoList: &diskInfoSet,
 	}
 
 	go bs.Start(ctx)
@@ -64,12 +78,6 @@ func TestBlockSaver(t *testing.T) {
 	localReq := <-localDest
 	if localReq.Req.Id != putBlockReq.Id || localReq.Caller != localNodeId {
 		t.Error("unexpected req id 1")
-		return
-	}
-
-	remoteReq := <-remoteDest
-	if remoteReq.Req.Id != putBlockReq.Id || remoteReq.Caller != localNodeId {
-		t.Error("unexpected req id 2")
 		return
 	}
 
@@ -91,18 +99,6 @@ func TestBlockSaver(t *testing.T) {
 	default:
 	}
 
-	inResp <- SaveToDiskResp{
-		Caller: remoteReq.Caller,
-		Dest: Dest{
-			NodeId: remoteNodeId,
-			DiskId: remoteDiskId,
-		},
-		Resp: model.PutBlockResp{
-			Id:  remoteReq.Req.Id,
-			Err: nil,
-		},
-	}
-
 	msg := <-resp
 
 	if msg.Id != putBlockReq.Id {
@@ -111,7 +107,6 @@ func TestBlockSaver(t *testing.T) {
 
 	req <- putBlockReq
 	localReq = <-localDest
-	remoteReq = <-remoteDest
 
 	inResp <- SaveToDiskResp{
 		Caller: localReq.Caller,

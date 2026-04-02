@@ -17,6 +17,7 @@ package blocksaver
 import (
 	"context"
 	"errors"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
 
 	log "github.com/sirupsen/logrus"
@@ -26,8 +27,10 @@ type LocalBlockSaveResponses struct {
 	InWriteResults      <-chan <-chan model.WriteResult
 	LocalWriteResponses chan<- SaveToDiskResp
 	Sends               chan<- model.SendPayloadMsg
-	NodeConnMap         *model.NodeConnectionMapper
-	NodeId              model.NodeId
+
+	NodeConnMap  *model.NodeConnectionMapper
+	NodeId       model.NodeId
+	StateHandler *datalayer.StateHandler
 }
 
 func (l *LocalBlockSaveResponses) Start(ctx context.Context) {
@@ -48,6 +51,12 @@ func (l *LocalBlockSaveResponses) readFromChan(ctx context.Context, c <-chan mod
 			return
 		case wr := <-c:
 			resp := convert(&wr)
+			blockId := model.BlockId(wr.Ptr.FileName)
+			dest := datalayer.Dest{
+				DiskId: wr.Ptr.Disk,
+				NodeId: wr.Ptr.NodeId,
+			}
+			l.StateHandler.Saved(blockId, dest)
 			if resp.Caller == l.NodeId {
 				l.LocalWriteResponses <- *convert(&wr)
 			} else {
