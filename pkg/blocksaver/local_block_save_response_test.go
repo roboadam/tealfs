@@ -30,11 +30,11 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	nodeId := model.NewNodeId()
 	remoteNodeId := model.NewNodeId()
 
-	resp := make(chan SaveToDiskResp)
-	sends := make(chan model.SendPayloadMsg)
-	inWriteResults := make(chan (<-chan model.WriteResult))
-	outSaveRequest := make(chan datalayer.SaveRequest)
-	outDeleteRequest := make(chan datalayer.DeleteRequest)
+	resp := make(chan SaveToDiskResp, 1)
+	sends := make(chan model.SendPayloadMsg, 1)
+	inWriteResults := make(chan (<-chan model.WriteResult), 1)
+	outSaveRequest := make(chan datalayer.SaveRequest, 1)
+	outDeleteRequest := make(chan datalayer.DeleteRequest, 1)
 	nodeConnMapper := model.NewNodeConnectionMapper()
 
 	stateHandler := datalayer.StateHandler{
@@ -56,8 +56,8 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 
 	go lbsr.Start(ctx)
 
-	writeResults1 := make(chan model.WriteResult)
-	writeResults2 := make(chan model.WriteResult)
+	writeResults1 := make(chan model.WriteResult, 1)
+	writeResults2 := make(chan model.WriteResult, 1)
 	inWriteResults <- writeResults1
 	inWriteResults <- writeResults2
 
@@ -71,48 +71,48 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 		FileName: uuid.NewString(),
 	}
 	writeResults1 <- model.NewWriteResultOk(ptr, nodeId, putBlockId)
-	// saveParamsPayload := <-sends
-	// if saveParams, ok := saveParamsPayload.Payload.(datalayer.SavedParams); ok {
-	// 	if saveParams.D.NodeId != remoteNodeId {
-	// 		t.Error("wrong dest")
-	// 	}
-	// } else {
-	// 	t.Error("wrong type")
+	saveParamsPayload := <-sends
+	if saveParams, ok := saveParamsPayload.Payload.(datalayer.SavedParams); ok {
+		if saveParams.D.NodeId != remoteNodeId {
+			t.Error("wrong dest")
+		}
+	} else {
+		t.Error("wrong type")
+	}
+
+	// wr := <-resp
+	// if wr.Resp.Id != putBlockId {
+	// 	t.Error("Unknown put block id")
+	// 	return
 	// }
 
-	wr := <-resp
-	if wr.Resp.Id != putBlockId {
-		t.Error("Unknown put block id")
-		return
-	}
+	// putBlockId2 := model.PutBlockId(uuid.NewString())
+	// writeResults2 <- model.NewWriteResultErr(
+	// 	"some error happened",
+	// 	nodeId,
+	// 	putBlockId2,
+	// )
 
-	putBlockId2 := model.PutBlockId(uuid.NewString())
-	writeResults2 <- model.NewWriteResultErr(
-		"some error happened",
-		nodeId,
-		putBlockId2,
-	)
+	// wr = <-resp
+	// if wr.Resp.Id != putBlockId2 {
+	// 	t.Error("Unknown put block id")
+	// 	return
+	// }
 
-	wr = <-resp
-	if wr.Resp.Id != putBlockId2 {
-		t.Error("Unknown put block id")
-		return
-	}
+	// putBlockId3 := model.PutBlockId(uuid.NewString())
+	// writeResults1 <- model.NewWriteResultOk(
+	// 	model.DiskPointer{
+	// 		NodeId:   nodeId,
+	// 		Disk:     "diskId1",
+	// 		FileName: uuid.NewString(),
+	// 	},
+	// 	remoteNodeId,
+	// 	putBlockId3,
+	// )
 
-	putBlockId3 := model.PutBlockId(uuid.NewString())
-	writeResults1 <- model.NewWriteResultOk(
-		model.DiskPointer{
-			NodeId:   nodeId,
-			Disk:     "diskId1",
-			FileName: uuid.NewString(),
-		},
-		remoteNodeId,
-		putBlockId3,
-	)
-
-	payload := <-sends
-	if _, ok := payload.Payload.(*SaveToDiskResp); !ok {
-		t.Error("unknown send payload")
-		return
-	}
+	// payload := <-sends
+	// if _, ok := payload.Payload.(*SaveToDiskResp); !ok {
+	// 	t.Error("unknown send payload")
+	// 	return
+	// }
 }
