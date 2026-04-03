@@ -18,6 +18,7 @@ import (
 	"context"
 	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
+	"tealfs/pkg/test"
 	"testing"
 
 	"github.com/google/uuid"
@@ -27,8 +28,8 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	nodeId := model.NewNodeId()
-	remoteNodeId := model.NewNodeId()
+	nodeId := test.NonMainNode1
+	remoteNodeId := test.MainNodeId
 
 	resp := make(chan SaveToDiskResp, 1)
 	sends := make(chan model.SendPayloadMsg, 1)
@@ -74,7 +75,7 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	saveParamsPayload := <-sends
 	if saveParams, ok := saveParamsPayload.Payload.(datalayer.SavedParams); ok {
 		if saveParams.D.NodeId != remoteNodeId {
-			t.Error("wrong dest")
+			t.Errorf("wrong dest. expected %s, got %s", remoteNodeId, saveParams.D.NodeId)
 		}
 	} else {
 		t.Error("wrong type")
