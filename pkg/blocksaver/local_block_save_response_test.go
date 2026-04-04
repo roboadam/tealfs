@@ -74,46 +74,58 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	writeResults1 <- model.NewWriteResultOk(ptr, nodeId, putBlockId)
 	saveParamsPayload := <-sends
 	if saveParams, ok := saveParamsPayload.Payload.(datalayer.SavedParams); ok {
-		if saveParams.D.NodeId != remoteNodeId {
-			t.Errorf("wrong dest. expected %s, got %s", remoteNodeId, saveParams.D.NodeId)
+		if saveParams.D.NodeId != nodeId {
+			t.Errorf("wrong dest. expected %s, got %s", nodeId, saveParams.D.NodeId)
 		}
 	} else {
 		t.Error("wrong type")
 	}
 
-	// wr := <-resp
-	// if wr.Resp.Id != putBlockId {
-	// 	t.Error("Unknown put block id")
-	// 	return
-	// }
+	wr := <-resp
+	if wr.Resp.Id != putBlockId {
+		t.Error("Unknown put block id")
+		return
+	}
 
-	// putBlockId2 := model.PutBlockId(uuid.NewString())
-	// writeResults2 <- model.NewWriteResultErr(
-	// 	"some error happened",
-	// 	nodeId,
-	// 	putBlockId2,
-	// )
+	putBlockId2 := model.PutBlockId(uuid.NewString())
+	writeResults2 <- model.NewWriteResultErr(
+		"some error happened",
+		nodeId,
+		putBlockId2,
+	)
 
-	// wr = <-resp
-	// if wr.Resp.Id != putBlockId2 {
-	// 	t.Error("Unknown put block id")
-	// 	return
-	// }
+	payloadSaveParams := <-sends
+	if _, ok := payloadSaveParams.Payload.(datalayer.SavedParams); !ok {
+		t.Error("unknown send payload")
+		return
+	}
 
-	// putBlockId3 := model.PutBlockId(uuid.NewString())
-	// writeResults1 <- model.NewWriteResultOk(
-	// 	model.DiskPointer{
-	// 		NodeId:   nodeId,
-	// 		Disk:     "diskId1",
-	// 		FileName: uuid.NewString(),
-	// 	},
-	// 	remoteNodeId,
-	// 	putBlockId3,
-	// )
+	wr = <-resp
+	if wr.Resp.Id != putBlockId2 {
+		t.Error("Unknown put block id")
+		return
+	}
 
-	// payload := <-sends
-	// if _, ok := payload.Payload.(*SaveToDiskResp); !ok {
-	// 	t.Error("unknown send payload")
-	// 	return
-	// }
+	putBlockId3 := model.PutBlockId(uuid.NewString())
+	writeResults1 <- model.NewWriteResultOk(
+		model.DiskPointer{
+			NodeId:   nodeId,
+			Disk:     "diskId1",
+			FileName: uuid.NewString(),
+		},
+		remoteNodeId,
+		putBlockId3,
+	)
+
+	payloadSaveParams = <-sends
+	if _, ok := payloadSaveParams.Payload.(datalayer.SavedParams); !ok {
+		t.Error("unknown send payload")
+		return
+	}
+
+	payload := <-sends
+	if _, ok := payload.Payload.(*SaveToDiskResp); !ok {
+		t.Error("unknown send payload")
+		return
+	}
 }
