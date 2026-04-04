@@ -135,6 +135,29 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 	}
 }
 
+func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) []Dest {
+	result := make([]Dest, 0)
+	current := s.blockDiskMapCurrent[blockId]
+	inflight := s.blockDiskMapInFlight[blockId]
+	future := s.blockDiskMapFuture[blockId]
+	addToResultInPreferredOrder(result, current, preferedNodeId)
+	addToResultInPreferredOrder(result, inflight, preferedNodeId)
+	addToResultInPreferredOrder(result, future, preferedNodeId)
+	return result
+}
+
+func addToResultInPreferredOrder(result []Dest, added map[Dest]struct{}, preferred model.NodeId) {
+	others := make([]Dest, 0)
+	for key := range added {
+		if key.NodeId == preferred {
+			result = append(result, key)
+		} else {
+			others = append(others, key)
+		}
+	}
+	result = append(result, others...)
+}
+
 func (s *state) deleted(b model.BlockId, d Dest) {
 	s.init()
 	s.removeBlockFromCurrent(b, d)

@@ -228,7 +228,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		LocalDest:   localBlockReaderGetFromDiskReq,
 		InResp:      blockReaderGetFromDiskResp,
 		Resp:        webdavGetBlockResp,
-		Distributer: &diskManagerSvc.Distributer,
 		NodeId:      nodeId,
 	}
 	lbr := blockreader.LocalBlockReader{
