@@ -113,6 +113,28 @@ func (s *StateHandler) Deleted(b model.BlockId, d Dest) {
 	}
 }
 
+type DestsForBlockParams struct {
+	BlockId        model.BlockId
+	PreferedNodeId model.NodeId
+}
+
+func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) []Dest {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
+		return s.state.destsForBlock(blockId, preferedNodeId)
+	} else {
+		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
+			params := DestsForBlockParams{BlockId: blockId, PreferedNodeId: preferedNodeId}
+			s.OutSends <- model.SendPayloadMsg{
+				ConnId:  conn,
+				Payload: params,
+			}
+		}
+	}
+}
+
 func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest, deleteRequests chan DeleteRequest) {
 	for {
 		select {

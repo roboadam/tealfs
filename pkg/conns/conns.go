@@ -209,6 +209,8 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.StateHandler.SetDiskSpace(p.D, p.Space)
 			case *datalayer.DataForSaveRequest:
 				c.OutDataForSaveRequest <- *p
+			case *datalayer.DestsForBlockParams:
+				c.StateHandler.DestsForBlock(p.BlockId, p.PreferedNodeId)
 			default:
 				panic("Unknown payload")
 			}
