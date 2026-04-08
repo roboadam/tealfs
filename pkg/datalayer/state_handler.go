@@ -118,7 +118,7 @@ type DestsForBlockParams struct {
 	PreferedNodeId model.NodeId
 }
 
-func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) []Dest {
+func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) <-chan DestsForBlock {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 

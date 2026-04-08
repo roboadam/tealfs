@@ -135,7 +135,12 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 	}
 }
 
-func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) []Dest {
+type DestsForBlock struct {
+	Dests   []Dest
+	BlockId model.BlockId
+}
+
+func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) <-chan DestsForBlock {
 	result := make([]Dest, 0)
 	current := s.blockDiskMapCurrent[blockId]
 	inflight := s.blockDiskMapInFlight[blockId]
@@ -143,7 +148,12 @@ func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId
 	addToResultInPreferredOrder(result, current, preferedNodeId)
 	addToResultInPreferredOrder(result, inflight, preferedNodeId)
 	addToResultInPreferredOrder(result, future, preferedNodeId)
-	return result
+	resultChan := make(chan DestsForBlock, 1)
+	resultChan <- DestsForBlock{
+		Dests:   result,
+		BlockId: blockId,
+	}
+	return resultChan
 }
 
 func addToResultInPreferredOrder(result []Dest, added map[Dest]struct{}, preferred model.NodeId) {
