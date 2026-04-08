@@ -27,8 +27,9 @@ type StateHandler struct {
 	OutDeleteRequest chan<- DeleteRequest
 	OutSends         chan<- model.SendPayloadMsg
 
-	state state
-	mux   sync.Mutex
+	state        state
+	mux          sync.Mutex
+	waitingDests map[model.BlockId]chan DestsForBlock
 
 	MyNodeId    model.NodeId
 	NodeConnMap *model.NodeConnectionMapper
@@ -39,6 +40,7 @@ func (s *StateHandler) Start(ctx context.Context) {
 		return
 	}
 
+	s.waitingDests = make(map[model.BlockId]chan DestsForBlock)
 	saveRequests := make(chan SaveRequest, 1)
 	deleteRequests := make(chan DeleteRequest, 1)
 	s.state.outSaveRequest = saveRequests
@@ -124,15 +126,22 @@ func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model
 
 	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
 		return s.state.destsForBlock(blockId, preferedNodeId)
-	} else {
-		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
-			params := DestsForBlockParams{BlockId: blockId, PreferedNodeId: preferedNodeId}
-			s.OutSends <- model.SendPayloadMsg{
-				ConnId:  conn,
-				Payload: params,
-			}
+	}
+
+	if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
+		params := DestsForBlockParams{BlockId: blockId, PreferedNodeId: preferedNodeId}
+		s.OutSends <- model.SendPayloadMsg{
+			ConnId:  conn,
+			Payload: params,
 		}
 	}
+
+	result := make(chan DestsForBlock, 1)
+	if dests, ok := s.waitingDests[blockId]; ok {
+		dests.
+	}
+
+	return result
 }
 
 func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest, deleteRequests chan DeleteRequest) {
