@@ -118,30 +118,25 @@ func (s *StateHandler) Deleted(b model.BlockId, d Dest) {
 type DestsForBlockParams struct {
 	BlockId        model.BlockId
 	PreferedNodeId model.NodeId
+	Caller         model.NodeId
 }
 
-func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) <-chan DestsForBlock {
+func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model.NodeId, caller model.NodeId) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
 	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
-		return s.state.destsForBlock(blockId, preferedNodeId)
+		s.state.destsForBlock(blockId, preferedNodeId, caller)
+		return
 	}
 
 	if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
-		params := DestsForBlockParams{BlockId: blockId, PreferedNodeId: preferedNodeId}
+		params := DestsForBlockParams{BlockId: blockId, PreferedNodeId: preferedNodeId, Caller: caller}
 		s.OutSends <- model.SendPayloadMsg{
 			ConnId:  conn,
 			Payload: params,
 		}
 	}
-
-	result := make(chan DestsForBlock, 1)
-	if dests, ok := s.waitingDests[blockId]; ok {
-		dests.
-	}
-
-	return result
 }
 
 func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest, deleteRequests chan DeleteRequest) {

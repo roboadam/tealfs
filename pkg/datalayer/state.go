@@ -28,6 +28,7 @@ type state struct {
 
 	outSaveRequest   chan<- SaveRequest
 	outDeleteRequest chan<- DeleteRequest
+	outDestsForBlock chan<- DestsForBlock
 
 	diskSpace []diskSpace
 }
@@ -138,9 +139,10 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 type DestsForBlock struct {
 	Dests   []Dest
 	BlockId model.BlockId
+	Caller  model.NodeId
 }
 
-func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) <-chan DestsForBlock {
+func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId, caller model.NodeId) {
 	result := make([]Dest, 0)
 	current := s.blockDiskMapCurrent[blockId]
 	inflight := s.blockDiskMapInFlight[blockId]
@@ -148,12 +150,11 @@ func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId
 	addToResultInPreferredOrder(result, current, preferedNodeId)
 	addToResultInPreferredOrder(result, inflight, preferedNodeId)
 	addToResultInPreferredOrder(result, future, preferedNodeId)
-	resultChan := make(chan DestsForBlock, 1)
-	resultChan <- DestsForBlock{
+
+	s.outDestsForBlock <- DestsForBlock{
 		Dests:   result,
 		BlockId: blockId,
 	}
-	return resultChan
 }
 
 func addToResultInPreferredOrder(result []Dest, added map[Dest]struct{}, preferred model.NodeId) {

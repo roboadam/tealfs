@@ -210,7 +210,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			case *datalayer.DataForSaveRequest:
 				c.OutDataForSaveRequest <- *p
 			case *datalayer.DestsForBlockParams:
-				c.StateHandler.DestsForBlock(p.BlockId, p.PreferedNodeId)
+				c.StateHandler.DestsForBlock(p.BlockId, p.PreferedNodeId, p.Caller)
 			default:
 				panic("Unknown payload")
 			}
