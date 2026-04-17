@@ -125,12 +125,12 @@ type WriteReqResp struct {
 }
 
 type ReadReqResp struct {
-	Req  model.GetBlockReq
-	Resp chan model.GetBlockResp
+	Req  model.FetchBlockReq
+	Resp chan model.FetchBlockResp
 }
 
-func (f *FileSystem) fetchBlock(req model.GetBlockReq) model.GetBlockResp {
-	resp := make(chan model.GetBlockResp)
+func (f *FileSystem) fetchBlock(req model.FetchBlockReq) model.FetchBlockResp {
+	resp := make(chan model.FetchBlockResp)
 	chanutil.Send(f.Ctx, f.ReadReqResp, ReadReqResp{req, resp}, "filesystem fetchBlock "+string(req.Id))
 	return <-resp
 }

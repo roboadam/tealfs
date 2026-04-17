@@ -90,3 +90,8 @@ type NodeDiskBlock struct {
 	DiskId  DiskId
 	BlockId BlockId
 }
+
+type NodeDisk struct {
+	NodeId  NodeId
+	BlockId BlockId
+}

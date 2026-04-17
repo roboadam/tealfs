@@ -28,3 +28,42 @@ func init() {
 }
 
 type Payload interface{}
+
+type Payload2 interface {
+	Destination() NodeId
+}
+
+type FetchBlockId string
+
+type FetchBlockReq struct {
+	Caller   NodeId
+	BlockId  BlockId
+	Id       FetchBlockId
+}
+
+func (f *FetchBlockReq) Destination() NodeId {
+	return ""
+}
+
+type FetchBlockCmd struct {
+	Sources []NodeDisk
+	BlockId BlockId
+	Caller  NodeId
+	Id      FetchBlockId
+}
+
+func (f *FetchBlockCmd) Destination() NodeId {
+	return f.Sources[0].NodeId
+}
+
+type FetchBlockResp struct {
+	Caller  NodeId
+	Block   Block
+	Id      FetchBlockId
+	Success bool
+	Msg     string
+}
+
+func (f *FetchBlockResp) Destination() NodeId {
+	return f.Caller
+}

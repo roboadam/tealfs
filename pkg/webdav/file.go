@@ -22,6 +22,7 @@ import (
 	"tealfs/pkg/model"
 	"time"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -396,13 +397,17 @@ func (f *File) ensureData() error {
 
 func (f *File) ensureDataForIndex(index int) error {
 	if !f.HasData[index] {
-		req := model.NewGetBlockReq(f.Block[index].Id)
+		req := model.FetchBlockReq{
+			Caller:   f.FileSystem.nodeId,
+			BlockId:  f.Block[index].Id,
+			Id:       model.FetchBlockId(uuid.NewString()),
+		}
 		resp := f.FileSystem.fetchBlock(req)
-		if resp.Err == nil {
+		if resp.Success {
 			f.Block[index] = resp.Block
 			f.HasData[index] = true
 		} else {
-			return resp.Err
+			return errors.New(resp.Msg)
 		}
 	}
 	return nil
