@@ -30,10 +30,10 @@ import (
 
 func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
-	webdavMgrGets := make(chan model.GetBlockReq)
+	webdavMgrGets := make(chan model.FetchBlockReq)
 	webdavMgrPuts := make(chan model.PutBlockReq)
 	webdavMgrBroadcast := make(chan model.SendPayloadMsg)
-	mgrWebdavGets := make(chan model.GetBlockResp)
+	mgrWebdavGets := make(chan model.FetchBlockResp)
 	mgrWebdavPuts := make(chan model.PutBlockResp)
 	mgrWebdavBroadcast := make(chan webdav.FileBroadcast)
 
@@ -135,21 +135,23 @@ func propFind(url string) (string, error) {
 	return string(body), nil
 }
 
-func handleWebdavMgrGets(ctx context.Context, channel chan model.GetBlockReq, respChan chan model.GetBlockResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
+func handleWebdavMgrGets(ctx context.Context, channel chan model.FetchBlockReq, respChan chan model.FetchBlockResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case req := <-channel:
 			mux.Lock()
 			blockData, exists := data[req.BlockId]
 			if exists {
-				respChan <- model.GetBlockResp{
-					Id:    req.Id,
-					Block: model.Block{Id: req.BlockId, Data: blockData},
+				respChan <- model.FetchBlockResp{
+					Block:   model.Block{Id: req.BlockId, Data: blockData},
+					Id:      req.Id,
+					Success: true,
 				}
 			} else {
-				respChan <- model.GetBlockResp{
-					Id:    req.Id,
-					Block: model.Block{Id: req.BlockId, Data: []byte{}},
+				respChan <- model.FetchBlockResp{
+					Block:   model.Block{Id: req.BlockId, Data: []byte{}},
+					Id:      req.Id,
+					Success: true,
 				}
 			}
 			mux.Unlock()

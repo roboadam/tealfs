@@ -32,14 +32,14 @@ func init() {
 }
 
 type Webdav struct {
-	webdavMgrGets chan model.GetBlockReq
+	webdavMgrGets chan model.FetchBlockReq
 	webdavMgrPuts chan model.PutBlockReq
-	mgrWebdavGets chan model.GetBlockResp
+	mgrWebdavGets chan model.FetchBlockResp
 	mgrWebdavPuts chan model.PutBlockResp
 
 	FileSystem   FileSystem
 	nodeId       model.NodeId
-	pendingReads map[model.GetBlockId]chan model.GetBlockResp
+	pendingReads map[model.FetchBlockId]chan model.FetchBlockResp
 	pendingPuts  map[model.PutBlockId]chan model.PutBlockResp
 	lockSystem   webdav.LockSystem
 	bindAddress  string
@@ -50,9 +50,9 @@ type Webdav struct {
 
 func New(
 	nodeId model.NodeId,
-	webdavMgrGets chan model.GetBlockReq,
+	webdavMgrGets chan model.FetchBlockReq,
 	webdavMgrPuts chan model.PutBlockReq,
-	mgrWebdavGets chan model.GetBlockResp,
+	mgrWebdavGets chan model.FetchBlockResp,
 	mgrWebdavPuts chan model.PutBlockResp,
 	outSends chan model.SendPayloadMsg,
 
@@ -71,7 +71,7 @@ func New(
 		mgrWebdavPuts: mgrWebdavPuts,
 		FileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, outSends, mapper, ctx),
 		nodeId:        nodeId,
-		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
+		pendingReads:  make(map[model.FetchBlockId]chan model.FetchBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
 		lockSystem:    webdav.NewMemLS(),
 		bindAddress:   bindAddress,
