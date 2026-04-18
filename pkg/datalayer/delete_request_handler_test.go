@@ -53,7 +53,7 @@ func TestDeleteRequestHandlerDeletesBlock(t *testing.T) {
 	go h.Start(ctx)
 
 	inDeleteRequests <- datalayer.DeleteRequest{
-		Dest:    datalayer.Dest{DiskId: diskId, NodeId: nodeId},
+		Dest:    model.NodeDisk{DiskId: diskId, NodeId: nodeId},
 		BlockId: blockId,
 	}
 
@@ -106,12 +106,12 @@ func TestDeleteRequestHandlerIgnoresUnknownDisk(t *testing.T) {
 	disks.Add(d2)
 
 	inDeleteRequests <- datalayer.DeleteRequest{
-		Dest:    datalayer.Dest{DiskId: unknownDiskId, NodeId: nodeId},
+		Dest:    model.NodeDisk{DiskId: unknownDiskId, NodeId: nodeId},
 		BlockId: blockId,
 	}
 
 	inDeleteRequests <- datalayer.DeleteRequest{
-		Dest:    datalayer.Dest{DiskId: diskId2, NodeId: nodeId},
+		Dest:    model.NodeDisk{DiskId: diskId2, NodeId: nodeId},
 		BlockId: blockId2,
 	}
 

@@ -49,8 +49,11 @@ type Conns struct {
 	OutFileBroadcasts     chan<- webdav.FileBroadcast
 	OutDataForSaveRequest chan<- datalayer.DataForSaveRequest
 
-	inConnectTo    <-chan model.ConnectToNodeReq
-	inSends        <-chan model.SendPayloadMsg
+	inConnectTo <-chan model.ConnectToNodeReq
+	inSends     <-chan model.SendPayloadMsg
+
+	InPayload <-chan model.Payload2
+
 	StateHandler   *datalayer.StateHandler
 	Address        string
 	provider       ConnectionProvider
@@ -138,7 +141,20 @@ func (c *Conns) consumeChannels() {
 					c.handleSendFailure(err)
 				}
 			}
+		case payload := <-c.InPayload:
+			if payload.Destination() == c.nodeId {
+				// 
+			} else {
+				// Send on conns
+			}
 		}
+	}
+}
+
+func (c *Conns) handleIncomingPayload(payload model.Payload2) {
+	switch p := payload.(type) {
+	case *model.FetchBlockReq:
+		
 	}
 }
 

@@ -33,7 +33,7 @@ type SaveRequestHandler struct {
 }
 
 type Saver interface {
-	Saved(blockId model.BlockId, d Dest)
+	Saved(blockId model.BlockId, d model.NodeDisk)
 }
 
 type DataForSaveRequest struct {
@@ -75,7 +75,7 @@ func (s *SaveRequestHandler) handleSaveRequest(req SaveRequest) {
 	}
 }
 
-func (s *SaveRequestHandler) handleSaveRequestForDest(req SaveRequest, dest Dest) {
+func (s *SaveRequestHandler) handleSaveRequestForDest(req SaveRequest, dest model.NodeDisk) {
 	d, ok := s.hasDisk(dest.NodeId, dest.DiskId)
 	if !ok {
 		return
@@ -87,7 +87,7 @@ func (s *SaveRequestHandler) handleSaveRequestForDest(req SaveRequest, dest Dest
 	s.routeData(req.To, DataForSaveRequest{SaveRequest: req, Data: data})
 }
 
-func (s *SaveRequestHandler) routeData(to Dest, outReq DataForSaveRequest) {
+func (s *SaveRequestHandler) routeData(to model.NodeDisk, outReq DataForSaveRequest) {
 	if to.NodeId == s.NodeId {
 		s.OutDataForSaveRequest <- outReq
 		return

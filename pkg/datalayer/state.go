@@ -19,12 +19,12 @@ import (
 )
 
 type state struct {
-	diskBlockMapFuture   map[Dest]map[model.BlockId]struct{}
-	blockDiskMapFuture   map[model.BlockId]map[Dest]struct{}
-	diskBlockMapCurrent  map[Dest]map[model.BlockId]struct{}
-	blockDiskMapCurrent  map[model.BlockId]map[Dest]struct{}
-	diskBlockMapInFlight map[Dest]map[model.BlockId]struct{}
-	blockDiskMapInFlight map[model.BlockId]map[Dest]struct{}
+	diskBlockMapFuture   map[model.NodeDisk]map[model.BlockId]struct{}
+	blockDiskMapFuture   map[model.BlockId]map[model.NodeDisk]struct{}
+	diskBlockMapCurrent  map[model.NodeDisk]map[model.BlockId]struct{}
+	blockDiskMapCurrent  map[model.BlockId]map[model.NodeDisk]struct{}
+	diskBlockMapInFlight map[model.NodeDisk]map[model.BlockId]struct{}
+	blockDiskMapInFlight map[model.BlockId]map[model.NodeDisk]struct{}
 
 	outSaveRequest   chan<- SaveRequest
 	outDeleteRequest chan<- DeleteRequest
@@ -33,9 +33,9 @@ type state struct {
 	diskSpace []diskSpace
 }
 
-func (s *state) emptiestDisks() []Dest {
-	var dest1 *Dest
-	var dest2 *Dest
+func (s *state) emptiestDisks() []model.NodeDisk {
+	var dest1 *model.NodeDisk
+	var dest2 *model.NodeDisk
 
 	var ratio1 float32 = 0
 	var ratio2 float32 = 0
@@ -53,36 +53,31 @@ func (s *state) emptiestDisks() []Dest {
 		}
 	}
 	if dest1 == nil {
-		return []Dest{}
+		return []model.NodeDisk{}
 	}
 	if dest2 == nil {
-		return []Dest{*dest1}
+		return []model.NodeDisk{*dest1}
 	}
-	return []Dest{*dest1, *dest2}
+	return []model.NodeDisk{*dest1, *dest2}
 }
 
 type SaveRequest struct {
-	To      Dest
-	From    []Dest
+	To      model.NodeDisk
+	From    []model.NodeDisk
 	BlockId model.BlockId
 }
 
 type DeleteRequest struct {
-	Dest    Dest
+	Dest    model.NodeDisk
 	BlockId model.BlockId
 }
 
 type diskSpace struct {
-	dest  Dest
+	dest  model.NodeDisk
 	space int
 }
 
-type Dest struct {
-	DiskId model.DiskId
-	NodeId model.NodeId
-}
-
-func (s *state) setDiskSpace(d Dest, space int) {
+func (s *state) setDiskSpace(d model.NodeDisk, space int) {
 	s.init()
 	for i := range s.diskSpace {
 		if s.diskSpace[i].dest == d {
@@ -100,16 +95,16 @@ func (s *state) setDiskSpace(d Dest, space int) {
 
 func (s *state) init() {
 	if s.diskBlockMapCurrent == nil {
-		s.diskBlockMapCurrent = make(map[Dest]map[model.BlockId]struct{})
-		s.diskBlockMapFuture = make(map[Dest]map[model.BlockId]struct{})
-		s.diskBlockMapInFlight = make(map[Dest]map[model.BlockId]struct{})
-		s.blockDiskMapCurrent = make(map[model.BlockId]map[Dest]struct{})
-		s.blockDiskMapFuture = make(map[model.BlockId]map[Dest]struct{})
-		s.blockDiskMapInFlight = make(map[model.BlockId]map[Dest]struct{})
+		s.diskBlockMapCurrent = make(map[model.NodeDisk]map[model.BlockId]struct{})
+		s.diskBlockMapFuture = make(map[model.NodeDisk]map[model.BlockId]struct{})
+		s.diskBlockMapInFlight = make(map[model.NodeDisk]map[model.BlockId]struct{})
+		s.blockDiskMapCurrent = make(map[model.BlockId]map[model.NodeDisk]struct{})
+		s.blockDiskMapFuture = make(map[model.BlockId]map[model.NodeDisk]struct{})
+		s.blockDiskMapInFlight = make(map[model.BlockId]map[model.NodeDisk]struct{})
 	}
 }
 
-func (s *state) saved(blockId model.BlockId, d Dest) {
+func (s *state) saved(blockId model.BlockId, d model.NodeDisk) {
 	s.init()
 	s.addBlockToCurrent(blockId, d)
 	s.removeBlockFromInFlight(blockId, d)
@@ -129,7 +124,7 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 			s.addBlockToInFlight(blockId, emptyDisk)
 			s.outSaveRequest <- SaveRequest{
 				To:      emptyDisk,
-				From:    []Dest{d},
+				From:    []model.NodeDisk{d},
 				BlockId: blockId,
 			}
 		}
@@ -137,13 +132,13 @@ func (s *state) saved(blockId model.BlockId, d Dest) {
 }
 
 type DestsForBlock struct {
-	Dests   []Dest
+	Dests   []model.NodeDisk
 	BlockId model.BlockId
 	Caller  model.NodeId
 }
 
-func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId, caller model.NodeId) {
-	result := make([]Dest, 0)
+func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId,) []model.NodeDisk {
+	result := make([]model.NodeDisk, 0)
 	current := s.blockDiskMapCurrent[blockId]
 	inflight := s.blockDiskMapInFlight[blockId]
 	future := s.blockDiskMapFuture[blockId]
@@ -151,14 +146,11 @@ func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId
 	addToResultInPreferredOrder(result, inflight, preferedNodeId)
 	addToResultInPreferredOrder(result, future, preferedNodeId)
 
-	s.outDestsForBlock <- DestsForBlock{
-		Dests:   result,
-		BlockId: blockId,
-	}
+	return result
 }
 
-func addToResultInPreferredOrder(result []Dest, added map[Dest]struct{}, preferred model.NodeId) {
-	others := make([]Dest, 0)
+func addToResultInPreferredOrder(result []model.NodeDisk, added map[model.NodeDisk]struct{}, preferred model.NodeId) {
+	others := make([]model.NodeDisk, 0)
 	for key := range added {
 		if key.NodeId == preferred {
 			result = append(result, key)
@@ -169,7 +161,7 @@ func addToResultInPreferredOrder(result []Dest, added map[Dest]struct{}, preferr
 	result = append(result, others...)
 }
 
-func (s *state) deleted(b model.BlockId, d Dest) {
+func (s *state) deleted(b model.BlockId, d model.NodeDisk) {
 	s.init()
 	s.removeBlockFromCurrent(b, d)
 	if _, ok := s.blockDiskMapFuture[b][d]; ok {
@@ -183,11 +175,11 @@ func (s *state) deleted(b model.BlockId, d Dest) {
 	}
 }
 
-func (s *state) addBlockToFuture(blockId model.BlockId, emptyDisk Dest) {
+func (s *state) addBlockToFuture(blockId model.BlockId, emptyDisk model.NodeDisk) {
 	addBlockAndDisk(s.diskBlockMapFuture, s.blockDiskMapFuture, blockId, emptyDisk)
 }
 
-func (s *state) sendDeleteMsgs(needToDelete map[Dest]struct{}, blockId model.BlockId) {
+func (s *state) sendDeleteMsgs(needToDelete map[model.NodeDisk]struct{}, blockId model.BlockId) {
 	for toDeleteFrom := range needToDelete {
 		s.outDeleteRequest <- DeleteRequest{
 			Dest:    toDeleteFrom,
@@ -196,14 +188,14 @@ func (s *state) sendDeleteMsgs(needToDelete map[Dest]struct{}, blockId model.Blo
 	}
 }
 
-func (s *state) addBlockToCurrent(blockId model.BlockId, d Dest) {
+func (s *state) addBlockToCurrent(blockId model.BlockId, d model.NodeDisk) {
 	addBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
 }
-func (s *state) removeBlockFromCurrent(blockId model.BlockId, d Dest) {
+func (s *state) removeBlockFromCurrent(blockId model.BlockId, d model.NodeDisk) {
 	removeBlockAndDisk(s.diskBlockMapCurrent, s.blockDiskMapCurrent, blockId, d)
 }
 
-func (s *state) saveAlreadySent(blockId model.BlockId, d Dest) bool {
+func (s *state) saveAlreadySent(blockId model.BlockId, d model.NodeDisk) bool {
 	if inFlightDests, ok := s.blockDiskMapInFlight[blockId]; ok {
 		_, ok := inFlightDests[d]
 		if ok {
@@ -218,11 +210,11 @@ func (s *state) saveAlreadySent(blockId model.BlockId, d Dest) bool {
 	return false
 }
 
-func (s *state) addBlockToInFlight(blockId model.BlockId, d Dest) {
+func (s *state) addBlockToInFlight(blockId model.BlockId, d model.NodeDisk) {
 	addBlockAndDisk(s.diskBlockMapInFlight, s.blockDiskMapInFlight, blockId, d)
 }
 
-func (s *state) removeBlockFromInFlight(blockId model.BlockId, d Dest) {
+func (s *state) removeBlockFromInFlight(blockId model.BlockId, d model.NodeDisk) {
 	removeBlockAndDisk(s.diskBlockMapInFlight, s.blockDiskMapInFlight, blockId, d)
 }
 
@@ -259,13 +251,13 @@ func toSlice[K comparable](set map[K]struct{}) []K {
 }
 
 func addBlockAndDisk(
-	diskBlockMap map[Dest]map[model.BlockId]struct{},
-	blockDiskMap map[model.BlockId]map[Dest]struct{},
+	diskBlockMap map[model.NodeDisk]map[model.BlockId]struct{},
+	blockDiskMap map[model.BlockId]map[model.NodeDisk]struct{},
 	b model.BlockId,
-	d Dest,
+	d model.NodeDisk,
 ) {
 	if _, ok := blockDiskMap[b]; !ok {
-		blockDiskMap[b] = make(map[Dest]struct{})
+		blockDiskMap[b] = make(map[model.NodeDisk]struct{})
 	}
 	blockDiskMap[b][d] = struct{}{}
 
@@ -276,10 +268,10 @@ func addBlockAndDisk(
 }
 
 func removeBlockAndDisk(
-	diskBlockMap map[Dest]map[model.BlockId]struct{},
-	blockDiskMap map[model.BlockId]map[Dest]struct{},
+	diskBlockMap map[model.NodeDisk]map[model.BlockId]struct{},
+	blockDiskMap map[model.BlockId]map[model.NodeDisk]struct{},
 	b model.BlockId,
-	d Dest,
+	d model.NodeDisk,
 ) {
 	if _, ok := diskBlockMap[d]; ok {
 		delete(diskBlockMap[d], b)

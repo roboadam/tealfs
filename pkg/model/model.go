@@ -92,6 +92,6 @@ type NodeDiskBlock struct {
 }
 
 type NodeDisk struct {
-	NodeId  NodeId
-	BlockId BlockId
+	NodeId NodeId
+	DiskId DiskId
 }

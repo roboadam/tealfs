@@ -65,8 +65,8 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 	go s.Start(ctx)
 
 	inSaveRequests <- datalayer.SaveRequest{
-		To:      datalayer.Dest{DiskId: diskIdTo, NodeId: nodeIdLocal},
-		From:    []datalayer.Dest{{DiskId: diskIdFrom, NodeId: nodeIdLocal}},
+		To:      model.NodeDisk{DiskId: diskIdTo, NodeId: nodeIdLocal},
+		From:    []model.NodeDisk{{DiskId: diskIdFrom, NodeId: nodeIdLocal}},
 		BlockId: blockId,
 	}
 
@@ -82,8 +82,8 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 	nodeConnMap.SetAll(0, "address", nodeIdRemote)
 
 	inSaveRequests <- datalayer.SaveRequest{
-		To:      datalayer.Dest{DiskId: diskIdTo, NodeId: nodeIdRemote},
-		From:    []datalayer.Dest{{DiskId: diskIdFrom, NodeId: nodeIdLocal}},
+		To:      model.NodeDisk{DiskId: diskIdTo, NodeId: nodeIdRemote},
+		From:    []model.NodeDisk{{DiskId: diskIdFrom, NodeId: nodeIdLocal}},
 		BlockId: blockId,
 	}
 
@@ -133,7 +133,7 @@ func TestSaveRequestHandlerDataForSaveRequest(t *testing.T) {
 
 	inDataForSaveRequest <- datalayer.DataForSaveRequest{
 		SaveRequest: datalayer.SaveRequest{
-			To:      datalayer.Dest{DiskId: diskId, NodeId: nodeIdLocal},
+			To:      model.NodeDisk{DiskId: diskId, NodeId: nodeIdLocal},
 			BlockId: blockId,
 		},
 		Data: fileData,
@@ -144,19 +144,19 @@ func TestSaveRequestHandlerDataForSaveRequest(t *testing.T) {
 	if stateHandler.BlockId != blockId {
 		t.Error("invalid block id")
 	}
-	if stateHandler.Dest != (datalayer.Dest{DiskId: diskId, NodeId: nodeIdLocal}) {
+	if stateHandler.Dest != (model.NodeDisk{DiskId: diskId, NodeId: nodeIdLocal}) {
 		t.Error("invalid dest")
 	}
 }
 
 type MockSaver struct {
 	BlockId model.BlockId
-	Dest    datalayer.Dest
+	Dest    model.NodeDisk
 	Count   int
 	SavedCh chan struct{}
 }
 
-func (m *MockSaver) Saved(blockId model.BlockId, d datalayer.Dest) {
+func (m *MockSaver) Saved(blockId model.BlockId, d model.NodeDisk) {
 	m.Count++
 	m.BlockId = blockId
 	m.Dest = d

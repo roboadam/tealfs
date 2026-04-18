@@ -16,6 +16,7 @@ package datalayer
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"tealfs/pkg/model"
 
@@ -50,11 +51,11 @@ func (s *StateHandler) Start(ctx context.Context) {
 }
 
 type SetDiskSpaceParams struct {
-	D     Dest
+	D     model.NodeDisk
 	Space int
 }
 
-func (s *StateHandler) SetDiskSpace(d Dest, space int) {
+func (s *StateHandler) SetDiskSpace(d model.NodeDisk, space int) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -73,10 +74,10 @@ func (s *StateHandler) SetDiskSpace(d Dest, space int) {
 
 type SavedParams struct {
 	B model.BlockId
-	D Dest
+	D model.NodeDisk
 }
 
-func (s *StateHandler) Saved(blockId model.BlockId, d Dest) {
+func (s *StateHandler) Saved(blockId model.BlockId, d model.NodeDisk) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -95,10 +96,10 @@ func (s *StateHandler) Saved(blockId model.BlockId, d Dest) {
 
 type DeletedParams struct {
 	B model.BlockId
-	D Dest
+	D model.NodeDisk
 }
 
-func (s *StateHandler) Deleted(b model.BlockId, d Dest) {
+func (s *StateHandler) Deleted(b model.BlockId, d model.NodeDisk) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -121,12 +122,27 @@ type DestsForBlockParams struct {
 	Caller         model.NodeId
 }
 
+func (s *StateHandler) FetchBlockReqToCmd(req *model.FetchBlockReq) (*model.FetchBlockCmd, error) {
+	if s.NodeConnMap.MainNode(s.MyNodeId) != s.MyNodeId {
+		return nil, errors.New("Not the main node")
+	}
+
+	dests := s.state.destsForBlock(req.BlockId, req.Caller)
+	cmd := model.FetchBlockCmd{
+		Sources: dests,
+		BlockId: req.BlockId,
+		Caller:  req.Caller,
+		Id:      req.Id,
+	}
+	return &cmd, nil
+}
+
 func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model.NodeId, caller model.NodeId) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
 	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
-		s.state.destsForBlock(blockId, preferedNodeId, caller)
+		s.state.destsForBlock(blockId, preferedNodeId)
 		return
 	}
 
