@@ -51,3 +51,11 @@ func (r *RawNet) SendPayload(payload *model.Payload) error {
 	}
 	return nil
 }
+
+func (r *RawNet) SendPayload2(payload *model.Payload2) error {
+	err := r.encoder.Encode(payload)
+	if err != nil {
+		return err
+	}
+	return nil
+}

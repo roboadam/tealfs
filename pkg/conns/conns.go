@@ -143,7 +143,7 @@ func (c *Conns) consumeChannels() {
 			}
 		case payload := <-c.InPayload:
 			if payload.Destination() == c.nodeId {
-				// 
+				c.sendPayload()
 			} else {
 				// Send on conns
 			}
@@ -154,8 +154,30 @@ func (c *Conns) consumeChannels() {
 func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 	switch p := payload.(type) {
 	case *model.FetchBlockReq:
-		
+		cmd, err := c.StateHandler.FetchBlockReqToCmd(p)
+		if errors.Is(err, datalayer.NotMainNodeErr{}) {
+			c.sendPayload(payload)
+		} else if(err != nil) {
+		} else {
+			c.sendPayload(cmd)
+		}
 	}
+}
+
+func (c *Conns) sendPayload(p model.Payload2) error {
+	dest := model.NodeId("")
+	if p.Destination() == "" {
+		dest = c.nodeConnMapper.MainNode(c.nodeId)
+	} else {
+		dest = p.Destination()
+	}
+	connId, ok := c.nodeConnMapper.ConnForNode(dest)
+	if !ok {
+		return errors.New("No connection to that node")
+	}
+	rawNet := c.netConns[connId]
+	err := rawNet.SendPayload2(&p)
+	return err
 }
 
 func (c *Conns) handleSendFailure(err error) {

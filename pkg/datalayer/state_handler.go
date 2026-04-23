@@ -16,7 +16,6 @@ package datalayer
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"tealfs/pkg/model"
 
@@ -122,9 +121,15 @@ type DestsForBlockParams struct {
 	Caller         model.NodeId
 }
 
+type NotMainNodeErr struct{}
+
+func (e NotMainNodeErr) Error() string {
+	return "This is no the main node"
+}
+
 func (s *StateHandler) FetchBlockReqToCmd(req *model.FetchBlockReq) (*model.FetchBlockCmd, error) {
 	if s.NodeConnMap.MainNode(s.MyNodeId) != s.MyNodeId {
-		return nil, errors.New("Not the main node")
+		return nil, NotMainNodeErr{}
 	}
 
 	dests := s.state.destsForBlock(req.BlockId, req.Caller)
