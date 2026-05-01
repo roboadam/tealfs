@@ -143,9 +143,9 @@ func (c *Conns) consumeChannels() {
 			}
 		case payload := <-c.InPayload:
 			if payload.Destination() == c.nodeId {
-				c.sendPayload()
+				c.handleIncomingPayload(payload)
 			} else {
-				// Send on conns
+				c.sendPayload(payload)
 			}
 		}
 	}
@@ -157,10 +157,11 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 		cmd, err := c.StateHandler.FetchBlockReqToCmd(p)
 		if errors.Is(err, datalayer.NotMainNodeErr{}) {
 			c.sendPayload(payload)
-		} else if(err != nil) {
-		} else {
+		} else if err == nil {
 			c.sendPayload(cmd)
 		}
+	case *model.FetchBlockCmd:
+		
 	}
 }
 
