@@ -82,6 +82,15 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 	}
 }
 
+func (d *DiskManagerSvc) Get(blockId model.BlockId, diskId model.DiskId) ([]byte, bool) {
+	for _, disk := range d.LocalDiskSvcList.GetValues() {
+		if data, ok := disk.Get(blockId); ok {
+			return data, true
+		}
+	}
+	return nil, false
+}
+
 func (d *DiskManagerSvc) addToDiskInfoList(add model.AddDiskMsg) {
 	added := d.DiskInfoList.Add(model.DiskInfo(add))
 	if added {

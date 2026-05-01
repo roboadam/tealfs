@@ -52,7 +52,7 @@ func (l *LocalBlockSaveResponses) readFromChan(ctx context.Context, c <-chan mod
 		case wr := <-c:
 			resp := convert(&wr)
 			blockId := model.BlockId(wr.Ptr.FileName)
-			dest := datalayer.Dest{
+			dest := model.NodeDisk{
 				DiskId: wr.Ptr.Disk,
 				NodeId: wr.Ptr.NodeId,
 			}

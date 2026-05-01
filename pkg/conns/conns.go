@@ -23,6 +23,7 @@ import (
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/datalayer"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
 	"tealfs/pkg/webdav"
@@ -54,8 +55,10 @@ type Conns struct {
 
 	InPayload <-chan model.Payload2
 
-	StateHandler   *datalayer.StateHandler
-	Address        string
+	StateHandler *datalayer.StateHandler
+	Address      string
+	DiskManager  *disk.DiskManagerSvc
+
 	provider       ConnectionProvider
 	nodeId         model.NodeId
 	listener       net.Listener
@@ -161,7 +164,11 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 			c.sendPayload(cmd)
 		}
 	case *model.FetchBlockCmd:
-		
+		for _, source := range p.Sources {
+			if data, ok := c.DiskManager.Get() {
+				
+			}
+		}
 	}
 }
 
