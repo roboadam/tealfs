@@ -49,6 +49,7 @@ type Conns struct {
 	OutSendIam            chan<- model.ConnId
 	OutFileBroadcasts     chan<- webdav.FileBroadcast
 	OutDataForSaveRequest chan<- datalayer.DataForSaveRequest
+	
 
 	inConnectTo <-chan model.ConnectToNodeReq
 	inSends     <-chan model.SendPayloadMsg
@@ -157,10 +158,16 @@ func (c *Conns) consumeChannels() {
 func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 	switch p := payload.(type) {
 	case *model.FetchBlockReq:
-		c.handleFetchBlockReq(p, payload)
+		c.handleFetchBlockReq(p)
 	case *model.FetchBlockCmd:
 		c.handleFetchBlockCmd(p)
+	case *model.FetchBlockResp:
+		c.handleFetchBlockResp(p)
 	}
+}
+
+func (c *Conns) handleFetchBlockResp(p *model.FetchBlockResp) {
+	
 }
 
 func (c *Conns) handleFetchBlockCmd(p *model.FetchBlockCmd) {
@@ -186,10 +193,10 @@ func (c *Conns) handleFetchBlockCmd(p *model.FetchBlockCmd) {
 	}
 }
 
-func (c *Conns) handleFetchBlockReq(p *model.FetchBlockReq, payload model.Payload2) {
+func (c *Conns) handleFetchBlockReq(p *model.FetchBlockReq) {
 	cmd, err := c.StateHandler.FetchBlockReqToCmd(p)
 	if errors.Is(err, datalayer.NotMainNodeErr{}) {
-		c.sendPayload(payload)
+		c.sendPayload(p)
 	} else if err == nil {
 		c.sendPayload(cmd)
 	}
