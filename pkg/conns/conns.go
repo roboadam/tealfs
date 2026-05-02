@@ -157,18 +157,41 @@ func (c *Conns) consumeChannels() {
 func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 	switch p := payload.(type) {
 	case *model.FetchBlockReq:
-		cmd, err := c.StateHandler.FetchBlockReqToCmd(p)
-		if errors.Is(err, datalayer.NotMainNodeErr{}) {
-			c.sendPayload(payload)
-		} else if err == nil {
-			c.sendPayload(cmd)
-		}
+		c.handleFetchBlockReq(p, payload)
 	case *model.FetchBlockCmd:
-		for _, source := range p.Sources {
-			if data, ok := c.DiskManager.Get() {
-				
-			}
+		c.handleFetchBlockCmd(p)
+	}
+}
+
+func (c *Conns) handleFetchBlockCmd(p *model.FetchBlockCmd) {
+	for i, source := range p.Sources {
+		if source.NodeId != c.nodeId {
+			p.Sources = p.Sources[i:]
+			c.sendPayload(p)
+			return
 		}
+		if data, ok := c.DiskManager.Get(p.BlockId, source.DiskId); ok {
+			resp := model.FetchBlockResp{
+				Caller: p.Caller,
+				Block: model.Block{
+					Id:   p.BlockId,
+					Data: data,
+				},
+				Id:      p.Id,
+				Success: true,
+			}
+			c.sendPayload(&resp)
+			return
+		}
+	}
+}
+
+func (c *Conns) handleFetchBlockReq(p *model.FetchBlockReq, payload model.Payload2) {
+	cmd, err := c.StateHandler.FetchBlockReqToCmd(p)
+	if errors.Is(err, datalayer.NotMainNodeErr{}) {
+		c.sendPayload(payload)
+	} else if err == nil {
+		c.sendPayload(cmd)
 	}
 }
 
