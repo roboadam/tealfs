@@ -21,7 +21,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"tealfs/pkg/blockreader"
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
 	"tealfs/pkg/disk"
@@ -85,12 +84,9 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	webdavPutResp := make(chan model.PutBlockResp)
 	remoteBlockSaverSaveToDiskReq := make(chan blocksaver.SaveToDiskReq)
 	blockSaverSaveToDiskResp := make(chan blocksaver.SaveToDiskResp)
-	blockReaderGetBlockReq := make(chan model.GetBlockReq)
-	webdavGetBlockResp := make(chan model.GetBlockResp)
-	localBlockReaderGetFromDiskReq := make(chan blockreader.GetFromDiskReq)
-	remoteBlockReaderGetFromDiskReq := make(chan blockreader.GetFromDiskReq)
-	blockReaderGetFromDiskResp := make(chan blockreader.GetFromDiskResp)
 	webdavFileBroadcast := make(chan webdav.FileBroadcast, 1)
+	connsPayload := make(chan model.Payload2, 1)
+	webdavFetchBlockResp := make(chan model.FetchBlockResp, 1)
 
 	/******* Disk Services ******/
 
@@ -134,9 +130,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.OutSendIam = connsIamSenderConnId
 	connsSvc.OutSaveToDiskReq = localBlockSaverSaveToDiskReq
 	connsSvc.OutSaveToDiskResp = blockSaverSaveToDiskResp
-	connsSvc.OutGetFromDiskReq = localBlockReaderGetFromDiskReq
-	connsSvc.OutGetFromDiskResp = blockReaderGetFromDiskResp
 	connsSvc.OutFileBroadcasts = webdavFileBroadcast
+	connsSvc.OutFetchBlockResp = webdavFetchBlockResp
 	connsIamReceiver := conns.IamReceiver{
 		InIam:            connsIamReceiverIamConnId,
 		OutSendSyncNodes: connsSendSyncNodes,
@@ -195,12 +190,12 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	/****** BlockSaver *****/
 
 	bs := blocksaver.BlockSaver{
-		Req:         blockSaverPutBlockReq,
-		RemoteDest:  remoteBlockSaverSaveToDiskReq,
-		LocalDest:   localBlockSaverSaveToDiskReq,
-		InResp:      blockSaverSaveToDiskResp,
-		Resp:        webdavPutResp,
-		NodeId:      nodeId,
+		Req:        blockSaverPutBlockReq,
+		RemoteDest: remoteBlockSaverSaveToDiskReq,
+		LocalDest:  localBlockSaverSaveToDiskReq,
+		InResp:     blockSaverSaveToDiskResp,
+		Resp:       webdavPutResp,
+		NodeId:     nodeId,
 	}
 	lbs := blocksaver.LocalBlockSaver{
 		Req:   localBlockSaverSaveToDiskReq,
@@ -220,43 +215,15 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		NodeId:              nodeId,
 	}
 
-	/****** BlockReader *****/
-
-	br := blockreader.BlockReader{
-		Req:         blockReaderGetBlockReq,
-		RemoteDest:  remoteBlockReaderGetFromDiskReq,
-		LocalDest:   localBlockReaderGetFromDiskReq,
-		InResp:      blockReaderGetFromDiskResp,
-		Resp:        webdavGetBlockResp,
-		NodeId:      nodeId,
-	}
-	lbr := blockreader.LocalBlockReader{
-		Req:   localBlockReaderGetFromDiskReq,
-		Disks: &diskManagerSvc.LocalDiskSvcList,
-	}
-	rbr := blockreader.RemoteBlockReader{
-		Req:         remoteBlockReaderGetFromDiskReq,
-		Sends:       connsSvcSendPayloadMsg,
-		NoConnResp:  blockReaderGetFromDiskResp,
-		NodeConnMap: nodeConnMapper,
-	}
-	lbrr := blockreader.LocalBlockReadResponses{
-		InReadResults:      localBlockReadResponsesReadResults,
-		LocalReadResponses: blockReaderGetFromDiskResp,
-		Sends:              connsSvcSendPayloadMsg,
-		NodeConnMap:        nodeConnMapper,
-		NodeId:             nodeId,
-	}
-
 	/****** Webdav *******/
 
 	_ = webdav.New(
 		nodeId,
-		blockReaderGetBlockReq,
 		blockSaverPutBlockReq,
-		webdavGetBlockResp,
+		webdavFetchBlockResp,
 		webdavPutResp,
 		connsSvcSendPayloadMsg,
+		connsPayload,
 		webdavFileBroadcast,
 		webdavAddress,
 		ctx,
@@ -283,10 +250,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go lbs.Start(ctx)
 	go rbs.Start(ctx)
 	go lbsr.Start(ctx)
-	go br.Start(ctx)
-	go lbr.Start(ctx)
-	go rbr.Start(ctx)
-	go lbrr.Start(ctx)
 
 	<-ctx.Done()
 	return nil

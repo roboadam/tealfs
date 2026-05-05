@@ -32,10 +32,10 @@ func init() {
 }
 
 type Webdav struct {
-	webdavMgrGets chan model.FetchBlockReq
 	webdavMgrPuts chan model.PutBlockReq
 	mgrWebdavGets chan model.FetchBlockResp
 	mgrWebdavPuts chan model.PutBlockResp
+	outPayloads   chan model.Payload2
 
 	FileSystem   FileSystem
 	nodeId       model.NodeId
@@ -50,11 +50,11 @@ type Webdav struct {
 
 func New(
 	nodeId model.NodeId,
-	webdavMgrGets chan model.FetchBlockReq,
 	webdavMgrPuts chan model.PutBlockReq,
 	mgrWebdavGets chan model.FetchBlockResp,
 	mgrWebdavPuts chan model.PutBlockResp,
 	outSends chan model.SendPayloadMsg,
+	outPayloads chan model.Payload2,
 
 	mgrWebdavBroadcast chan FileBroadcast,
 	bindAddress string,
@@ -65,10 +65,10 @@ func New(
 	mapper *model.NodeConnectionMapper,
 ) Webdav {
 	w := Webdav{
-		webdavMgrGets: webdavMgrGets,
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
+		outPayloads:   outPayloads,
 		FileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, outSends, mapper, ctx),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.FetchBlockId]chan model.FetchBlockResp),
@@ -122,7 +122,7 @@ func (w *Webdav) eventLoop() {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
 		case r := <-w.FileSystem.ReadReqResp:
-			chanutil.Send(w.ctx, w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id))
+			w.outPayloads <- &r.Req
 			w.pendingReads[r.Req.Id] = r.Resp
 		case r := <-w.FileSystem.WriteReqResp:
 			chanutil.Send(w.ctx, w.webdavMgrPuts, r.Req, "webdav: write request to mgr")

@@ -19,7 +19,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"tealfs/pkg/blockreader"
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/chanutil"
 	"tealfs/pkg/datalayer"
@@ -39,8 +38,6 @@ type Conns struct {
 
 	OutSaveToDiskReq      chan<- blocksaver.SaveToDiskReq
 	OutSaveToDiskResp     chan<- blocksaver.SaveToDiskResp
-	OutGetFromDiskReq     chan<- blockreader.GetFromDiskReq
-	OutGetFromDiskResp    chan<- blockreader.GetFromDiskResp
 	OutAddDiskMsg         chan<- model.AddDiskMsg
 	OutDiskAddedMsg       chan<- model.DiskAddedMsg
 	OutIam                chan<- model.IAm
@@ -49,7 +46,7 @@ type Conns struct {
 	OutSendIam            chan<- model.ConnId
 	OutFileBroadcasts     chan<- webdav.FileBroadcast
 	OutDataForSaveRequest chan<- datalayer.DataForSaveRequest
-	
+	OutFetchBlockResp     chan<- model.FetchBlockResp
 
 	inConnectTo <-chan model.ConnectToNodeReq
 	inSends     <-chan model.SendPayloadMsg
@@ -162,12 +159,8 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 	case *model.FetchBlockCmd:
 		c.handleFetchBlockCmd(p)
 	case *model.FetchBlockResp:
-		c.handleFetchBlockResp(p)
+		c.OutFetchBlockResp <- *p
 	}
-}
-
-func (c *Conns) handleFetchBlockResp(p *model.FetchBlockResp) {
-	
 }
 
 func (c *Conns) handleFetchBlockCmd(p *model.FetchBlockCmd) {
@@ -262,10 +255,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.OutSaveToDiskReq <- *p
 			case *blocksaver.SaveToDiskResp:
 				c.OutSaveToDiskResp <- *p
-			case *blockreader.GetFromDiskReq:
-				c.OutGetFromDiskReq <- *p
-			case *blockreader.GetFromDiskResp:
-				c.OutGetFromDiskResp <- *p
 			case *model.AddDiskMsg:
 				c.OutAddDiskMsg <- *p
 			case *model.DiskAddedMsg:
