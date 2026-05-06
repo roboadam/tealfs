@@ -30,7 +30,7 @@ import (
 
 func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
-	webdavMgrGets := make(chan model.FetchBlockReq)
+	outPayloads := make(chan model.Payload2)
 	webdavMgrPuts := make(chan model.PutBlockReq)
 	webdavMgrBroadcast := make(chan model.SendPayloadMsg)
 	mgrWebdavGets := make(chan model.FetchBlockResp)
@@ -42,18 +42,18 @@ func TestCreateFile(t *testing.T) {
 
 	mux := sync.Mutex{}
 	mockStorage := make(map[model.BlockId][]byte)
-	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, &mux, mockStorage)
+	go handleOutPayloads(ctx, outPayloads, mgrWebdavGets, &mux, mockStorage)
 	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, &mux, mockStorage)
 	go handleOutBroadcast(ctx, webdavMgrBroadcast)
 	mapper := model.NewNodeConnectionMapper()
 
 	_ = webdav.New(
 		nodeId,
-		webdavMgrGets,
 		webdavMgrPuts,
 		mgrWebdavGets,
 		mgrWebdavPuts,
 		webdavMgrBroadcast,
+		outPayloads,
 		mgrWebdavBroadcast,
 		"localhost:7654",
 		ctx,
@@ -135,23 +135,25 @@ func propFind(url string) (string, error) {
 	return string(body), nil
 }
 
-func handleWebdavMgrGets(ctx context.Context, channel chan model.FetchBlockReq, respChan chan model.FetchBlockResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
+func handleOutPayloads(ctx context.Context, channel chan model.Payload2, respChan chan model.FetchBlockResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case req := <-channel:
 			mux.Lock()
-			blockData, exists := data[req.BlockId]
-			if exists {
-				respChan <- model.FetchBlockResp{
-					Block:   model.Block{Id: req.BlockId, Data: blockData},
-					Id:      req.Id,
-					Success: true,
-				}
-			} else {
-				respChan <- model.FetchBlockResp{
-					Block:   model.Block{Id: req.BlockId, Data: []byte{}},
-					Id:      req.Id,
-					Success: true,
+			if fetchReq, ok := req.(*model.FetchBlockReq); ok {
+				blockData, exists := data[fetchReq.BlockId]
+				if exists {
+					respChan <- model.FetchBlockResp{
+						Block:   model.Block{Id: fetchReq.BlockId, Data: blockData},
+						Id:      fetchReq.Id,
+						Success: true,
+					}
+				} else {
+					respChan <- model.FetchBlockResp{
+						Block:   model.Block{Id: fetchReq.BlockId, Data: []byte{}},
+						Id:      fetchReq.Id,
+						Success: true,
+					}
 				}
 			}
 			mux.Unlock()
