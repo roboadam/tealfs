@@ -17,7 +17,6 @@ package blocksaver
 import (
 	"context"
 	"errors"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 	"testing"
@@ -39,10 +38,6 @@ func TestBlockSaver(t *testing.T) {
 	localDiskId := model.DiskId(uuid.NewString())
 	remoteNodeId := model.NewNodeId()
 	remoteDiskId := model.DiskId(uuid.NewString())
-
-	distributer := dist.NewMirrorDistributer(localNodeId)
-	distributer.SetWeight(localNodeId, localDiskId, 1)
-	distributer.SetWeight(remoteNodeId, remoteDiskId, 1)
 
 	putBlockReq := model.NewPutBlockReq(model.Block{
 		Id:   model.NewBlockId(),

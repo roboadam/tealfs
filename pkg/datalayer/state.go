@@ -67,6 +67,13 @@ type SaveRequest struct {
 	BlockId model.BlockId
 }
 
+func (s *SaveRequest) Destination() model.NodeId {
+	for _, dest := range s.From {
+		return dest.NodeId
+	}
+	return ""
+}
+
 type DeleteRequest struct {
 	Dest    model.NodeDisk
 	BlockId model.BlockId
@@ -137,7 +144,7 @@ type DestsForBlock struct {
 	Caller  model.NodeId
 }
 
-func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId,) []model.NodeDisk {
+func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) []model.NodeDisk {
 	result := make([]model.NodeDisk, 0)
 	current := s.blockDiskMapCurrent[blockId]
 	inflight := s.blockDiskMapInFlight[blockId]

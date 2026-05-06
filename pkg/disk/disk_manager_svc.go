@@ -20,7 +20,6 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 
@@ -28,7 +27,6 @@ import (
 )
 
 type DiskManagerSvc struct {
-	Distributer      dist.MirrorDistributer
 	DiskInfoList     set.Set[model.DiskInfo]
 	LocalDiskSvcList set.Set[Disk]
 	NodeId           model.NodeId
@@ -44,11 +42,9 @@ type DiskManagerSvc struct {
 }
 
 func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *DiskManagerSvc {
-	distributer := dist.NewMirrorDistributer(nodeId)
 	localDisks := set.NewSet[Disk]()
 	diskInfoList := set.NewSet[model.DiskInfo]()
 	return &DiskManagerSvc{
-		Distributer:      distributer,
 		DiskInfoList:     diskInfoList,
 		LocalDiskSvcList: localDisks,
 		NodeId:           nodeId,
@@ -94,7 +90,6 @@ func (d *DiskManagerSvc) Get(blockId model.BlockId, diskId model.DiskId) ([]byte
 func (d *DiskManagerSvc) addToDiskInfoList(add model.AddDiskMsg) {
 	added := d.DiskInfoList.Add(model.DiskInfo(add))
 	if added {
-		d.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
 		d.saveDiskInfoList()
 	}
 }
@@ -113,7 +108,6 @@ func (d *DiskManagerSvc) loadDiskInfoList(ctx context.Context) {
 		if err == nil {
 			d.DiskInfoList = set.NewSetFromSlice(diskInfo)
 			for _, dInfo := range diskInfo {
-				d.Distributer.SetWeight(dInfo.NodeId, dInfo.DiskId, 1)
 				if dInfo.NodeId == d.NodeId {
 					path := NewPath(d.configPath, d.fileOps)
 					disk := New(path, d.NodeId, dInfo.DiskId, ctx)

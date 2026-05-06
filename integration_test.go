@@ -48,6 +48,7 @@ func TestOneNodeCluster(t *testing.T) {
 	time.Sleep(time.Second)
 
 	submitForm(ctx, t, addDiskUrl, addDiskContents)
+	time.Sleep(time.Second)
 
 	resp, ok := putFile(ctx, webdavUrl, "text/plain", fileContents, t)
 	if !ok {

@@ -18,13 +18,15 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
 
 	"github.com/google/uuid"
 )
 
 type Ui struct {
-	NodeConnMap *model.NodeConnectionMapper
+	NodeConnMap  *model.NodeConnectionMapper
+	StateHandler *datalayer.StateHandler
 
 	connToReq        chan model.ConnectToNodeReq
 	addLocalDiskMsg  chan model.AddDiskMsg
@@ -124,6 +126,10 @@ func (ui *Ui) handleRoot() {
 				Path:   diskPath,
 				NodeId: model.NodeId(node),
 			}
+			ui.StateHandler.SetDiskSpace(model.NodeDisk{
+				NodeId: req.NodeId,
+				DiskId: req.DiskId,
+			}, 1)
 			if req.NodeId == ui.nodeId {
 				ui.addLocalDiskMsg <- req
 			} else {

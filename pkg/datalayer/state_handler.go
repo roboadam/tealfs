@@ -25,7 +25,7 @@ import (
 type StateHandler struct {
 	OutSaveRequest   chan<- SaveRequest
 	OutDeleteRequest chan<- DeleteRequest
-	OutSends         chan<- model.SendPayloadMsg
+	OutPayload       chan<- model.Payload2
 
 	state        state
 	mux          sync.Mutex
@@ -166,6 +166,7 @@ func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest
 		case <-ctx.Done():
 			return
 		case req := <-saveRequests:
+			s.OutSends <- 
 			local, connId := s.whereToSendSaveRequest(req)
 			if local {
 				s.OutSaveRequest <- req
@@ -190,23 +191,4 @@ func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest
 			}
 		}
 	}
-}
-
-func (s *StateHandler) whereToSendSaveRequest(req SaveRequest) (local bool, connId model.ConnId) {
-	found := false
-	for _, dest := range req.From {
-		if dest.NodeId == s.MyNodeId {
-			local = true
-			return
-		}
-		if foundConn, ok := s.NodeConnMap.ConnForNode(dest.NodeId); ok {
-			connId = foundConn
-			found = true
-			local = false
-		}
-	}
-	if !found {
-		log.Panic("didn't find conn")
-	}
-	return
 }

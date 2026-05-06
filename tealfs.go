@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"tealfs/pkg/blocksaver"
 	"tealfs/pkg/conns"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/ui"
@@ -88,6 +89,15 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsPayload := make(chan model.Payload2, 1)
 	webdavFetchBlockResp := make(chan model.FetchBlockResp, 1)
 
+	/******* State Handler ******/
+	stateHandler := datalayer.StateHandler{
+		OutSaveRequest:   make(chan<- datalayer.SaveRequest),
+		OutDeleteRequest: make(chan<- datalayer.DeleteRequest),
+		OutSends:         make(chan<- model.SendPayloadMsg),
+		MyNodeId:         nodeId,
+		NodeConnMap:      nodeConnMapper,
+	}
+
 	/******* Disk Services ******/
 
 	diskManagerSvc := disk.NewDisks(nodeId, globalPath, &disk.DiskFileOps{})
@@ -132,6 +142,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.OutSaveToDiskResp = blockSaverSaveToDiskResp
 	connsSvc.OutFileBroadcasts = webdavFileBroadcast
 	connsSvc.OutFetchBlockResp = webdavFetchBlockResp
+	connsSvc.StateHandler = &stateHandler
 	connsIamReceiver := conns.IamReceiver{
 		InIam:            connsIamReceiverIamConnId,
 		OutSendSyncNodes: connsSendSyncNodes,
@@ -186,6 +197,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		ctx,
 	)
 	u.NodeConnMap = nodeConnMapper
+	u.StateHandler = &stateHandler
 
 	/****** BlockSaver *****/
 
