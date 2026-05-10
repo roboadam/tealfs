@@ -41,77 +41,75 @@ func (s *StateHandler) Start(ctx context.Context) {
 	}
 
 	s.waitingDests = make(map[model.BlockId]chan DestsForBlock)
-	saveRequests := make(chan SaveRequest, 1)
 	deleteRequests := make(chan DeleteRequest, 1)
-	s.state.outSaveRequest = saveRequests
 	s.state.outDeleteRequest = deleteRequests
 
-	go s.listen(ctx, saveRequests, deleteRequests)
+	go s.listen(ctx, deleteRequests)
 }
 
 type SetDiskSpaceParams struct {
-	D     model.NodeDisk
-	Space int
+	D          model.NodeDisk
+	Space      int
+	MainNodeId model.NodeId
+}
+
+func (s *SetDiskSpaceParams) Destination() model.NodeId {
+	return s.MainNodeId
 }
 
 func (s *StateHandler) SetDiskSpace(d model.NodeDisk, space int) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
+	mainNodeId := s.NodeConnMap.MainNode(s.MyNodeId)
+	if mainNodeId == s.MyNodeId {
 		s.state.setDiskSpace(d, space)
 	} else {
-		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
-			params := SetDiskSpaceParams{D: d, Space: space}
-			s.OutSends <- model.SendPayloadMsg{
-				ConnId:  conn,
-				Payload: params,
-			}
-		}
+		s.OutPayload <- &SetDiskSpaceParams{D: d, Space: space, MainNodeId: mainNodeId}
 	}
 }
 
 type SavedParams struct {
-	B model.BlockId
-	D model.NodeDisk
+	B          model.BlockId
+	D          model.NodeDisk
+	MainNodeId model.NodeId
+}
+
+func (s *SavedParams) Destination() model.NodeId {
+	return s.MainNodeId
 }
 
 func (s *StateHandler) Saved(blockId model.BlockId, d model.NodeDisk) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
+	mainNodeId := s.NodeConnMap.MainNode(s.MyNodeId)
+	if mainNodeId == s.MyNodeId {
 		s.state.saved(blockId, d)
 	} else {
-		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
-			params := SavedParams{B: blockId, D: d}
-			s.OutSends <- model.SendPayloadMsg{
-				ConnId:  conn,
-				Payload: params,
-			}
-		}
+		s.OutPayload <- &SavedParams{B: blockId, D: d, MainNodeId: mainNodeId}
 	}
 }
 
 type DeletedParams struct {
-	B model.BlockId
-	D model.NodeDisk
+	B          model.BlockId
+	D          model.NodeDisk
+	MainNodeId model.NodeId
+}
+
+func (d *DeletedParams) Destination() model.NodeId {
+	return d.MainNodeId
 }
 
 func (s *StateHandler) Deleted(b model.BlockId, d model.NodeDisk) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
+	mainNodeId := s.NodeConnMap.MainNode(s.MyNodeId)
+	if mainNodeId == s.MyNodeId {
 		s.state.deleted(b, d)
 	} else {
-		if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
-			params := DeletedParams{B: b, D: d}
-			s.OutSends <- model.SendPayloadMsg{
-				ConnId:  conn,
-				Payload: params,
-			}
-		}
+		s.OutPayload <- &DeletedParams{B: b, D: d, MainNodeId: mainNodeId}
 	}
 }
 
@@ -160,22 +158,11 @@ func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model
 	}
 }
 
-func (s *StateHandler) listen(ctx context.Context, saveRequests chan SaveRequest, deleteRequests chan DeleteRequest) {
+func (s *StateHandler) listen(ctx context.Context, deleteRequests chan DeleteRequest) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case req := <-saveRequests:
-			s.OutSends <- 
-			local, connId := s.whereToSendSaveRequest(req)
-			if local {
-				s.OutSaveRequest <- req
-			} else {
-				s.OutSends <- model.SendPayloadMsg{
-					ConnId:  connId,
-					Payload: req,
-				}
-			}
 		case req := <-deleteRequests:
 			if req.Dest.NodeId == s.MyNodeId {
 				s.OutDeleteRequest <- req

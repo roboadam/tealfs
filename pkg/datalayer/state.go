@@ -26,7 +26,7 @@ type state struct {
 	diskBlockMapInFlight map[model.NodeDisk]map[model.BlockId]struct{}
 	blockDiskMapInFlight map[model.BlockId]map[model.NodeDisk]struct{}
 
-	outSaveRequest   chan<- SaveRequest
+	outPayload       chan<- model.Payload2
 	outDeleteRequest chan<- DeleteRequest
 	outDestsForBlock chan<- DestsForBlock
 
@@ -129,7 +129,7 @@ func (s *state) saved(blockId model.BlockId, d model.NodeDisk) {
 		s.addBlockToFuture(blockId, emptyDisk)
 		if emptyDisk != d && !s.saveAlreadySent(blockId, emptyDisk) {
 			s.addBlockToInFlight(blockId, emptyDisk)
-			s.outSaveRequest <- SaveRequest{
+			s.outPayload <- &SaveRequest{
 				To:      emptyDisk,
 				From:    []model.NodeDisk{d},
 				BlockId: blockId,
@@ -174,7 +174,7 @@ func (s *state) deleted(b model.BlockId, d model.NodeDisk) {
 	if _, ok := s.blockDiskMapFuture[b][d]; ok {
 		sources := toSlice(s.blockDiskMapCurrent[b])
 		s.addBlockToInFlight(b, d)
-		s.outSaveRequest <- SaveRequest{
+		s.outPayload <- &SaveRequest{
 			To:      d,
 			From:    sources,
 			BlockId: b,
