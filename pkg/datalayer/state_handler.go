@@ -117,6 +117,11 @@ type DestsForBlockParams struct {
 	BlockId        model.BlockId
 	PreferedNodeId model.NodeId
 	Caller         model.NodeId
+	MainNodeId     model.NodeId
+}
+
+func (d *DestsForBlockParams) Destination() model.NodeId {
+	return d.MainNodeId
 }
 
 type NotMainNodeErr struct{}
@@ -149,13 +154,8 @@ func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model
 		return
 	}
 
-	if conn, ok := s.NodeConnMap.ConnForNode(s.NodeConnMap.MainNode(s.MyNodeId)); ok {
-		params := DestsForBlockParams{BlockId: blockId, PreferedNodeId: preferedNodeId, Caller: caller}
-		s.OutSends <- model.SendPayloadMsg{
-			ConnId:  conn,
-			Payload: params,
-		}
-	}
+	params := DestsForBlockParams{BlockId: blockId, PreferedNodeId: preferedNodeId, Caller: caller}
+	s.OutPayload <- &params
 }
 
 func (s *StateHandler) listen(ctx context.Context, deleteRequests chan DeleteRequest) {
