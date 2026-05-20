@@ -26,9 +26,7 @@ type state struct {
 	diskBlockMapInFlight map[model.NodeDisk]map[model.BlockId]struct{}
 	blockDiskMapInFlight map[model.BlockId]map[model.NodeDisk]struct{}
 
-	outPayload       chan<- model.Payload2
-	outDeleteRequest chan<- DeleteRequest
-	outDestsForBlock chan<- DestsForBlock
+	outPayload chan<- model.Payload2
 
 	diskSpace []diskSpace
 }
@@ -143,12 +141,6 @@ func (s *state) saved(blockId model.BlockId, d model.NodeDisk) {
 	}
 }
 
-type DestsForBlock struct {
-	Dests   []model.NodeDisk
-	BlockId model.BlockId
-	Caller  model.NodeId
-}
-
 func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId) []model.NodeDisk {
 	result := make([]model.NodeDisk, 0)
 	current := s.blockDiskMapCurrent[blockId]
@@ -193,7 +185,7 @@ func (s *state) addBlockToFuture(blockId model.BlockId, emptyDisk model.NodeDisk
 
 func (s *state) sendDeleteMsgs(needToDelete map[model.NodeDisk]struct{}, blockId model.BlockId) {
 	for toDeleteFrom := range needToDelete {
-		s.outDeleteRequest <- DeleteRequest{
+		s.outPayload <- &DeleteRequest{
 			Dest:    toDeleteFrom,
 			BlockId: blockId,
 		}

@@ -15,36 +15,27 @@
 package datalayer
 
 import (
-	"context"
 	"sync"
 	"tealfs/pkg/model"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type StateHandler struct {
-	OutSaveRequest   chan<- SaveRequest
-	OutDeleteRequest chan<- DeleteRequest
-	OutPayload       chan<- model.Payload2
+	OutSaveRequest chan<- SaveRequest
+	OutPayload     chan<- model.Payload2
 
-	state        state
-	mux          sync.Mutex
-	waitingDests map[model.BlockId]chan DestsForBlock
+	state state
+	mux   sync.Mutex
 
 	MyNodeId    model.NodeId
 	NodeConnMap *model.NodeConnectionMapper
 }
 
-func (s *StateHandler) Start(ctx context.Context) {
+func (s *StateHandler) Start() {
 	if s.NodeConnMap.MainNode(s.MyNodeId) != s.MyNodeId {
 		return
 	}
 
-	s.waitingDests = make(map[model.BlockId]chan DestsForBlock)
-	deleteRequests := make(chan DeleteRequest, 1)
-	s.state.outDeleteRequest = deleteRequests
-
-	go s.listen(ctx, deleteRequests)
+	s.OutPayload = s.state.outPayload
 }
 
 type SetDiskSpaceParams struct {
@@ -113,17 +104,6 @@ func (s *StateHandler) Deleted(b model.BlockId, d model.NodeDisk) {
 	}
 }
 
-type DestsForBlockParams struct {
-	BlockId        model.BlockId
-	PreferedNodeId model.NodeId
-	Caller         model.NodeId
-	MainNodeId     model.NodeId
-}
-
-func (d *DestsForBlockParams) Destination() model.NodeId {
-	return d.MainNodeId
-}
-
 type NotMainNodeErr struct{}
 
 func (e NotMainNodeErr) Error() string {
@@ -143,39 +123,4 @@ func (s *StateHandler) FetchBlockReqToCmd(req *model.FetchBlockReq) (*model.Fetc
 		Id:      req.Id,
 	}
 	return &cmd, nil
-}
-
-func (s *StateHandler) DestsForBlock(blockId model.BlockId, preferedNodeId model.NodeId, caller model.NodeId) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	if s.NodeConnMap.MainNode(s.MyNodeId) == s.MyNodeId {
-		s.state.destsForBlock(blockId, preferedNodeId)
-		return
-	}
-
-	params := DestsForBlockParams{BlockId: blockId, PreferedNodeId: preferedNodeId, Caller: caller}
-	s.OutPayload <- &params
-}
-
-func (s *StateHandler) listen(ctx context.Context, deleteRequests chan DeleteRequest) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case req := <-deleteRequests:
-			if req.Dest.NodeId == s.MyNodeId {
-				s.OutDeleteRequest <- req
-				continue
-			}
-			if foundConn, ok := s.NodeConnMap.ConnForNode(req.Dest.NodeId); ok {
-				s.OutSends <- model.SendPayloadMsg{
-					ConnId:  foundConn,
-					Payload: req,
-				}
-			} else {
-				log.Panic("No connection found")
-			}
-		}
-	}
 }

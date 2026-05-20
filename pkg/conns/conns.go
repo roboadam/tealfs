@@ -53,9 +53,10 @@ type Conns struct {
 
 	InPayload <-chan model.Payload2
 
-	StateHandler *datalayer.StateHandler
-	Address      string
-	DiskManager  *disk.DiskManagerSvc
+	StateHandler         *datalayer.StateHandler
+	Address              string
+	DiskManager          *disk.DiskManagerSvc
+	DeleteRequestHandler *datalayer.DeleteRequestHandler
 
 	provider       ConnectionProvider
 	nodeId         model.NodeId
@@ -161,12 +162,8 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 	case *model.FetchBlockResp:
 		c.OutFetchBlockResp <- *p
 	case *datalayer.DeleteRequest:
-		c.handleDeleteRequest(p)
+		go c.DeleteRequestHandler.HandleDeleteRequest(p)
 	}
-}
-
-func (c *Conns) handleDeleteRequest(p *datalayer.DeleteRequest) {
-	panic("unimplemented")
 }
 
 func (c *Conns) handleFetchBlockCmd(p *model.FetchBlockCmd) {
@@ -280,8 +277,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				c.StateHandler.SetDiskSpace(p.D, p.Space)
 			case *datalayer.DataForSaveRequest:
 				c.OutDataForSaveRequest <- *p
-			case *datalayer.DestsForBlockParams:
-				c.StateHandler.DestsForBlock(p.BlockId, p.PreferedNodeId, p.Caller)
 			default:
 				panic("Unknown payload")
 			}

@@ -93,7 +93,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	stateHandler := datalayer.StateHandler{
 		OutSaveRequest:   make(chan<- datalayer.SaveRequest),
 		OutDeleteRequest: make(chan<- datalayer.DeleteRequest),
-		OutSends:         make(chan<- model.SendPayloadMsg),
+		OutPayload:       make(chan<- model.Payload2),
 		MyNodeId:         nodeId,
 		NodeConnMap:      nodeConnMapper,
 	}

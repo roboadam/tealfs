@@ -15,7 +15,6 @@
 package datalayer
 
 import (
-	"context"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -28,18 +27,7 @@ type DeleteRequestHandler struct {
 	StateHandler     *StateHandler
 }
 
-func (d *DeleteRequestHandler) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case req := <-d.InDeleteRequests:
-			d.handleDeleteRequest(req)
-		}
-	}
-}
-
-func (d *DeleteRequestHandler) handleDeleteRequest(req DeleteRequest) {
+func (d *DeleteRequestHandler) HandleDeleteRequest(req *DeleteRequest) {
 	for _, disk := range d.Disks.GetValues() {
 		if req.Dest.DiskId == disk.DiskId() {
 			disk.Delete(req.BlockId)
