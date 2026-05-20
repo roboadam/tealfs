@@ -160,7 +160,13 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 		c.handleFetchBlockCmd(p)
 	case *model.FetchBlockResp:
 		c.OutFetchBlockResp <- *p
+	case *datalayer.DeleteRequest:
+		c.handleDeleteRequest(p)
 	}
+}
+
+func (c *Conns) handleDeleteRequest(p *datalayer.DeleteRequest) {
+	panic("unimplemented")
 }
 
 func (c *Conns) handleFetchBlockCmd(p *model.FetchBlockCmd) {

@@ -75,8 +75,13 @@ func (s *SaveRequest) Destination() model.NodeId {
 }
 
 type DeleteRequest struct {
-	Dest    model.NodeDisk
-	BlockId model.BlockId
+	Dest       model.NodeDisk
+	BlockId    model.BlockId
+	MainNodeId model.NodeId
+}
+
+func (d *DeleteRequest) Destination() model.NodeId {
+	return d.MainNodeId
 }
 
 type diskSpace struct {
