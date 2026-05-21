@@ -56,6 +56,16 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 
 	go lbsr.Start(ctx)
 
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-outPayload:
+			}
+		}
+	}(ctx)
+
 	writeResults1 := make(chan model.WriteResult, 1)
 	writeResults2 := make(chan model.WriteResult, 1)
 	inWriteResults <- writeResults1
