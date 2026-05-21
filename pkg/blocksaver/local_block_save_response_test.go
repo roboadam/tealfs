@@ -35,16 +35,14 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	sends := make(chan model.SendPayloadMsg, 1)
 	inWriteResults := make(chan (<-chan model.WriteResult), 1)
 	outSaveRequest := make(chan datalayer.SaveRequest, 1)
-	outDeleteRequest := make(chan datalayer.DeleteRequest, 1)
-	outPayload
+	outPayload := make(chan model.Payload2)
 	nodeConnMapper := model.NewNodeConnectionMapper()
 
 	stateHandler := datalayer.StateHandler{
-		OutSaveRequest:   outSaveRequest,
-		OutDeleteRequest: outDeleteRequest,
-		OutPayload: outPayload,
-		MyNodeId:         nodeId,
-		NodeConnMap:      nodeConnMapper,
+		OutSaveRequest: outSaveRequest,
+		OutPayload:     outPayload,
+		MyNodeId:       nodeId,
+		NodeConnMap:    nodeConnMapper,
 	}
 
 	lbsr := LocalBlockSaveResponses{
