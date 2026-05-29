@@ -56,16 +56,6 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 
 	go lbsr.Start(ctx)
 
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-outPayload:
-			}
-		}
-	}(ctx)
-
 	writeResults1 := make(chan model.WriteResult, 1)
 	writeResults2 := make(chan model.WriteResult, 1)
 	inWriteResults <- writeResults1
@@ -81,19 +71,19 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 		FileName: uuid.NewString(),
 	}
 	writeResults1 <- model.NewWriteResultOk(ptr, nodeId, putBlockId)
-	saveParamsPayload := <-sends
-	if saveParams, ok := saveParamsPayload.Payload.(datalayer.SavedParams); ok {
+	saveParamsPayload := <-outPayload
+	if saveParams, ok := saveParamsPayload.(*datalayer.SavedParams); ok {
 		if saveParams.D.NodeId != nodeId {
-			t.Errorf("wrong dest. expected %s, got %s", nodeId, saveParams.D.NodeId)
+			t.Fatalf("wrong dest. expected %s, got %s", nodeId, saveParams.D.NodeId)
 		}
 	} else {
-		t.Error("wrong type")
+		t.Fatal("wrong type")
+		return
 	}
 
 	wr := <-resp
 	if wr.Resp.Id != putBlockId {
-		t.Error("Unknown put block id")
-		return
+		t.Fatal("Unknown put block id")
 	}
 
 	putBlockId2 := model.PutBlockId(uuid.NewString())
@@ -103,16 +93,14 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 		putBlockId2,
 	)
 
-	payloadSaveParams := <-sends
-	if _, ok := payloadSaveParams.Payload.(datalayer.SavedParams); !ok {
-		t.Error("unknown send payload")
-		return
+	payloadSaveParams := <-outPayload
+	if _, ok := payloadSaveParams.(*datalayer.SavedParams); !ok {
+		t.Fatal("unknown send payload")
 	}
 
 	wr = <-resp
 	if wr.Resp.Id != putBlockId2 {
-		t.Error("Unknown put block id")
-		return
+		t.Fatal("Unknown put block id")
 	}
 
 	putBlockId3 := model.PutBlockId(uuid.NewString())
@@ -126,15 +114,13 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 		putBlockId3,
 	)
 
-	payloadSaveParams = <-sends
-	if _, ok := payloadSaveParams.Payload.(datalayer.SavedParams); !ok {
-		t.Error("unknown send payload")
-		return
+	payloadSaveParams = <-outPayload
+	if _, ok := payloadSaveParams.(*datalayer.SavedParams); !ok {
+		t.Fatal("unknown send payload")
 	}
 
 	payload := <-sends
 	if _, ok := payload.Payload.(*SaveToDiskResp); !ok {
-		t.Error("unknown send payload")
-		return
+		t.Fatal("unknown send payload")
 	}
 }

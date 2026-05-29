@@ -15,7 +15,6 @@
 package datalayer_test
 
 import (
-	"context"
 	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
 	"tealfs/pkg/test"
@@ -23,12 +22,7 @@ import (
 )
 
 func TestStateHandlerAsMain(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	outSave := make(chan datalayer.SaveRequest, 1)
-	outDelete := make(chan datalayer.DeleteRequest, 1)
-	outSends := make(chan model.SendPayloadMsg, 1)
+	outPayload := make(chan model.Payload2, 20)
 
 	remoteNode1Id := test.NonMainNode1
 	remoteNode2Id := test.NonMainNode2
@@ -39,38 +33,38 @@ func TestStateHandlerAsMain(t *testing.T) {
 	mapper.SetAll(1, "remoteNode2Address", remoteNode2Id)
 
 	stateHandler := datalayer.StateHandler{
-		OutSaveRequest:   outSave,
-		OutDeleteRequest: outDelete,
-		OutSends:         outSends,
-		MyNodeId:         myNodeId,
-		NodeConnMap:      mapper,
+		MyNodeId:    myNodeId,
+		NodeConnMap: mapper,
+		OutPayload:  outPayload,
 	}
-	stateHandler.Start(ctx)
+	stateHandler.Start()
 
 	stateHandler.SetDiskSpace(model.NodeDisk{DiskId: "disk1Id", NodeId: myNodeId}, 2)
 	stateHandler.SetDiskSpace(model.NodeDisk{DiskId: "disk2Id", NodeId: remoteNode1Id}, 1)
 	stateHandler.SetDiskSpace(model.NodeDisk{DiskId: "disk3Id", NodeId: remoteNode2Id}, 3)
 
 	stateHandler.Saved("block1Id", model.NodeDisk{DiskId: "disk1Id", NodeId: myNodeId})
-	receivedSave := <-outSave
-	if receivedSave.BlockId != "block1Id" {
-		t.Error("Invalid BlockId")
-	}
-	if len(receivedSave.From) != 1 {
-		t.Error("Block starts off saved in only one place")
-	}
-	from := receivedSave.From[0]
-	if from.NodeId != myNodeId || from.DiskId != "disk1Id" {
-		t.Error("Should be already saved on the local nodes only disk")
-	}
-	to := receivedSave.To
-	if to.NodeId != remoteNode2Id || to.DiskId != "disk3Id" {
-		t.Error("Should be saved to the biggest disk")
+	payload := <-outPayload
+	if receivedSave, ok := payload.(*datalayer.SaveRequest); ok {
+		if receivedSave.BlockId != "block1Id" {
+			t.Error("Invalid BlockId")
+		}
+		if len(receivedSave.From) != 1 {
+			t.Error("Block starts off saved in only one place")
+		}
+		from := receivedSave.From[0]
+		if from.NodeId != myNodeId || from.DiskId != "disk1Id" {
+			t.Error("Should be already saved on the local nodes only disk")
+		}
+		to := receivedSave.To
+		if to.NodeId != remoteNode2Id || to.DiskId != "disk3Id" {
+			t.Error("Should be saved to the biggest disk")
+		}
 	}
 
 	stateHandler.Saved("block2Id", model.NodeDisk{DiskId: "disk3Id", NodeId: remoteNode2Id})
-	receivedPayload := <-outSends
-	if receivedSave, ok := receivedPayload.Payload.(datalayer.SaveRequest); ok {
+	receivedPayload := <-outPayload
+	if receivedSave, ok := receivedPayload.(*datalayer.SaveRequest); ok {
 		if receivedSave.BlockId != "block2Id" {
 			t.Error("Invalid BlockId")
 		}
@@ -93,32 +87,46 @@ func TestStateHandlerAsMain(t *testing.T) {
 	stateHandler.SetDiskSpace(model.NodeDisk{DiskId: "disk2Id", NodeId: remoteNode1Id}, 2)
 	stateHandler.SetDiskSpace(model.NodeDisk{DiskId: "disk3Id", NodeId: remoteNode2Id}, 3)
 	stateHandler.Saved("block3id", model.NodeDisk{DiskId: "disk1Id", NodeId: myNodeId})
-	s1 := <-outSave
+
+	payload = <-outPayload
+	s1, ok := payload.(*datalayer.SaveRequest)
+	if !ok {
+		t.Fatal("invalid type")
+	}
 	stateHandler.Saved(s1.BlockId, s1.To)
-	s2 := <-outSave
+
+	payload = <-outPayload
+	s2, ok := payload.(*datalayer.SaveRequest)
+	if !ok {
+		t.Fatal("invalid type")
+	}
 	stateHandler.Saved(s2.BlockId, s2.To)
-	del := <-outDelete
-	stateHandler.Deleted(del.BlockId, del.Dest)
+
+	payload = <-outPayload
+	if del, ok := payload.(*datalayer.DeleteRequest); ok {
+		stateHandler.Deleted(del.BlockId, del.Dest)
+	} else {
+		t.Fatal("Wrong type")
+	}
 
 	stateHandler.Deleted(s1.BlockId, s1.To)
-	payload := <-outSends
-	if s3, ok := payload.Payload.(datalayer.SaveRequest); ok {
+	payload = <-outPayload
+	if _, ok := payload.(*datalayer.DeleteRequest); !ok {
+		t.Fatal("wrong type")
+	}
+	payload = <-outPayload
+	if s3, ok := payload.(*datalayer.SaveRequest); ok {
 		if s1.To.DiskId != s3.To.DiskId {
-			t.Error("didn't refill random delete")
+			t.Fatal("didn't refill random delete")
 		}
 	} else {
-		t.Error("Wrong payload type")
+		t.Fatal("Wrong payload type")
 	}
 
 }
 
 func TestStateHandlerAsRemote(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	outSave := make(chan datalayer.SaveRequest, 1)
-	outDelete := make(chan datalayer.DeleteRequest, 1)
-	outSends := make(chan model.SendPayloadMsg, 1)
+	outPayload := make(chan model.Payload2, 1)
 
 	myNodeId := test.NonMainNode1
 	remoteNode1Id := test.MainNodeId
@@ -129,24 +137,22 @@ func TestStateHandlerAsRemote(t *testing.T) {
 	mapper.SetAll(1, "remoteNode2Address", remoteNode2Id)
 
 	stateHandler := datalayer.StateHandler{
-		OutSaveRequest:   outSave,
-		OutDeleteRequest: outDelete,
-		OutSends:         outSends,
-		MyNodeId:         myNodeId,
-		NodeConnMap:      mapper,
+		OutPayload:  outPayload,
+		MyNodeId:    myNodeId,
+		NodeConnMap: mapper,
 	}
-	stateHandler.Start(ctx)
+	stateHandler.Start()
 
 	stateHandler.SetDiskSpace(model.NodeDisk{DiskId: "disk1Id", NodeId: myNodeId}, 2)
-	<-outSends
+	<-outPayload
 	stateHandler.SetDiskSpace(model.NodeDisk{DiskId: "disk2Id", NodeId: remoteNode1Id}, 1)
-	<-outSends
+	<-outPayload
 	stateHandler.SetDiskSpace(model.NodeDisk{DiskId: "disk3Id", NodeId: remoteNode2Id}, 3)
-	<-outSends
+	<-outPayload
 
 	stateHandler.Saved("block1Id", model.NodeDisk{DiskId: "disk1Id", NodeId: myNodeId})
-	sendPayloadMsg := <-outSends
-	if saveParams, ok := sendPayloadMsg.Payload.(datalayer.SavedParams); ok {
+	sendPayloadMsg := <-outPayload
+	if saveParams, ok := sendPayloadMsg.(*datalayer.SavedParams); ok {
 		if saveParams.B != "block1Id" {
 			t.Error("Invalid BlockId")
 		}
@@ -158,5 +164,5 @@ func TestStateHandlerAsRemote(t *testing.T) {
 	}
 
 	stateHandler.Deleted("block1Id", model.NodeDisk{DiskId: "disk1Id", NodeId: myNodeId})
-	<-outSends
+	<-outPayload
 }

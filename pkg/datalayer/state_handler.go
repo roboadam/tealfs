@@ -20,8 +20,7 @@ import (
 )
 
 type StateHandler struct {
-	OutSaveRequest chan<- SaveRequest
-	OutPayload     chan<- model.Payload2
+	OutPayload chan<- model.Payload2
 
 	state state
 	mux   sync.Mutex
@@ -35,7 +34,7 @@ func (s *StateHandler) Start() {
 		return
 	}
 
-	s.OutPayload = s.state.outPayload
+	s.state.outPayload = s.OutPayload
 }
 
 type SetDiskSpaceParams struct {

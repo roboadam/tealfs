@@ -43,14 +43,12 @@ func TestDeleteRequestHandlerDeletesBlock(t *testing.T) {
 	d := disk.New(disk.NewPath(path, &fileOps), nodeId, diskId, ctx)
 	disks.Add(d)
 
-	h := datalayer.DeleteRequestHandler{
+	_ = datalayer.DeleteRequestHandler{
 		InDeleteRequests: inDeleteRequests,
 		Disks:            &disks,
 		NodeId:           nodeId,
 		StateHandler:     nil,
 	}
-
-	go h.Start(ctx)
 
 	inDeleteRequests <- datalayer.DeleteRequest{
 		Dest:    model.NodeDisk{DiskId: diskId, NodeId: nodeId},
@@ -60,7 +58,7 @@ func TestDeleteRequestHandlerDeletesBlock(t *testing.T) {
 	<-dataRemoved
 
 	if fileOps.Exists(fmt.Sprint(path, "/", blockId)) {
-		t.Error("file should have been deleted")
+		t.Fatal("file should have been deleted")
 	}
 }
 
@@ -84,14 +82,12 @@ func TestDeleteRequestHandlerIgnoresUnknownDisk(t *testing.T) {
 	d := disk.New(disk.NewPath(path, &fileOps), nodeId, diskId, ctx)
 	disks.Add(d)
 
-	h := datalayer.DeleteRequestHandler{
+	_ = datalayer.DeleteRequestHandler{
 		InDeleteRequests: inDeleteRequests,
 		Disks:            &disks,
 		NodeId:           nodeId,
 		StateHandler:     nil,
 	}
-
-	go h.Start(ctx)
 
 	// send a second request targeting the known disk so we can use it as a
 	// synchronization point — by the time it arrives, the unknown-disk request
@@ -118,6 +114,6 @@ func TestDeleteRequestHandlerIgnoresUnknownDisk(t *testing.T) {
 	<-dataRemoved
 
 	if !fileOps.Exists(filePath) {
-		t.Error("file on unknown disk should not have been deleted")
+		t.Fatal("file on unknown disk should not have been deleted")
 	}
 }
