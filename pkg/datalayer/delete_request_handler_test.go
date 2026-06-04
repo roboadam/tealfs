@@ -30,7 +30,6 @@ func TestDeleteRequestHandlerDeletesBlock(t *testing.T) {
 
 	dataRemoved := make(chan struct{}, 1)
 	fileOps := disk.MockFileOps{DataRemoved: dataRemoved}
-	inDeleteRequests := make(chan datalayer.DeleteRequest)
 	disks := set.NewSet[disk.Disk]()
 	nodeId := model.NodeId("nodeId")
 	diskId := model.DiskId("disk1")
@@ -43,17 +42,18 @@ func TestDeleteRequestHandlerDeletesBlock(t *testing.T) {
 	d := disk.New(disk.NewPath(path, &fileOps), nodeId, diskId, ctx)
 	disks.Add(d)
 
-	_ = datalayer.DeleteRequestHandler{
-		InDeleteRequests: inDeleteRequests,
-		Disks:            &disks,
-		NodeId:           nodeId,
-		StateHandler:     nil,
+	drh := datalayer.DeleteRequestHandler{
+		Disks:        &disks,
+		NodeId:       nodeId,
+		StateHandler: nil,
 	}
 
-	inDeleteRequests <- datalayer.DeleteRequest{
+	req := datalayer.DeleteRequest{
 		Dest:    model.NodeDisk{DiskId: diskId, NodeId: nodeId},
 		BlockId: blockId,
 	}
+
+	drh.HandleDeleteRequest(&req)
 
 	<-dataRemoved
 
@@ -67,7 +67,6 @@ func TestDeleteRequestHandlerIgnoresUnknownDisk(t *testing.T) {
 	defer cancel()
 
 	fileOps := disk.MockFileOps{}
-	inDeleteRequests := make(chan datalayer.DeleteRequest)
 	disks := set.NewSet[disk.Disk]()
 	nodeId := model.NodeId("nodeId")
 	diskId := model.DiskId("disk1")
@@ -82,16 +81,12 @@ func TestDeleteRequestHandlerIgnoresUnknownDisk(t *testing.T) {
 	d := disk.New(disk.NewPath(path, &fileOps), nodeId, diskId, ctx)
 	disks.Add(d)
 
-	_ = datalayer.DeleteRequestHandler{
-		InDeleteRequests: inDeleteRequests,
-		Disks:            &disks,
-		NodeId:           nodeId,
-		StateHandler:     nil,
+	drh := datalayer.DeleteRequestHandler{
+		Disks:        &disks,
+		NodeId:       nodeId,
+		StateHandler: nil,
 	}
 
-	// send a second request targeting the known disk so we can use it as a
-	// synchronization point — by the time it arrives, the unknown-disk request
-	// must have been processed already
 	dataRemoved := make(chan struct{}, 1)
 	fileOps2 := disk.MockFileOps{DataRemoved: dataRemoved}
 	diskId2 := model.DiskId("disk2")
@@ -101,15 +96,18 @@ func TestDeleteRequestHandlerIgnoresUnknownDisk(t *testing.T) {
 	d2 := disk.New(disk.NewPath(path2, &fileOps2), nodeId, diskId2, ctx)
 	disks.Add(d2)
 
-	inDeleteRequests <- datalayer.DeleteRequest{
+	req1 := datalayer.DeleteRequest{
 		Dest:    model.NodeDisk{DiskId: unknownDiskId, NodeId: nodeId},
 		BlockId: blockId,
 	}
 
-	inDeleteRequests <- datalayer.DeleteRequest{
+	req2 := datalayer.DeleteRequest{
 		Dest:    model.NodeDisk{DiskId: diskId2, NodeId: nodeId},
 		BlockId: blockId2,
 	}
+
+	drh.HandleDeleteRequest(&req1)
+	drh.HandleDeleteRequest(&req2)
 
 	<-dataRemoved
 

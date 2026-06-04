@@ -21,7 +21,6 @@ import (
 )
 
 type DeleteRequestHandler struct {
-	InDeleteRequests <-chan DeleteRequest
 	Disks            *set.Set[disk.Disk]
 	NodeId           model.NodeId
 	StateHandler     *StateHandler
