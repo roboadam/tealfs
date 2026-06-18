@@ -146,7 +146,7 @@ func (c *Conns) consumeChannels() {
 		case payload := <-c.InPayload:
 			dest := payload.Destination()
 			if dest == "" {
-				dest = c.nodeConnMapper.MainNode(c.nodeId);
+				dest = c.nodeConnMapper.MainNode(c.nodeId)
 			}
 			if dest == c.nodeId {
 				c.handleIncomingPayload(payload)
@@ -203,12 +203,16 @@ func (c *Conns) handleFetchBlockReq(p *model.FetchBlockReq) {
 }
 
 func (c *Conns) sendPayload(p model.Payload2) error {
-	dest := model.NodeId("")
-	if p.Destination() == "" {
+	dest := p.Destination()
+	if dest == "" {
 		dest = c.nodeConnMapper.MainNode(c.nodeId)
-	} else {
-		dest = p.Destination()
 	}
+
+	if dest == c.nodeId {
+		c.handleIncomingPayload(p)
+		return nil
+	}
+
 	connId, ok := c.nodeConnMapper.ConnForNode(dest)
 	if !ok {
 		return errors.New("No connection to that node")

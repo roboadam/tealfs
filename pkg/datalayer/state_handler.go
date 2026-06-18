@@ -109,12 +109,24 @@ func (e NotMainNodeErr) Error() string {
 	return "This is no the main node"
 }
 
-func (s *StateHandler) FetchBlockReqToCmd(req *model.FetchBlockReq) (*model.FetchBlockCmd, error) {
+func (s *StateHandler) FetchBlockReqToCmd(req *model.FetchBlockReq) (model.Payload2, error) {
 	if s.NodeConnMap.MainNode(s.MyNodeId) != s.MyNodeId {
 		return nil, NotMainNodeErr{}
 	}
 
 	dests := s.state.destsForBlock(req.BlockId, req.Caller)
+
+	if len(dests) == 0 {
+		resp := model.FetchBlockResp{
+			Caller:  req.Caller,
+			Block:   model.Block{},
+			Id:      req.Id,
+			Success: false,
+			Msg:     "block not found",
+		}
+		return &resp, nil
+	}
+
 	cmd := model.FetchBlockCmd{
 		Sources: dests,
 		BlockId: req.BlockId,
