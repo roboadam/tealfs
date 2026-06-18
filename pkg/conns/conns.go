@@ -144,7 +144,11 @@ func (c *Conns) consumeChannels() {
 				}
 			}
 		case payload := <-c.InPayload:
-			if payload.Destination() == c.nodeId {
+			dest := payload.Destination()
+			if dest == "" {
+				dest = c.nodeConnMapper.MainNode(c.nodeId);
+			}
+			if dest == c.nodeId {
 				c.handleIncomingPayload(payload)
 			} else {
 				c.sendPayload(payload)
