@@ -149,14 +149,14 @@ func (s *state) destsForBlock(blockId model.BlockId, preferedNodeId model.NodeId
 	current := s.blockDiskMapCurrent[blockId]
 	inflight := s.blockDiskMapInFlight[blockId]
 	future := s.blockDiskMapFuture[blockId]
-	addToResultInPreferredOrder(result, current, preferedNodeId)
-	addToResultInPreferredOrder(result, inflight, preferedNodeId)
-	addToResultInPreferredOrder(result, future, preferedNodeId)
+	result = addToResultInPreferredOrder(result, current, preferedNodeId)
+	result = addToResultInPreferredOrder(result, inflight, preferedNodeId)
+	result = addToResultInPreferredOrder(result, future, preferedNodeId)
 
 	return result
 }
 
-func addToResultInPreferredOrder(result []model.NodeDisk, added map[model.NodeDisk]struct{}, preferred model.NodeId) {
+func addToResultInPreferredOrder(result []model.NodeDisk, added map[model.NodeDisk]struct{}, preferred model.NodeId) []model.NodeDisk {
 	others := make([]model.NodeDisk, 0)
 	for key := range added {
 		if key.NodeId == preferred {
@@ -166,6 +166,7 @@ func addToResultInPreferredOrder(result []model.NodeDisk, added map[model.NodeDi
 		}
 	}
 	result = append(result, others...)
+	return result
 }
 
 func (s *state) deleted(b model.BlockId, d model.NodeDisk) {

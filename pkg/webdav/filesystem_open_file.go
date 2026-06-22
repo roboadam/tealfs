@@ -109,7 +109,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			Modtime:    time.Now(),
 			Position:   0,
 			Block:      []model.Block{block},
-			HasData:    []bool{false},
+			HasData:    []bool{create},
 			Path:       path,
 			FileSystem: f,
 		}

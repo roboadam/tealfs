@@ -201,12 +201,13 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	/****** BlockSaver *****/
 
 	bs := blocksaver.BlockSaver{
-		Req:        blockSaverPutBlockReq,
-		RemoteDest: remoteBlockSaverSaveToDiskReq,
-		LocalDest:  localBlockSaverSaveToDiskReq,
-		InResp:     blockSaverSaveToDiskResp,
-		Resp:       webdavPutResp,
-		NodeId:     nodeId,
+		Req:          blockSaverPutBlockReq,
+		RemoteDest:   remoteBlockSaverSaveToDiskReq,
+		LocalDest:    localBlockSaverSaveToDiskReq,
+		InResp:       blockSaverSaveToDiskResp,
+		Resp:         webdavPutResp,
+		NodeId:       nodeId,
+		DiskInfoList: &diskManagerSvc.DiskInfoList,
 	}
 	lbs := blocksaver.LocalBlockSaver{
 		Req:   localBlockSaverSaveToDiskReq,
@@ -224,6 +225,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		Sends:               connsSvcSendPayloadMsg,
 		NodeConnMap:         nodeConnMapper,
 		NodeId:              nodeId,
+		StateHandler:        &stateHandler,
 	}
 
 	/****** Webdav *******/
