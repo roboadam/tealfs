@@ -15,7 +15,6 @@
 package blocksaver
 
 import (
-	"context"
 	"errors"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -25,22 +24,14 @@ import (
 )
 
 type LocalBlockSaver struct {
-	Req   <-chan SaveToDiskReq
 	Disks *set.Set[disk.Disk]
 }
 
-func (l *LocalBlockSaver) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case req := <-l.Req:
-			if disk, err := l.diskForId(req.Dest.DiskId); err == nil {
-				disk.InWrites <- *convertSaveReq(&req)
-			} else {
-				log.Panicf("saver: no disk for id %s, %v", req.Dest.DiskId, err)
-			}
-		}
+func (l *LocalBlockSaver) Save(req SaveToDiskReq) {
+	if disk, err := l.diskForId(req.Dest.DiskId); err == nil {
+		disk.InWrites <- *convertSaveReq(&req)
+	} else {
+		log.Panicf("saver: no disk for id %s, %v", req.Dest.DiskId, err)
 	}
 }
 

@@ -35,8 +35,7 @@ func init() {
 type BlockSaver struct {
 	// Request phase
 	Req        <-chan model.PutBlockReq
-	RemoteDest chan<- SaveToDiskReq
-	LocalDest  chan<- SaveToDiskReq
+	OutPayload chan<- model.Payload2
 
 	// Response phase
 	InResp <-chan SaveToDiskResp
@@ -55,6 +54,10 @@ type SaveToDiskReq struct {
 	Caller model.NodeId
 	Dest   Dest
 	Req    model.PutBlockReq
+}
+
+func (s *SaveToDiskReq) Destination() model.NodeId {
+	return s.Dest.NodeId
 }
 
 type SaveToDiskResp struct {
@@ -88,12 +91,7 @@ func (bs *BlockSaver) handlePutReq(req model.PutBlockReq, requestState map[model
 
 	saveToDisk := SaveToDiskReq{Dest: dest, Req: req, Caller: bs.NodeId}
 
-	// If the destination is this node send to the local disk, otherwise send to remote node
-	if dest.NodeId == bs.NodeId {
-		bs.LocalDest <- saveToDisk
-	} else {
-		bs.RemoteDest <- saveToDisk
-	}
+	bs.OutPayload <- &saveToDisk
 }
 
 func (bs *BlockSaver) handleSaveResp(requestState map[model.PutBlockId]set.Set[model.DiskId], resp SaveToDiskResp) {

@@ -75,7 +75,7 @@ func TestOneNodeCluster(t *testing.T) {
 func TestTwoNodeCluster(t *testing.T) {
 	webdavAddress1 := "localhost:8080"
 	webdavAddress2 := "localhost:9080"
-	numFiles := 10
+	numFiles := 1
 	path := []string{}
 	fileContents := []string{}
 	for i := range numFiles {

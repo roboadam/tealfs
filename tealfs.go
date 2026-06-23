@@ -79,11 +79,9 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsReceiveSyncNodes := make(chan model.SyncNodes, 1)
 	connsIamSenderConnId := make(chan model.ConnId, 1)
 	localBlockSaveResponsesWriteResults := make(chan (<-chan model.WriteResult), 1)
-	localBlockSaverSaveToDiskReq := make(chan blocksaver.SaveToDiskReq)
 	localBlockReadResponsesReadResults := make(chan (<-chan model.ReadResult), 1)
 	blockSaverPutBlockReq := make(chan model.PutBlockReq)
 	webdavPutResp := make(chan model.PutBlockResp)
-	remoteBlockSaverSaveToDiskReq := make(chan blocksaver.SaveToDiskReq)
 	blockSaverSaveToDiskResp := make(chan blocksaver.SaveToDiskResp)
 	webdavFileBroadcast := make(chan webdav.FileBroadcast, 1)
 	connsPayload := make(chan model.Payload2, 1)
@@ -121,6 +119,43 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		OutDiskAddedMsg: diskManagerSvcDiskAddedMsg,
 	}
 
+	/****** Ui ******/
+
+	u := ui.NewUi(
+		connsSvcConnectToNodeReq,
+		diskManagerSvcAddDiskMsg,
+		diskMsgSenderSvcAddDiskMsg,
+		make(chan model.UiDiskStatus),
+		&ui.HttpHtmlOps{},
+		nodeId,
+		uiAddress,
+		ctx,
+	)
+	u.NodeConnMap = nodeConnMapper
+	u.StateHandler = &stateHandler
+
+	/****** BlockSaver *****/
+
+	bs := blocksaver.BlockSaver{
+		Req: blockSaverPutBlockReq,
+		InResp:       blockSaverSaveToDiskResp,
+		Resp:         webdavPutResp,
+		NodeId:       nodeId,
+		DiskInfoList: &diskManagerSvc.DiskInfoList,
+		OutPayload:   connsPayload,
+	}
+	lbs := blocksaver.LocalBlockSaver{
+		Disks: &diskManagerSvc.LocalDiskSvcList,
+	}
+	lbsr := blocksaver.LocalBlockSaveResponses{
+		InWriteResults:      localBlockSaveResponsesWriteResults,
+		LocalWriteResponses: blockSaverSaveToDiskResp,
+		Sends:               connsSvcSendPayloadMsg,
+		NodeConnMap:         nodeConnMapper,
+		NodeId:              nodeId,
+		StateHandler:        &stateHandler,
+	}
+
 	/******* Connection Services ******/
 
 	connsSvc := conns.NewConns(
@@ -136,7 +171,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.OutSyncNodes = connsReceiveSyncNodes
 	connsSvc.OutIam = diskIamReceiverChan
 	connsSvc.OutSendIam = connsIamSenderConnId
-	connsSvc.OutSaveToDiskReq = localBlockSaverSaveToDiskReq
+	connsSvc.LocalBlockSaver = &lbs
 	connsSvc.OutSaveToDiskResp = blockSaverSaveToDiskResp
 	connsSvc.OutFileBroadcasts = webdavFileBroadcast
 	connsSvc.OutFetchBlockResp = webdavFetchBlockResp
@@ -184,51 +219,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		Disks:     &diskManagerSvc.DiskInfoList,
 	}
 
-	/****** Ui ******/
-
-	u := ui.NewUi(
-		connsSvcConnectToNodeReq,
-		diskManagerSvcAddDiskMsg,
-		diskMsgSenderSvcAddDiskMsg,
-		make(chan model.UiDiskStatus),
-		&ui.HttpHtmlOps{},
-		nodeId,
-		uiAddress,
-		ctx,
-	)
-	u.NodeConnMap = nodeConnMapper
-	u.StateHandler = &stateHandler
-
-	/****** BlockSaver *****/
-
-	bs := blocksaver.BlockSaver{
-		Req:          blockSaverPutBlockReq,
-		RemoteDest:   remoteBlockSaverSaveToDiskReq,
-		LocalDest:    localBlockSaverSaveToDiskReq,
-		InResp:       blockSaverSaveToDiskResp,
-		Resp:         webdavPutResp,
-		NodeId:       nodeId,
-		DiskInfoList: &diskManagerSvc.DiskInfoList,
-	}
-	lbs := blocksaver.LocalBlockSaver{
-		Req:   localBlockSaverSaveToDiskReq,
-		Disks: &diskManagerSvc.LocalDiskSvcList,
-	}
-	rbs := blocksaver.RemoteBlockSaver{
-		Req:         remoteBlockSaverSaveToDiskReq,
-		Sends:       connsSvcSendPayloadMsg,
-		NoConnResp:  blockSaverSaveToDiskResp,
-		NodeConnMap: nodeConnMapper,
-	}
-	lbsr := blocksaver.LocalBlockSaveResponses{
-		InWriteResults:      localBlockSaveResponsesWriteResults,
-		LocalWriteResponses: blockSaverSaveToDiskResp,
-		Sends:               connsSvcSendPayloadMsg,
-		NodeConnMap:         nodeConnMapper,
-		NodeId:              nodeId,
-		StateHandler:        &stateHandler,
-	}
-
 	/****** Webdav *******/
 
 	_ = webdav.New(
@@ -261,8 +251,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go reconnector.Start(ctx)
 	go connsIamSender.Start(ctx)
 	go bs.Start(ctx)
-	go lbs.Start(ctx)
-	go rbs.Start(ctx)
 	go lbsr.Start(ctx)
 
 	<-ctx.Done()

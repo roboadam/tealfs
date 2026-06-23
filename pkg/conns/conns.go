@@ -36,7 +36,6 @@ type Conns struct {
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
 
-	OutSaveToDiskReq      chan<- blocksaver.SaveToDiskReq
 	OutSaveToDiskResp     chan<- blocksaver.SaveToDiskResp
 	OutAddDiskMsg         chan<- model.AddDiskMsg
 	OutDiskAddedMsg       chan<- model.DiskAddedMsg
@@ -57,6 +56,7 @@ type Conns struct {
 	Address              string
 	DiskManager          *disk.DiskManagerSvc
 	DeleteRequestHandler *datalayer.DeleteRequestHandler
+	LocalBlockSaver      *blocksaver.LocalBlockSaver
 
 	provider       ConnectionProvider
 	nodeId         model.NodeId
@@ -144,15 +144,7 @@ func (c *Conns) consumeChannels() {
 				}
 			}
 		case payload := <-c.InPayload:
-			dest := payload.Destination()
-			if dest == "" {
-				dest = c.nodeConnMapper.MainNode(c.nodeId)
-			}
-			if dest == c.nodeId {
-				c.handleIncomingPayload(payload)
-			} else {
-				c.sendPayload(payload)
-			}
+			c.sendPayload(payload)
 		}
 	}
 }
@@ -167,6 +159,8 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 		c.OutFetchBlockResp <- *p
 	case *datalayer.DeleteRequest:
 		go c.DeleteRequestHandler.HandleDeleteRequest(p)
+	case *blocksaver.SaveToDiskReq:
+		go c.LocalBlockSaver.Save(*p)
 	}
 }
 
@@ -252,6 +246,10 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			return
 		default:
 			netConn := c.rawNetForConnId(conn)
+
+			payload2, err := netConn.ReadPayload2()
+			c.handleIncomingPayload(payload2)
+
 			payload, err := netConn.ReadPayload()
 			if err != nil {
 				closeErr := netConn.Close()
@@ -262,8 +260,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				return
 			}
 			switch p := (payload).(type) {
-			case *blocksaver.SaveToDiskReq:
-				c.OutSaveToDiskReq <- *p
 			case *blocksaver.SaveToDiskResp:
 				c.OutSaveToDiskResp <- *p
 			case *model.AddDiskMsg:

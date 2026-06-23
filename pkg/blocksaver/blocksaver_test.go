@@ -29,8 +29,7 @@ func TestBlockSaver(t *testing.T) {
 	defer cancel()
 
 	req := make(chan model.PutBlockReq)
-	remoteDest := make(chan SaveToDiskReq, 1)
-	localDest := make(chan SaveToDiskReq, 1)
+	outPayloads := make(chan model.Payload2, 1)
 	inResp := make(chan SaveToDiskResp)
 	resp := make(chan model.PutBlockResp)
 
@@ -58,32 +57,36 @@ func TestBlockSaver(t *testing.T) {
 
 	bs := BlockSaver{
 		Req:          req,
-		RemoteDest:   remoteDest,
-		LocalDest:    localDest,
 		InResp:       inResp,
 		Resp:         resp,
 		NodeId:       localNodeId,
 		DiskInfoList: &diskInfoSet,
+		OutPayload:   outPayloads,
 	}
 
 	go bs.Start(ctx)
 
 	req <- putBlockReq
 
-	localReq := <-localDest
-	if localReq.Req.Id != putBlockReq.Id || localReq.Caller != localNodeId {
+	payload := <-outPayloads
+	saveReq, ok := payload.(*SaveToDiskReq)
+	if !ok {
+		t.Fatal("wrong type")
+	}
+
+	if saveReq.Req.Id != putBlockReq.Id || saveReq.Caller != localNodeId {
 		t.Error("unexpected req id 1")
 		return
 	}
 
 	inResp <- SaveToDiskResp{
-		Caller: localReq.Caller,
+		Caller: saveReq.Caller,
 		Dest: Dest{
 			NodeId: localNodeId,
 			DiskId: localDiskId,
 		},
 		Resp: model.PutBlockResp{
-			Id:  localReq.Req.Id,
+			Id:  saveReq.Req.Id,
 			Err: nil,
 		},
 	}
@@ -101,16 +104,20 @@ func TestBlockSaver(t *testing.T) {
 	}
 
 	req <- putBlockReq
-	localReq = <-localDest
+	payload = <-outPayloads
+	saveReq, ok = payload.(*SaveToDiskReq)
+	if !ok {
+		t.Fatal("wrong type")
+	}
 
 	inResp <- SaveToDiskResp{
-		Caller: localReq.Caller,
+		Caller: saveReq.Caller,
 		Dest: Dest{
 			NodeId: localNodeId,
 			DiskId: localDiskId,
 		},
 		Resp: model.PutBlockResp{
-			Id:  localReq.Req.Id,
+			Id:  saveReq.Req.Id,
 			Err: errors.New("some error putting the first one"),
 		},
 	}
