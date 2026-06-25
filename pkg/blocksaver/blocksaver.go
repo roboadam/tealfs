@@ -66,6 +66,10 @@ type SaveToDiskResp struct {
 	Resp   model.PutBlockResp
 }
 
+func (s *SaveToDiskResp) Destination() model.NodeId {
+	return s.Dest.NodeId
+}
+
 func (bs *BlockSaver) Start(ctx context.Context) {
 	requestState := make(map[model.PutBlockId]set.Set[model.DiskId])
 	for {

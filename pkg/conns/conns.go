@@ -161,6 +161,8 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 		go c.DeleteRequestHandler.HandleDeleteRequest(p)
 	case *blocksaver.SaveToDiskReq:
 		go c.LocalBlockSaver.Save(*p)
+	case *blocksaver.SaveToDiskResp:
+		c.OutSaveToDiskResp <- *p
 	}
 }
 
@@ -260,8 +262,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				return
 			}
 			switch p := (payload).(type) {
-			case *blocksaver.SaveToDiskResp:
-				c.OutSaveToDiskResp <- *p
 			case *model.AddDiskMsg:
 				c.OutAddDiskMsg <- *p
 			case *model.DiskAddedMsg:
