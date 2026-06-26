@@ -20,16 +20,11 @@ import (
 )
 
 type IamReceiver struct {
-	InIam            <-chan IamConnId
+	InIamTrigger     <-chan struct{}
 	OutSendSyncNodes chan<- struct{}
 	OutSaveCluster   chan<- struct{}
 
 	Mapper *model.NodeConnectionMapper
-}
-
-type IamConnId struct {
-	Iam    model.IAm
-	ConnId model.ConnId
 }
 
 func (i *IamReceiver) Start(ctx context.Context) {
@@ -37,14 +32,9 @@ func (i *IamReceiver) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case iam := <-i.InIam:
-			i.handleIam(&iam)
+		case <-i.InIamTrigger:
+			i.OutSaveCluster <- struct{}{}
+			i.OutSendSyncNodes <- struct{}{}
 		}
 	}
-}
-
-func (i *IamReceiver) handleIam(iam *IamConnId) {
-	i.Mapper.SetAll(iam.ConnId, iam.Iam.Address, iam.Iam.NodeId)
-	i.OutSaveCluster <- struct{}{}
-	i.OutSendSyncNodes <- struct{}{}
 }

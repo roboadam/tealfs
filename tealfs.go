@@ -71,11 +71,10 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	connsSvcConnectToNodeReq := make(chan model.ConnectToNodeReq, 1)
 	connsSvcSendPayloadMsg := make(chan model.SendPayloadMsg, 1)
-	connsIamReceiverIamConnId := make(chan conns.IamConnId, 1)
+	connsIamTrigger := make(chan struct{}, 1)
 	connsSendSyncNodes := make(chan struct{}, 1)
 	connsClusterSaver := make(chan struct{}, 1)
 	connsReceiveSyncNodes := make(chan model.SyncNodes, 1)
-	connsIamSenderConnId := make(chan model.ConnId, 1)
 	localBlockSaveResponsesWriteResults := make(chan (<-chan model.WriteResult), 1)
 	localBlockReadResponsesReadResults := make(chan (<-chan model.ReadResult), 1)
 	blockSaverPutBlockReq := make(chan model.PutBlockReq)
@@ -157,10 +156,9 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		ctx,
 	)
 	connsSvc.OutDiskAddedMsg = diskManagerSvcDiskAddedMsg
-	connsSvc.OutIamConnId = connsIamReceiverIamConnId
+	connsSvc.OutIamTrigger = connsIamTrigger
 	connsSvc.OutSyncNodes = connsReceiveSyncNodes
 	connsSvc.OutIam = diskIamReceiverChan
-	connsSvc.OutSendIam = connsIamSenderConnId
 	connsSvc.LocalBlockSaver = &lbs
 	connsSvc.OutSaveToDiskResp = blockSaverSaveToDiskResp
 	connsSvc.OutFileBroadcasts = webdavFileBroadcast
@@ -170,7 +168,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.DiskManager = diskManagerSvc
 	connsSvc.OutAddDiskMsg = diskManagerSvcAddDiskMsg
 	connsIamReceiver := conns.IamReceiver{
-		InIam:            connsIamReceiverIamConnId,
+		InIamTrigger:     connsIamTrigger,
 		OutSendSyncNodes: connsSendSyncNodes,
 		OutSaveCluster:   connsClusterSaver,
 		Mapper:           nodeConnMapper,
@@ -202,13 +200,12 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		OutConnectTo: connsSvcConnectToNodeReq,
 		Mapper:       nodeConnMapper,
 	}
-	connsIamSender := conns.IamSender{
-		InSendIam: connsIamSenderConnId,
-		OutIam:    connsSvcSendPayloadMsg,
-		NodeId:    nodeId,
-		Address:   nodeAddress,
-		Disks:     &diskManagerSvc.DiskInfoList,
+	iamGenerator := conns.IamSender{
+		NodeId:  nodeId,
+		Address: nodeAddress,
+		Disks:   &diskManagerSvc.DiskInfoList,
 	}
+	connsSvc.IamGenerator = &iamGenerator
 
 	/****** Webdav *******/
 
@@ -239,7 +236,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go receiveSyncNodes.Start(ctx)
 	go clusterLoader.Load(ctx)
 	go reconnector.Start(ctx)
-	go connsIamSender.Start(ctx)
 	go bs.Start(ctx)
 	go lbsr.Start(ctx)
 

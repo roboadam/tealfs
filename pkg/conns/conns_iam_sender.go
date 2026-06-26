@@ -15,40 +15,21 @@
 package conns
 
 import (
-	"context"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
 
 type IamSender struct {
-	InSendIam <-chan model.ConnId
-	OutIam    chan<- model.SendPayloadMsg
-
 	NodeId  model.NodeId
 	Address string
 	Disks   *set.Set[model.DiskInfo]
 }
 
-func (i *IamSender) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case connId := <-i.InSendIam:
-			i.sendIam(connId)
-		}
-	}
-}
-
-func (i *IamSender) sendIam(connId model.ConnId) {
+func (i *IamSender) generateIam() *model.IAm {
 	disks := i.Disks.GetValues()
-	iam := model.IAm{
+	return &model.IAm{
 		NodeId:  i.NodeId,
 		Address: i.Address,
 		Disks:   disks,
-	}
-	i.OutIam <- model.SendPayloadMsg{
-		ConnId:  connId,
-		Payload: &iam,
 	}
 }

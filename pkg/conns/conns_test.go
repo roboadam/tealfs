@@ -92,16 +92,13 @@ func newConnsTest(ctx context.Context) (
 	chan model.ConnectToNodeReq,
 	chan model.SendPayloadMsg,
 	chan model.IAm,
-	chan model.ConnId,
 	*MockConnectionProvider,
 ) {
 	inConnectTo := make(chan model.ConnectToNodeReq, 1)
 	inSends := make(chan model.SendPayloadMsg, 1)
 	outIam := make(chan model.IAm, 1)
-	outSendIam := make(chan model.ConnId, 1)
 	provider := NewMockConnectionProvider()
 	c := NewConns(inConnectTo, inSends, &provider, "dummyAddress:123", model.NewNodeId(), ctx)
 	c.OutIam = outIam
-	c.OutSendIam = outSendIam
-	return c, inConnectTo, inSends, outIam, outSendIam, &provider
+	return c, inConnectTo, inSends, outIam, &provider
 }

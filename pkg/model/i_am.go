@@ -18,6 +18,11 @@ type IAm struct {
 	NodeId  NodeId
 	Disks   []DiskInfo
 	Address string
+	Dest    NodeId
+}
+
+func (i *IAm) Destination() NodeId {
+	return i.Dest
 }
 
 func NewIam(nodeId NodeId, disks []DiskInfo, address string) IAm {

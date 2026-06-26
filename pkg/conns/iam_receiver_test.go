@@ -24,58 +24,20 @@ func TestIamReceiver(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	inIam := make(chan IamConnId)
+	inIamTrigger := make(chan struct{})
 	outSendSyncNodes := make(chan struct{}, 1)
 	outSaveCluster := make(chan struct{}, 1)
 	mapper := model.NewNodeConnectionMapper()
 
 	iamReceiver := IamReceiver{
-		InIam:            inIam,
+		InIamTrigger:     inIamTrigger,
 		OutSendSyncNodes: outSendSyncNodes,
 		OutSaveCluster:   outSaveCluster,
 		Mapper:           mapper,
 	}
 	go iamReceiver.Start(ctx)
 
-	inIam <- IamConnId{
-		Iam: model.IAm{
-			NodeId: "remoteNodeId1",
-			Disks: []model.DiskInfo{{
-				DiskId: "remoteDisk1",
-				Path:   "remotePath1",
-				NodeId: "remoteNodeId1",
-			}, {
-				DiskId: "remoteDisk2",
-				Path:   "remotePath2",
-				NodeId: "remoteNodeId1",
-			}},
-			Address: "remoteAddress1",
-		},
-		ConnId: 0,
-	}
+	inIamTrigger <- struct{}{}
 	<-outSaveCluster
 	<-outSendSyncNodes
-
-	connections := mapper.Connections()
-	if connections.Len() != 1 {
-		t.Errorf("expected 1 connection, got %d", connections.Len())
-		return
-	}
-
-	inIam <- IamConnId{
-		Iam: model.IAm{
-			NodeId:  "remoteNodeId2",
-			Disks:   []model.DiskInfo{},
-			Address: "remoteAddress2",
-		},
-		ConnId: 1,
-	}
-	<-outSaveCluster
-	<-outSendSyncNodes
-
-	connections = mapper.Connections()
-	if connections.Len() != 2 {
-		t.Errorf("expected 2 connection, got %d", connections.Len())
-		return
-	}
 }

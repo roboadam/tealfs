@@ -40,9 +40,8 @@ type Conns struct {
 	OutAddDiskMsg         chan<- model.AddDiskMsg
 	OutDiskAddedMsg       chan<- model.DiskAddedMsg
 	OutIam                chan<- model.IAm
-	OutIamConnId          chan<- IamConnId
+	OutIamTrigger         chan<- struct{}
 	OutSyncNodes          chan<- model.SyncNodes
-	OutSendIam            chan<- model.ConnId
 	OutFileBroadcasts     chan<- webdav.FileBroadcast
 	OutDataForSaveRequest chan<- datalayer.DataForSaveRequest
 	OutFetchBlockResp     chan<- model.FetchBlockResp
@@ -57,6 +56,7 @@ type Conns struct {
 	DiskManager          *disk.DiskManagerSvc
 	DeleteRequestHandler *datalayer.DeleteRequestHandler
 	LocalBlockSaver      *blocksaver.LocalBlockSaver
+	IamGenerator         *IamSender
 
 	provider       ConnectionProvider
 	nodeId         model.NodeId
@@ -123,12 +123,20 @@ func (c *Conns) consumeChannels() {
 			return
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
-			c.OutSendIam <- id
+			iam := c.IamGenerator.generateIam()
+			err := c.sendPayloadOnConn(iam, id)
+			if err != nil {
+				log.Panic("no connection")
+			}
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
-				c.OutSendIam <- id
+				iam := c.IamGenerator.generateIam()
+				err := c.sendPayloadOnConn(iam, id)
+				if err != nil {
+					log.Panic("no connection")
+				}
 				go c.consumeData(id)
 			}
 		case sendReq := <-c.inSends:
@@ -167,6 +175,9 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 		c.OutAddDiskMsg <- *p
 	case *model.DiskAddedMsg:
 		c.OutDiskAddedMsg <- *p
+	case *model.IAm:
+		c.OutIamTrigger <- struct{}{}
+		c.OutIam <- *p
 	}
 }
 
@@ -218,8 +229,13 @@ func (c *Conns) sendPayload(p model.Payload2) error {
 		return errors.New("No connection to that node")
 	}
 	rawNet := c.netConns[connId]
-	err := rawNet.SendPayload2(&p)
+	err := rawNet.SendPayload2(p)
 	return err
+}
+
+func (c *Conns) sendPayloadOnConn(p model.Payload2, connId model.ConnId) error {
+	rawNet := c.netConns[connId]
+	return rawNet.SendPayload2(p)
 }
 
 func (c *Conns) handleSendFailure(err error) {
@@ -254,7 +270,13 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			netConn := c.rawNetForConnId(conn)
 
 			payload2, err := netConn.ReadPayload2()
+			if err != nil {
+				log.Panic("Error reading payload")
+			}
 			c.handleIncomingPayload(payload2)
+			if iam, ok := payload2.(*model.IAm); ok {
+				c.nodeConnMapper.SetAll(conn, iam.Address, iam.NodeId)
+			}
 
 			payload, err := netConn.ReadPayload()
 			if err != nil {
@@ -266,9 +288,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				return
 			}
 			switch p := (payload).(type) {
-			case *model.IAm:
-				c.OutIam <- *p
-				c.OutIamConnId <- IamConnId{Iam: *p, ConnId: conn}
 			case *model.SyncNodes:
 				c.OutSyncNodes <- *p
 			case *webdav.FileBroadcast:
