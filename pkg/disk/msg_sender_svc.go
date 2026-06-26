@@ -17,12 +17,9 @@ package disk
 import (
 	"context"
 	"tealfs/pkg/model"
-
-	"github.com/sirupsen/logrus"
 )
 
 type MsgSenderSvc struct {
-	InAddDiskMsg   <-chan model.AddDiskMsg
 	InDiskAddedMsg <-chan model.DiskAddedMsg
 
 	OutRemote chan<- model.SendPayloadMsg
@@ -36,8 +33,6 @@ func (m *MsgSenderSvc) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case req := <-m.InAddDiskMsg:
-			m.sendAddDiskMsg(req)
 		case req := <-m.InDiskAddedMsg:
 			m.sendDiskAddedMsg(req)
 		}
@@ -51,16 +46,5 @@ func (m *MsgSenderSvc) sendDiskAddedMsg(msg model.DiskAddedMsg) {
 			ConnId:  conn,
 			Payload: &msg,
 		}
-	}
-}
-
-func (m *MsgSenderSvc) sendAddDiskMsg(msg model.AddDiskMsg) {
-	if conn, ok := m.NodeConnMap.ConnForNode(msg.NodeId); ok {
-		m.OutRemote <- model.SendPayloadMsg{
-			ConnId:  conn,
-			Payload: &msg,
-		}
-	} else {
-		logrus.Panic("Not connected")
 	}
 }

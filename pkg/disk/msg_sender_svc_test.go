@@ -21,37 +21,6 @@ import (
 	"testing"
 )
 
-func TestExistsSender(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	inAddDiskMsg := make(chan model.AddDiskMsg)
-	outRemote := make(chan model.SendPayloadMsg)
-
-	sender := disk.MsgSenderSvc{
-		OutRemote:    outRemote,
-		NodeId:       "localNodeId",
-		NodeConnMap:  model.NewNodeConnectionMapper(),
-		InAddDiskMsg: inAddDiskMsg,
-	}
-	go sender.Start(ctx)
-
-	sender.NodeConnMap.SetAll(0, "someAddress1:123", "remoteNodeId")
-
-	remoteMsg := model.AddDiskMsg{NodeId: "remoteNodeId"}
-
-	inAddDiskMsg <- remoteMsg
-	mcs := <-outRemote
-
-	if _, ok := mcs.Payload.(*model.AddDiskMsg); !ok {
-		t.Error("invalid payload type")
-	}
-
-	if mcs.Payload.(*model.AddDiskMsg).NodeId != "remoteNodeId" {
-		t.Error("invalid node id")
-	}
-}
-
 func TestDiskAdded(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

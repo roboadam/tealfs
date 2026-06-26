@@ -67,7 +67,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	diskManagerSvcDiskAddedMsg := make(chan model.DiskAddedMsg, 1)
 	diskManagerSvcAddDiskMsg := make(chan model.AddDiskMsg, 1)
 	diskMsgSenderSvcDiskAddedMsg := make(chan model.DiskAddedMsg, 1)
-	diskMsgSenderSvcAddDiskMsg := make(chan model.AddDiskMsg, 1)
 	diskIamReceiverChan := make(chan model.IAm, 1)
 	diskDeleteBlocksDeleteBlockIid := make(chan disk.DeleteBlockId, 1)
 
@@ -104,7 +103,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	diskManagerSvc.OutAddedReadResults = localBlockReadResponsesReadResults
 
 	diskMsgSenderSvc := disk.MsgSenderSvc{
-		InAddDiskMsg:   diskMsgSenderSvcAddDiskMsg,
 		InDiskAddedMsg: diskMsgSenderSvcDiskAddedMsg,
 		OutRemote:      connsSvcSendPayloadMsg,
 		NodeId:         nodeId,
@@ -123,8 +121,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	u := ui.NewUi(
 		connsSvcConnectToNodeReq,
-		diskManagerSvcAddDiskMsg,
-		diskMsgSenderSvcAddDiskMsg,
+		connsPayload,
 		make(chan model.UiDiskStatus),
 		&ui.HttpHtmlOps{},
 		nodeId,
@@ -137,7 +134,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	/****** BlockSaver *****/
 
 	bs := blocksaver.BlockSaver{
-		Req: blockSaverPutBlockReq,
+		Req:          blockSaverPutBlockReq,
 		InResp:       blockSaverSaveToDiskResp,
 		Resp:         webdavPutResp,
 		NodeId:       nodeId,
@@ -178,6 +175,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.StateHandler = &stateHandler
 	connsSvc.InPayload = connsPayload
 	connsSvc.DiskManager = diskManagerSvc
+	connsSvc.OutAddDiskMsg = diskManagerSvcAddDiskMsg
 	connsIamReceiver := conns.IamReceiver{
 		InIam:            connsIamReceiverIamConnId,
 		OutSendSyncNodes: connsSendSyncNodes,
