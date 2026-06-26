@@ -66,7 +66,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	diskManagerSvcDiskAddedMsg := make(chan model.DiskAddedMsg, 1)
 	diskManagerSvcAddDiskMsg := make(chan model.AddDiskMsg, 1)
-	diskMsgSenderSvcDiskAddedMsg := make(chan model.DiskAddedMsg, 1)
 	diskIamReceiverChan := make(chan model.IAm, 1)
 	diskDeleteBlocksDeleteBlockIid := make(chan disk.DeleteBlockId, 1)
 
@@ -98,16 +97,10 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	diskManagerSvc := disk.NewDisks(nodeId, globalPath, &disk.DiskFileOps{})
 	diskManagerSvc.InAddDiskMsg = diskManagerSvcAddDiskMsg
 	diskManagerSvc.InDiskAddedMsg = diskManagerSvcDiskAddedMsg
-	diskManagerSvc.OutDiskAddedMsg = diskMsgSenderSvcDiskAddedMsg
+	diskManagerSvc.OutPayload = connsPayload
 	diskManagerSvc.OutAddedWriteResults = localBlockSaveResponsesWriteResults
 	diskManagerSvc.OutAddedReadResults = localBlockReadResponsesReadResults
 
-	diskMsgSenderSvc := disk.MsgSenderSvc{
-		InDiskAddedMsg: diskMsgSenderSvcDiskAddedMsg,
-		OutRemote:      connsSvcSendPayloadMsg,
-		NodeId:         nodeId,
-		NodeConnMap:    nodeConnMapper,
-	}
 	diskDeleteBlocks := disk.DeleteBlocks{
 		InDelete: diskDeleteBlocksDeleteBlockIid,
 		Disks:    &diskManagerSvc.LocalDiskSvcList,
@@ -238,7 +231,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	/****** Startup ******/
 
 	go diskManagerSvc.Start(ctx)
-	go diskMsgSenderSvc.Start(ctx)
 	go diskDeleteBlocks.Start(ctx)
 	go diskIamReceiver.Start(ctx)
 	go connsIamReceiver.Start(ctx)

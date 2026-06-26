@@ -33,7 +33,7 @@ type DiskManagerSvc struct {
 
 	InAddDiskMsg         <-chan model.AddDiskMsg
 	InDiskAddedMsg       <-chan model.DiskAddedMsg
-	OutDiskAddedMsg      chan<- model.DiskAddedMsg
+	OutPayload           chan<- model.Payload2
 	OutAddedWriteResults chan<- <-chan model.WriteResult
 	OutAddedReadResults  chan<- <-chan model.ReadResult
 
@@ -68,7 +68,8 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 				disk := New(path, d.NodeId, add.DiskId, ctx)
 				added := d.LocalDiskSvcList.Add(disk)
 				if added {
-					d.OutDiskAddedMsg <- model.DiskAddedMsg(add)
+					dam := model.DiskAddedMsg(add)
+					d.OutPayload <- &dam
 					d.OutAddedReadResults <- disk.OutReads
 					d.OutAddedWriteResults <- disk.OutWrites
 				}
@@ -112,7 +113,8 @@ func (d *DiskManagerSvc) loadDiskInfoList(ctx context.Context) {
 					path := NewPath(d.configPath, d.fileOps)
 					disk := New(path, d.NodeId, dInfo.DiskId, ctx)
 					d.LocalDiskSvcList.Add(disk)
-					d.OutDiskAddedMsg <- model.DiskAddedMsg(dInfo)
+					dam := model.DiskAddedMsg(dInfo)
+					d.OutPayload <- &dam
 					d.OutAddedReadResults <- disk.OutReads
 					d.OutAddedWriteResults <- disk.OutWrites
 				}

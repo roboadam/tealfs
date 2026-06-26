@@ -83,6 +83,10 @@ type DiskAddedMsg struct {
 	NodeId NodeId
 }
 
+func (d *DiskAddedMsg) Destination() NodeId {
+	return d.NodeId
+}
+
 type DiskInfo struct {
 	DiskId DiskId
 	Path   string
