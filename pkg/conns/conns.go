@@ -178,6 +178,8 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 	case *model.IAm:
 		c.OutIamTrigger <- struct{}{}
 		c.OutIam <- *p
+	case *model.SyncNodes:
+		c.OutSyncNodes <- *p
 	}
 }
 
@@ -288,8 +290,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				return
 			}
 			switch p := (payload).(type) {
-			case *model.SyncNodes:
-				c.OutSyncNodes <- *p
 			case *webdav.FileBroadcast:
 				c.OutFileBroadcasts <- *p
 			case *datalayer.DeletedParams:

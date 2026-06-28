@@ -177,6 +177,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		InSendSyncNodes: connsSendSyncNodes,
 		OutSendPayloads: connsSvcSendPayloadMsg,
 		NodeConnMapper:  nodeConnMapper,
+		NodeId:          nodeId,
 	}
 	connsClusterSaverSvc := conns.ClusterSaver{
 		Save:           connsClusterSaver,

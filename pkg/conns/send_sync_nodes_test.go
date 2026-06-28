@@ -32,6 +32,7 @@ func TestSendSyncNodes(t *testing.T) {
 		InSendSyncNodes: inSendSyncNodes,
 		OutSendPayloads: outSendPayloads,
 		NodeConnMapper:  mapper,
+		NodeId:          model.NewNodeId(),
 	}
 	go sendSyncNodes.Start(ctx)
 

@@ -19,13 +19,18 @@ import (
 )
 
 type SyncNodes struct {
+	Dest  NodeId
 	Nodes set.Set[struct {
 		Node    NodeId
 		Address string
 	}]
 }
 
-func NewSyncNodes() SyncNodes {
+func (s *SyncNodes) Destination() NodeId {
+	return s.Dest
+}
+
+func NewSyncNodes(dest NodeId) SyncNodes {
 	return SyncNodes{
 		Nodes: set.NewSet[struct {
 			Node    NodeId

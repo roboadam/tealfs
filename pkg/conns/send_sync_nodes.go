@@ -22,6 +22,7 @@ import (
 type SendSyncNodes struct {
 	InSendSyncNodes <-chan struct{}
 	OutSendPayloads chan<- model.SendPayloadMsg
+	NodeId          model.NodeId
 
 	NodeConnMapper *model.NodeConnectionMapper
 }
@@ -49,7 +50,7 @@ func (s *SendSyncNodes) send(syncNodes *model.SyncNodes) {
 }
 
 func (s *SendSyncNodes) syncNodesPayloadToSend() *model.SyncNodes {
-	result := model.NewSyncNodes()
+	result := model.NewSyncNodes(s.NodeId)
 	addressesAndNodes := s.NodeConnMapper.NodesWithAddress()
 	for _, an := range addressesAndNodes {
 		result.Nodes.Add(struct {
