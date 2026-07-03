@@ -175,7 +175,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	}
 	connsSendSyncNodesProc := conns.SendSyncNodes{
 		InSendSyncNodes: connsSendSyncNodes,
-		OutSendPayloads: connsSvcSendPayloadMsg,
+		OutPayload:      connsPayload,
 		NodeConnMapper:  nodeConnMapper,
 		NodeId:          nodeId,
 	}

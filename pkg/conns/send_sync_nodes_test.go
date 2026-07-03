@@ -25,12 +25,12 @@ func TestSendSyncNodes(t *testing.T) {
 	defer cancel()
 
 	inSendSyncNodes := make(chan struct{})
-	outSendPayloads := make(chan model.SendPayloadMsg)
+	outPayloads := make(chan model.Payload2)
 	mapper := model.NewNodeConnectionMapper()
 
 	sendSyncNodes := SendSyncNodes{
 		InSendSyncNodes: inSendSyncNodes,
-		OutSendPayloads: outSendPayloads,
+		OutPayload:      outPayloads,
 		NodeConnMapper:  mapper,
 		NodeId:          model.NewNodeId(),
 	}
@@ -40,7 +40,8 @@ func TestSendSyncNodes(t *testing.T) {
 	mapper.SetAll(1, "remoteAddress2", "remoteNodeId2")
 
 	inSendSyncNodes <- struct{}{}
-	sendPayload := <-outSendPayloads
+	outPayload := <-outPayloads
+	
 	if sendPayload.ConnId != 0 && sendPayload.ConnId != 1 {
 		t.Error("Expected ConnId to be 0")
 		return
