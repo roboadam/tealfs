@@ -37,7 +37,7 @@ func TestReceiveSyncNotes(t *testing.T) {
 	}
 	go receiveSyncNodes.Start(ctx)
 
-	syncNodes := model.NewSyncNodes()
+	syncNodes := model.NewSyncNodes("nodeId")
 	syncNodes.Nodes.Add(struct {
 		Node    model.NodeId
 		Address string

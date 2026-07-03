@@ -21,7 +21,7 @@ import (
 
 type SendSyncNodes struct {
 	InSendSyncNodes <-chan struct{}
-	OutSendPayloads chan<- model.SendPayloadMsg
+	OutPayload      chan<- model.Payload2
 	NodeId          model.NodeId
 
 	NodeConnMapper *model.NodeConnectionMapper
@@ -33,30 +33,29 @@ func (s *SendSyncNodes) Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-s.InSendSyncNodes:
-			s.send(s.syncNodesPayloadToSend())
 		}
-	}
-}
-
-func (s *SendSyncNodes) send(syncNodes *model.SyncNodes) {
-	connections := s.NodeConnMapper.Connections()
-	for _, connId := range connections.GetValues() {
-		s.OutSendPayloads <- model.SendPayloadMsg{
-			ConnId:  connId,
-			Payload: syncNodes,
-		}
-
 	}
 }
 
 func (s *SendSyncNodes) syncNodesPayloadToSend() *model.SyncNodes {
+	result2 := make([]struct {
+		Node    model.NodeId
+		Address string
+	}, 0)
 	result := model.NewSyncNodes(s.NodeId)
 	addressesAndNodes := s.NodeConnMapper.NodesWithAddress()
 	for _, an := range addressesAndNodes {
-		result.Nodes.Add(struct {
+		nodeAddress := struct {
 			Node    model.NodeId
 			Address string
-		}{Node: an.J, Address: an.K})
+		}{Node: an.J, Address: an.K}
+		result2 = append(result2, nodeAddress)
+	}
+
+	nodes := s.NodeConnMapper.ConnectedNodes()
+	for _, node := range nodes.GetValues() {
+		sn := model.NewSyncNodes(node)
+		s.OutPayload <- &sn
 	}
 	return &result
 }
