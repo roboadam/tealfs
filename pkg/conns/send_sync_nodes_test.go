@@ -41,35 +41,26 @@ func TestSendSyncNodes(t *testing.T) {
 
 	inSendSyncNodes <- struct{}{}
 	outPayload := <-outPayloads
-	
-	if sendPayload.ConnId != 0 && sendPayload.ConnId != 1 {
-		t.Error("Expected ConnId to be 0")
-		return
-	}
-	switch p := sendPayload.Payload.(type) {
-	case *model.SyncNodes:
-		if p.Nodes.Len() != 2 {
-			t.Error("Expected 2 nodes")
-			return
+	if syncNodes, ok := outPayload.(*model.SyncNodes); ok {
+		if syncNodes.Destination() != "remoteNodeId1" && syncNodes.Destination() != "remoteNodeId2" {
+			t.Fatal("wrong dest")
 		}
-	default:
-		t.Error("Unexpected payload", p)
-		return
+		if syncNodes.Nodes.Len() != 2 {
+			t.Fatal("Expected 2 nodes")
+		}
+	} else {
+		t.Fatal("wrong type")
 	}
 
-	sendPayload = <-outSendPayloads
-	if sendPayload.ConnId != 0 && sendPayload.ConnId != 1 {
-		t.Error("Expected ConnId to be 1")
-		return
-	}
-	switch p := sendPayload.Payload.(type) {
-	case *model.SyncNodes:
-		if p.Nodes.Len() != 2 {
-			t.Error("Expected 2 nodes")
-			return
+	outPayload = <-outPayloads
+	if syncNodes, ok := outPayload.(*model.SyncNodes); ok {
+		if syncNodes.Destination() != "remoteNodeId1" && syncNodes.Destination() != "remoteNodeId2" {
+			t.Fatal("wrong dest")
 		}
-	default:
-		t.Error("Unexpected payload", p)
-		return
+		if syncNodes.Nodes.Len() != 2 {
+			t.Fatal("Expected 2 nodes")
+		}
+	} else {
+		t.Fatal("wrong type")
 	}
 }

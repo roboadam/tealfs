@@ -32,6 +32,7 @@ func (s *SyncNodes) Destination() NodeId {
 
 func NewSyncNodes(dest NodeId) SyncNodes {
 	return SyncNodes{
+		Dest: dest,
 		Nodes: set.NewSet[struct {
 			Node    NodeId
 			Address string

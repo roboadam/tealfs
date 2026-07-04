@@ -17,6 +17,7 @@ package conns
 import (
 	"context"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 )
 
 type SendSyncNodes struct {
@@ -33,29 +34,29 @@ func (s *SendSyncNodes) Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-s.InSendSyncNodes:
+			s.send()
 		}
 	}
 }
 
-func (s *SendSyncNodes) syncNodesPayloadToSend() *model.SyncNodes {
-	result2 := make([]struct {
+func (s *SendSyncNodes) send() {
+	result := make([]struct {
 		Node    model.NodeId
 		Address string
 	}, 0)
-	result := model.NewSyncNodes(s.NodeId)
 	addressesAndNodes := s.NodeConnMapper.NodesWithAddress()
 	for _, an := range addressesAndNodes {
 		nodeAddress := struct {
 			Node    model.NodeId
 			Address string
 		}{Node: an.J, Address: an.K}
-		result2 = append(result2, nodeAddress)
+		result = append(result, nodeAddress)
 	}
 
 	nodes := s.NodeConnMapper.ConnectedNodes()
 	for _, node := range nodes.GetValues() {
 		sn := model.NewSyncNodes(node)
+		sn.Nodes = set.NewSetFromSlice(result)
 		s.OutPayload <- &sn
 	}
-	return &result
 }
