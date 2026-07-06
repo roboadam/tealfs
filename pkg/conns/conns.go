@@ -180,6 +180,8 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 		c.OutIam <- *p
 	case *model.SyncNodes:
 		c.OutSyncNodes <- *p
+	case *webdav.FileBroadcast:
+		c.OutFileBroadcasts <- *p
 	}
 }
 
@@ -290,8 +292,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				return
 			}
 			switch p := (payload).(type) {
-			case *webdav.FileBroadcast:
-				c.OutFileBroadcasts <- *p
 			case *datalayer.DeletedParams:
 				c.StateHandler.Deleted(p.B, p.D)
 			case *datalayer.SavedParams:
