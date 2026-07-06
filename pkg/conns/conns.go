@@ -182,6 +182,14 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 		c.OutSyncNodes <- *p
 	case *webdav.FileBroadcast:
 		c.OutFileBroadcasts <- *p
+	case *datalayer.DeletedParams:
+		c.StateHandler.Deleted(p.B, p.D)
+	case *datalayer.SavedParams:
+		c.StateHandler.Saved(p.B, p.D)
+	case *datalayer.SetDiskSpaceParams:
+		c.StateHandler.SetDiskSpace(p.D, p.Space)
+	case *datalayer.DataForSaveRequest:
+		c.OutDataForSaveRequest <- *p
 	}
 }
 
@@ -280,28 +288,6 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			c.handleIncomingPayload(payload2)
 			if iam, ok := payload2.(*model.IAm); ok {
 				c.nodeConnMapper.SetAll(conn, iam.Address, iam.NodeId)
-			}
-
-			payload, err := netConn.ReadPayload()
-			if err != nil {
-				closeErr := netConn.Close()
-				if closeErr != nil {
-					log.Warn("Error closing connection", closeErr)
-				}
-				c.deleteConn(conn)
-				return
-			}
-			switch p := (payload).(type) {
-			case *datalayer.DeletedParams:
-				c.StateHandler.Deleted(p.B, p.D)
-			case *datalayer.SavedParams:
-				c.StateHandler.Saved(p.B, p.D)
-			case *datalayer.SetDiskSpaceParams:
-				c.StateHandler.SetDiskSpace(p.D, p.Space)
-			case *datalayer.DataForSaveRequest:
-				c.OutDataForSaveRequest <- *p
-			default:
-				panic("Unknown payload")
 			}
 		}
 	}

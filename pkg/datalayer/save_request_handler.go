@@ -30,6 +30,7 @@ type SaveRequestHandler struct {
 	OutSends              chan<- model.SendPayloadMsg
 	NodeConnMap           *model.NodeConnectionMapper
 	StateHandler          Saver
+	OutPayload            chan<- model.Payload2
 }
 
 type Saver interface {
@@ -39,6 +40,11 @@ type Saver interface {
 type DataForSaveRequest struct {
 	SaveRequest SaveRequest
 	Data        []byte
+	Dest        model.NodeId
+}
+
+func (d *DataForSaveRequest) Destination() model.NodeId {
+	return d.Dest
 }
 
 func (s *SaveRequestHandler) Start(ctx context.Context) {
@@ -84,18 +90,8 @@ func (s *SaveRequestHandler) handleSaveRequestForDest(req SaveRequest, dest mode
 	if !ok {
 		return
 	}
-	s.routeData(req.To, DataForSaveRequest{SaveRequest: req, Data: data})
-}
-
-func (s *SaveRequestHandler) routeData(to model.NodeDisk, outReq DataForSaveRequest) {
-	if to.NodeId == s.NodeId {
-		s.OutDataForSaveRequest <- outReq
-		return
-	}
-	conn, ok := s.NodeConnMap.ConnForNode(to.NodeId)
-	if ok {
-		s.OutSends <- model.SendPayloadMsg{ConnId: conn, Payload: outReq}
-	}
+	saveReqPayload := DataForSaveRequest{SaveRequest: req, Data: data, Dest: req.To.NodeId}
+	s.OutPayload <- &saveReqPayload
 }
 
 func (s *SaveRequestHandler) hasDisk(nodeId model.NodeId, diskId model.DiskId) (disk.Disk, bool) {

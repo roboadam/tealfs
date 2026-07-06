@@ -36,6 +36,7 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 	nodeIdLocal := model.NodeId("nodeId")
 	outDataforSaveRequest := make(chan datalayer.DataForSaveRequest)
 	outSends := make(chan model.SendPayloadMsg)
+	outPayload := make(chan model.Payload2)
 	nodeConnMap := model.NewNodeConnectionMapper()
 	stateHandler := MockSaver{}
 	diskIdFrom := model.DiskId("disk1")
@@ -58,6 +59,7 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 		NodeId:                nodeIdLocal,
 		OutDataForSaveRequest: outDataforSaveRequest,
 		OutSends:              outSends,
+		OutPayload:            outPayload,
 		NodeConnMap:           nodeConnMap,
 		StateHandler:          &stateHandler,
 	}
@@ -70,9 +72,13 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 		BlockId: blockId,
 	}
 
-	data := <-outDataforSaveRequest
-	if !bytes.Equal(fileData, data.Data) {
-		t.Error("invalid data")
+	data := <-outPayload
+	if req, ok := data.(*datalayer.DataForSaveRequest); ok {
+		if !bytes.Equal(fileData, req.Data) {
+			t.Error("invalid data")
+		}
+	} else {
+		t.Error("Invalid type")
 	}
 
 	diskIdTo = model.DiskId("disk3")
@@ -87,8 +93,8 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 		BlockId: blockId,
 	}
 
-	payload := <-outSends
-	if req, ok := payload.Payload.(datalayer.DataForSaveRequest); ok {
+	payload := <-outPayload
+	if req, ok := payload.(*datalayer.DataForSaveRequest); ok {
 		if !bytes.Equal(fileData, req.Data) {
 			t.Error("invalid data")
 		}
