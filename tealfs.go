@@ -70,7 +70,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	diskDeleteBlocksDeleteBlockIid := make(chan disk.DeleteBlockId, 1)
 
 	connsSvcConnectToNodeReq := make(chan model.ConnectToNodeReq, 1)
-	connsSvcSendPayloadMsg := make(chan model.SendPayloadMsg, 1)
 	connsIamTrigger := make(chan struct{}, 1)
 	connsSendSyncNodes := make(chan struct{}, 1)
 	connsClusterSaver := make(chan struct{}, 1)
@@ -139,17 +138,16 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	lbsr := blocksaver.LocalBlockSaveResponses{
 		InWriteResults:      localBlockSaveResponsesWriteResults,
 		LocalWriteResponses: blockSaverSaveToDiskResp,
-		Sends:               connsSvcSendPayloadMsg,
 		NodeConnMap:         nodeConnMapper,
 		NodeId:              nodeId,
 		StateHandler:        &stateHandler,
+		OutPayload:          connsPayload,
 	}
 
 	/******* Connection Services ******/
 
 	connsSvc := conns.NewConns(
 		connsSvcConnectToNodeReq,
-		connsSvcSendPayloadMsg,
 		&conns.TcpConnectionProvider{},
 		nodeAddress,
 		nodeId,
@@ -215,7 +213,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		blockSaverPutBlockReq,
 		webdavFetchBlockResp,
 		webdavPutResp,
-		connsSvcSendPayloadMsg,
 		connsPayload,
 		webdavFileBroadcast,
 		webdavAddress,
