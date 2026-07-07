@@ -32,21 +32,19 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	remoteNodeId := test.MainNodeId
 
 	resp := make(chan SaveToDiskResp, 1)
-	sends := make(chan model.SendPayloadMsg, 1)
 	inWriteResults := make(chan (<-chan model.WriteResult), 1)
 	outPayload := make(chan model.Payload2)
 	nodeConnMapper := model.NewNodeConnectionMapper()
 
 	stateHandler := datalayer.StateHandler{
-		OutPayload:     outPayload,
-		MyNodeId:       nodeId,
-		NodeConnMap:    nodeConnMapper,
+		OutPayload:  outPayload,
+		MyNodeId:    nodeId,
+		NodeConnMap: nodeConnMapper,
 	}
 
 	lbsr := LocalBlockSaveResponses{
 		InWriteResults:      inWriteResults,
 		LocalWriteResponses: resp,
-		Sends:               sends,
 		NodeConnMap:         nodeConnMapper,
 		NodeId:              nodeId,
 		StateHandler:        &stateHandler,
@@ -114,11 +112,6 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 
 	payloadSaveParams = <-outPayload
 	if _, ok := payloadSaveParams.(*datalayer.SavedParams); !ok {
-		t.Fatal("unknown send payload")
-	}
-
-	payload := <-sends
-	if _, ok := payload.Payload.(*SaveToDiskResp); !ok {
 		t.Fatal("unknown send payload")
 	}
 }

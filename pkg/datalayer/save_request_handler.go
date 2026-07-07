@@ -27,7 +27,6 @@ type SaveRequestHandler struct {
 	Disks                 *set.Set[disk.Disk]
 	NodeId                model.NodeId
 	OutDataForSaveRequest chan<- DataForSaveRequest
-	OutSends              chan<- model.SendPayloadMsg
 	NodeConnMap           *model.NodeConnectionMapper
 	StateHandler          Saver
 	OutPayload            chan<- model.Payload2

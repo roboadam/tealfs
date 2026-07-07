@@ -48,11 +48,6 @@ type ConnectToNodeReq struct {
 	Address string
 }
 
-type SendPayloadMsg struct {
-	ConnId  ConnId
-	Payload Payload
-}
-
 type MgrDiskSave struct {
 	Hash hash.Hash
 	Data []byte

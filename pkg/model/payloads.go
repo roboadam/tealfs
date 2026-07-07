@@ -27,8 +27,6 @@ func init() {
 
 }
 
-type Payload interface{}
-
 type Payload2 interface {
 	Destination() NodeId
 }
@@ -36,9 +34,9 @@ type Payload2 interface {
 type FetchBlockId string
 
 type FetchBlockReq struct {
-	Caller   NodeId
-	BlockId  BlockId
-	Id       FetchBlockId
+	Caller  NodeId
+	BlockId BlockId
+	Id      FetchBlockId
 }
 
 func (f *FetchBlockReq) Destination() NodeId {

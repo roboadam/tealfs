@@ -32,7 +32,6 @@ func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
 	outPayloads := make(chan model.Payload2)
 	webdavMgrPuts := make(chan model.PutBlockReq)
-	webdavMgrBroadcast := make(chan model.SendPayloadMsg)
 	mgrWebdavGets := make(chan model.FetchBlockResp)
 	mgrWebdavPuts := make(chan model.PutBlockResp)
 	mgrWebdavBroadcast := make(chan webdav.FileBroadcast)
@@ -44,7 +43,6 @@ func TestCreateFile(t *testing.T) {
 	mockStorage := make(map[model.BlockId][]byte)
 	go handleOutPayloads(ctx, outPayloads, mgrWebdavGets, &mux, mockStorage)
 	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, &mux, mockStorage)
-	go handleOutBroadcast(ctx, webdavMgrBroadcast)
 	mapper := model.NewNodeConnectionMapper()
 
 	_ = webdav.New(
@@ -52,7 +50,6 @@ func TestCreateFile(t *testing.T) {
 		webdavMgrPuts,
 		mgrWebdavGets,
 		mgrWebdavPuts,
-		webdavMgrBroadcast,
 		outPayloads,
 		mgrWebdavBroadcast,
 		"localhost:7654",

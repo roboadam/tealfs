@@ -51,7 +51,6 @@ type FileSystem struct {
 	ReadReqResp     chan ReadReqResp
 	WriteReqResp    chan WriteReqResp
 	inBroadcast     chan FileBroadcast
-	OutSends        chan model.SendPayloadMsg
 	OutPayload      chan model.Payload2
 
 	Mapper    *model.NodeConnectionMapper
@@ -67,7 +66,6 @@ func NewFileSystem(
 	fileOps disk.FileOps,
 	indexPath string,
 	chansize int,
-	outSends chan model.SendPayloadMsg,
 	mapper *model.NodeConnectionMapper,
 	ctx context.Context,
 ) FileSystem {
@@ -96,7 +94,6 @@ func NewFileSystem(
 		nodeId:          nodeId,
 		fileOps:         fileOps,
 		indexPath:       indexPath,
-		OutSends:        outSends,
 		Mapper:          mapper,
 		Ctx:             ctx,
 	}

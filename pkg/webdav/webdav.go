@@ -53,7 +53,6 @@ func New(
 	webdavMgrPuts chan model.PutBlockReq,
 	mgrWebdavGets chan model.FetchBlockResp,
 	mgrWebdavPuts chan model.PutBlockResp,
-	outSends chan model.SendPayloadMsg,
 	outPayloads chan model.Payload2,
 
 	mgrWebdavBroadcast chan FileBroadcast,
@@ -69,7 +68,7 @@ func New(
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
 		outPayloads:   outPayloads,
-		FileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, outSends, mapper, ctx),
+		FileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, mapper, ctx),
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.FetchBlockId]chan model.FetchBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
@@ -77,7 +76,6 @@ func New(
 		bindAddress:   bindAddress,
 		ctx:           ctx,
 	}
-	w.FileSystem.OutSends = outSends
 	w.FileSystem.Mapper = mapper
 	w.start()
 	return w

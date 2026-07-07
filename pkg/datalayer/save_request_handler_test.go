@@ -35,7 +35,6 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 	disks := set.NewSet[disk.Disk]()
 	nodeIdLocal := model.NodeId("nodeId")
 	outDataforSaveRequest := make(chan datalayer.DataForSaveRequest)
-	outSends := make(chan model.SendPayloadMsg)
 	outPayload := make(chan model.Payload2)
 	nodeConnMap := model.NewNodeConnectionMapper()
 	stateHandler := MockSaver{}
@@ -58,7 +57,6 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 		Disks:                 &disks,
 		NodeId:                nodeIdLocal,
 		OutDataForSaveRequest: outDataforSaveRequest,
-		OutSends:              outSends,
 		OutPayload:            outPayload,
 		NodeConnMap:           nodeConnMap,
 		StateHandler:          &stateHandler,
@@ -113,7 +111,6 @@ func TestSaveRequestHandlerDataForSaveRequest(t *testing.T) {
 	disks := set.NewSet[disk.Disk]()
 	nodeIdLocal := model.NodeId("nodeId")
 	outDataForSaveRequest := make(chan datalayer.DataForSaveRequest)
-	outSends := make(chan model.SendPayloadMsg)
 	nodeConnMap := model.NewNodeConnectionMapper()
 	savedCh := make(chan struct{}, 1)
 	stateHandler := MockSaver{SavedCh: savedCh}
@@ -130,7 +127,6 @@ func TestSaveRequestHandlerDataForSaveRequest(t *testing.T) {
 		Disks:                 &disks,
 		NodeId:                nodeIdLocal,
 		OutDataForSaveRequest: outDataForSaveRequest,
-		OutSends:              outSends,
 		NodeConnMap:           nodeConnMap,
 		StateHandler:          &stateHandler,
 	}

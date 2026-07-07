@@ -47,7 +47,6 @@ type Conns struct {
 	OutFetchBlockResp     chan<- model.FetchBlockResp
 
 	inConnectTo <-chan model.ConnectToNodeReq
-	inSends     <-chan model.SendPayloadMsg
 
 	InPayload <-chan model.Payload2
 
@@ -67,7 +66,6 @@ type Conns struct {
 
 func NewConns(
 	inConnectTo <-chan model.ConnectToNodeReq,
-	inSends <-chan model.SendPayloadMsg,
 	provider ConnectionProvider,
 	address string,
 	nodeId model.NodeId,
@@ -83,7 +81,6 @@ func NewConns(
 		nextId:         model.ConnId(0),
 		acceptedConns:  make(chan AcceptedConns),
 		inConnectTo:    inConnectTo,
-		inSends:        inSends,
 		provider:       provider,
 		nodeId:         nodeId,
 		listener:       listener,
@@ -138,18 +135,6 @@ func (c *Conns) consumeChannels() {
 					log.Panic("no connection")
 				}
 				go c.consumeData(id)
-			}
-		case sendReq := <-c.inSends:
-			_, ok := c.netConns[sendReq.ConnId]
-			if !ok {
-				c.handleSendFailure(errors.New("connection not found"))
-			} else {
-				//Todo maybe this should be async
-				rawNet := c.netConns[sendReq.ConnId]
-				err := rawNet.SendPayload(&sendReq.Payload)
-				if err != nil {
-					c.handleSendFailure(err)
-				}
 			}
 		case payload := <-c.InPayload:
 			c.sendPayload(payload)

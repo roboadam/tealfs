@@ -38,24 +38,10 @@ func (r *RawNet) Close() error {
 	return r.conn.Close()
 }
 
-func (r *RawNet) ReadPayload() (model.Payload, error) {
-	var payload model.Payload
-	err := r.decoder.Decode(&payload)
-	return payload, err
-}
-
 func (r *RawNet) ReadPayload2() (model.Payload2, error) {
 	var payload model.Payload2
 	err := r.decoder.Decode(&payload)
 	return payload, err
-}
-
-func (r *RawNet) SendPayload(payload *model.Payload) error {
-	err := r.encoder.Encode(payload)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (r *RawNet) SendPayload2(payload model.Payload2) error {

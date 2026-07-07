@@ -67,7 +67,7 @@ type SaveToDiskResp struct {
 }
 
 func (s *SaveToDiskResp) Destination() model.NodeId {
-	return s.Dest.NodeId
+	return s.Caller
 }
 
 func (bs *BlockSaver) Start(ctx context.Context) {

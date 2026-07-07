@@ -19,14 +19,12 @@ import (
 	"errors"
 	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type LocalBlockSaveResponses struct {
 	InWriteResults      <-chan <-chan model.WriteResult
 	LocalWriteResponses chan<- SaveToDiskResp
-	Sends               chan<- model.SendPayloadMsg
+	OutPayload          chan<- model.Payload2
 
 	NodeConnMap  *model.NodeConnectionMapper
 	NodeId       model.NodeId
@@ -60,21 +58,9 @@ func (l *LocalBlockSaveResponses) readFromChan(ctx context.Context, c <-chan mod
 			if resp.Caller == l.NodeId {
 				l.LocalWriteResponses <- *convert(&wr)
 			} else {
-				l.sendToRemote(resp)
+				l.OutPayload <- resp
 			}
 		}
-	}
-}
-
-func (l *LocalBlockSaveResponses) sendToRemote(resp *SaveToDiskResp) {
-	conn, ok := l.NodeConnMap.ConnForNode(resp.Caller)
-	if ok {
-		l.Sends <- model.SendPayloadMsg{
-			ConnId:  conn,
-			Payload: resp,
-		}
-	} else {
-		log.Warn("lbsr no connection")
 	}
 }
 
