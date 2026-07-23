@@ -45,7 +45,7 @@ func (r *RawNet) ReadPayload2() (model.Payload2, error) {
 }
 
 func (r *RawNet) SendPayload2(payload model.Payload2) error {
-	err := r.encoder.Encode(payload)
+	err := r.encoder.Encode(&payload)
 	if err != nil {
 		return err
 	}

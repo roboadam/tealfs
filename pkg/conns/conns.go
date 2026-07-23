@@ -99,7 +99,7 @@ func (c *Conns) stopOnDone() {
 	<-c.ctx.Done()
 	err := c.listener.Close()
 	if err != nil {
-		log.Warn("error closing listener")
+		log.Warn("error closing listener ", err)
 	}
 	c.netConnsMux.Lock()
 	defer c.netConnsMux.Unlock()
@@ -268,12 +268,13 @@ func (c *Conns) consumeData(conn model.ConnId) {
 
 			payload2, err := netConn.ReadPayload2()
 			if err != nil {
-				log.Panic("Error reading payload")
+				log.Errorf("Error reading payload %s", err)
+				return
 			}
-			c.handleIncomingPayload(payload2)
 			if iam, ok := payload2.(*model.IAm); ok {
 				c.nodeConnMapper.SetAll(conn, iam.Address, iam.NodeId)
 			}
+			c.handleIncomingPayload(payload2)
 		}
 	}
 }

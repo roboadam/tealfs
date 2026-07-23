@@ -27,6 +27,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 func TestOneNodeCluster(t *testing.T) {
@@ -97,9 +99,9 @@ func TestTwoNodeCluster(t *testing.T) {
 	diskPathContents1 := "diskPath=" + url.QueryEscape(configPath1)
 	diskPathContents2 := "diskPath=" + url.QueryEscape(configPath2)
 	os.Mkdir(configPath1, 0755)
-	defer os.RemoveAll(configPath1)
+	// defer os.RemoveAll(configPath1)
 	os.Mkdir(configPath2, 0755)
-	defer os.RemoveAll(configPath2)
+	// defer os.RemoveAll(configPath2)
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	defer cancel1()
@@ -140,6 +142,7 @@ func TestTwoNodeCluster(t *testing.T) {
 		}
 		resp.Body.Close()
 
+		logrus.Info("Response is")
 		if resp.StatusCode >= 400 {
 			t.Error("error response", resp.Status)
 			return
@@ -153,11 +156,11 @@ func TestTwoNodeCluster(t *testing.T) {
 		}
 		fetchedContent, ok := getFile(ctx2, urlFor(webdavAddress, path[i]), t)
 		if !ok {
-			t.Error("error getting file")
+			t.Fatal("error getting file")
 			return
 		}
 		if fetchedContent != fileContents[i] {
-			t.Error("unexpected contents", fetchedContent)
+			t.Fatal("unexpected contents", fetchedContent)
 			return
 		}
 	}
