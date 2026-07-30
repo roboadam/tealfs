@@ -165,6 +165,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.InPayload = connsPayload
 	connsSvc.DiskManager = diskManagerSvc
 	connsSvc.OutAddDiskMsg = diskManagerSvcAddDiskMsg
+	connsSvc.NodeConnMapper = nodeConnMapper
 	connsIamReceiver := conns.IamReceiver{
 		InIamTrigger:     connsIamTrigger,
 		OutSendSyncNodes: connsSendSyncNodes,

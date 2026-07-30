@@ -61,7 +61,7 @@ type Conns struct {
 	nodeId         model.NodeId
 	listener       net.Listener
 	ctx            context.Context
-	nodeConnMapper model.NodeConnectionMapper
+	NodeConnMapper *model.NodeConnectionMapper
 }
 
 func NewConns(
@@ -76,16 +76,15 @@ func NewConns(
 		panic(err)
 	}
 	c := Conns{
-		netConns:       make(map[model.ConnId]tnet.RawNet),
-		netConnsMux:    &sync.RWMutex{},
-		nextId:         model.ConnId(0),
-		acceptedConns:  make(chan AcceptedConns),
-		inConnectTo:    inConnectTo,
-		provider:       provider,
-		nodeId:         nodeId,
-		listener:       listener,
-		ctx:            ctx,
-		nodeConnMapper: *model.NewNodeConnectionMapper(),
+		netConns:      make(map[model.ConnId]tnet.RawNet),
+		netConnsMux:   &sync.RWMutex{},
+		nextId:        model.ConnId(0),
+		acceptedConns: make(chan AcceptedConns),
+		inConnectTo:   inConnectTo,
+		provider:      provider,
+		nodeId:        nodeId,
+		listener:      listener,
+		ctx:           ctx,
 	}
 
 	go c.consumeChannels()
@@ -213,7 +212,7 @@ func (c *Conns) handleFetchBlockReq(p *model.FetchBlockReq) {
 func (c *Conns) sendPayload(p model.Payload2) error {
 	dest := p.Destination()
 	if dest == "" {
-		dest = c.nodeConnMapper.MainNode(c.nodeId)
+		dest = c.NodeConnMapper.MainNode(c.nodeId)
 	}
 
 	if dest == c.nodeId {
@@ -221,7 +220,7 @@ func (c *Conns) sendPayload(p model.Payload2) error {
 		return nil
 	}
 
-	connId, ok := c.nodeConnMapper.ConnForNode(dest)
+	connId, ok := c.NodeConnMapper.ConnForNode(dest)
 	if !ok {
 		return errors.New("No connection to that node")
 	}
@@ -272,7 +271,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				return
 			}
 			if iam, ok := payload2.(*model.IAm); ok {
-				c.nodeConnMapper.SetAll(conn, iam.Address, iam.NodeId)
+				c.NodeConnMapper.SetAll(conn, iam.Address, iam.NodeId)
 			}
 			c.handleIncomingPayload(payload2)
 		}

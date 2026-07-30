@@ -77,6 +77,7 @@ func New(
 		ctx:           ctx,
 	}
 	w.FileSystem.Mapper = mapper
+	w.FileSystem.OutPayload = outPayloads
 	w.start()
 	return w
 }
