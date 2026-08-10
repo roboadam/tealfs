@@ -113,7 +113,6 @@ func NewFileSystem(
 	if err != nil {
 		log.Error("Unable to read fileIndex on startup:", err)
 	}
-	go filesystem.run()
 	return filesystem
 }
 
@@ -150,7 +149,7 @@ func (f *FileSystem) pushBlock(req model.PutBlockReq) model.PutBlockResp {
 	return <-resp
 }
 
-func (f *FileSystem) run() {
+func (f *FileSystem) Start() {
 	for {
 		select {
 		case <-f.Ctx.Done():

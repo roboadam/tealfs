@@ -63,12 +63,13 @@ func New(
 	chansize int,
 	mapper *model.NodeConnectionMapper,
 ) Webdav {
+	fileSystem := NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, mapper, ctx)
 	w := Webdav{
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
 		outPayloads:   outPayloads,
-		FileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, mapper, ctx),
+		FileSystem:    fileSystem,
 		nodeId:        nodeId,
 		pendingReads:  make(map[model.FetchBlockId]chan model.FetchBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
@@ -78,6 +79,7 @@ func New(
 	}
 	w.FileSystem.Mapper = mapper
 	w.FileSystem.OutPayload = outPayloads
+	go w.FileSystem.Start()
 	w.start()
 	return w
 }
