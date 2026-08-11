@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/gob"
 	"net/http"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 
@@ -111,13 +110,13 @@ func (w *Webdav) eventLoop() {
 		case r := <-w.mgrWebdavGets:
 			ch, ok := w.pendingReads[r.Id]
 			if ok {
-				chanutil.Send(w.ctx, ch, r, "webdav: response for pending read to fs")
+				ch <- r
 				delete(w.pendingReads, r.Id)
 			}
 		case r := <-w.mgrWebdavPuts:
 			ch, ok := w.pendingPuts[r.Id]
 			if ok {
-				chanutil.Send(w.ctx, ch, r, "webdav: response for pending write to fs")
+				ch <- r
 				delete(w.pendingPuts, r.Id)
 			} else {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
@@ -126,7 +125,7 @@ func (w *Webdav) eventLoop() {
 			w.outPayloads <- &r.Req
 			w.pendingReads[r.Req.Id] = r.Resp
 		case r := <-w.FileSystem.WriteReqResp:
-			chanutil.Send(w.ctx, w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
+			w.webdavMgrPuts <- r.Req
 			w.pendingPuts[r.Req.Id] = r.Resp
 		}
 	}

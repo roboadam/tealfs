@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 
@@ -190,23 +189,23 @@ func (d *Disk) consumeChannels() {
 			err := d.path.Save(s.Data)
 			if err == nil {
 				wr := model.NewWriteResultOk(s.Data.Ptr, s.Caller, s.ReqId)
-				chanutil.Send(d.ctx, d.OutWrites, wr, "disk: save success")
+				d.OutWrites <- wr
 			} else {
 				wr := model.NewWriteResultErr(err.Error(), s.Caller, s.ReqId)
-				chanutil.Send(d.ctx, d.OutWrites, wr, "disk: save failure")
+				d.OutWrites <- wr
 			}
 		case r := <-d.InReads:
 			if len(r.Ptrs) == 0 {
 				rr := model.NewReadResultErr("no pointers in read request", r.Caller, r.ReqId, r.BlockId)
-				chanutil.Send(d.ctx, d.OutReads, rr, "disk: no pointers in read request")
+				d.OutReads <- rr
 			} else {
 				data, err := d.path.ReadOrEmpty(r.Ptrs[0])
 				if err == nil {
 					rr := model.NewReadResultOk(r.Caller, r.Ptrs[1:], data, r.ReqId, r.BlockId)
-					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read success")
+					d.OutReads <- rr
 				} else {
 					rr := model.NewReadResultErr(err.Error(), r.Caller, r.ReqId, r.BlockId)
-					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read failure")
+					d.OutReads <- rr
 				}
 			}
 		case req := <-d.InListIds:

@@ -44,6 +44,7 @@ func TestCreateEmptyFile(t *testing.T) {
 		model.NewNodeConnectionMapper(),
 		ctx,
 	)
+	go fs.Start()
 
 	name := "/hello-world.txt"
 	bytesInWrite := []byte{6, 5, 4, 3, 2}
@@ -97,6 +98,7 @@ func TestFileNotFound(t *testing.T) {
 		model.NewNodeConnectionMapper(),
 		ctx,
 	)
+	go fs.Start()
 
 	mockPushesAndPulls(ctx, &fs)
 	_, err := fs.OpenFile(context.Background(), "/file-not-found", os.O_RDONLY, 0444)
@@ -120,6 +122,7 @@ func TestOpenRoot(t *testing.T) {
 		model.NewNodeConnectionMapper(),
 		ctx,
 	)
+	go filesystem.Start()
 
 	mockPushesAndPulls(ctx, &filesystem)
 	root, err := filesystem.OpenFile(context.Background(), "/", os.O_RDONLY, fs.ModeDir)
@@ -160,6 +163,7 @@ func TestCreateBigFile(t *testing.T) {
 		model.NewNodeConnectionMapper(),
 		ctx,
 	)
+	go fs.Start()
 
 	name := "/hello-bigFile.txt"
 	mockPushesAndPulls(ctx, &fs)

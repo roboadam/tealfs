@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"time"
 
@@ -48,7 +47,7 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		perm:     perm,
 		respChan: respChan,
 	}
-	chanutil.Send(f.Ctx, f.openFileReq, req, "filesystem_open_file: openFile")
+	f.openFileReq <- req
 	resp := <-respChan
 	return resp.file, resp.err
 }

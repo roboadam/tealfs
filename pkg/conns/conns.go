@@ -20,7 +20,6 @@ import (
 	"net"
 	"sync"
 	"tealfs/pkg/blocksaver"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/datalayer"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -247,7 +246,7 @@ func (c *Conns) listen() {
 			conn, err := c.listener.Accept()
 			if err == nil {
 				incomingConnReq := AcceptedConns{netConn: conn}
-				chanutil.Send(c.ctx, c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
+				c.acceptedConns <- incomingConnReq
 			}
 		}
 	}
