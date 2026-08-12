@@ -143,7 +143,7 @@ func read(req readReq) readResp {
 	p := req.p
 	err := f.ensureData()
 	if err != nil {
-		log.Warn("Error reading data for ", f.Path.toName())
+		log.Warnf("Error reading data for %s: %w", f.Path.toName(), err)
 		return readResp{err: err}
 	}
 
