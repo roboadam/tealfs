@@ -17,6 +17,8 @@ package datalayer
 import (
 	"sync"
 	"tealfs/pkg/model"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type StateHandler struct {
@@ -30,6 +32,9 @@ type StateHandler struct {
 }
 
 func (s *StateHandler) Start() {
+	if s.OutPayload == nil || s.MyNodeId == "" || s.NodeConnMap == nil {
+		log.Panic("Invalid inputs for state handler")
+	}
 	if s.NodeConnMap.MainNode(s.MyNodeId) != s.MyNodeId {
 		return
 	}
