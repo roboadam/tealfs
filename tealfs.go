@@ -82,13 +82,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	webdavFileBroadcast := make(chan webdav.FileBroadcast, 1)
 	connsPayload := make(chan model.Payload2, 1)
 	webdavFetchBlockResp := make(chan model.FetchBlockResp, 1)
-
-	/******* State Handler ******/
-	stateHandler := datalayer.StateHandler{
-		OutPayload:  connsPayload,
-		MyNodeId:    nodeId,
-		NodeConnMap: nodeConnMapper,
-	}
+	saveRequestHandlerSaveRequest := make(chan datalayer.SaveRequest, 1)
+	saveRequestHandlerDataForSaveRequest := make(chan datalayer.DataForSaveRequest, 1)
 
 	/******* Disk Services ******/
 
@@ -106,6 +101,24 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	diskIamReceiver := disk.IamReceiver{
 		InIam:           diskIamReceiverChan,
 		OutDiskAddedMsg: diskManagerSvcDiskAddedMsg,
+	}
+
+	/******* State Handler ******/
+	stateHandler := datalayer.StateHandler{
+		OutPayload:  connsPayload,
+		MyNodeId:    nodeId,
+		NodeConnMap: nodeConnMapper,
+	}
+
+	saveRequestHandler := datalayer.SaveRequestHandler{
+		InSaveRequests:        saveRequestHandlerSaveRequest,
+		InDataForSaveRequest:  saveRequestHandlerDataForSaveRequest,
+		Disks:                 &diskManagerSvc.LocalDiskSvcList,
+		NodeId:                nodeId,
+		OutDataForSaveRequest: make(chan<- datalayer.DataForSaveRequest),
+		NodeConnMap:           nodeConnMapper,
+		StateHandler:          nil,
+		OutPayload:            make(chan<- model.Payload2),
 	}
 
 	/****** Ui ******/
@@ -166,6 +179,9 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.DiskManager = diskManagerSvc
 	connsSvc.OutAddDiskMsg = diskManagerSvcAddDiskMsg
 	connsSvc.NodeConnMapper = nodeConnMapper
+	connsSvc.OutSaveRequest = saveRequestHandlerSaveRequest
+	connsSvc.OutDataForSaveRequest = saveRequestHandlerDataForSaveRequest
+
 	connsIamReceiver := conns.IamReceiver{
 		InIamTrigger:     connsIamTrigger,
 		OutSendSyncNodes: connsSendSyncNodes,
@@ -237,6 +253,8 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go reconnector.Start(ctx)
 	go bs.Start(ctx)
 	go lbsr.Start(ctx)
+	go stateHandler.Start()
+	go saveRequestHandler.Start(ctx)
 
 	<-ctx.Done()
 	return nil

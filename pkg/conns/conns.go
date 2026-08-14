@@ -43,6 +43,7 @@ type Conns struct {
 	OutSyncNodes          chan<- model.SyncNodes
 	OutFileBroadcasts     chan<- webdav.FileBroadcast
 	OutDataForSaveRequest chan<- datalayer.DataForSaveRequest
+	OutSaveRequest        chan<- datalayer.SaveRequest
 	OutFetchBlockResp     chan<- model.FetchBlockResp
 
 	inConnectTo <-chan model.ConnectToNodeReq
@@ -171,8 +172,12 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 		c.StateHandler.Saved(p.B, p.D)
 	case *datalayer.SetDiskSpaceParams:
 		c.StateHandler.SetDiskSpace(p.D, p.Space)
+	case *datalayer.SaveRequest:
+		c.OutSaveRequest <- *p
 	case *datalayer.DataForSaveRequest:
 		c.OutDataForSaveRequest <- *p
+	default:
+		log.Panic("Unknown data type")
 	}
 }
 

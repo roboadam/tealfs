@@ -157,11 +157,9 @@ func TestTwoNodeCluster(t *testing.T) {
 		fetchedContent, ok := getFile(ctx2, urlFor(webdavAddress, path[i]), t)
 		if !ok {
 			t.Fatal("error getting file")
-			return
 		}
 		if fetchedContent != fileContents[i] {
 			t.Fatal("unexpected contents", fetchedContent)
-			return
 		}
 	}
 
