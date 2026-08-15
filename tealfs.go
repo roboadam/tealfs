@@ -111,14 +111,19 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	}
 
 	saveRequestHandler := datalayer.SaveRequestHandler{
-		InSaveRequests:        saveRequestHandlerSaveRequest,
-		InDataForSaveRequest:  saveRequestHandlerDataForSaveRequest,
-		Disks:                 &diskManagerSvc.LocalDiskSvcList,
-		NodeId:                nodeId,
-		OutDataForSaveRequest: make(chan<- datalayer.DataForSaveRequest),
-		NodeConnMap:           nodeConnMapper,
-		StateHandler:          nil,
-		OutPayload:            make(chan<- model.Payload2),
+		InSaveRequests:       saveRequestHandlerSaveRequest,
+		InDataForSaveRequest: saveRequestHandlerDataForSaveRequest,
+		Disks:                &diskManagerSvc.LocalDiskSvcList,
+		NodeId:               nodeId,
+		NodeConnMap:          nodeConnMapper,
+		StateHandler:         &stateHandler,
+		OutPayload:           connsPayload,
+	}
+
+	deleteRequestHandler := datalayer.DeleteRequestHandler{
+		Disks:        &diskManagerSvc.LocalDiskSvcList,
+		NodeId:       nodeId,
+		StateHandler: &stateHandler,
 	}
 
 	/****** Ui ******/
@@ -181,6 +186,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.NodeConnMapper = nodeConnMapper
 	connsSvc.OutSaveRequest = saveRequestHandlerSaveRequest
 	connsSvc.OutDataForSaveRequest = saveRequestHandlerDataForSaveRequest
+	connsSvc.DeleteRequestHandler = &deleteRequestHandler
 
 	connsIamReceiver := conns.IamReceiver{
 		InIamTrigger:     connsIamTrigger,

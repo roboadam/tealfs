@@ -34,7 +34,6 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 	inDataforSaveRequest := make(chan datalayer.DataForSaveRequest)
 	disks := set.NewSet[disk.Disk]()
 	nodeIdLocal := model.NodeId("nodeId")
-	outDataforSaveRequest := make(chan datalayer.DataForSaveRequest)
 	outPayload := make(chan model.Payload2)
 	nodeConnMap := model.NewNodeConnectionMapper()
 	stateHandler := MockSaver{}
@@ -52,14 +51,13 @@ func TestSaveRequestHandlerSaveRequest(t *testing.T) {
 	fileOps.WriteFile(fmt.Sprint(pathFrom, "/", blockId), fileData)
 
 	s := datalayer.SaveRequestHandler{
-		InSaveRequests:        inSaveRequests,
-		InDataForSaveRequest:  inDataforSaveRequest,
-		Disks:                 &disks,
-		NodeId:                nodeIdLocal,
-		OutDataForSaveRequest: outDataforSaveRequest,
-		OutPayload:            outPayload,
-		NodeConnMap:           nodeConnMap,
-		StateHandler:          &stateHandler,
+		InSaveRequests:       inSaveRequests,
+		InDataForSaveRequest: inDataforSaveRequest,
+		Disks:                &disks,
+		NodeId:               nodeIdLocal,
+		OutPayload:           outPayload,
+		NodeConnMap:          nodeConnMap,
+		StateHandler:         &stateHandler,
 	}
 
 	go s.Start(ctx)
@@ -110,7 +108,6 @@ func TestSaveRequestHandlerDataForSaveRequest(t *testing.T) {
 	inDataForSaveRequest := make(chan datalayer.DataForSaveRequest)
 	disks := set.NewSet[disk.Disk]()
 	nodeIdLocal := model.NodeId("nodeId")
-	outDataForSaveRequest := make(chan datalayer.DataForSaveRequest)
 	nodeConnMap := model.NewNodeConnectionMapper()
 	savedCh := make(chan struct{}, 1)
 	stateHandler := MockSaver{SavedCh: savedCh}
@@ -122,13 +119,12 @@ func TestSaveRequestHandlerDataForSaveRequest(t *testing.T) {
 	fileData := []byte{1, 2, 3, 4, 5}
 
 	s := datalayer.SaveRequestHandler{
-		InSaveRequests:        inSaveRequests,
-		InDataForSaveRequest:  inDataForSaveRequest,
-		Disks:                 &disks,
-		NodeId:                nodeIdLocal,
-		OutDataForSaveRequest: outDataForSaveRequest,
-		NodeConnMap:           nodeConnMap,
-		StateHandler:          &stateHandler,
+		InSaveRequests:       inSaveRequests,
+		InDataForSaveRequest: inDataForSaveRequest,
+		Disks:                &disks,
+		NodeId:               nodeIdLocal,
+		NodeConnMap:          nodeConnMap,
+		StateHandler:         &stateHandler,
 	}
 
 	go s.Start(ctx)
