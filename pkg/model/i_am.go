@@ -15,20 +15,23 @@
 package model
 
 type IAm struct {
+	Node     IamNodeAddress
+	Disks    []DiskInfo
+	Siblings []IamNodeAddress
+	Dest     NodeId
+}
+
+type IamNodeAddress struct {
 	NodeId  NodeId
-	Disks   []DiskInfo
 	Address string
-	Dest    NodeId
+}
+
+type IamDiskInfo struct {
+	DiskId    DiskId
+	Path      string
+	FreeSpace int
 }
 
 func (i *IAm) Destination() NodeId {
 	return i.Dest
-}
-
-func NewIam(nodeId NodeId, disks []DiskInfo, address string) IAm {
-	return IAm{
-		NodeId:  nodeId,
-		Disks:   disks,
-		Address: address,
-	}
 }

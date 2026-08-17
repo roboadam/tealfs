@@ -20,16 +20,21 @@ import (
 )
 
 type IamSender struct {
-	NodeId  model.NodeId
-	Address string
-	Disks   *set.Set[model.DiskInfo]
+	NodeId      model.NodeId
+	Address     string
+	Disks       *set.Set[model.DiskInfo]
+	NodeConnMap *model.NodeConnectionMapper
 }
 
 func (i *IamSender) generateIam() *model.IAm {
 	disks := i.Disks.GetValues()
 	return &model.IAm{
-		NodeId:  i.NodeId,
-		Address: i.Address,
-		Disks:   disks,
+		Node: model.IamNodeAddress{
+			NodeId:  i.NodeId,
+			Address: i.Address,
+		},
+		Disks:    disks,
+		Siblings: []model.IamNodeAddress{},
+		Dest:     "",
 	}
 }
