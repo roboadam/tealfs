@@ -34,7 +34,19 @@ func (i *IamSender) generateIam() *model.IAm {
 			Address: i.Address,
 		},
 		Disks:    disks,
-		Siblings: []model.IamNodeAddress{},
+		Siblings: i.siblings(),
 		Dest:     "",
 	}
+}
+
+func (i *IamSender) siblings() []model.IamNodeAddress {
+	result := []model.IamNodeAddress{}
+	sibs := i.NodeConnMap.NodesWithAddress()
+	for _, node := range sibs {
+		result = append(result, model.IamNodeAddress{
+			NodeId:  node.J,
+			Address: node.K,
+		})
+	}
+	return result
 }

@@ -223,9 +223,10 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		Mapper:       nodeConnMapper,
 	}
 	iamGenerator := conns.IamSender{
-		NodeId:  nodeId,
-		Address: nodeAddress,
-		Disks:   &diskManagerSvc.DiskInfoList,
+		NodeId:      nodeId,
+		Address:     nodeAddress,
+		Disks:       &diskManagerSvc.DiskInfoList,
+		NodeConnMap: nodeConnMapper,
 	}
 	connsSvc.IamGenerator = &iamGenerator
 

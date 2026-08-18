@@ -50,7 +50,16 @@ func TestIamReceiver(t *testing.T) {
 		},
 	}
 	address := "someAddress"
-	inIam <- model.NewIam(nodeId, disks, address)
+	// inIam <- model.NewIam(nodeId, disks, address)
+	inIam <- model.IAm{
+		Node:     model.IamNodeAddress{
+			NodeId:  nodeId,
+			Address: address,
+		},
+		Disks:    disks,
+		Siblings: []model.IamNodeAddress{},
+		Dest:     "",
+	}
 	<-diskAddedMsg
 	<-diskAddedMsg
 }

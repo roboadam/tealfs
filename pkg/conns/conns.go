@@ -275,7 +275,7 @@ func (c *Conns) consumeData(conn model.ConnId) {
 				return
 			}
 			if iam, ok := payload2.(*model.IAm); ok {
-				c.NodeConnMapper.SetAll(conn, iam.Address, iam.NodeId)
+				c.NodeConnMapper.SetAll(conn, iam.Node.Address, iam.Node.NodeId)
 			}
 			c.handleIncomingPayload(payload2)
 		}
