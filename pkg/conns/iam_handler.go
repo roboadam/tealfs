@@ -14,30 +14,21 @@
 
 package conns
 
-import (
-	"context"
-	"tealfs/pkg/model"
-	"testing"
-)
+import "tealfs/pkg/model"
 
-func TestIamReceiver(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	inIamTrigger := make(chan struct{})
-	outSendSyncNodes := make(chan struct{}, 1)
-	outSaveCluster := make(chan struct{}, 1)
-	mapper := model.NewNodeConnectionMapper()
-
-	iamReceiver := IamReceiver{
-		InIamTrigger:     inIamTrigger,
-		OutSendSyncNodes: outSendSyncNodes,
-		OutSaveCluster:   outSaveCluster,
-		Mapper:           mapper,
+func (c *Conns) handleIam(iam *model.IAm) {
+	c.NodeConnMapper.SetNodeAddress(iam.Node.NodeId, iam.Node.Address)
+	for _, sibling := range iam.Siblings {
+		if !c.NodeConnMapper.KnownNode(sibling.NodeId) {
+			c.NodeConnMapper.SetNodeAddress(sibling.NodeId, sibling.Address)
+		}
 	}
-	go iamReceiver.Start(ctx)
+	go c.connectToUnConnected()
+}
 
-	inIamTrigger <- struct{}{}
-	<-outSaveCluster
-	<-outSendSyncNodes
+func (c *Conns) connectToUnConnected() {
+	addresses := c.NodeConnMapper.AddressesWithoutConnections()
+	for _, address := range addresses.GetValues() {
+		c.inConnectTo <- model.ConnectToNodeReq{Address: address}
+	}
 }

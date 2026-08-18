@@ -71,9 +71,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	connsSvcConnectToNodeReq := make(chan model.ConnectToNodeReq, 1)
 	connsIamTrigger := make(chan struct{}, 1)
-	connsSendSyncNodes := make(chan struct{}, 1)
 	connsClusterSaver := make(chan struct{}, 1)
-	connsReceiveSyncNodes := make(chan model.SyncNodes, 1)
 	localBlockSaveResponsesWriteResults := make(chan (<-chan model.WriteResult), 1)
 	localBlockReadResponsesReadResults := make(chan (<-chan model.ReadResult), 1)
 	blockSaverPutBlockReq := make(chan model.PutBlockReq)
@@ -173,7 +171,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	)
 	connsSvc.OutDiskAddedMsg = diskManagerSvcDiskAddedMsg
 	connsSvc.OutIamTrigger = connsIamTrigger
-	connsSvc.OutSyncNodes = connsReceiveSyncNodes
 	connsSvc.OutIam = diskIamReceiverChan
 	connsSvc.LocalBlockSaver = &lbs
 	connsSvc.OutSaveToDiskResp = blockSaverSaveToDiskResp
@@ -188,30 +185,11 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.OutDataForSaveRequest = saveRequestHandlerDataForSaveRequest
 	connsSvc.DeleteRequestHandler = &deleteRequestHandler
 
-	connsIamReceiver := conns.IamReceiver{
-		InIamTrigger:     connsIamTrigger,
-		OutSendSyncNodes: connsSendSyncNodes,
-		OutSaveCluster:   connsClusterSaver,
-		Mapper:           nodeConnMapper,
-	}
-	connsSendSyncNodesProc := conns.SendSyncNodes{
-		InSendSyncNodes: connsSendSyncNodes,
-		OutPayload:      connsPayload,
-		NodeConnMapper:  nodeConnMapper,
-		NodeId:          nodeId,
-	}
 	connsClusterSaverSvc := conns.ClusterSaver{
 		Save:           connsClusterSaver,
 		NodeConnMapper: nodeConnMapper,
 		SavePath:       globalPath,
 		FileOps:        &disk.DiskFileOps{},
-	}
-	receiveSyncNodes := conns.ReceiveSyncNodes{
-		InSyncNodes:  connsReceiveSyncNodes,
-		OutConnectTo: connsSvcConnectToNodeReq,
-
-		NodeConnMapper: nodeConnMapper,
-		NodeId:         nodeId,
 	}
 	clusterLoader := conns.ClusterLoader{
 		NodeConnMapper: nodeConnMapper,
@@ -252,10 +230,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go diskManagerSvc.Start(ctx)
 	go diskDeleteBlocks.Start(ctx)
 	go diskIamReceiver.Start(ctx)
-	go connsIamReceiver.Start(ctx)
-	go connsSendSyncNodesProc.Start(ctx)
 	go connsClusterSaverSvc.Start(ctx)
-	go receiveSyncNodes.Start(ctx)
 	go clusterLoader.Load(ctx)
 	go reconnector.Start(ctx)
 	go bs.Start(ctx)

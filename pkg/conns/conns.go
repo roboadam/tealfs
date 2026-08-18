@@ -40,13 +40,12 @@ type Conns struct {
 	OutDiskAddedMsg       chan<- model.DiskAddedMsg
 	OutIam                chan<- model.IAm
 	OutIamTrigger         chan<- struct{}
-	OutSyncNodes          chan<- model.SyncNodes
 	OutFileBroadcasts     chan<- webdav.FileBroadcast
 	OutDataForSaveRequest chan<- datalayer.DataForSaveRequest
 	OutSaveRequest        chan<- datalayer.SaveRequest
 	OutFetchBlockResp     chan<- model.FetchBlockResp
 
-	inConnectTo <-chan model.ConnectToNodeReq
+	inConnectTo chan model.ConnectToNodeReq
 
 	InPayload <-chan model.Payload2
 
@@ -65,7 +64,7 @@ type Conns struct {
 }
 
 func NewConns(
-	inConnectTo <-chan model.ConnectToNodeReq,
+	inConnectTo chan model.ConnectToNodeReq,
 	provider ConnectionProvider,
 	address string,
 	nodeId model.NodeId,
@@ -162,8 +161,6 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 	case *model.IAm:
 		c.OutIamTrigger <- struct{}{}
 		c.OutIam <- *p
-	case *model.SyncNodes:
-		c.OutSyncNodes <- *p
 	case *webdav.FileBroadcast:
 		c.OutFileBroadcasts <- *p
 	case *datalayer.DeletedParams:

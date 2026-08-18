@@ -15,28 +15,15 @@
 package conns
 
 import (
-	"context"
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 )
 
 type ClusterSaver struct {
-	Save           <-chan struct{}
 	NodeConnMapper *model.NodeConnectionMapper
 	SavePath       string
 	FileOps        disk.FileOps
-}
-
-func (c *ClusterSaver) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-c.Save:
-			c.save()
-		}
-	}
 }
 
 func (c *ClusterSaver) save() error {

@@ -167,6 +167,14 @@ func (n *NodeConnectionMapper) Clear() {
 	n.connNodeMap.Clear()
 }
 
+func (n *NodeConnectionMapper) KnownNode(nodeId NodeId) bool {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+
+	_, known := n.addressNodeMap.Get2(nodeId)
+	return known
+}
+
 func (n *NodeConnectionMapper) SetNodeAddress(nodeId NodeId, address string) {
 	n.mux.Lock()
 	defer n.mux.Unlock()

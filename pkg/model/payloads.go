@@ -23,7 +23,6 @@ type PayloadType uint16
 func init() {
 	gob.Register(&WriteRequest{})
 	gob.Register(&IAm{})
-	gob.Register(&SyncNodes{})
 
 }
 
