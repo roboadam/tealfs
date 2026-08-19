@@ -15,7 +15,6 @@
 package conns
 
 import (
-	"context"
 	"path/filepath"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
@@ -36,10 +35,6 @@ func (m *synchronizingMockFileOps) WriteFile(path string, data []byte) error {
 }
 
 func TestClusterSaver(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	save := make(chan struct{})
 	nodeConnMapper := model.NewNodeConnectionMapper()
 	savePath := ""
 	fileOps := &synchronizingMockFileOps{
@@ -47,14 +42,16 @@ func TestClusterSaver(t *testing.T) {
 	}
 
 	clusterSaver := ClusterSaver{
-		Save:           save,
 		NodeConnMapper: nodeConnMapper,
 		SavePath:       savePath,
 		FileOps:        fileOps,
 	}
-	go clusterSaver.Start(ctx)
 
-	save <- struct{}{}
+	err := clusterSaver.Save()
+	if err != nil {
+		t.Fatal("failed saving")
+	}
+
 	<-fileOps.writeDone
 
 	bytes, err := fileOps.ReadFile(filepath.Join(savePath, "cluster.json"))

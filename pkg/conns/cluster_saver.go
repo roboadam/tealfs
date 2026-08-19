@@ -24,9 +24,10 @@ type ClusterSaver struct {
 	NodeConnMapper *model.NodeConnectionMapper
 	SavePath       string
 	FileOps        disk.FileOps
+	mux 
 }
 
-func (c *ClusterSaver) save() error {
+func (c *ClusterSaver) Save() error {
 	data, err := c.NodeConnMapper.Marshal()
 	if err != nil {
 		return err

@@ -39,7 +39,6 @@ type Conns struct {
 	OutAddDiskMsg         chan<- model.AddDiskMsg
 	OutDiskAddedMsg       chan<- model.DiskAddedMsg
 	OutIam                chan<- model.IAm
-	OutIamTrigger         chan<- struct{}
 	OutFileBroadcasts     chan<- webdav.FileBroadcast
 	OutDataForSaveRequest chan<- datalayer.DataForSaveRequest
 	OutSaveRequest        chan<- datalayer.SaveRequest
@@ -159,7 +158,6 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 	case *model.DiskAddedMsg:
 		c.OutDiskAddedMsg <- *p
 	case *model.IAm:
-		c.OutIamTrigger <- struct{}{}
 		c.OutIam <- *p
 	case *webdav.FileBroadcast:
 		c.OutFileBroadcasts <- *p

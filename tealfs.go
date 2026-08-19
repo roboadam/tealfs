@@ -71,7 +71,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 
 	connsSvcConnectToNodeReq := make(chan model.ConnectToNodeReq, 1)
 	connsIamTrigger := make(chan struct{}, 1)
-	connsClusterSaver := make(chan struct{}, 1)
 	localBlockSaveResponsesWriteResults := make(chan (<-chan model.WriteResult), 1)
 	localBlockReadResponsesReadResults := make(chan (<-chan model.ReadResult), 1)
 	blockSaverPutBlockReq := make(chan model.PutBlockReq)
@@ -170,7 +169,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		ctx,
 	)
 	connsSvc.OutDiskAddedMsg = diskManagerSvcDiskAddedMsg
-	connsSvc.OutIamTrigger = connsIamTrigger
 	connsSvc.OutIam = diskIamReceiverChan
 	connsSvc.LocalBlockSaver = &lbs
 	connsSvc.OutSaveToDiskResp = blockSaverSaveToDiskResp
@@ -186,7 +184,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	connsSvc.DeleteRequestHandler = &deleteRequestHandler
 
 	connsClusterSaverSvc := conns.ClusterSaver{
-		Save:           connsClusterSaver,
 		NodeConnMapper: nodeConnMapper,
 		SavePath:       globalPath,
 		FileOps:        &disk.DiskFileOps{},
@@ -230,7 +227,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	go diskManagerSvc.Start(ctx)
 	go diskDeleteBlocks.Start(ctx)
 	go diskIamReceiver.Start(ctx)
-	go connsClusterSaverSvc.Start(ctx)
 	go clusterLoader.Load(ctx)
 	go reconnector.Start(ctx)
 	go bs.Start(ctx)
