@@ -70,7 +70,6 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 	diskDeleteBlocksDeleteBlockIid := make(chan disk.DeleteBlockId, 1)
 
 	connsSvcConnectToNodeReq := make(chan model.ConnectToNodeReq, 1)
-	connsIamTrigger := make(chan struct{}, 1)
 	localBlockSaveResponsesWriteResults := make(chan (<-chan model.WriteResult), 1)
 	localBlockReadResponsesReadResults := make(chan (<-chan model.ReadResult), 1)
 	blockSaverPutBlockReq := make(chan model.PutBlockReq)
@@ -188,6 +187,7 @@ func startTealFs(globalPath string, webdavAddress string, uiAddress string, node
 		SavePath:       globalPath,
 		FileOps:        &disk.DiskFileOps{},
 	}
+	connsSvc.ClusterSaver = &connsClusterSaverSvc
 	clusterLoader := conns.ClusterLoader{
 		NodeConnMapper: nodeConnMapper,
 		FileOps:        &disk.DiskFileOps{},

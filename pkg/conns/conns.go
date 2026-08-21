@@ -54,6 +54,7 @@ type Conns struct {
 	DeleteRequestHandler *datalayer.DeleteRequestHandler
 	LocalBlockSaver      *blocksaver.LocalBlockSaver
 	IamGenerator         *IamSender
+	ClusterSaver         *ClusterSaver
 
 	provider       ConnectionProvider
 	nodeId         model.NodeId
@@ -158,6 +159,7 @@ func (c *Conns) handleIncomingPayload(payload model.Payload2) {
 	case *model.DiskAddedMsg:
 		c.OutDiskAddedMsg <- *p
 	case *model.IAm:
+		c.handleIam(p)
 		c.OutIam <- *p
 	case *webdav.FileBroadcast:
 		c.OutFileBroadcasts <- *p

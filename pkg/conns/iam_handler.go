@@ -23,6 +23,7 @@ func (c *Conns) handleIam(iam *model.IAm) {
 			c.NodeConnMapper.SetNodeAddress(sibling.NodeId, sibling.Address)
 		}
 	}
+	go c.ClusterSaver.Save()
 	go c.connectToUnConnected()
 }
 

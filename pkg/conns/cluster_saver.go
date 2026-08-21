@@ -16,6 +16,7 @@ package conns
 
 import (
 	"path/filepath"
+	"sync"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 )
@@ -24,7 +25,7 @@ type ClusterSaver struct {
 	NodeConnMapper *model.NodeConnectionMapper
 	SavePath       string
 	FileOps        disk.FileOps
-	mux 
+	mux            sync.Mutex
 }
 
 func (c *ClusterSaver) Save() error {
@@ -33,6 +34,8 @@ func (c *ClusterSaver) Save() error {
 		return err
 	}
 
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	err = c.FileOps.WriteFile(filepath.Join(c.SavePath, "cluster.json"), data)
 	if err != nil {
 		return err
