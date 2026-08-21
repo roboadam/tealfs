@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -20,7 +20,6 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 
@@ -28,14 +27,13 @@ import (
 )
 
 type DiskManagerSvc struct {
-	Distributer      dist.MirrorDistributer
 	DiskInfoList     set.Set[model.DiskInfo]
 	LocalDiskSvcList set.Set[Disk]
 	NodeId           model.NodeId
 
 	InAddDiskMsg         <-chan model.AddDiskMsg
 	InDiskAddedMsg       <-chan model.DiskAddedMsg
-	OutDiskAddedMsg      chan<- model.DiskAddedMsg
+	OutPayload           chan<- model.Payload2
 	OutAddedWriteResults chan<- <-chan model.WriteResult
 	OutAddedReadResults  chan<- <-chan model.ReadResult
 
@@ -44,11 +42,9 @@ type DiskManagerSvc struct {
 }
 
 func NewDisks(nodeId model.NodeId, configPath string, fileOps FileOps) *DiskManagerSvc {
-	distributer := dist.NewMirrorDistributer(nodeId)
 	localDisks := set.NewSet[Disk]()
 	diskInfoList := set.NewSet[model.DiskInfo]()
 	return &DiskManagerSvc{
-		Distributer:      distributer,
 		DiskInfoList:     diskInfoList,
 		LocalDiskSvcList: localDisks,
 		NodeId:           nodeId,
@@ -72,7 +68,8 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 				disk := New(path, d.NodeId, add.DiskId, ctx)
 				added := d.LocalDiskSvcList.Add(disk)
 				if added {
-					d.OutDiskAddedMsg <- model.DiskAddedMsg(add)
+					dam := model.DiskAddedMsg(add)
+					d.OutPayload <- &dam
 					d.OutAddedReadResults <- disk.OutReads
 					d.OutAddedWriteResults <- disk.OutWrites
 				}
@@ -82,10 +79,18 @@ func (d *DiskManagerSvc) Start(ctx context.Context) {
 	}
 }
 
+func (d *DiskManagerSvc) Get(blockId model.BlockId, diskId model.DiskId) ([]byte, bool) {
+	for _, disk := range d.LocalDiskSvcList.GetValues() {
+		if data, ok := disk.Get(blockId); ok {
+			return data, true
+		}
+	}
+	return nil, false
+}
+
 func (d *DiskManagerSvc) addToDiskInfoList(add model.AddDiskMsg) {
 	added := d.DiskInfoList.Add(model.DiskInfo(add))
 	if added {
-		d.Distributer.SetWeight(add.NodeId, add.DiskId, 1)
 		d.saveDiskInfoList()
 	}
 }
@@ -104,12 +109,12 @@ func (d *DiskManagerSvc) loadDiskInfoList(ctx context.Context) {
 		if err == nil {
 			d.DiskInfoList = set.NewSetFromSlice(diskInfo)
 			for _, dInfo := range diskInfo {
-				d.Distributer.SetWeight(dInfo.NodeId, dInfo.DiskId, 1)
 				if dInfo.NodeId == d.NodeId {
 					path := NewPath(d.configPath, d.fileOps)
 					disk := New(path, d.NodeId, dInfo.DiskId, ctx)
 					d.LocalDiskSvcList.Add(disk)
-					d.OutDiskAddedMsg <- model.DiskAddedMsg(dInfo)
+					dam := model.DiskAddedMsg(dInfo)
+					d.OutPayload <- &dam
 					d.OutAddedReadResults <- disk.OutReads
 					d.OutAddedWriteResults <- disk.OutWrites
 				}

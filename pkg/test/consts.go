@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -12,16 +12,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package chanutil_test
+package test
 
-import (
-	"context"
-	"tealfs/pkg/chanutil"
-	"testing"
-)
+import "tealfs/pkg/model"
 
-func TestSend(t *testing.T) {
-	chanI := make(chan int)
-	go chanutil.Send(context.Background(), chanI, 1, "test")
-	<-chanI
-}
+const MainNodeId model.NodeId = "main"
+const NonMainNode1 model.NodeId = "non-main1"
+const NonMainNode2 model.NodeId = "non-main2"

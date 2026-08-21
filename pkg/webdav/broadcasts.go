@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -14,6 +14,8 @@
 
 package webdav
 
+import "tealfs/pkg/model"
+
 type FileBroadcastType uint32
 
 const (
@@ -24,4 +26,9 @@ const (
 type FileBroadcast struct {
 	UpdateType FileBroadcastType
 	FileBytes  []byte
+	Dest       model.NodeId
+}
+
+func (f *FileBroadcast) Destination() model.NodeId {
+	return f.Dest
 }

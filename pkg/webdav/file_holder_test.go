@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -27,10 +27,10 @@ func TestSerializeFileHolder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast, 1)
-	outSends := make(chan model.SendPayloadMsg, 1)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outSends, model.NewNodeConnectionMapper(), ctx)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, model.NewNodeConnectionMapper(), ctx)
+	go fs.Start()
 
-	mockPushesAndPulls(ctx, &fs, outSends)
+	mockPushesAndPulls(ctx, &fs)
 
 	path1, _ := webdav.PathFromName("/hello/world")
 	path2, _ := webdav.PathFromName("/hello/planet")

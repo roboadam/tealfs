@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -17,17 +17,18 @@ package blocksaver
 import (
 	"context"
 	"errors"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type LocalBlockSaveResponses struct {
 	InWriteResults      <-chan <-chan model.WriteResult
 	LocalWriteResponses chan<- SaveToDiskResp
-	Sends               chan<- model.SendPayloadMsg
-	NodeConnMap         *model.NodeConnectionMapper
-	NodeId              model.NodeId
+	OutPayload          chan<- model.Payload2
+
+	NodeConnMap  *model.NodeConnectionMapper
+	NodeId       model.NodeId
+	StateHandler *datalayer.StateHandler
 }
 
 func (l *LocalBlockSaveResponses) Start(ctx context.Context) {
@@ -48,24 +49,18 @@ func (l *LocalBlockSaveResponses) readFromChan(ctx context.Context, c <-chan mod
 			return
 		case wr := <-c:
 			resp := convert(&wr)
+			blockId := model.BlockId(wr.Ptr.FileName)
+			dest := model.NodeDisk{
+				DiskId: wr.Ptr.Disk,
+				NodeId: wr.Ptr.NodeId,
+			}
+			l.StateHandler.Saved(blockId, dest)
 			if resp.Caller == l.NodeId {
 				l.LocalWriteResponses <- *convert(&wr)
 			} else {
-				l.sendToRemote(resp)
+				l.OutPayload <- resp
 			}
 		}
-	}
-}
-
-func (l *LocalBlockSaveResponses) sendToRemote(resp *SaveToDiskResp) {
-	conn, ok := l.NodeConnMap.ConnForNode(resp.Caller)
-	if ok {
-		l.Sends <- model.SendPayloadMsg{
-			ConnId:  conn,
-			Payload: resp,
-		}
-	} else {
-		log.Warn("lbsr no connection")
 	}
 }
 

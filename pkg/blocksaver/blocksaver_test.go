@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -17,8 +17,8 @@ package blocksaver
 import (
 	"context"
 	"errors"
-	"tealfs/pkg/disk/dist"
 	"tealfs/pkg/model"
+	"tealfs/pkg/set"
 	"testing"
 
 	"github.com/google/uuid"
@@ -29,8 +29,7 @@ func TestBlockSaver(t *testing.T) {
 	defer cancel()
 
 	req := make(chan model.PutBlockReq)
-	remoteDest := make(chan SaveToDiskReq, 1)
-	localDest := make(chan SaveToDiskReq, 1)
+	outPayloads := make(chan model.Payload2, 1)
 	inResp := make(chan SaveToDiskResp)
 	resp := make(chan model.PutBlockResp)
 
@@ -39,49 +38,55 @@ func TestBlockSaver(t *testing.T) {
 	remoteNodeId := model.NewNodeId()
 	remoteDiskId := model.DiskId(uuid.NewString())
 
-	distributer := dist.NewMirrorDistributer(localNodeId)
-	distributer.SetWeight(localNodeId, localDiskId, 1)
-	distributer.SetWeight(remoteNodeId, remoteDiskId, 1)
-
 	putBlockReq := model.NewPutBlockReq(model.Block{
 		Id:   model.NewBlockId(),
 		Data: []byte{1, 2, 3, 4, 5},
 	})
 
+	diskInfoSet := set.NewSet[model.DiskInfo]()
+	diskInfoSet.Add(model.DiskInfo{
+		DiskId: localDiskId,
+		Path:   "localPath",
+		NodeId: localNodeId,
+	})
+	diskInfoSet.Add(model.DiskInfo{
+		DiskId: remoteDiskId,
+		Path:   "remotePath",
+		NodeId: remoteNodeId,
+	})
+
 	bs := BlockSaver{
-		Req:         req,
-		RemoteDest:  remoteDest,
-		LocalDest:   localDest,
-		InResp:      inResp,
-		Resp:        resp,
-		Distributer: &distributer,
-		NodeId:      localNodeId,
+		Req:          req,
+		InResp:       inResp,
+		Resp:         resp,
+		NodeId:       localNodeId,
+		DiskInfoList: &diskInfoSet,
+		OutPayload:   outPayloads,
 	}
 
 	go bs.Start(ctx)
 
 	req <- putBlockReq
 
-	localReq := <-localDest
-	if localReq.Req.Id != putBlockReq.Id || localReq.Caller != localNodeId {
+	payload := <-outPayloads
+	saveReq, ok := payload.(*SaveToDiskReq)
+	if !ok {
+		t.Fatal("wrong type")
+	}
+
+	if saveReq.Req.Id != putBlockReq.Id || saveReq.Caller != localNodeId {
 		t.Error("unexpected req id 1")
 		return
 	}
 
-	remoteReq := <-remoteDest
-	if remoteReq.Req.Id != putBlockReq.Id || remoteReq.Caller != localNodeId {
-		t.Error("unexpected req id 2")
-		return
-	}
-
 	inResp <- SaveToDiskResp{
-		Caller: localReq.Caller,
+		Caller: saveReq.Caller,
 		Dest: Dest{
 			NodeId: localNodeId,
 			DiskId: localDiskId,
 		},
 		Resp: model.PutBlockResp{
-			Id:  localReq.Req.Id,
+			Id:  saveReq.Req.Id,
 			Err: nil,
 		},
 	}
@@ -92,18 +97,6 @@ func TestBlockSaver(t *testing.T) {
 	default:
 	}
 
-	inResp <- SaveToDiskResp{
-		Caller: remoteReq.Caller,
-		Dest: Dest{
-			NodeId: remoteNodeId,
-			DiskId: remoteDiskId,
-		},
-		Resp: model.PutBlockResp{
-			Id:  remoteReq.Req.Id,
-			Err: nil,
-		},
-	}
-
 	msg := <-resp
 
 	if msg.Id != putBlockReq.Id {
@@ -111,17 +104,20 @@ func TestBlockSaver(t *testing.T) {
 	}
 
 	req <- putBlockReq
-	localReq = <-localDest
-	remoteReq = <-remoteDest
+	payload = <-outPayloads
+	saveReq, ok = payload.(*SaveToDiskReq)
+	if !ok {
+		t.Fatal("wrong type")
+	}
 
 	inResp <- SaveToDiskResp{
-		Caller: localReq.Caller,
+		Caller: saveReq.Caller,
 		Dest: Dest{
 			NodeId: localNodeId,
 			DiskId: localDiskId,
 		},
 		Resp: model.PutBlockResp{
-			Id:  localReq.Req.Id,
+			Id:  saveReq.Req.Id,
 			Err: errors.New("some error putting the first one"),
 		},
 	}

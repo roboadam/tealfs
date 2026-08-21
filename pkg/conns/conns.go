@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -19,9 +19,9 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"tealfs/pkg/blockreader"
 	"tealfs/pkg/blocksaver"
-	"tealfs/pkg/chanutil"
+	"tealfs/pkg/datalayer"
+	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/tnet"
 	"tealfs/pkg/webdav"
@@ -34,31 +34,37 @@ type Conns struct {
 	netConnsMux   *sync.RWMutex
 	nextId        model.ConnId
 	acceptedConns chan AcceptedConns
-	// outReceives        chan model.ConnsMgrReceive
-	OutSaveToDiskReq   chan<- blocksaver.SaveToDiskReq
-	OutSaveToDiskResp  chan<- blocksaver.SaveToDiskResp
-	OutGetFromDiskReq  chan<- blockreader.GetFromDiskReq
-	OutGetFromDiskResp chan<- blockreader.GetFromDiskResp
-	OutAddDiskMsg      chan<- model.AddDiskMsg
-	OutDiskAddedMsg    chan<- model.DiskAddedMsg
-	OutIam             chan<- model.IAm
-	OutIamConnId       chan<- IamConnId
-	OutSyncNodes       chan<- model.SyncNodes
-	OutSendIam         chan<- model.ConnId
-	OutFileBroadcasts  chan<- webdav.FileBroadcast
-	inConnectTo        <-chan model.ConnectToNodeReq
-	inSends            <-chan model.SendPayloadMsg
-	Address            string
-	provider           ConnectionProvider
-	nodeId             model.NodeId
-	listener           net.Listener
-	ctx                context.Context
-	nodeConnMapper     model.NodeConnectionMapper
+
+	OutSaveToDiskResp     chan<- blocksaver.SaveToDiskResp
+	OutAddDiskMsg         chan<- model.AddDiskMsg
+	OutDiskAddedMsg       chan<- model.DiskAddedMsg
+	OutIam                chan<- model.IAm
+	OutFileBroadcasts     chan<- webdav.FileBroadcast
+	OutDataForSaveRequest chan<- datalayer.DataForSaveRequest
+	OutSaveRequest        chan<- datalayer.SaveRequest
+	OutFetchBlockResp     chan<- model.FetchBlockResp
+
+	inConnectTo chan model.ConnectToNodeReq
+
+	InPayload <-chan model.Payload2
+
+	StateHandler         *datalayer.StateHandler
+	Address              string
+	DiskManager          *disk.DiskManagerSvc
+	DeleteRequestHandler *datalayer.DeleteRequestHandler
+	LocalBlockSaver      *blocksaver.LocalBlockSaver
+	IamGenerator         *IamSender
+	ClusterSaver         *ClusterSaver
+
+	provider       ConnectionProvider
+	nodeId         model.NodeId
+	listener       net.Listener
+	ctx            context.Context
+	NodeConnMapper *model.NodeConnectionMapper
 }
 
 func NewConns(
-	inConnectTo <-chan model.ConnectToNodeReq,
-	inSends <-chan model.SendPayloadMsg,
+	inConnectTo chan model.ConnectToNodeReq,
 	provider ConnectionProvider,
 	address string,
 	nodeId model.NodeId,
@@ -69,17 +75,15 @@ func NewConns(
 		panic(err)
 	}
 	c := Conns{
-		netConns:       make(map[model.ConnId]tnet.RawNet),
-		netConnsMux:    &sync.RWMutex{},
-		nextId:         model.ConnId(0),
-		acceptedConns:  make(chan AcceptedConns),
-		inConnectTo:    inConnectTo,
-		inSends:        inSends,
-		provider:       provider,
-		nodeId:         nodeId,
-		listener:       listener,
-		ctx:            ctx,
-		nodeConnMapper: *model.NewNodeConnectionMapper(),
+		netConns:      make(map[model.ConnId]tnet.RawNet),
+		netConnsMux:   &sync.RWMutex{},
+		nextId:        model.ConnId(0),
+		acceptedConns: make(chan AcceptedConns),
+		inConnectTo:   inConnectTo,
+		provider:      provider,
+		nodeId:        nodeId,
+		listener:      listener,
+		ctx:           ctx,
 	}
 
 	go c.consumeChannels()
@@ -93,7 +97,7 @@ func (c *Conns) stopOnDone() {
 	<-c.ctx.Done()
 	err := c.listener.Close()
 	if err != nil {
-		log.Warn("error closing listener")
+		log.Warn("error closing listener ", err)
 	}
 	c.netConnsMux.Lock()
 	defer c.netConnsMux.Unlock()
@@ -114,28 +118,121 @@ func (c *Conns) consumeChannels() {
 			return
 		case acceptedConn := <-c.acceptedConns:
 			id := c.saveNetConn(acceptedConn.netConn)
-			c.OutSendIam <- id
+			iam := c.IamGenerator.generateIam()
+			err := c.sendPayloadOnConn(iam, id)
+			if err != nil {
+				log.Panic("no connection")
+			}
 			go c.consumeData(id)
 		case connectTo := <-c.inConnectTo:
 			id, err := c.connectTo(connectTo.Address)
 			if err == nil {
-				c.OutSendIam <- id
+				iam := c.IamGenerator.generateIam()
+				err := c.sendPayloadOnConn(iam, id)
+				if err != nil {
+					log.Panic("no connection")
+				}
 				go c.consumeData(id)
 			}
-		case sendReq := <-c.inSends:
-			_, ok := c.netConns[sendReq.ConnId]
-			if !ok {
-				c.handleSendFailure(errors.New("connection not found"))
-			} else {
-				//Todo maybe this should be async
-				rawNet := c.netConns[sendReq.ConnId]
-				err := rawNet.SendPayload(&sendReq.Payload)
-				if err != nil {
-					c.handleSendFailure(err)
-				}
-			}
+		case payload := <-c.InPayload:
+			c.sendPayload(payload)
 		}
 	}
+}
+
+func (c *Conns) handleIncomingPayload(payload model.Payload2) {
+	switch p := payload.(type) {
+	case *model.FetchBlockReq:
+		c.handleFetchBlockReq(p)
+	case *model.FetchBlockCmd:
+		c.handleFetchBlockCmd(p)
+	case *model.FetchBlockResp:
+		c.OutFetchBlockResp <- *p
+	case *datalayer.DeleteRequest:
+		go c.DeleteRequestHandler.HandleDeleteRequest(p)
+	case *blocksaver.SaveToDiskReq:
+		go c.LocalBlockSaver.Save(*p)
+	case *blocksaver.SaveToDiskResp:
+		c.OutSaveToDiskResp <- *p
+	case *model.AddDiskMsg:
+		c.OutAddDiskMsg <- *p
+	case *model.DiskAddedMsg:
+		c.OutDiskAddedMsg <- *p
+	case *model.IAm:
+		c.handleIam(p)
+		c.OutIam <- *p
+	case *webdav.FileBroadcast:
+		c.OutFileBroadcasts <- *p
+	case *datalayer.DeletedParams:
+		c.StateHandler.Deleted(p.B, p.D)
+	case *datalayer.SavedParams:
+		c.StateHandler.Saved(p.B, p.D)
+	case *datalayer.SetDiskSpaceParams:
+		c.StateHandler.SetDiskSpace(p.D, p.Space)
+	case *datalayer.SaveRequest:
+		c.OutSaveRequest <- *p
+	case *datalayer.DataForSaveRequest:
+		c.OutDataForSaveRequest <- *p
+	default:
+		log.Panic("Unknown data type")
+	}
+}
+
+func (c *Conns) handleFetchBlockCmd(p *model.FetchBlockCmd) {
+	for i, source := range p.Sources {
+		if source.NodeId != c.nodeId {
+			p.Sources = p.Sources[i:]
+			c.sendPayload(p)
+			return
+		}
+		if data, ok := c.DiskManager.Get(p.BlockId, source.DiskId); ok {
+			resp := model.FetchBlockResp{
+				Caller: p.Caller,
+				Block: model.Block{
+					Id:   p.BlockId,
+					Data: data,
+				},
+				Id:      p.Id,
+				Success: true,
+			}
+			c.sendPayload(&resp)
+			return
+		}
+	}
+}
+
+func (c *Conns) handleFetchBlockReq(p *model.FetchBlockReq) {
+	cmd, err := c.StateHandler.FetchBlockReqToCmd(p)
+	if errors.Is(err, datalayer.NotMainNodeErr{}) {
+		c.sendPayload(p)
+	} else if err == nil {
+		c.sendPayload(cmd)
+	}
+}
+
+func (c *Conns) sendPayload(p model.Payload2) error {
+	dest := p.Destination()
+	if dest == "" {
+		dest = c.NodeConnMapper.MainNode(c.nodeId)
+	}
+
+	if dest == c.nodeId {
+		c.handleIncomingPayload(p)
+		return nil
+	}
+
+	connId, ok := c.NodeConnMapper.ConnForNode(dest)
+	if !ok {
+		return errors.New("No connection to that node")
+	}
+	rawNet := c.netConns[connId]
+	err := rawNet.SendPayload2(p)
+	return err
+}
+
+func (c *Conns) sendPayloadOnConn(p model.Payload2, connId model.ConnId) error {
+	rawNet := c.netConns[connId]
+	return rawNet.SendPayload2(p)
 }
 
 func (c *Conns) handleSendFailure(err error) {
@@ -151,7 +248,7 @@ func (c *Conns) listen() {
 			conn, err := c.listener.Accept()
 			if err == nil {
 				incomingConnReq := AcceptedConns{netConn: conn}
-				chanutil.Send(c.ctx, c.acceptedConns, incomingConnReq, "conns: accepted connection sending to acceptedConns")
+				c.acceptedConns <- incomingConnReq
 			}
 		}
 	}
@@ -168,38 +265,16 @@ func (c *Conns) consumeData(conn model.ConnId) {
 			return
 		default:
 			netConn := c.rawNetForConnId(conn)
-			payload, err := netConn.ReadPayload()
+
+			payload2, err := netConn.ReadPayload2()
 			if err != nil {
-				closeErr := netConn.Close()
-				if closeErr != nil {
-					log.Warn("Error closing connection", closeErr)
-				}
-				c.deleteConn(conn)
+				log.Errorf("Error reading payload %s", err)
 				return
 			}
-			switch p := (payload).(type) {
-			case *blocksaver.SaveToDiskReq:
-				c.OutSaveToDiskReq <- *p
-			case *blocksaver.SaveToDiskResp:
-				c.OutSaveToDiskResp <- *p
-			case *blockreader.GetFromDiskReq:
-				c.OutGetFromDiskReq <- *p
-			case *blockreader.GetFromDiskResp:
-				c.OutGetFromDiskResp <- *p
-			case *model.AddDiskMsg:
-				c.OutAddDiskMsg <- *p
-			case *model.DiskAddedMsg:
-				c.OutDiskAddedMsg <- *p
-			case *model.IAm:
-				c.OutIam <- *p
-				c.OutIamConnId <- IamConnId{Iam: *p, ConnId: conn}
-			case *model.SyncNodes:
-				c.OutSyncNodes <- *p
-			case *webdav.FileBroadcast:
-				c.OutFileBroadcasts <- *p
-			default:
-				panic("Unknown payload")
+			if iam, ok := payload2.(*model.IAm); ok {
+				c.NodeConnMapper.SetAll(conn, iam.Node.Address, iam.Node.NodeId)
 			}
+			c.handleIncomingPayload(payload2)
 		}
 	}
 }

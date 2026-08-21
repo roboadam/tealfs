@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -28,10 +28,10 @@ func TestMkdir(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.SendPayloadMsg)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outBroadcast, model.NewNodeConnectionMapper(), ctx)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, model.NewNodeConnectionMapper(), ctx)
+	go fs.Start()
 
-	mockPushesAndPulls(ctx, &fs, outBroadcast)
+	mockPushesAndPulls(ctx, &fs)
 	c := context.Background()
 	mode := os.ModeDir
 
@@ -59,10 +59,10 @@ func TestRemoveAll(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.SendPayloadMsg)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outBroadcast, model.NewNodeConnectionMapper(), ctx)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, model.NewNodeConnectionMapper(), ctx)
+	go fs.Start()
 
-	mockPushesAndPulls(ctx, &fs, outBroadcast)
+	mockPushesAndPulls(ctx, &fs)
 	mode := os.ModeDir
 
 	_ = fs.Mkdir(ctx, "/test", mode)
@@ -88,10 +88,10 @@ func TestRename(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.SendPayloadMsg)
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outBroadcast, model.NewNodeConnectionMapper(), ctx)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, model.NewNodeConnectionMapper(), ctx)
+	go fs.Start()
 
-	mockPushesAndPulls(ctx, &fs, outBroadcast)
+	mockPushesAndPulls(ctx, &fs)
 	modeDir := os.ModeDir
 
 	createFileAndCheck(t, &fs, "/testFile")
@@ -131,11 +131,11 @@ func TestWriteAndRead(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	inBroadcast := make(chan webdav.FileBroadcast)
-	outBroadcast := make(chan model.SendPayloadMsg)
 	expectedData := []byte{1, 2, 3, 4, 5}
-	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, outBroadcast, model.NewNodeConnectionMapper(), ctx)
+	fs := webdav.NewFileSystem(model.NewNodeId(), inBroadcast, &disk.MockFileOps{}, "indexPath", 0, model.NewNodeConnectionMapper(), ctx)
+	go fs.Start()
 
-	mockPushesAndPulls(ctx, &fs, outBroadcast)
+	mockPushesAndPulls(ctx, &fs)
 
 	f, err := fs.OpenFile(context.Background(), "newFile.txt", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {

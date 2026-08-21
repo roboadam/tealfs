@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -30,10 +30,9 @@ import (
 
 func TestCreateFile(t *testing.T) {
 	nodeId := model.NewNodeId()
-	webdavMgrGets := make(chan model.GetBlockReq)
+	outPayloads := make(chan model.Payload2)
 	webdavMgrPuts := make(chan model.PutBlockReq)
-	webdavMgrBroadcast := make(chan model.SendPayloadMsg)
-	mgrWebdavGets := make(chan model.GetBlockResp)
+	mgrWebdavGets := make(chan model.FetchBlockResp)
 	mgrWebdavPuts := make(chan model.PutBlockResp)
 	mgrWebdavBroadcast := make(chan webdav.FileBroadcast)
 
@@ -42,18 +41,16 @@ func TestCreateFile(t *testing.T) {
 
 	mux := sync.Mutex{}
 	mockStorage := make(map[model.BlockId][]byte)
-	go handleWebdavMgrGets(ctx, webdavMgrGets, mgrWebdavGets, &mux, mockStorage)
+	go handleOutPayloads(ctx, outPayloads, mgrWebdavGets, &mux, mockStorage)
 	go handleWebdavMgrPuts(ctx, webdavMgrPuts, mgrWebdavPuts, &mux, mockStorage)
-	go handleOutBroadcast(ctx, webdavMgrBroadcast)
 	mapper := model.NewNodeConnectionMapper()
 
 	_ = webdav.New(
 		nodeId,
-		webdavMgrGets,
 		webdavMgrPuts,
 		mgrWebdavGets,
 		mgrWebdavPuts,
-		webdavMgrBroadcast,
+		outPayloads,
 		mgrWebdavBroadcast,
 		"localhost:7654",
 		ctx,
@@ -135,21 +132,25 @@ func propFind(url string) (string, error) {
 	return string(body), nil
 }
 
-func handleWebdavMgrGets(ctx context.Context, channel chan model.GetBlockReq, respChan chan model.GetBlockResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
+func handleOutPayloads(ctx context.Context, channel chan model.Payload2, respChan chan model.FetchBlockResp, mux *sync.Mutex, data map[model.BlockId][]byte) {
 	for {
 		select {
 		case req := <-channel:
 			mux.Lock()
-			blockData, exists := data[req.BlockId]
-			if exists {
-				respChan <- model.GetBlockResp{
-					Id:    req.Id,
-					Block: model.Block{Id: req.BlockId, Data: blockData},
-				}
-			} else {
-				respChan <- model.GetBlockResp{
-					Id:    req.Id,
-					Block: model.Block{Id: req.BlockId, Data: []byte{}},
+			if fetchReq, ok := req.(*model.FetchBlockReq); ok {
+				blockData, exists := data[fetchReq.BlockId]
+				if exists {
+					respChan <- model.FetchBlockResp{
+						Block:   model.Block{Id: fetchReq.BlockId, Data: blockData},
+						Id:      fetchReq.Id,
+						Success: true,
+					}
+				} else {
+					respChan <- model.FetchBlockResp{
+						Block:   model.Block{Id: fetchReq.BlockId, Data: []byte{}},
+						Id:      fetchReq.Id,
+						Success: true,
+					}
 				}
 			}
 			mux.Unlock()

@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -38,14 +38,14 @@ func (r *RawNet) Close() error {
 	return r.conn.Close()
 }
 
-func (r *RawNet) ReadPayload() (model.Payload, error) {
-	var payload model.Payload
+func (r *RawNet) ReadPayload2() (model.Payload2, error) {
+	var payload model.Payload2
 	err := r.decoder.Decode(&payload)
 	return payload, err
 }
 
-func (r *RawNet) SendPayload(payload *model.Payload) error {
-	err := r.encoder.Encode(payload)
+func (r *RawNet) SendPayload2(payload model.Payload2) error {
+	err := r.encoder.Encode(&payload)
 	if err != nil {
 		return err
 	}

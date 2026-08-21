@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -48,11 +48,6 @@ type ConnectToNodeReq struct {
 	Address string
 }
 
-type SendPayloadMsg struct {
-	ConnId  ConnId
-	Payload Payload
-}
-
 type MgrDiskSave struct {
 	Hash hash.Hash
 	Data []byte
@@ -73,14 +68,33 @@ type AddDiskMsg struct {
 	NodeId NodeId
 }
 
+func (a *AddDiskMsg) Destination() NodeId {
+	return a.NodeId
+}
+
 type DiskAddedMsg struct {
 	DiskId DiskId
 	Path   string
 	NodeId NodeId
 }
 
+func (d *DiskAddedMsg) Destination() NodeId {
+	return d.NodeId
+}
+
 type DiskInfo struct {
 	DiskId DiskId
 	Path   string
 	NodeId NodeId
+}
+
+type NodeDiskBlock struct {
+	NodeId  NodeId
+	DiskId  DiskId
+	BlockId BlockId
+}
+
+type NodeDisk struct {
+	NodeId NodeId
+	DiskId DiskId
 }

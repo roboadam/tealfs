@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -18,10 +18,10 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"time"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -89,7 +89,7 @@ type closeResp struct{ err error }
 
 func (f *File) Close() error {
 	req := closeReq{f: f, resp: make(chan closeResp)}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.closeReq, req, "close")
+	f.FileSystem.closeReq <- req
 	resp := <-req.resp
 	return resp.err
 }
@@ -119,7 +119,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 		f:    f,
 		resp: make(chan readResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.readReq, req, "read")
+	f.FileSystem.readReq <- req
 	resp := <-req.resp
 	return resp.n, resp.err
 }
@@ -143,7 +143,7 @@ func read(req readReq) readResp {
 	p := req.p
 	err := f.ensureData()
 	if err != nil {
-		log.Warn("Error reading data for ", f.Path.toName())
+		log.Warnf("Error reading data for %s: %w", f.Path.toName(), err)
 		return readResp{err: err}
 	}
 
@@ -211,7 +211,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		f:      f,
 		resp:   make(chan seekResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.seekReq, req, "seek")
+	f.FileSystem.seekReq <- req
 	resp := <-req.resp
 	return resp.pos, resp.err
 }
@@ -252,7 +252,7 @@ func (f *File) Readdir(count int) ([]fs.FileInfo, error) {
 		count: count,
 		resp:  make(chan readdirResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.readdirReq, req, "readdir")
+	f.FileSystem.readdirReq <- req
 	resp := <-req.resp
 	return resp.infos, resp.err
 }
@@ -285,7 +285,8 @@ func (f *File) Stat() (fs.FileInfo, error) {
 		f:    f,
 		resp: make(chan statResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.statReq, req, "stat")
+	f.FileSystem.statReq <- req
+
 	resp := <-req.resp
 	return resp.info, resp.err
 }
@@ -309,7 +310,7 @@ func (f *File) Write(p []byte) (n int, err error) {
 		f:    f,
 		resp: make(chan writeResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.writeReq, req, "write")
+	f.FileSystem.writeReq <- req
 	resp := <-req.resp
 	return resp.n, resp.err
 }
@@ -396,13 +397,17 @@ func (f *File) ensureData() error {
 
 func (f *File) ensureDataForIndex(index int) error {
 	if !f.HasData[index] {
-		req := model.NewGetBlockReq(f.Block[index].Id)
+		req := model.FetchBlockReq{
+			Caller:  f.FileSystem.nodeId,
+			BlockId: f.Block[index].Id,
+			Id:      model.FetchBlockId(uuid.NewString()),
+		}
 		resp := f.FileSystem.fetchBlock(req)
-		if resp.Err == nil {
+		if resp.Success {
 			f.Block[index] = resp.Block
 			f.HasData[index] = true
 		} else {
-			return resp.Err
+			return errors.New(resp.Msg)
 		}
 	}
 	return nil
@@ -421,7 +426,7 @@ func (f *File) Name() string {
 		f:    f,
 		resp: make(chan nameResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.nameReq, req, "name")
+	f.FileSystem.nameReq <- req
 	resp := <-req.resp
 	return resp.name
 }
@@ -449,7 +454,7 @@ func (f *File) Size() int64 {
 		f:    f,
 		resp: make(chan sizeResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.sizeReq, req, "size")
+	f.FileSystem.sizeReq <- req
 	resp := <-req.resp
 	return resp.size
 }
@@ -471,7 +476,7 @@ func (f *File) Mode() fs.FileMode {
 		f:    f,
 		resp: make(chan modeResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.modeReq, req, "mode")
+	f.FileSystem.modeReq <- req
 	resp := <-req.resp
 	return resp.mode
 }
@@ -493,7 +498,7 @@ func (f *File) ModTime() time.Time {
 		f:    f,
 		resp: make(chan modtimeResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.modtimeReq, req, "modtime")
+	f.FileSystem.modtimeReq <- req
 	resp := <-req.resp
 	return resp.time
 }
@@ -515,7 +520,7 @@ func (f *File) IsDir() bool {
 		f:    f,
 		resp: make(chan isdirResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.isdirReq, req, "isdir")
+	f.FileSystem.isdirReq <- req
 	resp := <-req.resp
 	return resp.is
 }
@@ -537,7 +542,7 @@ func (f *File) Sys() any {
 		f:    f,
 		resp: make(chan sysResp),
 	}
-	chanutil.Send(f.FileSystem.Ctx, f.FileSystem.sysReq, req, "sys")
+	f.FileSystem.sysReq <- req
 	resp := <-req.resp
 	return resp.whatever
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"time"
 
@@ -48,7 +47,7 @@ func (f *FileSystem) OpenFile(ctx context.Context, name string, flag int, perm o
 		perm:     perm,
 		respChan: respChan,
 	}
-	chanutil.Send(f.Ctx, f.openFileReq, req, "filesystem_open_file: openFile")
+	f.openFileReq <- req
 	resp := <-respChan
 	return resp.file, resp.err
 }
@@ -109,7 +108,7 @@ func (f *FileSystem) openFile(req *openFileReq) openFileResp {
 			Modtime:    time.Now(),
 			Position:   0,
 			Block:      []model.Block{block},
-			HasData:    []bool{false},
+			HasData:    []bool{create},
 			Path:       path,
 			FileSystem: f,
 		}

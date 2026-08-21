@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -31,19 +31,9 @@ type DiskPointer struct {
 	FileName string
 }
 
-type GetBlockReq struct {
-	Id      GetBlockId
-	BlockId BlockId
-}
-
 type PutBlockReq struct {
 	Id    PutBlockId
 	Block Block
-}
-
-func NewGetBlockReq(blockId BlockId) GetBlockReq {
-	id := GetBlockId(uuid.New().String())
-	return GetBlockReq{id, blockId}
 }
 
 func NewPutBlockReq(block Block) PutBlockReq {
@@ -66,11 +56,6 @@ type PutBlockResp struct {
 	Err error
 }
 
-type GetBlockResp struct {
-	Id    GetBlockId
-	Block Block
-	Err   error
-}
 
 type Block struct {
 	Id   BlockId

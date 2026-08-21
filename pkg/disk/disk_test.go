@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -170,6 +170,33 @@ func TestSave(t *testing.T) {
 
 	if err != nil || !bytes.Equal(data.Data, []byte{1, 2, 3}) {
 		t.Error("Couldn't read the result")
+	}
+}
+
+func TestDelete(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	f := disk.MockFileOps{}
+	path := disk.NewPath("/some/fake/path", &f)
+	id := model.NewNodeId()
+	diskId := model.DiskId(uuid.New().String())
+	d := disk.New(path, id, diskId, ctx)
+
+	d.Save([]byte{1, 2, 3}, "blockId")
+
+	ok := d.Delete("blockId")
+	if !ok {
+		t.Error("should be able to delete")
+	}
+
+	_, err := path.ReadDirect(model.DiskPointer{
+		NodeId:   id,
+		Disk:     diskId,
+		FileName: "blockId",
+	})
+	if err == nil {
+		t.Error("file should not exist after delete")
 	}
 }
 

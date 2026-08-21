@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -15,15 +15,23 @@
 package model
 
 type IAm struct {
+	Node     IamNodeAddress
+	Disks    []DiskInfo
+	Siblings []IamNodeAddress
+	Dest     NodeId
+}
+
+type IamNodeAddress struct {
 	NodeId  NodeId
-	Disks   []DiskInfo
 	Address string
 }
 
-func NewIam(nodeId NodeId, disks []DiskInfo, address string) IAm {
-	return IAm{
-		NodeId:  nodeId,
-		Disks:   disks,
-		Address: address,
-	}
+type IamDiskInfo struct {
+	DiskId    DiskId
+	Path      string
+	FreeSpace int
+}
+
+func (i *IAm) Destination() NodeId {
+	return i.Dest
 }

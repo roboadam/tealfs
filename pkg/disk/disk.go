@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -19,7 +19,6 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 
@@ -60,6 +59,10 @@ func New(
 			blockId model.BlockId
 			resp    chan bool
 		}),
+		inDelete: make(chan struct {
+			blockId model.BlockId
+			resp    chan bool
+		}),
 		ctx: ctx,
 	}
 	go p.consumeChannels()
@@ -86,6 +89,10 @@ type Disk struct {
 	}
 	inSave chan struct {
 		data    []byte
+		blockId model.BlockId
+		resp    chan bool
+	}
+	inDelete chan struct {
 		blockId model.BlockId
 		resp    chan bool
 	}
@@ -137,6 +144,18 @@ func (d *Disk) Save(data []byte, blockId model.BlockId) bool {
 	return <-resp
 }
 
+func (d *Disk) Delete(blockId model.BlockId) bool {
+	resp := make(chan bool)
+	d.inDelete <- struct {
+		blockId model.BlockId
+		resp    chan bool
+	}{
+		blockId: blockId,
+		resp:    resp,
+	}
+	return <-resp
+}
+
 func (d *Disk) consumeChannels() {
 	for {
 		select {
@@ -170,23 +189,23 @@ func (d *Disk) consumeChannels() {
 			err := d.path.Save(s.Data)
 			if err == nil {
 				wr := model.NewWriteResultOk(s.Data.Ptr, s.Caller, s.ReqId)
-				chanutil.Send(d.ctx, d.OutWrites, wr, "disk: save success")
+				d.OutWrites <- wr
 			} else {
 				wr := model.NewWriteResultErr(err.Error(), s.Caller, s.ReqId)
-				chanutil.Send(d.ctx, d.OutWrites, wr, "disk: save failure")
+				d.OutWrites <- wr
 			}
 		case r := <-d.InReads:
 			if len(r.Ptrs) == 0 {
 				rr := model.NewReadResultErr("no pointers in read request", r.Caller, r.ReqId, r.BlockId)
-				chanutil.Send(d.ctx, d.OutReads, rr, "disk: no pointers in read request")
+				d.OutReads <- rr
 			} else {
 				data, err := d.path.ReadOrEmpty(r.Ptrs[0])
 				if err == nil {
 					rr := model.NewReadResultOk(r.Caller, r.Ptrs[1:], data, r.ReqId, r.BlockId)
-					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read success")
+					d.OutReads <- rr
 				} else {
 					rr := model.NewReadResultErr(err.Error(), r.Caller, r.ReqId, r.BlockId)
-					chanutil.Send(d.ctx, d.OutReads, rr, "disk: read failure")
+					d.OutReads <- rr
 				}
 			}
 		case req := <-d.InListIds:
@@ -204,6 +223,10 @@ func (d *Disk) consumeChannels() {
 			if err != nil {
 				log.Warn("Error deleting file")
 			}
+		case del := <-d.inDelete:
+			filePath := filepath.Join(d.path.raw, string(del.blockId))
+			err := d.path.ops.Remove(filePath)
+			del.resp <- err == nil
 		case req := <-d.InExists:
 			filePath := filepath.Join(d.path.raw, string(req.BlockId))
 			req.Resp <- d.path.ops.Exists(filePath)

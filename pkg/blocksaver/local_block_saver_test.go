@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -30,8 +30,6 @@ func TestLocalBlockSaver(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	req := make(chan SaveToDiskReq)
-
 	disk1 := mockDisk(nodeId, ctx)
 	disk2 := mockDisk(nodeId, ctx)
 	disks := set.NewSet[disk.Disk]()
@@ -39,13 +37,10 @@ func TestLocalBlockSaver(t *testing.T) {
 	disks.Add(*disk2)
 
 	lbs := LocalBlockSaver{
-		Req:   req,
 		Disks: &disks,
 	}
 
-	go lbs.Start(ctx)
-
-	req <- SaveToDiskReq{
+	lbs.Save(SaveToDiskReq{
 		Caller: model.NewNodeId(),
 		Dest: Dest{
 			NodeId: nodeId,
@@ -55,7 +50,7 @@ func TestLocalBlockSaver(t *testing.T) {
 			Id:   model.NewBlockId(),
 			Data: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
 		}),
-	}
+	})
 
 	result := <-disk1.OutWrites
 	if !result.Ok {
@@ -68,7 +63,7 @@ func TestLocalBlockSaver(t *testing.T) {
 		return
 	}
 
-	req <- SaveToDiskReq{
+	lbs.Save(SaveToDiskReq{
 		Caller: model.NewNodeId(),
 		Dest: Dest{
 			NodeId: nodeId,
@@ -78,7 +73,7 @@ func TestLocalBlockSaver(t *testing.T) {
 			Id:   model.NewBlockId(),
 			Data: []byte{10, 9, 8, 7, 6, 5, 4, 3, 2, 1},
 		}),
-	}
+	})
 	result = <-disk2.OutWrites
 	if !result.Ok {
 		t.Errorf("Expected write to succeed, got error: %s", result.Message)

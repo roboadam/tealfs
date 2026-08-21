@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -12,18 +12,24 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package blockreader
+package conns
 
 import "tealfs/pkg/model"
 
-func (b *BlockReader) destsFor(req model.GetBlockReq) []Dest {
-	dests := make([]Dest, 0, 2)
-	ptrs := b.Distributer.ReadPointersForId(req.BlockId)
-	for _, ptr := range ptrs {
-		dests = append(dests, Dest{
-			NodeId: ptr.NodeId,
-			DiskId: ptr.Disk,
-		})
+func (c *Conns) handleIam(iam *model.IAm) {
+	c.NodeConnMapper.SetNodeAddress(iam.Node.NodeId, iam.Node.Address)
+	for _, sibling := range iam.Siblings {
+		if !c.NodeConnMapper.KnownNode(sibling.NodeId) {
+			c.NodeConnMapper.SetNodeAddress(sibling.NodeId, sibling.Address)
+		}
 	}
-	return dests
+	go c.ClusterSaver.Save()
+	go c.connectToUnConnected()
+}
+
+func (c *Conns) connectToUnConnected() {
+	addresses := c.NodeConnMapper.AddressesWithoutConnections()
+	for _, address := range addresses.GetValues() {
+		c.inConnectTo <- model.ConnectToNodeReq{Address: address}
+	}
 }

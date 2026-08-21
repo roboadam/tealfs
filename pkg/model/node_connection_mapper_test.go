@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -12,41 +12,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-package model
+package model_test
 
 import (
-	"tealfs/pkg/set"
+	"tealfs/pkg/model"
+	"tealfs/pkg/test"
+	"testing"
 )
 
-type SyncNodes struct {
-	Nodes set.Set[struct {
-		Node    NodeId
-		Address string
-	}]
-}
+func TestMainNodeCalculation(t *testing.T) {
+	mapper := model.NewNodeConnectionMapper()
+	mapper.SetNodeAddress(test.NonMainNode1, "address2")
+	mapper.SetNodeAddress(test.NonMainNode2, "address3")
 
-func NewSyncNodes() SyncNodes {
-	return SyncNodes{
-		Nodes: set.NewSet[struct {
-			Node    NodeId
-			Address string
-		}](),
+	main := mapper.MainNode(test.MainNodeId)
+	if main != test.MainNodeId {
+		t.Error("Unexpected main node")
 	}
-}
-
-func (s *SyncNodes) GetNodes() set.Set[NodeId] {
-	result := set.NewSet[NodeId]()
-	for _, n := range s.Nodes.GetValues() {
-		result.Add(n.Node)
-	}
-	return result
-}
-
-func (s *SyncNodes) AddressForNode(id NodeId) string {
-	for _, val := range s.Nodes.GetValues() {
-		if val.Node == id {
-			return val.Address
-		}
-	}
-	return ""
 }

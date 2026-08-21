@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -18,18 +18,19 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
 
 	"github.com/google/uuid"
 )
 
 type Ui struct {
-	NodeConnMap *model.NodeConnectionMapper
+	NodeConnMap  *model.NodeConnectionMapper
+	StateHandler *datalayer.StateHandler
 
-	connToReq        chan model.ConnectToNodeReq
-	addLocalDiskMsg  chan model.AddDiskMsg
-	addRemoteDiskMsg chan model.AddDiskMsg
-	addDiskResp      chan model.UiDiskStatus
+	connToReq   chan model.ConnectToNodeReq
+	addDiskResp chan model.UiDiskStatus
+	outPayloads chan<- model.Payload2
 
 	diskStatuses map[model.DiskId]model.UiDiskStatus
 	sMux         sync.Mutex
@@ -40,8 +41,7 @@ type Ui struct {
 
 func NewUi(
 	connToReq chan model.ConnectToNodeReq,
-	addLocalDiskReq chan model.AddDiskMsg,
-	addRemoteDiskReq chan model.AddDiskMsg,
+	outPayloads chan<- model.Payload2,
 	addDiskResp chan model.UiDiskStatus,
 	ops HtmlOps,
 	nodeId model.NodeId,
@@ -50,13 +50,12 @@ func NewUi(
 ) *Ui {
 	diskStatuses := make(map[model.DiskId]model.UiDiskStatus)
 	ui := Ui{
-		connToReq:        connToReq,
-		addLocalDiskMsg:  addLocalDiskReq,
-		addRemoteDiskMsg: addRemoteDiskReq,
-		diskStatuses:     diskStatuses,
-		ops:              ops,
-		nodeId:           nodeId,
-		ctx:              ctx,
+		connToReq:    connToReq,
+		outPayloads:  outPayloads,
+		diskStatuses: diskStatuses,
+		ops:          ops,
+		nodeId:       nodeId,
+		ctx:          ctx,
 	}
 	ui.handleRoot()
 	ui.start(bindAddr)
@@ -124,11 +123,11 @@ func (ui *Ui) handleRoot() {
 				Path:   diskPath,
 				NodeId: model.NodeId(node),
 			}
-			if req.NodeId == ui.nodeId {
-				ui.addLocalDiskMsg <- req
-			} else {
-				ui.addRemoteDiskMsg <- req
-			}
+			ui.StateHandler.SetDiskSpace(model.NodeDisk{
+				NodeId: req.NodeId,
+				DiskId: req.DiskId,
+			}, 1)
+			ui.outPayloads <- &req
 			ui.connectionStatus(w, tmpl)
 		default:
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)

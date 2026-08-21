@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/gob"
 	"net/http"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 
@@ -32,14 +31,14 @@ func init() {
 }
 
 type Webdav struct {
-	webdavMgrGets chan model.GetBlockReq
 	webdavMgrPuts chan model.PutBlockReq
-	mgrWebdavGets chan model.GetBlockResp
+	mgrWebdavGets chan model.FetchBlockResp
 	mgrWebdavPuts chan model.PutBlockResp
+	outPayloads   chan model.Payload2
 
 	FileSystem   FileSystem
 	nodeId       model.NodeId
-	pendingReads map[model.GetBlockId]chan model.GetBlockResp
+	pendingReads map[model.FetchBlockId]chan model.FetchBlockResp
 	pendingPuts  map[model.PutBlockId]chan model.PutBlockResp
 	lockSystem   webdav.LockSystem
 	bindAddress  string
@@ -50,11 +49,10 @@ type Webdav struct {
 
 func New(
 	nodeId model.NodeId,
-	webdavMgrGets chan model.GetBlockReq,
 	webdavMgrPuts chan model.PutBlockReq,
-	mgrWebdavGets chan model.GetBlockResp,
+	mgrWebdavGets chan model.FetchBlockResp,
 	mgrWebdavPuts chan model.PutBlockResp,
-	outSends chan model.SendPayloadMsg,
+	outPayloads chan model.Payload2,
 
 	mgrWebdavBroadcast chan FileBroadcast,
 	bindAddress string,
@@ -64,21 +62,23 @@ func New(
 	chansize int,
 	mapper *model.NodeConnectionMapper,
 ) Webdav {
+	fileSystem := NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, mapper, ctx)
 	w := Webdav{
-		webdavMgrGets: webdavMgrGets,
 		webdavMgrPuts: webdavMgrPuts,
 		mgrWebdavGets: mgrWebdavGets,
 		mgrWebdavPuts: mgrWebdavPuts,
-		FileSystem:    NewFileSystem(nodeId, mgrWebdavBroadcast, fileOps, indexPath, chansize, outSends, mapper, ctx),
+		outPayloads:   outPayloads,
+		FileSystem:    fileSystem,
 		nodeId:        nodeId,
-		pendingReads:  make(map[model.GetBlockId]chan model.GetBlockResp),
+		pendingReads:  make(map[model.FetchBlockId]chan model.FetchBlockResp),
 		pendingPuts:   make(map[model.PutBlockId]chan model.PutBlockResp),
 		lockSystem:    webdav.NewMemLS(),
 		bindAddress:   bindAddress,
 		ctx:           ctx,
 	}
-	w.FileSystem.OutSends = outSends
 	w.FileSystem.Mapper = mapper
+	w.FileSystem.OutPayload = outPayloads
+	go w.FileSystem.Start()
 	w.start()
 	return w
 }
@@ -110,22 +110,22 @@ func (w *Webdav) eventLoop() {
 		case r := <-w.mgrWebdavGets:
 			ch, ok := w.pendingReads[r.Id]
 			if ok {
-				chanutil.Send(w.ctx, ch, r, "webdav: response for pending read to fs")
+				ch <- r
 				delete(w.pendingReads, r.Id)
 			}
 		case r := <-w.mgrWebdavPuts:
 			ch, ok := w.pendingPuts[r.Id]
 			if ok {
-				chanutil.Send(w.ctx, ch, r, "webdav: response for pending write to fs")
+				ch <- r
 				delete(w.pendingPuts, r.Id)
 			} else {
 				log.Warn("webdav: received write response for unknown put block id", r.Id)
 			}
 		case r := <-w.FileSystem.ReadReqResp:
-			chanutil.Send(w.ctx, w.webdavMgrGets, r.Req, "webdav: read request to mgr "+string(r.Req.Id))
+			w.outPayloads <- &r.Req
 			w.pendingReads[r.Req.Id] = r.Resp
 		case r := <-w.FileSystem.WriteReqResp:
-			chanutil.Send(w.ctx, w.webdavMgrPuts, r.Req, "webdav: write request to mgr")
+			w.webdavMgrPuts <- r.Req
 			w.pendingPuts[r.Req.Id] = r.Resp
 		}
 	}

@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -50,7 +50,16 @@ func TestIamReceiver(t *testing.T) {
 		},
 	}
 	address := "someAddress"
-	inIam <- model.NewIam(nodeId, disks, address)
+	// inIam <- model.NewIam(nodeId, disks, address)
+	inIam <- model.IAm{
+		Node:     model.IamNodeAddress{
+			NodeId:  nodeId,
+			Address: address,
+		},
+		Disks:    disks,
+		Siblings: []model.IamNodeAddress{},
+		Dest:     "",
+	}
 	<-diskAddedMsg
 	<-diskAddedMsg
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -20,7 +20,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"tealfs/pkg/chanutil"
 	"tealfs/pkg/disk"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
@@ -51,7 +50,7 @@ type FileSystem struct {
 	ReadReqResp     chan ReadReqResp
 	WriteReqResp    chan WriteReqResp
 	inBroadcast     chan FileBroadcast
-	OutSends        chan model.SendPayloadMsg
+	OutPayload      chan model.Payload2
 
 	Mapper    *model.NodeConnectionMapper
 	nodeId    model.NodeId
@@ -66,7 +65,6 @@ func NewFileSystem(
 	fileOps disk.FileOps,
 	indexPath string,
 	chansize int,
-	outSends chan model.SendPayloadMsg,
 	mapper *model.NodeConnectionMapper,
 	ctx context.Context,
 ) FileSystem {
@@ -95,7 +93,6 @@ func NewFileSystem(
 		nodeId:          nodeId,
 		fileOps:         fileOps,
 		indexPath:       indexPath,
-		OutSends:        outSends,
 		Mapper:          mapper,
 		Ctx:             ctx,
 	}
@@ -115,7 +112,6 @@ func NewFileSystem(
 	if err != nil {
 		log.Error("Unable to read fileIndex on startup:", err)
 	}
-	go filesystem.run()
 	return filesystem
 }
 
@@ -125,13 +121,13 @@ type WriteReqResp struct {
 }
 
 type ReadReqResp struct {
-	Req  model.GetBlockReq
-	Resp chan model.GetBlockResp
+	Req  model.FetchBlockReq
+	Resp chan model.FetchBlockResp
 }
 
-func (f *FileSystem) fetchBlock(req model.GetBlockReq) model.GetBlockResp {
-	resp := make(chan model.GetBlockResp)
-	chanutil.Send(f.Ctx, f.ReadReqResp, ReadReqResp{req, resp}, "filesystem fetchBlock "+string(req.Id))
+func (f *FileSystem) fetchBlock(req model.FetchBlockReq) model.FetchBlockResp {
+	resp := make(chan model.FetchBlockResp)
+	f.ReadReqResp <- ReadReqResp{req, resp}
 	return <-resp
 }
 
@@ -152,43 +148,43 @@ func (f *FileSystem) pushBlock(req model.PutBlockReq) model.PutBlockResp {
 	return <-resp
 }
 
-func (f *FileSystem) run() {
+func (f *FileSystem) Start() {
 	for {
 		select {
 		case <-f.Ctx.Done():
 			return
 		case req := <-f.mkdirReq:
-			chanutil.Send(f.Ctx, req.respChan, f.mkdir(&req), "filesystem: run mkdirReq")
+			req.respChan <- f.mkdir(&req)
 		case req := <-f.openFileReq:
-			chanutil.Send(f.Ctx, req.respChan, f.openFile(&req), "filesystem: run openFile")
+			req.respChan <- f.openFile(&req)
 		case req := <-f.removeAllReq:
-			chanutil.Send(f.Ctx, req.respChan, f.removeAll(&req), "filesystem: run removeAll")
+			req.respChan <- f.removeAll(&req)
 		case req := <-f.renameReq:
-			chanutil.Send(f.Ctx, req.respChan, f.rename(&req), "filesystem: run rename")
+			req.respChan <- f.rename(&req)
 		case req := <-f.writeReq:
-			chanutil.Send(f.Ctx, req.resp, write(req), "filesystem: write")
+			req.resp <- write(req)
 		case req := <-f.readReq:
-			chanutil.Send(f.Ctx, req.resp, read(req), "filesystem: read")
+			req.resp <- read(req)
 		case req := <-f.seekReq:
-			chanutil.Send(f.Ctx, req.resp, seek(req), "filesystem: seek")
+			req.resp <- seek(req)
 		case req := <-f.closeReq:
-			chanutil.Send(f.Ctx, req.resp, closeF(req), "filesystem: close")
+			req.resp <- closeF(req)
 		case req := <-f.readdirReq:
-			chanutil.Send(f.Ctx, req.resp, readdir(req), "filesystem: readdir")
+			req.resp <- readdir(req)
 		case req := <-f.statReq:
-			chanutil.Send(f.Ctx, req.resp, stat(req), "filesystem: stat")
+			req.resp <- stat(req)
 		case req := <-f.nameReq:
-			chanutil.Send(f.Ctx, req.resp, name(req), "filesystem: name")
+			req.resp <- name(req)
 		case req := <-f.sizeReq:
-			chanutil.Send(f.Ctx, req.resp, size(req), "filesystem: size")
+			req.resp <- size(req)
 		case req := <-f.modeReq:
-			chanutil.Send(f.Ctx, req.resp, mode(req), "filesystem: mode")
+			req.resp <- mode(req)
 		case req := <-f.modtimeReq:
-			chanutil.Send(f.Ctx, req.resp, modtime(req), "filesystem: modtime")
+			req.resp <- modtime(req)
 		case req := <-f.isdirReq:
-			chanutil.Send(f.Ctx, req.resp, isdir(req), "filesystem: isdir")
+			req.resp <- isdir(req)
 		case req := <-f.sysReq:
-			chanutil.Send(f.Ctx, req.resp, sys(req), "filesystem: sys")
+			req.resp <- sys(req)
 		case req := <-f.listBlockIdsReq:
 			f.listBlockIds(&req)
 		case msg := <-f.inBroadcast:
@@ -233,9 +229,10 @@ func (f *FileSystem) persistFileIndexAndBroadcast(file *File, updateType FileBro
 		return err
 	}
 	msg := FileBroadcast{UpdateType: updateType, FileBytes: file.ToBytes()}
-	conns := f.Mapper.Connections()
-	for _, connId := range conns.GetValues() {
-		f.OutSends <- model.SendPayloadMsg{ConnId: connId, Payload: &msg}
+	dests := f.Mapper.ConnectedNodes()
+	for _, dest := range dests.GetValues() {
+		msg.Dest = dest
+		f.OutPayload <- &msg
 	}
 	return nil
 }
@@ -376,7 +373,7 @@ func (f *FileSystem) Rename(ctx context.Context, oldName string, newName string)
 		newName:  newName,
 		respChan: respChan,
 	}
-	chanutil.Send(f.Ctx, f.renameReq, req, "rename")
+	f.renameReq <- req
 	resp := <-respChan
 	return resp
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -15,40 +15,38 @@
 package conns
 
 import (
-	"context"
 	"tealfs/pkg/model"
 	"tealfs/pkg/set"
 )
 
 type IamSender struct {
-	InSendIam <-chan model.ConnId
-	OutIam    chan<- model.SendPayloadMsg
-
-	NodeId  model.NodeId
-	Address string
-	Disks   *set.Set[model.DiskInfo]
+	NodeId      model.NodeId
+	Address     string
+	Disks       *set.Set[model.DiskInfo]
+	NodeConnMap *model.NodeConnectionMapper
 }
 
-func (i *IamSender) Start(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case connId := <-i.InSendIam:
-			i.sendIam(connId)
-		}
-	}
-}
-
-func (i *IamSender) sendIam(connId model.ConnId) {
+func (i *IamSender) generateIam() *model.IAm {
 	disks := i.Disks.GetValues()
-	iam := model.IAm{
-		NodeId:  i.NodeId,
-		Address: i.Address,
-		Disks:   disks,
+	return &model.IAm{
+		Node: model.IamNodeAddress{
+			NodeId:  i.NodeId,
+			Address: i.Address,
+		},
+		Disks:    disks,
+		Siblings: i.siblings(),
+		Dest:     "",
 	}
-	i.OutIam <- model.SendPayloadMsg{
-		ConnId:  connId,
-		Payload: &iam,
+}
+
+func (i *IamSender) siblings() []model.IamNodeAddress {
+	result := []model.IamNodeAddress{}
+	sibs := i.NodeConnMap.NodesWithAddress()
+	for _, node := range sibs {
+		result = append(result, model.IamNodeAddress{
+			NodeId:  node.J,
+			Address: node.K,
+		})
 	}
+	return result
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -16,8 +16,11 @@ package model
 
 import (
 	"encoding/json"
+	"hash/crc32"
 	"sync"
 	"tealfs/pkg/set"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type NodeConnectionMapper struct {
@@ -25,6 +28,7 @@ type NodeConnectionMapper struct {
 	addressConnMap set.Bimap[string, ConnId]
 	connNodeMap    set.Bimap[ConnId, NodeId]
 	addressNodeMap set.Bimap[string, NodeId]
+	mainNodeId     *NodeId
 	mux            sync.RWMutex
 }
 
@@ -159,13 +163,23 @@ func (n *NodeConnectionMapper) Clear() {
 	defer n.mux.Unlock()
 	n.addressConnMap.Clear()
 	n.addressNodeMap.Clear()
+	n.mainNodeId = nil
 	n.connNodeMap.Clear()
+}
+
+func (n *NodeConnectionMapper) KnownNode(nodeId NodeId) bool {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+
+	_, known := n.addressNodeMap.Get2(nodeId)
+	return known
 }
 
 func (n *NodeConnectionMapper) SetNodeAddress(nodeId NodeId, address string) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 	n.addressNodeMap.Add(address, nodeId)
+	n.mainNodeId = nil
 	n.addresses.Add(address)
 }
 
@@ -184,6 +198,37 @@ func (n *NodeConnectionMapper) Marshal() ([]byte, error) {
 		AddressNodeMap: n.addressNodeMap.ToMap(),
 	}
 	return json.Marshal(exportable)
+}
+
+func (n *NodeConnectionMapper) MainNode(myNodeId NodeId) NodeId {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+
+	if n.mainNodeId != nil {
+		return *n.mainNodeId
+	}
+
+	if n.addressNodeMap.Len() == 0 {
+		return myNodeId
+	}
+	mainIndex := 0
+	maxChecksum := uint32(0)
+	nodeValues := n.addressNodeMap.AllValues()
+	nodeValues = append(nodeValues, struct {
+		K string
+		J NodeId
+	}{J: myNodeId})
+	for i, nodeValue := range nodeValues {
+		var nodeId NodeId = nodeValue.J
+		checksum := crc32.ChecksumIEEE([]byte(nodeId))
+		log.Infof("nodeId: %s, crc: %d", nodeId, checksum)
+		if maxChecksum < checksum {
+			mainIndex = i
+			maxChecksum = checksum
+		}
+	}
+	n.mainNodeId = &nodeValues[mainIndex].J
+	return *n.mainNodeId
 }
 
 func NodeConnectionMapperUnmarshal(data []byte) (*NodeConnectionMapper, error) {
@@ -210,6 +255,7 @@ func (n *NodeConnectionMapper) SetAll(conn ConnId, address string, node NodeId) 
 	n.addressConnMap.Add(address, conn)
 	n.connNodeMap.Add(conn, node)
 	n.addressNodeMap.Add(address, node)
+	n.mainNodeId = nil
 }
 
 func (n *NodeConnectionMapper) Nodes() set.Set[NodeId] {

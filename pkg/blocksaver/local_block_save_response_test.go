@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -16,7 +16,9 @@ package blocksaver
 
 import (
 	"context"
+	"tealfs/pkg/datalayer"
 	"tealfs/pkg/model"
+	"tealfs/pkg/test"
 	"testing"
 
 	"github.com/google/uuid"
@@ -26,25 +28,32 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	nodeId := model.NewNodeId()
-	remoteNodeId := model.NewNodeId()
+	nodeId := test.NonMainNode1
+	remoteNodeId := test.MainNodeId
 
-	resp := make(chan SaveToDiskResp)
-	sends := make(chan model.SendPayloadMsg)
-	inWriteResults := make(chan (<-chan model.WriteResult))
+	resp := make(chan SaveToDiskResp, 1)
+	inWriteResults := make(chan (<-chan model.WriteResult), 1)
+	outPayload := make(chan model.Payload2)
+	nodeConnMapper := model.NewNodeConnectionMapper()
+
+	stateHandler := datalayer.StateHandler{
+		OutPayload:  outPayload,
+		MyNodeId:    nodeId,
+		NodeConnMap: nodeConnMapper,
+	}
 
 	lbsr := LocalBlockSaveResponses{
 		InWriteResults:      inWriteResults,
 		LocalWriteResponses: resp,
-		Sends:               sends,
-		NodeConnMap:         model.NewNodeConnectionMapper(),
+		NodeConnMap:         nodeConnMapper,
 		NodeId:              nodeId,
+		StateHandler:        &stateHandler,
 	}
 
 	go lbsr.Start(ctx)
 
-	writeResults1 := make(chan model.WriteResult)
-	writeResults2 := make(chan model.WriteResult)
+	writeResults1 := make(chan model.WriteResult, 1)
+	writeResults2 := make(chan model.WriteResult, 1)
 	inWriteResults <- writeResults1
 	inWriteResults <- writeResults2
 
@@ -58,11 +67,19 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 		FileName: uuid.NewString(),
 	}
 	writeResults1 <- model.NewWriteResultOk(ptr, nodeId, putBlockId)
+	saveParamsPayload := <-outPayload
+	if saveParams, ok := saveParamsPayload.(*datalayer.SavedParams); ok {
+		if saveParams.D.NodeId != nodeId {
+			t.Fatalf("wrong dest. expected %s, got %s", nodeId, saveParams.D.NodeId)
+		}
+	} else {
+		t.Fatal("wrong type")
+		return
+	}
 
 	wr := <-resp
 	if wr.Resp.Id != putBlockId {
-		t.Error("Unknown put block id")
-		return
+		t.Fatal("Unknown put block id")
 	}
 
 	putBlockId2 := model.PutBlockId(uuid.NewString())
@@ -72,10 +89,14 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 		putBlockId2,
 	)
 
+	payloadSaveParams := <-outPayload
+	if _, ok := payloadSaveParams.(*datalayer.SavedParams); !ok {
+		t.Fatal("unknown send payload")
+	}
+
 	wr = <-resp
 	if wr.Resp.Id != putBlockId2 {
-		t.Error("Unknown put block id")
-		return
+		t.Fatal("Unknown put block id")
 	}
 
 	putBlockId3 := model.PutBlockId(uuid.NewString())
@@ -89,9 +110,8 @@ func TestLocalBlockSaveResponse(t *testing.T) {
 		putBlockId3,
 	)
 
-	payload := <-sends
-	if _, ok := payload.Payload.(*SaveToDiskResp); !ok {
-		t.Error("unknown send payload")
-		return
+	payloadSaveParams = <-outPayload
+	if _, ok := payloadSaveParams.(*datalayer.SavedParams); !ok {
+		t.Fatal("unknown send payload")
 	}
 }

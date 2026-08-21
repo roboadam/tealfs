@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Adam Hess
+// Copyright (C) 2026 Adam Hess
 //
 // This program is free software: you can redistribute it and/or modify it under
 // the terms of the GNU Affero General Public License as published by the Free
@@ -108,11 +108,10 @@ func waitForWrittenData(handler func() string, values []string) {
 
 func NewUi(ctx context.Context) (*ui.Ui, chan model.ConnectToNodeReq, *ui.MockHtmlOps) {
 	connToReq := make(chan model.ConnectToNodeReq)
-	localDiskAddMsg := make(chan model.AddDiskMsg)
-	remoteDiskAddMsg := make(chan model.AddDiskMsg)
+	outPayloads := make(chan model.Payload2)
 	diskStatus := make(chan model.UiDiskStatus)
 	ops := ui.NewMockHtmlOps("mockBindAddr:123")
-	u := ui.NewUi(connToReq, localDiskAddMsg, remoteDiskAddMsg, diskStatus, ops, "nodeId", "address", ctx)
+	u := ui.NewUi(connToReq, outPayloads, diskStatus, ops, "nodeId", "address", ctx)
 	u.NodeConnMap = model.NewNodeConnectionMapper()
 	return u, connToReq, ops
 }
