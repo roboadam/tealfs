@@ -25,6 +25,14 @@ func (c *Conns) handleIam(iam *model.IAm) {
 	}
 	go c.ClusterSaver.Save()
 	go c.connectToUnConnected()
+
+	for _, disk := range iam.Disks {
+		// TODO: this is way overkill, neet to do someting smart here
+		c.StateHandler.SetDiskSpace(model.NodeDisk{
+			NodeId: disk.NodeId,
+			DiskId: disk.DiskId,
+		}, 1)
+	}
 }
 
 func (c *Conns) connectToUnConnected() {

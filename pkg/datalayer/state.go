@@ -16,8 +16,6 @@ package datalayer
 
 import (
 	"tealfs/pkg/model"
-
-	"github.com/sirupsen/logrus"
 )
 
 type state struct {
@@ -134,7 +132,6 @@ func (s *state) saved(blockId model.BlockId, d model.NodeDisk) {
 		s.addBlockToFuture(blockId, emptyDisk)
 		if emptyDisk != d && !s.saveAlreadySent(blockId, emptyDisk) {
 			s.addBlockToInFlight(blockId, emptyDisk)
-			logrus.Info("What")
 			s.outPayload <- &SaveRequest{
 				To:      emptyDisk,
 				From:    []model.NodeDisk{d},
